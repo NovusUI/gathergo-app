@@ -1,29 +1,67 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import RootNavigator from "@/navigators/RootNavigators";
+import {
+  BottomSheetModalProvider,
+} from "@gorhom/bottom-sheet";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { PaystackProvider } from "react-native-paystack-webview";
+import Toast, { BaseToast } from "react-native-toast-message";
+import "../global.css";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+// keep splash visible until we manually hide it
+SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+function AppContent() {
+  const { loading } = useAuth();
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
+  if (loading) {
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <BottomSheetModalProvider>
+      <RootNavigator />
+    </BottomSheetModalProvider>
+  );
+}
+export const toastConfig = {
+  warn: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#FFA500' }}
+      text1Style={{ fontSize: 16, fontWeight: 'bold' }}
+    />
+  ),
+};
+
+export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient());
+
+  
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <PaystackProvider
+           debug
+           publicKey="pk_test_430fb933c2b87c6f0f6a29b40b97d2d1caf60fbe"
+           defaultChannels={["bank","bank_transfer","card","ussd"]}
+          >
+          <AppContent />
+          <Toast config={toastConfig} />
+          </PaystackProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

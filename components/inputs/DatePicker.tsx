@@ -1,0 +1,97 @@
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { Calendar } from "lucide-react-native";
+import { forwardRef, useState } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+
+type IconType = React.ComponentType<{
+  size?: number;
+  color?: string;
+  className?: string;
+}>;
+
+interface DatePickerProps {
+  LeftIcon?: IconType;
+  RightIcon?: IconType;
+  placeholder?: string;
+  className?: string;
+  inputClassName?: string;
+  error?: string;
+  iconColor?: string;
+  value?: Date;
+  onChange?: (date: Date) => void;
+}
+
+const DatePicker = forwardRef<View, DatePickerProps>(
+  (
+    {
+      LeftIcon,
+      RightIcon,
+      placeholder = "Select date",
+      className = "",
+      inputClassName = "",
+      error,
+      iconColor = "#6B7280",
+      value,
+      onChange,
+    },
+    ref
+  ) => {
+    const [show, setShow] = useState(false);
+
+    const handleChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+      setShow(false);
+      if (selectedDate && onChange) {
+        onChange(selectedDate);
+      }
+    };
+
+    return (
+      <View
+        ref={ref}
+        className={`w-full max-w-[500px] bg-[#1B2A50]/40 p-2 rounded-xl ${className}`}
+      >
+        <TouchableOpacity
+          className="flex-row items-center px-5 py-3"
+          onPress={() => setShow(true)}
+          activeOpacity={0.7}
+        >
+          {/* Left Icon */}
+          {LeftIcon && (
+            <View className="mr-2">
+              <LeftIcon size={20} color={iconColor} />
+            </View>
+          )}
+
+          {/* Display Selected Date or Placeholder */}
+          <Text
+            className={`flex-1 text-white ${!value ? "text-gray-400" : ""} ${inputClassName}`}
+          >
+            {value ? value.toDateString() : placeholder}
+          </Text>
+
+          {/* Right Icon */}
+          {RightIcon ? (
+            <RightIcon size={20} color={iconColor} />
+          ) : (
+            <Calendar size={20} color={iconColor} />
+          )}
+        </TouchableOpacity>
+
+        {/* Error */}
+        {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+
+        {/* Native Date Picker */}
+        {show && (
+          <DateTimePicker
+            value={value || new Date()}
+            mode="date"
+            display="default"
+            onChange={handleChange}
+          />
+        )}
+      </View>
+    );
+  }
+);
+
+export default DatePicker;
