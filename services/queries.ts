@@ -1,8 +1,19 @@
-import { EventsResponse } from "@/types/auth";
+import { EventsResponse, StandardResponse } from "@/types/auth";
 import { EventDetailsResponse, PaginatedEventResponse } from "@/types/event";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./queryKeys";
-import { getAllUserEvent, getCurrentUserFn, getEventDetails, getEventsForYou, getSearchResult, getTicketOrRegByTransactionId, getTransactionRef, getUserProfile } from "./serviceFn";
+import {
+  getAllUserEvent,
+  getCarpoolDetails,
+  getCarpoolsForYou,
+  getCurrentUserFn,
+  getEventDetails,
+  getEventsForYou,
+  getSearchResult,
+  getTicketOrRegByTransactionId,
+  getTransactionRef,
+  getUserProfile,
+} from "./serviceFn";
 
 export const useCurrentUser = () => {
   return useQuery({
@@ -12,10 +23,9 @@ export const useCurrentUser = () => {
   });
 };
 
-
 export const useUserProfile = (userId?: string, options = {}) => {
   return useQuery({
-    queryKey: [QUERY_KEYS.userPublicProfile, userId],  // stable primitive
+    queryKey: [QUERY_KEYS.userPublicProfile, userId], // stable primitive
     queryFn: getUserProfile,
     staleTime: 1000 * 60 * 5,
     retry: 1,
@@ -23,10 +33,9 @@ export const useUserProfile = (userId?: string, options = {}) => {
   });
 };
 
-
 export const useForYouEvents = (userId?: string, options = {}) => {
   return useQuery<EventsResponse>({
-    queryKey: [QUERY_KEYS.foryouEvents, userId],  // stable primitive
+    queryKey: [QUERY_KEYS.foryouEvents, userId], // stable primitive
     queryFn: getEventsForYou,
     staleTime: 1000 * 60,
     retry: 1,
@@ -44,7 +53,6 @@ export const useForYouEvents = (userId?: string, options = {}) => {
 //   });
 // };
 
-
 export const useGetUsersEvents = (
   userId?: string,
   pageSize = 5,
@@ -53,16 +61,15 @@ export const useGetUsersEvents = (
   return useInfiniteQuery<PaginatedEventResponse>({
     queryKey: [QUERY_KEYS.getUserEvents, userId, pageSize],
     queryFn: getAllUserEvent,
-    initialPageParam: 1,                     // Required
+    initialPageParam: 1, // Required
     getNextPageParam: (lastPage) => {
-      const {total,pageSize,page} =lastPage.meta
+      const { total, pageSize, page } = lastPage.meta;
       const maxPages = Math.ceil(total / pageSize);
       return page < maxPages ? page + 1 : undefined;
     },
     ...options,
   });
 };
-
 
 export const useGetSearchResult = (
   query: string,
@@ -71,11 +78,11 @@ export const useGetSearchResult = (
   options?: any
 ) => {
   return useInfiniteQuery<PaginatedEventResponse>({
-    queryKey: [QUERY_KEYS.getUserEvents, query,type, pageSize],
+    queryKey: [QUERY_KEYS.getUserEvents, query, type, pageSize],
     queryFn: getSearchResult,
-    initialPageParam: 1,                     // Required
+    initialPageParam: 1, // Required
     getNextPageParam: (lastPage) => {
-      const {total,pageSize,page} =lastPage.meta
+      const { total, pageSize, page } = lastPage.meta;
       const maxPages = Math.ceil(total / pageSize);
       return page < maxPages ? page + 1 : undefined;
     },
@@ -83,22 +90,39 @@ export const useGetSearchResult = (
   });
 };
 
-
-
 export const useEventDetails = (eventId: string, options = {}) => {
   return useQuery<EventDetailsResponse>({
-    queryKey: [QUERY_KEYS.eventDetails, eventId],  // stable primitive
+    queryKey: [QUERY_KEYS.eventDetails, eventId], // stable primitive
     queryFn: getEventDetails,
-    staleTime: 1000 * 60 ,
+    staleTime: 1000 * 60,
     retry: 1,
     ...options,
   });
 };
 
+export const useGetCarpoolDetails = (id: string, options = {}) => {
+  return useQuery<StandardResponse>({
+    queryKey: [QUERY_KEYS.carpoolDetails, id], // stable primitive
+    queryFn: getCarpoolDetails,
+    staleTime: 1000 * 60,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useForYouCarpools = (options = {}) => {
+  return useQuery<StandardResponse>({
+    queryKey: [QUERY_KEYS.carpoolForYou], // stable primitive
+    queryFn: getCarpoolsForYou,
+    staleTime: 1000 * 60,
+    retry: 1,
+    ...options,
+  });
+};
 
 export const useTransactionRef = (tId: string, options = {}) => {
   return useQuery({
-    queryKey: [QUERY_KEYS.transactionRef, tId],  // stable primitive
+    queryKey: [QUERY_KEYS.transactionRef, tId], // stable primitive
     queryFn: getTransactionRef,
     staleTime: 1000 * 60 * 5,
     retry: 1,
@@ -106,14 +130,16 @@ export const useTransactionRef = (tId: string, options = {}) => {
   });
 };
 
-export const useTicketOrRegByTransactionRef = (tId: string, type: "REGISTRATION" | "TICKET", options = {}) => {
+export const useTicketOrRegByTransactionRef = (
+  tId: string,
+  type: "REGISTRATION" | "TICKET",
+  options = {}
+) => {
   return useQuery({
-    queryKey: [QUERY_KEYS.ticketOrReg, tId,type],  // stable primitive
+    queryKey: [QUERY_KEYS.ticketOrReg, tId, type], // stable primitive
     queryFn: getTicketOrRegByTransactionId,
     staleTime: 1000 * 60 * 5,
     retry: 1,
     ...options,
   });
 };
-
-  

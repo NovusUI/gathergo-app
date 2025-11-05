@@ -5,12 +5,12 @@ import { useRouter } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const SearchScreen = () => {
@@ -20,7 +20,7 @@ const SearchScreen = () => {
     { label: "Circle", value: "communities" },
   ] as const;
 
-  type TabValue = typeof tabs[number]["value"];
+  type TabValue = (typeof tabs)[number]["value"];
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<TabValue>("events");
@@ -36,12 +36,11 @@ const SearchScreen = () => {
   } = useGetSearchResult(query, activeTab, 10);
 
   // flatten pages if you're using infiniteQuery
-  const results =
-    searchResults?.pages?.flatMap((page: any) => page.data) ?? [];
+  const results = searchResults?.pages?.flatMap((page: any) => page.data) ?? [];
 
-    useEffect(()=>{
-            console.log(results)
-    },[results])
+  useEffect(() => {
+    console.log(results);
+  }, [results]);
 
   const renderContent = () => {
     if (isPending) {
@@ -54,7 +53,6 @@ const SearchScreen = () => {
 
     if (activeTab === "events") {
       return results.length > 0 ? (
-     
         <FlatList
           data={results}
           keyExtractor={(item) => item.id}
@@ -66,7 +64,8 @@ const SearchScreen = () => {
               imageUrl={item.imageUrl}
               registrationType={item.registrationType}
               registrationFee={item.registrationFee}
-              onPress={() =>router.push(`/event/${item.id}`)}
+              onPress={() => router.push(`/event/${item.id}`)}
+              startDate={item.startDate}
             />
           )}
           contentContainerStyle={{ gap: 16, paddingVertical: 10 }}
@@ -82,7 +81,7 @@ const SearchScreen = () => {
             ) : null
           }
         />
-      ): (
+      ) : (
         <View className="mt-5">
           <Text className="text-white text-center">No Events found</Text>
         </View>
@@ -95,9 +94,7 @@ const SearchScreen = () => {
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Text className="text-white text-center py-3">
-              {item.username}
-            </Text>
+            <Text className="text-white text-center py-3">{item.username}</Text>
           )}
         />
       ) : (
@@ -113,9 +110,7 @@ const SearchScreen = () => {
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Text className="text-white text-center py-3">
-              {item.name}
-            </Text>
+            <Text className="text-white text-center py-3">{item.name}</Text>
           )}
         />
       ) : (
@@ -129,7 +124,7 @@ const SearchScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-[#01082E] flex items-center flex-col pt-10 pb-5 px-5 overflow-hidden">
+    <View className="flex-1 bg-[#01082E] flex items-center flex-col pt-20 pb-5 px-5 overflow-hidden">
       {/* Search Bar */}
       <View className="flex-row items-center bg-[#1A2755] rounded-full px-4 py-4 mb-5 w-full max-w-[500px]">
         <SearchIcon size={20} color="white" />

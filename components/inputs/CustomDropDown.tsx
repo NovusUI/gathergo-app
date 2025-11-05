@@ -38,8 +38,8 @@ const Dropdown = forwardRef<View, DropdownProps>(
     const [items, setItems] = useState(options);
 
     return (
-      <View ref={ref} className={`mb-4 w-full max-w-[500px] ${className}`}>
-        <View className="flex-row items-center">
+      <View ref={ref} className={`mb-4  ${className}`}>
+        <View className="flex-row items-center w-[300px]">
           {LeftIcon && (
             <View className="mr-2">
               <LeftIcon size={20} color={iconColor} />

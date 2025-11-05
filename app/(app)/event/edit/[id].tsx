@@ -11,26 +11,21 @@ import Input from "@/components/inputs/CustomInput1";
 import TextArea from "@/components/inputs/CustomTextArea";
 import FormLabel from "@/components/labels/FormLabel";
 import {
-    DateTimeFormData,
-    EventFormData,
-    EventPricing,
-    EventTicket,
-    eventSchema
+  DateTimeFormData,
+  EventFormData,
+  EventPricing,
+  EventTicket,
+  eventSchema,
 } from "@/schemas/event";
 import { useUpdateEvent } from "@/services/mutations";
 import { useEventDetails } from "@/services/queries";
 import { extractDate } from "@/utils/dateTimeHandler";
-import {
-    showGlobalError,
-    showGlobalSuccess
-} from "@/utils/globalErrorHandler";
-import {
-    objectToFormData
-} from "@/utils/utils";
+import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import { objectToFormData } from "@/utils/utils";
 import BottomSheet, {
-    BottomSheetBackdrop,
-    BottomSheetModal,
-    BottomSheetScrollView
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -44,21 +39,20 @@ const EditEvent = () => {
   const eventId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
 
-
-  const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null)
+  const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null);
 
   const onEdit = (data: EventTicket) => {
-
     // console.log(data)
-    setEditingTicket(data)
+    setEditingTicket(data);
 
-    openSheetTicket()
- 
- };
+    openSheetTicket();
+  };
 
   // *********** State ************ //
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(null);
+  const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
+    null
+  );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
 
   // *********** Bottom Sheets ************ //
@@ -95,7 +89,7 @@ const EditEvent = () => {
     setValue,
     watch,
     reset,
-    clearErrors
+    clearErrors,
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
@@ -114,18 +108,17 @@ const EditEvent = () => {
       registrationAttendees: undefined,
       registrationFee: undefined,
       repeat: "NONE",
-      endRepeat: undefined
-    }
+      endRepeat: undefined,
+    },
   });
 
   // *********** Populate Form When Data Loads ************ //
   useEffect(() => {
     if (eventData?.data) {
-
       const e = eventData.data;
-      console.log(e)
+      console.log(e);
       reset({
-        imgUrl:  undefined,
+        imgUrl: undefined,
         eventName: e.title || "",
         description: e.description || "",
         startDate: e.startDate ? new Date(e.startDate) : undefined,
@@ -136,19 +129,18 @@ const EditEvent = () => {
         tags: e.tags || [],
         registrationType: e.registrationType || undefined,
         tickets: (e.eventTickets || []).map((ticket) => ({
-            ...ticket,
-            limited: ticket.quantity === 1000000 ? true : false,
-            paid: ticket.price ? true : false,
-            isVisible: ticket.isVisible || true,
-            isNew: false,
-            updatedPrice: ticket.updatedPrice || undefined
-            
-          })),
+          ...ticket,
+          limited: ticket.quantity === 1000000 ? true : false,
+          paid: ticket.price ? true : false,
+          isVisible: ticket.isVisible || true,
+          isNew: false,
+          updatedPrice: ticket.updatedPrice || undefined,
+        })),
         registrationAttendees: e.registrationAttendees || undefined,
         registrationFee: e.registrationFee || undefined,
         isRecurring: e.reoccurring !== "NONE",
         repeat: e.reoccurring || "NONE",
-        endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined
+        endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined,
       });
 
       setDateTimeData({
@@ -158,44 +150,53 @@ const EditEvent = () => {
         endTime: e.endDate?.split("T")[1]?.slice(0, 5),
         isRecurring: e.reoccurring !== "NONE",
         repeat: e.reoccurring || "NONE",
-        endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined
+        endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined,
       });
-
-
-   
-
 
       setPricingData({
         registrationType: e.registrationType,
-        registrationFee: e.registrationFee ? e.registrationFee: undefined,
-        registrationAttendees: (!e.registrationAttendees &&  e.registrationAttendees !==0) ?  undefined: e.registrationAttendees,
+        registrationFee: e.registrationFee ? e.registrationFee : undefined,
+        registrationAttendees:
+          !e.registrationAttendees && e.registrationAttendees !== 0
+            ? undefined
+            : e.registrationAttendees,
         tickets: (e.eventTickets || []).map((ticket) => ({
-            ...ticket,
-            limited: ticket.quantity === 1000000 ? true : false,
-            paid: ticket.price ? true : false,
-            isVisible: ticket.isVisible || true,
-            isNew: false,
-            updatedPrice: ticket.updatedPrice || undefined
-            
-          })),
-        
-        paid: (e.registrationType === "registration" && e.registrationFee && e.registrationFee >0) ? true:false,
-        limited:( e.registrationType === "registration" && e.registrationAttendees && e.registrationAttendees === 100000) ? false : true
+          ...ticket,
+          limited: ticket.quantity === 1000000 ? true : false,
+          paid: ticket.price ? true : false,
+          isVisible: ticket.isVisible || true,
+          isNew: false,
+          updatedPrice: ticket.updatedPrice || undefined,
+        })),
+
+        paid:
+          e.registrationType === "registration" &&
+          e.registrationFee &&
+          e.registrationFee > 0
+            ? true
+            : false,
+        limited:
+          e.registrationType === "registration" &&
+          e.registrationAttendees &&
+          e.registrationAttendees === 100000
+            ? false
+            : true,
       });
     }
   }, [eventData, reset]);
 
   // *********** Mutation ************ //
-  const { mutateAsync: updateEvent, isPending: isUpdatePending } = useUpdateEvent(eventId, {
-    onSuccess: () => {
-      showGlobalSuccess("Event updated");
-      router.replace(`/event/${eventId}`);
-    },
-    onError: (e) => {
-        console.log(e)
-      showGlobalError("Event update failed");
-    }
-  });
+  const { mutateAsync: updateEvent, isPending: isUpdatePending } =
+    useUpdateEvent(eventId, {
+      onSuccess: () => {
+        showGlobalSuccess("Event updated");
+        router.replace(`/event/${eventId}`);
+      },
+      onError: (e) => {
+        console.log(e);
+        showGlobalError("Event update failed");
+      },
+    });
 
   // *********** Handlers ************ //
   const handleDateTimeSave = (data: DateTimeFormData) => {
@@ -224,7 +225,13 @@ const EditEvent = () => {
   const renderSheetContent = () => {
     switch (activeSection) {
       case "Date and Time":
-        return <DateAndTime editMode initialData={dateTimeData} onSave={handleDateTimeSave} />;
+        return (
+          <DateAndTime
+            editMode
+            initialData={dateTimeData}
+            onSave={handleDateTimeSave}
+          />
+        );
       case "Location":
         return (
           <Controller
@@ -232,7 +239,13 @@ const EditEvent = () => {
             control={control}
             render={({ field: { value, onChange } }) => (
               <View>
-                <Location onSave={(data) => { onChange(data); closeSheet(); }} value={value} />
+                <Location
+                  onSave={(data) => {
+                    onChange(data);
+                    closeSheet();
+                  }}
+                  value={value}
+                />
               </View>
             )}
           />
@@ -245,7 +258,10 @@ const EditEvent = () => {
             initialData={pricingData}
             onSave={handlePricingSave}
             tickets={watch("tickets") || []}
-            createTicket={()=>{setEditingTicket(null);openSheetTicket();}}
+            createTicket={() => {
+              setEditingTicket(null);
+              openSheetTicket();
+            }}
             setTicket={(updated: EventTicket[]) => setValue("tickets", updated)}
           />
         );
@@ -281,12 +297,16 @@ const EditEvent = () => {
       ...(registrationType === "registration"
         ? {
             registrationAttendees: registrationAttendees || 100000,
-            registrationFee: registrationFee || 0
+            registrationFee: registrationFee || 0,
           }
         : {}),
       ...(registrationType === "ticket"
-        ? { tickets: tickets?.map(({ paid, limited,isNew, ...rest }) => JSON.stringify(rest)) }
-        : {})
+        ? {
+            tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
+              JSON.stringify(rest)
+            ),
+          }
+        : {}),
     };
 
     //const refinedData = convertUndefinedToNull(correctedData);
@@ -297,12 +317,10 @@ const EditEvent = () => {
         uri: imgUrl,
         name: "eventImg.jpg",
         type: "image/jpeg",
-     
-        
       } as any);
     }
 
-    console.log(formData)
+    console.log(formData);
 
     await updateEvent(formData);
   };
@@ -319,7 +337,9 @@ const EditEvent = () => {
   if (isError || !eventData) {
     return (
       <View className="flex-1 bg-[#01082E] items-center justify-center px-5">
-        <Text className="text-white text-xl mt-4">Event not found or error loading</Text>
+        <Text className="text-white text-xl mt-4">
+          Event not found or error loading
+        </Text>
         <CustomButton
           title="Go Back"
           onPress={() => router.replace("/")}
@@ -335,10 +355,13 @@ const EditEvent = () => {
   const registrationTypeWatch = watch("registrationType");
 
   return (
-    <View className="flex-1 pt-10 bg-[#01082E] flex flex-col items-center w-full">
+    <View className="flex-1 pt-20 pb-5 bg-[#01082E] flex flex-col items-center w-full">
       <View className="flex-1 w-full max-w-[500px]">
         <CustomView className="px-5">
-          <CustomeTopBarNav title="Edit Event" onClickBack={() => router.replace(`/event/${eventId}`)} />
+          <CustomeTopBarNav
+            title="Edit Event"
+            onClickBack={() => router.replace(`/event/${eventId}`)}
+          />
         </CustomView>
 
         <ScrollView className="w-full max-w-500">
@@ -349,9 +372,14 @@ const EditEvent = () => {
               control={control}
               render={({ field: { value, onChange } }) => (
                 <View>
-                  <CoverImagePicker value={value || eventData.data.imageUrl} onChange={onChange} />
+                  <CoverImagePicker
+                    value={value || eventData.data.imageUrl}
+                    onChange={onChange}
+                  />
                   {errors.imgUrl && (
-                    <Text className="text-red-500">{errors.imgUrl.message}</Text>
+                    <Text className="text-red-500">
+                      {errors.imgUrl.message}
+                    </Text>
                   )}
                 </View>
               )}
@@ -366,7 +394,11 @@ const EditEvent = () => {
                 name="eventName"
                 control={control}
                 render={({ field: { value, onChange } }) => (
-                  <Input placeholder="Event name" onChangeText={onChange} value={value} />
+                  <Input
+                    placeholder="Event name"
+                    onChangeText={onChange}
+                    value={value}
+                  />
                 )}
               />
               {errors.eventName && (
@@ -390,7 +422,9 @@ const EditEvent = () => {
                 )}
               />
               {errors.description && (
-                <Text className="text-red-500">{errors.description.message}</Text>
+                <Text className="text-red-500">
+                  {errors.description.message}
+                </Text>
               )}
             </CustomView>
           </CustomView>
@@ -419,7 +453,9 @@ const EditEvent = () => {
               onPress={() => openSheet("Pricing")}
             >
               <Text className="text-white text-base">Pricing</Text>
-              {registrationTypeWatch && <Text className="text-[#0FF1CF]">✓</Text>}
+              {registrationTypeWatch && (
+                <Text className="text-[#0FF1CF]">✓</Text>
+              )}
             </TouchableOpacity>
           </CustomView>
 
@@ -439,9 +475,9 @@ const EditEvent = () => {
 
           <CustomView className="flex items-center px-5 mt-5">
             <CustomButton
-             disabled={isUpdatePending}
+              disabled={isUpdatePending}
               onPress={handleSubmit(onSubmit)}
-              title={isUpdatePending?"updating...":"Update Event"}
+              title={isUpdatePending ? "updating..." : "Update Event"}
               showArrow={false}
               buttonClassName="bg-[#0FF1CF] w-full !border-none"
               textClassName="!text-black"
@@ -457,7 +493,11 @@ const EditEvent = () => {
         snapPoints={snapPoints}
         enablePanDownToClose
         backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} disappearsOnIndex={0} appearsOnIndex={1} />
+          <BottomSheetBackdrop
+            {...props}
+            disappearsOnIndex={0}
+            appearsOnIndex={1}
+          />
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
@@ -482,7 +522,11 @@ const EditEvent = () => {
         snapPoints={snapTicket}
         enablePanDownToClose
         backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} disappearsOnIndex={0} appearsOnIndex={1} />
+          <BottomSheetBackdrop
+            {...props}
+            disappearsOnIndex={0}
+            appearsOnIndex={1}
+          />
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
@@ -501,7 +545,9 @@ const EditEvent = () => {
               editingTicket={editingTicket}
               close={closeSheetTicket}
               tickets={watch("tickets") || []}
-              setTicket={(updated: EventTicket[]) => setValue("tickets", updated)}
+              setTicket={(updated: EventTicket[]) =>
+                setValue("tickets", updated)
+              }
               editMode
             />
           </View>

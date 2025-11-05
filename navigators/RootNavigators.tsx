@@ -1,25 +1,20 @@
 import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/auth";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
 
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
+  const { isAuthenticated } = useAuthStore();
 
   if (loading) return null; // splash screen can go here
 
-  useEffect(()=>{
-    console.log(user)
-  },[user])
-
   return (
-  
-      <Stack screenOptions={{ headerShown: false }}>
-      {user ? (
+    <Stack screenOptions={{ headerShown: false }}>
+      {isAuthenticated ? (
         <Stack.Screen name="(app)" />
       ) : (
         <Stack.Screen name="(auth)" />
       )}
     </Stack>
-
   );
 }

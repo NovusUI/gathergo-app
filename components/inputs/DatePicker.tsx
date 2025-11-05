@@ -1,6 +1,5 @@
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Calendar } from "lucide-react-native";
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 type IconType = React.ComponentType<{
@@ -17,8 +16,8 @@ interface DatePickerProps {
   inputClassName?: string;
   error?: string;
   iconColor?: string;
-  value?: Date;
-  onChange?: (date: Date) => void;
+  value?: string;
+  onPress?: () => void;
 }
 
 const DatePicker = forwardRef<View, DatePickerProps>(
@@ -32,19 +31,13 @@ const DatePicker = forwardRef<View, DatePickerProps>(
       error,
       iconColor = "#6B7280",
       value,
-      onChange,
+      onPress,
     },
     ref
   ) => {
-    const [show, setShow] = useState(false);
-
-    const handleChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-      setShow(false);
-      if (selectedDate && onChange) {
-        onChange(selectedDate);
-      }
-    };
-
+    useEffect(() => {
+      console.log(value, "birthday");
+    }, [value]);
     return (
       <View
         ref={ref}
@@ -52,7 +45,7 @@ const DatePicker = forwardRef<View, DatePickerProps>(
       >
         <TouchableOpacity
           className="flex-row items-center px-5 py-3"
-          onPress={() => setShow(true)}
+          onPress={onPress}
           activeOpacity={0.7}
         >
           {/* Left Icon */}
@@ -64,9 +57,11 @@ const DatePicker = forwardRef<View, DatePickerProps>(
 
           {/* Display Selected Date or Placeholder */}
           <Text
-            className={`flex-1 text-white ${!value ? "text-gray-400" : ""} ${inputClassName}`}
+            className={`flex-1 text-white ${
+              !value ? "text-gray-400" : ""
+            } ${inputClassName}`}
           >
-            {value ? value.toDateString() : placeholder}
+            {value ?? placeholder}
           </Text>
 
           {/* Right Icon */}
@@ -79,16 +74,6 @@ const DatePicker = forwardRef<View, DatePickerProps>(
 
         {/* Error */}
         {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
-
-        {/* Native Date Picker */}
-        {show && (
-          <DateTimePicker
-            value={value || new Date()}
-            mode="date"
-            display="default"
-            onChange={handleChange}
-          />
-        )}
       </View>
     );
   }

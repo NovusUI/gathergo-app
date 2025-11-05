@@ -67,4 +67,20 @@ export function numberWithCommas(
   return value?.replace(/-/g, "");
 }
 
+// utils/formatTime.ts
+export function formatTo12Hour(timeString: string): string {
+  // Split hours and minutes
+  const [hourStr, minuteStr] = timeString.split(":");
+  let hours = parseInt(hourStr, 10);
+  const minutes = minuteStr.padStart(2, "0");
+
+  // Determine AM or PM
+  const ampm = hours >= 12 ? "pm" : "am";
+
+  // Convert hours from 24h to 12h format
+  hours = hours % 12 || 12; // 0 -> 12
+
+  return `${hours}:${minutes} ${ampm}`;
+}
+
 export const dummy = "https://randomuser.me/api/portraits/women/68.jpg";

@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import EventCard from "./ui/EventCard";
 
-
 interface UserEventsTabProps {
   events: any[];
   isFetchingNextPage: boolean;
@@ -51,6 +50,7 @@ export default function UserEventsTab({
           registrationType={item.registrationType}
           registrationFee={item.registrationFee}
           onPress={() => router.push(`/event/${item.id}`)}
+          startDate={item.startDate}
         />
       )}
       onEndReached={() => {

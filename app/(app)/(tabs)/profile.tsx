@@ -1,14 +1,14 @@
-import CustomeTopBarNav from '@/components/CustomeTopBarNav';
-import ProfileImageUploader from '@/components/ProfileImageUploader';
-import StatsCard from '@/components/StatCard';
-import Tab from '@/components/Tab';
-import UserEventsTab from '@/components/UserEventsTab';
-import CustomButton from '@/components/buttons/CustomBtn1';
-import { useAuth } from '@/context/AuthContext';
-import { useGetUsersEvents, useUserProfile } from '@/services/queries';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import CustomeTopBarNav from "@/components/CustomeTopBarNav";
+import ProfileImageUploader from "@/components/ProfileImageUploader";
+import StatsCard from "@/components/StatCard";
+import Tab from "@/components/Tab";
+import UserEventsTab from "@/components/UserEventsTab";
+import CustomButton from "@/components/buttons/CustomBtn1";
+import { useAuth } from "@/context/AuthContext";
+import { useGetUsersEvents, useUserProfile } from "@/services/queries";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Text, View } from "react-native";
 
 const Profile = () => {
   const tabs = ["About", "Events", "Review"];
@@ -26,7 +26,7 @@ const Profile = () => {
     isPending: eventsPending,
   } = useGetUsersEvents(user?.id, 5);
 
-  console.log(userEvents)
+  console.log(userEvents);
 
   const events = userEvents?.pages.flatMap((page) => page.data) || [];
 
@@ -74,17 +74,24 @@ const Profile = () => {
   };
 
   return (
-    <View className="flex-1 bg-[#01082E] flex items-center flex-col py-5 px-5 overflow-hidden">
-      <CustomeTopBarNav title="profile" onClickBack={() => router.replace("/")} />
+    <View className="flex-1 bg-[#01082E] flex items-center flex-col pt-20 pb-10 px-5 overflow-hidden">
+      <CustomeTopBarNav
+        title="profile"
+        onClickBack={() => router.replace("/")}
+      />
 
       {/* Header Info */}
       <View className="flex flex-col gap-2 w-full max-w-[500px] mt-10 mb-5">
         <View className="flex flex-row justify-between items-center w-full">
-          <Text className="text-white text-xl">{publicProfile?.data.name || "User"}</Text>
+          <Text className="text-white text-xl">
+            {publicProfile?.data.name || "User"}
+          </Text>
           <Text className="text-white text-xl">5.0</Text>
         </View>
         <View className="flex flex-row justify-between items-center w-full">
-          <Text className="text-white text-sm">@{publicProfile?.data.name}</Text>
+          <Text className="text-white text-sm">
+            @{publicProfile?.data.name}
+          </Text>
           <Text className="text-white text-sm">
             ({publicProfile?.data.reviews?.length || 0} reviews)
           </Text>

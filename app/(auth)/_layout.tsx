@@ -1,12 +1,14 @@
 import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/auth";
 import { Redirect, Stack } from "expo-router";
 
 export default function AuthLayout() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
+  const { isAuthenticated } = useAuthStore();
 
   if (loading) return null; // splash handling
 
-  if (user) {
+  if (isAuthenticated) {
     return <Redirect href="/" />;
   }
 
