@@ -18,10 +18,12 @@ import {
 } from "react-native";
 
 import { useLocationManager } from "@/hooks/useLocationManager";
-import { Feather } from "@expo/vector-icons";
+import { useUnreadCounts } from "@/hooks/useSocketReactHook";
+import { Feather, Ionicons } from "@expo/vector-icons";
 
 export default function HomeScreen() {
   const { coords, requestLocation } = useLocationManager();
+  const { data } = useUnreadCounts();
   useEffect(() => {
     requestLocation(); // ask softly once
   }, []);
@@ -64,10 +66,29 @@ export default function HomeScreen() {
         <Text className="text-white">Hello!</Text>
         <View className="gap-8 flex-row">
           <TouchableOpacity>
-            <Feather name="heart" size={30} color={"white"} />
+            <Feather name="heart" size={40} color={"white"} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/conversations")}>
-            <Feather name="message-circle" size={30} color={"white"} />
+          <TouchableOpacity
+            className="relative"
+            onPress={() => router.push("/conversations")}
+          >
+            <Ionicons
+              size={40}
+              color={"white"}
+              name={
+                data?.totalUnread && data?.totalUnread > 0
+                  ? "chatbubble"
+                  : "chatbubble-outline"
+              }
+            />
+            {data?.totalUnread && data?.totalUnread > 0 && (
+              <View className="flex-row justify-center items-center h-7 min-w-7 rounded-full bg-[#0FF1CF] absolute right-0">
+                {" "}
+                <Text className="text-white font-bold text-sm">
+                  {data?.totalUnread}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>

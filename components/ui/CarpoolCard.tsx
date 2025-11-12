@@ -34,7 +34,7 @@ export default function CarpoolCard({
     <TouchableOpacity
       key={id}
       onPress={onPress}
-      className="flex-row items-center bg-[#01082e] rounded-xl p-5"
+      className="flex-row items-center bg-[#01082e] rounded-xl p-5 max-h-28"
     >
       {imageUrl ? (
         <View className="w-[91px] h-[84px] rounded-lg overflow-hidden relative">

@@ -89,7 +89,7 @@ const SearchScreen = () => {
     }
 
     if (activeTab === "users") {
-      return results.length ? (
+      return results.length > 0 ? (
         <FlatList
           data={results}
           keyExtractor={(item) => item.id}
@@ -105,7 +105,7 @@ const SearchScreen = () => {
     }
 
     if (activeTab === "communities") {
-      return results.length ? (
+      return results.length > 0 ? (
         <FlatList
           data={results}
           keyExtractor={(item) => item.id}

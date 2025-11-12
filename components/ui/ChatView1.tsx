@@ -13,8 +13,8 @@ const ChatView1 = ({ message, time, imageUrl }: Props) => {
         source={imageUrl}
         className="bg-white w-5 h-5 rounded-full"
       ></Image>
-      <View className="max-w-2/3 p-5 bg-[#031542] gap-3 rounded-t-2xl rounded-br-2xl ">
-        <Text className="text-white">{message.trim()}</Text>
+      <View className="max-w-80 p-5 bg-[#031542] gap-3 rounded-t-2xl rounded-br-2xl m-2">
+        <Text className="text-white">{message?.trim()}</Text>
         <Text className="text-white self-end">{time}</Text>
       </View>
     </View>
