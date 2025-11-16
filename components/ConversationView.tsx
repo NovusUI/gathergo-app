@@ -1,6 +1,5 @@
 import { formatMessageTimestamp } from "@/utils/utils";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import OverlappingImages from "./ui/OverlappingImages";
 
 interface ConversationProps {
   title: string;
@@ -31,14 +30,7 @@ const ConversationView = ({
           {lastMessage.date && formatMessageTimestamp(lastMessage.date)}
         </Text>
       </View>
-      <OverlappingImages
-        images={[
-          require("../assets/animoji.png"),
-          require("../assets/animoji.png"),
-          require("../assets/animoji.png"),
-          require("../assets/animoji.png"),
-        ]}
-      />
+
       <View className="flex-row items-center gap-3">
         <Image
           source={require("../assets/animoji.png")}

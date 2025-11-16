@@ -8,7 +8,7 @@ import {
   useInfiniteQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export interface Sender {
   id: string;
@@ -17,6 +17,7 @@ export interface Sender {
 
 export interface Message {
   id: string;
+  tempId?: string;
   content: string;
   carpoolId: string;
   senderId: string;
@@ -33,10 +34,8 @@ export interface PageCursor {
 
 type MessagesInfiniteData = InfiniteData<Message[], PageCursor>;
 
-// hooks/useChatMessages.ts - Updated version
-
 export function useChatMessages(carpoolId: string) {
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
   const { user } = useAuth();
   const userId = user?.id;
 
@@ -45,6 +44,7 @@ export function useChatMessages(carpoolId: string) {
 
   // Use a more robust listener tracking
   const listenersRef = useRef<{ [key: string]: boolean }>({});
+  const joinedRoomsRef = useRef<Set<string>>(new Set());
 
   const clearCache = () => {
     queryClient.removeQueries({
@@ -70,7 +70,7 @@ export function useChatMessages(carpoolId: string) {
       if (beforeId) qs.push(`beforeId=${beforeId}`);
       qs.push(`limit=${limit}`);
 
-      const url = `http://192.168.15.150:4000/api/v1/messages/${carpoolId}?${qs.join(
+      const url = `http://192.168.174.53:4000/api/v1/messages/${carpoolId}?${qs.join(
         "&"
       )}`;
 
@@ -80,7 +80,6 @@ export function useChatMessages(carpoolId: string) {
     },
 
     initialPageParam: { before: null, beforeId: null },
-    //staleTime: 1000,
     getNextPageParam: (lastPage) => {
       if (!lastPage || lastPage.length === 0) return undefined;
 
@@ -101,20 +100,39 @@ export function useChatMessages(carpoolId: string) {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ) || [];
 
-  useEffect(() => {
-    if (!socket || !userId) return;
+  // Function to join the chat room
+  const joinChatRoom = useCallback(() => {
+    if (!socket || !userId || !carpoolId) return;
 
     const listenerKey = `chat-${carpoolId}`;
 
-    // Prevent duplicate listeners
     if (listenersRef.current[listenerKey]) {
       return;
     }
 
     listenersRef.current[listenerKey] = true;
+    joinedRoomsRef.current.add(carpoolId);
 
-    // Join chat room
+    // Join chat room and mark as read
     socket.emit("join", { carpoolId, limit });
+  }, [socket, userId, carpoolId, limit]);
+
+  // Function to leave the chat room
+  const leaveChatRoom = () => {
+    if (!socket || !carpoolId) return;
+
+    const listenerKey = `chat-${carpoolId}`;
+
+    socket.emit("leave", { carpoolId });
+    listenersRef.current[listenerKey] = false;
+    joinedRoomsRef.current.delete(carpoolId);
+  };
+
+  // Effect for socket event listeners and connection management
+  useEffect(() => {
+    if (!socket || !userId) return;
+
+    const listenerKey = `chat-${carpoolId}`;
 
     // Handle initial chat history
     const handleChatHistory = ({
@@ -161,21 +179,13 @@ export function useChatMessages(carpoolId: string) {
 
           // Check if message already exists (by ID or optimistic ID)
           const messageExists = flatMessages.some(
-            (m) =>
-              m.id === msg.id ||
-              (m.optimistic &&
-                m.content === msg.content &&
-                m.senderId === msg.senderId)
+            (m) => m.optimistic && m.id === msg.tempId
           );
 
           if (messageExists) {
             // Replace optimistic message with real one
             const updatedMessages = flatMessages.map((m) =>
-              m.optimistic &&
-              m.content === msg.content &&
-              m.senderId === msg.senderId
-                ? msg
-                : m
+              m.optimistic && m.id === msg.tempId ? msg : m
             );
 
             return {
@@ -186,10 +196,7 @@ export function useChatMessages(carpoolId: string) {
 
           // Add new message and remove any optimistic duplicates
           const filteredMessages = flatMessages.filter(
-            (m) =>
-              !m.optimistic ||
-              m.content !== msg.content ||
-              m.senderId !== msg.senderId
+            (m) => !m.optimistic || m.id !== msg.tempId
           );
 
           return {
@@ -200,16 +207,54 @@ export function useChatMessages(carpoolId: string) {
       );
     };
 
+    // Handle connection events
+    const handleConnect = () => {
+      console.log("Socket connected, rejoining room:", carpoolId);
+      // Rejoin all rooms that we were previously in
+      joinedRoomsRef.current.forEach((roomId) => {
+        socket.emit("join", { carpoolId: roomId, limit });
+      });
+    };
+
+    const handleDisconnect = () => {
+      console.log("Socket disconnected");
+    };
+
+    // Set up event listeners
     socket.on("chatHistory", handleChatHistory);
     socket.on("newMessage", handleNewMessage);
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+
+    // Join the room initially if connected
+    if (isConnected) {
+      joinChatRoom();
+    }
 
     return () => {
-      socket.emit("leave", { carpoolId });
+      leaveChatRoom();
       socket.off("chatHistory", handleChatHistory);
       socket.off("newMessage", handleNewMessage);
-      listenersRef.current[listenerKey] = false;
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
     };
-  }, [socket, carpoolId, userId, queryClient]);
+  }, [socket, carpoolId, userId, queryClient, isConnected]);
+
+  // Effect to handle connection status changes
+  useEffect(() => {
+    if (!socket) return;
+
+    if (isConnected) {
+      // Rejoin room when connection is restored
+      if (joinedRoomsRef.current.has(carpoolId)) {
+        console.log("Connection restored, rejoining room:", carpoolId);
+        joinChatRoom();
+      }
+    } else {
+      // Connection lost - we'll rejoin automatically when connection is restored
+      console.log("Connection lost, will rejoin when restored");
+    }
+  }, [isConnected, socket, carpoolId]);
 
   const loadMore = () => {
     if (query.isFetchingNextPage || !query.hasNextPage) return;
@@ -230,33 +275,29 @@ const mergeLatestPage = (
   cachedPages: Message[][],
   incoming: Message[]
 ): Message[][] => {
-  // ✅ Case 0: No cache at all
   if (cachedPages.length === 0) {
     return [incoming];
   }
 
   const cachedLatest = cachedPages[0];
 
-  // ✅ Case 1: Perfect match → use cached, do nothing
   if (messagesEqual(cachedLatest, incoming)) {
     return cachedPages;
   }
 
-  // ✅ Case 2: NO OVERLAP → DROP ENTIRE CACHE
-  // We cannot trust any of the cached pages.
   if (!hasOverlap(cachedLatest, incoming)) {
     return [incoming];
   }
 
-  // ✅ Case 3: Partial overlap → clean merge without duplication
   const incomingIds = new Set(incoming.map((m) => m.id));
-
+  const incomingTempId = new Set(incoming.map((m) => m.tempId));
   const mergedLatest = [
     ...incoming,
-    ...cachedLatest.filter((m) => !incomingIds.has(m.id)),
+    ...cachedLatest.filter(
+      (m) => !incomingIds.has(m.id) && !incomingTempId.has(m.id)
+    ),
   ];
 
-  // ✅ Keep older pages (they remain aligned because overlap exists)
   return [mergedLatest, ...cachedPages.slice(1)];
 };
 
@@ -271,6 +312,7 @@ const messagesEqual = (a: Message[], b: Message[]) => {
 
   return true;
 };
+
 const hasOverlap = (cached: Message[], incoming: Message[]) => {
   const cachedIds = new Set(cached.map((m) => m.id));
   return incoming.some((m) => cachedIds.has(m.id));

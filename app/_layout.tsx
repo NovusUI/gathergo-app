@@ -1,3 +1,4 @@
+import { NotificationHandler } from "@/components/NotificationHandler";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
@@ -66,6 +67,7 @@ export default function RootLayout() {
               publicKey="pk_test_430fb933c2b87c6f0f6a29b40b97d2d1caf60fbe"
               defaultChannels={["bank", "bank_transfer", "card", "ussd"]}
             >
+              <NotificationHandler />
               <AppContent />
               <Toast config={toastConfig} />
             </PaystackProvider>

@@ -1,6 +1,9 @@
 // contexts/SocketContext.tsx
 import { useAuthStore } from "@/store/auth";
+import { useMessageQueueStore } from "@/store/messageQueue";
+import messaging from "@react-native-firebase/messaging";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -9,6 +12,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Platform } from "react-native";
 import { Socket, io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 
@@ -18,6 +22,10 @@ type SocketContextType = {
   conversationTray: any[];
   loadingConversations: boolean;
   updateConversationAfterSend: (carpoolId: string, message: any) => void;
+  isConnected: boolean;
+  registerPushToken: () => Promise<void>;
+  notificationData: any;
+  clearNotificationData: () => void;
 };
 
 const SocketContext = createContext<SocketContextType>({
@@ -26,6 +34,10 @@ const SocketContext = createContext<SocketContextType>({
   conversationTray: [],
   loadingConversations: true,
   updateConversationAfterSend: () => {},
+  isConnected: false,
+  registerPushToken: async () => {},
+  notificationData: null,
+  clearNotificationData: () => {},
 });
 const applyTrayUpdateAfterSend = (
   carpoolId: string,
@@ -84,11 +96,60 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [conversationTray, setConversationTray] = useState<any[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
+  const [notificationData, setNotificationData] = useState<any>(null);
+  const { queue, clearQueue, setQueue } = useMessageQueueStore();
   const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
   const { user } = useAuth();
   const userId = user?.id;
   const { refreshToken } = useAuthStore();
+  const router = useRouter();
+
+  // Register push token with backend
+  const registerPushToken = useCallback(async (): Promise<void> => {
+    try {
+      if (!user?.id) return;
+
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (enabled) {
+        const token = await messaging().getToken();
+
+        if (token && socket) {
+          socket.emit("registerPushToken", {
+            token,
+            platform: Platform.OS,
+          });
+          console.log("✅ Push token registered with backend:", token);
+        }
+      } else {
+        console.log("Notification permission not granted");
+      }
+    } catch (error) {
+      console.error("Failed to register push token:", error);
+    }
+  }, [socket, user?.id]);
+
+  const clearNotificationData = useCallback(() => {
+    setNotificationData(null);
+  }, []);
+
+  const handleNotificationNavigation = useCallback(
+    (data: any) => {
+      if (data?.carpoolId) {
+        setNotificationData(data);
+
+        // Navigate to chat screen when notification is tapped
+        // @ts-ignore - navigation type might vary
+
+        router.push(`/chat/${data.carpoolId}`);
+      }
+    },
+    [router]
+  );
 
   const updateConversationAfterSend = useCallback(
     (carpoolId: string, message: any) => {
@@ -102,15 +163,71 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     [queryClient]
   );
 
+  // Setup notification handlers
+  useEffect(() => {
+    const unsubscribeBackground = messaging().onNotificationOpenedApp(
+      (remoteMessage) => {
+        console.log(
+          "📱 Notification opened from background:",
+          remoteMessage.data
+        );
+        handleNotificationNavigation(remoteMessage.data);
+      }
+    );
+
+    // Handle notification when app is completely quit
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage) => {
+        if (remoteMessage) {
+          console.log(
+            "📱 Notification opened from quit state:",
+            remoteMessage.data
+          );
+          handleNotificationNavigation(remoteMessage.data);
+        }
+      });
+
+    // Handle foreground notifications
+    // const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
+    //   console.log('📱 Foreground notification:', remoteMessage.data);
+
+    //   // Update local state for in-app notifications
+    //   if (remoteMessage.data?.type === 'NEW_MESSAGE') {
+    //     // Refresh conversations to show updated unread counts
+    //     queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    //     queryClient.invalidateQueries({ queryKey: ['unreadCounts'] });
+    //   }
+
+    //   // You can show a local notification here using:
+    //   // Alert.alert(remoteMessage.notification?.title, remoteMessage.notification?.body);
+    // });
+
+    return () => {
+      unsubscribeBackground();
+      //unsubscribeForeground();
+    };
+  }, [handleNotificationNavigation, queryClient]);
+
   useEffect(() => {
     console.log(userId, refreshToken);
     if (userId && refreshToken) {
       console.log(userId, "this is userId");
       if (socketRef.current) return;
 
-      const newSocket = io("http://192.168.15.150:4000", {
+      const newSocket = io("http://192.168.174.53:4000", {
         transports: ["websocket"],
         auth: { userId: user?.id, token: refreshToken },
+        // Enhanced reconnection settings
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
+        // Force new connection to ensure clean state
+        forceNew: true,
+        // Upgrade ASAP from HTTP long-polling to WebSocket
+        upgrade: true,
       });
       socketRef.current = newSocket;
       setSocket(newSocket);
@@ -120,8 +237,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       //     //newSocket.emit("getConversationTray", { userId });
       //   });
 
-      newSocket.once("connect", () => {
+      newSocket.on("connect", async () => {
         console.log("✅ Connected to socket server");
+
+        await registerPushToken();
         // --- Initial tray when app opens
         newSocket.emit("getConversationTray", { userId }, (tray: any[]) => {
           //queryClient.setQueryData(["conversations"], tray);
@@ -135,6 +254,14 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             //queryClient.setQueryData(["unreadCounts"], counts);
           }
         );
+
+        console.log(queue.length, "rthjj");
+        if (queue.length > 0) {
+          for (const { carpoolId, content, tempId } of queue) {
+            newSocket.emit("sendMessage", { carpoolId, content, tempId });
+          }
+          await clearQueue();
+        }
       });
       // --- Handle new / updated conversations
       newSocket.on("conversationTrayUpdate", (data: any) => {
@@ -261,12 +388,41 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("❌ Socket disconnected");
       });
 
+      newSocket.on("connect_error", (err) => {
+        console.error("Socket connect error:", err.message);
+      });
+
+      newSocket.on("reconnect", async (attemptNumber) => {
+        console.log(`Socket reconnected after ${attemptNumber} attempts`);
+
+        //   // Refresh tray & unread counts after reconnect
+        //   if (userId) {
+        //     newSocket.emit("getConversationTray", { userId });
+        //     newSocket.emit("getUnreadCount", { userId });
+        //   }
+
+        //   if (queue.length > 0) {
+        //     for (const { carpoolId, content } of queue) {
+        //       newSocket.emit("sendMessage", { carpoolId, content });
+        //     }
+        //     await clearQueue();
+        //   }
+      });
+
       return () => {
         newSocket.disconnect();
-        //socketRef.current = null;
+        socketRef.current = null;
       };
     }
-  }, [userId, refreshToken]);
+  }, [userId, refreshToken, registerPushToken, queue, clearQueue]);
+
+  useEffect(() => {
+    if (socket?.connected) {
+      console.log("connection solid");
+    } else {
+      console.log("connection unsolid");
+    }
+  }, [socket?.connected, userId, refreshToken]);
 
   useEffect(() => {
     if (!userId) {
@@ -285,6 +441,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         conversationTray,
         loadingConversations,
         updateConversationAfterSend,
+        isConnected: socket?.connected || false,
+        registerPushToken,
+        notificationData,
+        clearNotificationData,
       }}
     >
       {children}

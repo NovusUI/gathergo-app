@@ -25,19 +25,21 @@ const conversations = () => {
       </View>
 
       <Text className="text-2xl text-white font-semibold">Chats</Text>
-      <ScrollView className="w-full max-w-[500px] gap-5 mt-5">
-        {conversations.map((conversation: any) => (
-          <ConversationView
-            title={conversation.event?.title}
-            onClick={() => router.push(`/chat/${conversation.carpool?.id}`)}
-            lastMessage={{
-              text: conversation.lastMessage,
-              date: conversation.lastMessageAt,
-              imgUrl: conversation.sender.profilePicUrl,
-            }}
-            unreadCount={conversation.unreadCount}
-          />
-        ))}
+      <ScrollView className="w-full max-w-[500px] mt-5">
+        <View className="gap-5">
+          {conversations.map((conversation: any) => (
+            <ConversationView
+              title={conversation.event?.title}
+              onClick={() => router.push(`/chat/${conversation.carpool?.id}`)}
+              lastMessage={{
+                text: conversation.lastMessage,
+                date: conversation.lastMessageAt,
+                imgUrl: conversation.sender?.profilePicUrl,
+              }}
+              unreadCount={conversation.unreadCount}
+            />
+          ))}
+        </View>
       </ScrollView>
     </View>
   );

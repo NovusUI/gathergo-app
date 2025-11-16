@@ -21,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useConversations } from "@/hooks/useSocketReactHook";
+import { useMessageQueueStore } from "@/store/messageQueue";
 import { useQueryClient } from "@tanstack/react-query";
 
 const ChatPage = () => {
@@ -29,8 +30,10 @@ const ChatPage = () => {
   const { id } = useLocalSearchParams();
   const [value, setValue] = useState("");
   const carpoolId = Array.isArray(id) ? id[0] : id;
-  const { socket, updateConversationAfterSend } = useSocket();
+  const { socket, updateConversationAfterSend, clearNotificationData } =
+    useSocket();
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const { addMessage } = useMessageQueueStore();
 
   const { messages, loadMore, hasMore, loadingInitial, loadingMore } =
     useChatMessages(carpoolId);
@@ -74,6 +77,10 @@ const ChatPage = () => {
 
     return () => clearTimeout(t);
   }, [messages.length, socket, carpoolId, isAtBottom]);
+  useEffect(() => {
+    // Clear any pending notification data when chat screen is opened
+    clearNotificationData();
+  }, [carpoolId, clearNotificationData]);
 
   useEffect(() => {
     if (!socket || !carpoolId) {
@@ -145,7 +152,15 @@ const ChatPage = () => {
     });
 
     try {
-      socket.emit("sendMessage", { carpoolId, content: text });
+      if (socket && socket.connected) {
+        socket.emit("sendMessage", {
+          carpoolId,
+          content: text,
+          tempId: optimistic.id,
+        });
+      } else {
+        await addMessage({ carpoolId, content: text, tempId: optimistic.id });
+      }
     } catch (e) {
       console.log("send error", e);
     }

@@ -19,7 +19,7 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 import * as z from "zod";
 
 // Your backend Google auth URL
-const GOOGLE_AUTH_URL = "http://192.168.15.150:4000/api/v1/auth/google"; // Update this!
+const GOOGLE_AUTH_URL = "http://192.168.174.53:4000/api/v1/auth/google"; // Update this!
 
 // Zod schema
 const loginSchema = z.object({

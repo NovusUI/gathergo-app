@@ -4,7 +4,7 @@ import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { useAuthStore } from "../store/auth";
 
 const client = axios.create({
-  baseURL: "http://192.168.15.150:4000/api/v1", // adjust
+  baseURL: "http://192.168.174.53:4000/api/v1", // adjust
   timeout: 100000,
 });
 
@@ -69,7 +69,7 @@ client.interceptors.response.use(
         if (!refreshToken) throw new Error("No refresh token");
 
         const refreshResponse = await axios.post(
-          "http://192.168.15.150:4000/api/v1/auth/refresh",
+          "http://192.168.174.53:4000/api/v1/auth/refresh",
           { refreshToken }
         );
 
