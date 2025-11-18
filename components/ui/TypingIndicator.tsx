@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Text, View } from "react-native";
+import tw from "twrnc";
 
 export const TypingIndicator = ({ text }: { text: string }) => {
   const dot1 = useRef(new Animated.Value(0)).current;
@@ -42,38 +43,20 @@ export const TypingIndicator = ({ text }: { text: string }) => {
   }, [dot1, dot2, dot3]);
 
   return (
-    <View className="flex-row  items-center gap-2 pl-4 py-4">
-      <View className="flex-row items-center gap-1">
-        <Animated.View
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: "#9CA3AF",
-            transform: [{ translateY: dot1 }],
-          }}
-        />
-        <Animated.View
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: "#9CA3AF",
-            transform: [{ translateY: dot2 }],
-          }}
-        />
-        <Animated.View
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: "#9CA3AF",
-            transform: [{ translateY: dot3 }],
-          }}
-        />
+    <View style={tw`flex-row items-center gap-2 pl-4 py-4`}>
+      <View style={tw`flex-row items-center gap-1`}>
+        {[dot1, dot2, dot3].map((dot, idx) => (
+          <Animated.View
+            key={idx}
+            style={[
+              tw`w-1.5 h-1.5 rounded-full bg-gray-400`,
+              { transform: [{ translateY: dot }] },
+            ]}
+          />
+        ))}
       </View>
 
-      <Text className="text-gray-400 text-xs">{text}</Text>
+      <Text style={tw`text-gray-400 text-xs ml-2`}>{text}</Text>
     </View>
   );
 };

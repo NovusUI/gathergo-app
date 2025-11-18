@@ -23,6 +23,7 @@ import { useChatMessages } from "@/hooks/useChatMessages";
 import { useConversations } from "@/hooks/useSocketReactHook";
 import { useMessageQueueStore } from "@/store/messageQueue";
 import { useQueryClient } from "@tanstack/react-query";
+import tw from "twrnc";
 
 const ChatPage = () => {
   const router = useRouter();
@@ -208,8 +209,10 @@ const ChatPage = () => {
   };
 
   return (
-    <View className="flex-1 pt-20 bg-[#01082E]">
-      <CustomView className="px-3 flex-row justify-between items-center relative">
+    <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
+      <CustomView
+        style={tw`px-3 flex-row justify-between items-center relative`}
+      >
         <CustomeTopBarNav title="Chat" onClickBack={() => router.back()} />
         <OverlappingImages
           images={[
@@ -218,13 +221,13 @@ const ChatPage = () => {
             require("../../../assets/animoji.png"),
             require("../../../assets/animoji.png"),
           ]}
-          className="absolute right-4"
+          className={`absolute right-4`}
         />
       </CustomView>
 
-      <View className="h-[1px] w-full bg-white my-5" />
+      <View style={tw`h-px w-full bg-white my-5`} />
 
-      <View className="w-full max-w-[500px] flex-1">
+      <View style={tw`w-full max-w-[500px] flex-1`}>
         {showLoader ? (
           <ChatSkeleton />
         ) : (
@@ -237,7 +240,6 @@ const ChatPage = () => {
             onScroll={handleScroll}
             onEndReached={() => hasMore && loadMore()}
             onEndReachedThreshold={0.1}
-            // 🚀 keeps scroll position stable when new pages prepend
             maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
             contentContainerStyle={{
               paddingHorizontal: 12,
@@ -245,7 +247,7 @@ const ChatPage = () => {
             }}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator color="white" className="py-3" />
+                <ActivityIndicator color="white" style={tw`py-3`} />
               ) : null
             }
           />
@@ -253,23 +255,26 @@ const ChatPage = () => {
       </View>
 
       {isTyping && <TypingIndicator text={typingText} />}
+
       {!isAtBottom && (
         <TouchableOpacity
           onPress={() =>
             flatListRef.current?.scrollToOffset({ offset: 0, animated: true })
           }
-          className="absolute bottom-32 right-5 bg-blue-500 rounded-full h-10 w-10 flex-row items-center justify-center"
+          style={tw`absolute bottom-32 right-5 bg-blue-500 rounded-full h-10 w-10 flex-row items-center justify-center`}
         >
-          <Text className="text-white text-lg">↓</Text>
+          <Text style={tw`text-white text-lg`}>↓</Text>
           {unreadCount > 0 && (
-            <View className="absolute top-0 right-0 rounded-full min-w-4 h-4 bg-white flex-row items-center justify-center">
-              <Text className="text-[#350342] text-xs">{unreadCount}</Text>
+            <View
+              style={tw`absolute top-0 right-0 rounded-full min-w-[16px] h-4 bg-white flex-row items-center justify-center`}
+            >
+              <Text style={tw`text-[#350342] text-xs`}>{unreadCount}</Text>
             </View>
           )}
         </TouchableOpacity>
       )}
 
-      <CustomView className="min-h-28 p-5">
+      <CustomView style={tw`min-h-28 p-5`}>
         {!showLoader && (
           <ChatInput
             sending={sending}

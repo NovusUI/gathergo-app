@@ -25,6 +25,7 @@ import {
   useState,
 } from "react";
 import { Switch, Text, View } from "react-native";
+import tw from "twrnc";
 
 export type SendRequestBSRef = {
   open: () => void;
@@ -66,7 +67,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
 
     // expose open/close methods
     useImperativeHandle(ref, () => ({
-      open: () => bottomSheetReqRef.current?.snapToIndex(1),
+      open: () => bottomSheetReqRef.current?.snapToIndex(0),
       close: () => bottomSheetReqRef.current?.close(),
     }));
 
@@ -112,36 +113,23 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
-        <BottomSheetScrollView className="p-5">
-          <View className="py-5 gap-5">
+        <BottomSheetScrollView style={tw`p-5`}>
+          <View style={tw`py-5`}>
             {error && (
               <View
-                style={{
-                  marginTop: "auto", // pushes it to the bottom
-                  backgroundColor: "#e74c3c",
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderRadius: 8,
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
+                style={tw`mt-auto bg-red-600 py-3 px-4 rounded flex-row justify-between items-center`}
               >
-                <Text style={{ color: "white", flex: 1 }}>{error}</Text>
+                <Text style={tw`text-white flex-1`}>{error}</Text>
                 <Text
                   onPress={openSettings}
-                  style={{
-                    color: "white",
-                    fontWeight: "bold",
-                    marginLeft: 12,
-                  }}
+                  style={tw`text-white font-bold ml-3`}
                 >
                   Open Settings
                 </Text>
               </View>
             )}
             <CustomView>
-              <Text className="text-white mb-1">Request location</Text>
+              <Text style={tw`text-white mb-1`}>Request location</Text>
               <Input
                 className="h-16"
                 placeholder="Enter a landmark, busstop, or area"
@@ -150,8 +138,8 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
               />
             </CustomView>
 
-            <CustomView className="gap-2">
-              <Text className="text-white">Close to current location?</Text>
+            <CustomView style={tw`gap-2 flex-row items-center justify-between`}>
+              <Text style={tw`text-white`}>Close to current location?</Text>
               <Switch
                 value={useCurrentLocation}
                 onValueChange={setUseCurrentLocation}
@@ -160,7 +148,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
             </CustomView>
 
             <CustomView>
-              <Text className="text-white mb-1">More details</Text>
+              <Text style={tw`text-white mb-1`}>More details</Text>
               <TextArea
                 placeholder="Any detail for the pooler?"
                 maxLength={100}
@@ -172,7 +160,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
           </View>
         </BottomSheetScrollView>
 
-        <View className="w-screen max-w-[500px] p-5">
+        <View style={tw`w-screen max-w-[500px] p-5`}>
           <CustomButton
             title={isPending ? "Requesting Carpool" : "Send Request"}
             buttonClassName="bg-[#0FF1CF] w-full border-0"

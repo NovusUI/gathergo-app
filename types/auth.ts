@@ -47,6 +47,7 @@ export type EventData = {
 type AuthData = {
   accessToken: string;
   user: User;
+  refreshToken: string;
 };
 enum gender {
   MALE = "MALE",

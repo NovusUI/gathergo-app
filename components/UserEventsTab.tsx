@@ -1,6 +1,7 @@
 // components/UserEventsTab.tsx
 import { useRouter } from "expo-router";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
+import tw from "twrnc";
 import EventCard from "./ui/EventCard";
 
 interface UserEventsTabProps {
@@ -22,7 +23,7 @@ export default function UserEventsTab({
 
   if (isPending) {
     return (
-      <View className="flex-1 justify-center items-center py-10">
+      <View style={tw`flex-1 justify-center items-center py-10`}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -30,8 +31,8 @@ export default function UserEventsTab({
 
   if (!events.length) {
     return (
-      <View className="mt-4">
-        <Text className="text-white text-base">No events yet.</Text>
+      <View style={tw`mt-4`}>
+        <Text style={tw`text-white text-base`}>No events yet.</Text>
       </View>
     );
   }
@@ -61,7 +62,7 @@ export default function UserEventsTab({
       onEndReachedThreshold={0.5}
       ListFooterComponent={
         isFetchingNextPage ? (
-          <View className="py-4">
+          <View style={tw`py-4`}>
             <ActivityIndicator size="small" />
           </View>
         ) : null

@@ -7,6 +7,7 @@ import BottomSheet, {
 import { Share2 } from "lucide-react-native";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Share, Text, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
 
 type ViewRequestBSProps = {
   carpool: any;
@@ -62,10 +63,10 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={tw`bg-[#01082E]`}
       >
-        <BottomSheetScrollView className="p-5">
-          <View className="py-5 gap-5">
+        <BottomSheetScrollView style={tw`p-5`}>
+          <View style={tw`py-5 gap-5`}>
             {combinedRequest.length > 0 ? (
               carpool.passengers.map((p: any) => (
                 <RequestCard
@@ -81,29 +82,19 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
                 />
               ))
             ) : (
-              <Text className="text-white">No requests yet</Text>
+              <Text style={tw`text-white`}>No requests yet</Text>
             )}
           </View>
         </BottomSheetScrollView>
 
         {/* Actions section */}
-        <View className="w-screen max-w-[500px] p-5 gap-4">
-          {/* {carpool.passengers.length > 0 && (
-            <CustomButton
-              title="Accept all"
-              buttonClassName="bg-[#0FF1CF] w-full border-0"
-              textClassName="!text-black"
-              showArrow={false}
-            />
-          )} */}
-
-          {/* Subtle share section */}
+        <View style={tw`w-screen max-w-[500px] p-5 gap-4`}>
           <TouchableOpacity
             onPress={handleShare}
-            className="flex-row justify-center items-center gap-2 py-2 rounded-lg border border-[#1B2A50]"
+            style={tw`flex-row justify-center items-center gap-2 py-2 rounded-lg border border-[#1B2A50]`}
           >
             <Share2 size={18} color="#0FF1CF" />
-            <Text className="text-[#0FF1CF] font-medium">
+            <Text style={tw`text-[#0FF1CF] font-medium`}>
               Share ride with friend
             </Text>
           </TouchableOpacity>

@@ -6,7 +6,7 @@ module.exports = {
     "./components/**/*.{js,jsx,ts,tsx}", // Components folder
     "./screens/**/*.{js,jsx,ts,tsx}", // If you use a screens folder
   ],
-  presets: [require("nativewind/preset")],
+
   theme: {
     extend: {},
   },

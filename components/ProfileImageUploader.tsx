@@ -6,6 +6,7 @@ import { Plus } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import * as Progress from "react-native-progress";
+import tw from "twrnc";
 
 export default function ProfileImageBox({ uri }: { uri?: string }) {
   const [image, setImage] = useState<string | null>(uri || null);
@@ -30,7 +31,7 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -40,7 +41,6 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
       const selected = result.assets[0].uri;
       setImage(selected);
 
-      // Create FormData for upload
       const formData = new FormData();
       formData.append("file", {
         uri: selected,
@@ -48,30 +48,28 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
         type: "image/jpeg",
       } as any);
 
-      // Start upload
       setUploading(true);
       setProgress(0);
-
       mutate(formData);
     }
   };
 
   return (
-    <View className="relative w-24 h-24">
+    <View style={tw`relative w-18 h-18`}>
       {/* Avatar */}
-      <View className="rounded-2xl w-24 h-24 bg-gray-100 overflow-hidden">
-        {image ? (
+      <View style={tw`rounded-2xl w-18 h-18 bg-gray-100 overflow-hidden`}>
+        {image && (
           <Image
             source={image}
-            cachePolicy="disk"       // ✅ cached persistently
-            transition={400}         // ✅ fade-in effect
-            contentFit="cover"       // ✅ equivalent to resizeMode="cover"
+            cachePolicy="disk"
+            transition={400}
+            contentFit="cover"
             style={{ width: "100%", height: "100%" }}
           />
-        ) : null}
+        )}
       </View>
 
-      {/* Show progress ring ONLY while uploading */}
+      {/* Progress ring */}
       {uploading && (
         <Progress.Circle
           size={100}
@@ -89,7 +87,7 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
       {/* Floating + button */}
       <TouchableOpacity
         onPress={pickImage}
-        className="absolute -right-3 bottom-2 bg-[#0FF1CF] w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
+        style={tw`absolute -right-3 bottom-2 bg-[#0FF1CF] w-8 h-8 rounded-full flex items-center justify-center shadow-lg`}
       >
         <Plus size={18} color="white" />
       </TouchableOpacity>

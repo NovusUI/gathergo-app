@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import tw from "twrnc";
 
 const SearchScreen = () => {
   const tabs = [
@@ -45,7 +46,7 @@ const SearchScreen = () => {
   const renderContent = () => {
     if (isPending) {
       return (
-        <View className="flex-1 justify-center items-center">
+        <View style={tw`flex-1 justify-center items-center`}>
           <ActivityIndicator color="#0FF1CF" size="large" />
         </View>
       );
@@ -82,8 +83,8 @@ const SearchScreen = () => {
           }
         />
       ) : (
-        <View className="mt-5">
-          <Text className="text-white text-center">No Events found</Text>
+        <View style={tw`mt-5`}>
+          <Text style={tw`text-white text-center`}>No Events found</Text>
         </View>
       );
     }
@@ -94,12 +95,12 @@ const SearchScreen = () => {
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Text className="text-white text-center py-3">{item.username}</Text>
+            <Text style={tw`text-white text-center py-3`}>{item.username}</Text>
           )}
         />
       ) : (
-        <View className="mt-5">
-          <Text className="text-white text-center">No users found</Text>
+        <View style={tw`mt-5`}>
+          <Text style={tw`text-white text-center`}>No users found</Text>
         </View>
       );
     }
@@ -110,12 +111,12 @@ const SearchScreen = () => {
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Text className="text-white text-center py-3">{item.name}</Text>
+            <Text style={tw`text-white text-center py-3`}>{item.name}</Text>
           )}
         />
       ) : (
-        <View className="mt-5">
-          <Text className="text-white text-center">No circles found</Text>
+        <View style={tw`mt-5`}>
+          <Text style={tw`text-white text-center`}>No circles found</Text>
         </View>
       );
     }
@@ -124,25 +125,29 @@ const SearchScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-[#01082E] flex items-center flex-col pt-20 pb-5 px-5 overflow-hidden">
+    <View
+      style={tw`flex-1 bg-[#01082E] items-center flex-col pt-10 pb-5 px-5 overflow-hidden`}
+    >
       {/* Search Bar */}
-      <View className="flex-row items-center bg-[#1A2755] rounded-full px-4 py-4 mb-5 w-full max-w-[500px]">
+      <View
+        style={tw`flex-row items-center bg-[#1A2755] rounded-full px-4 py-4 mb-5 w-full max-w-[500px]`}
+      >
         <SearchIcon size={20} color="white" />
         <TextInput
           placeholder={`Search ${activeTab}`}
           placeholderTextColor="#94A3B8"
           value={query}
           onChangeText={setQuery}
-          className="flex-1 text-white ml-3"
+          style={tw`flex-1 text-white ml-3`}
         />
       </View>
 
       {/* Tabs */}
-      <CustomView className="flex-row justify-around pb-2 mb-4">
+      <CustomView style={tw`flex-row justify-around pb-2 mb-4`}>
         {tabs.map(({ label, value }) => (
           <TouchableOpacity key={value} onPress={() => setActiveTab(value)}>
             <Text
-              className={`${
+              style={tw`${
                 activeTab === value ? "text-[#0FF1CF]" : "text-white"
               } text-sm font-semibold`}
             >
@@ -153,7 +158,7 @@ const SearchScreen = () => {
       </CustomView>
 
       {/* Content */}
-      <CustomView className="flex-1 mb-20">{renderContent()}</CustomView>
+      <CustomView style={tw`flex-1 mb-20`}>{renderContent()}</CustomView>
     </View>
   );
 };

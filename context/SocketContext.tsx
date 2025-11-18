@@ -1,10 +1,10 @@
 // contexts/SocketContext.tsx
 import { useAuthStore } from "@/store/auth";
 import { useMessageQueueStore } from "@/store/messageQueue";
-import messaging from "@react-native-firebase/messaging";
+//import messaging from "@react-native-firebase/messaging";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -12,7 +12,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Platform } from "react-native";
 import { Socket, io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 
@@ -110,24 +109,24 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       if (!user?.id) return;
 
-      const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      // const authStatus = await messaging().requestPermission();
+      // const enabled =
+      //   authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      //   authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-      if (enabled) {
-        const token = await messaging().getToken();
+      //if (enabled) {
+      //const token = await messaging().getToken();
 
-        if (token && socket) {
-          socket.emit("registerPushToken", {
-            token,
-            platform: Platform.OS,
-          });
-          console.log("✅ Push token registered with backend:", token);
-        }
-      } else {
-        console.log("Notification permission not granted");
-      }
+      // if (token && socket) {
+      //   socket.emit("registerPushToken", {
+      //     token,
+      //     platform: Platform.OS,
+      //   });
+      //   console.log("✅ Push token registered with backend:", token);
+      // }
+      // } else {
+      //   console.log("Notification permission not granted");
+      // }
     } catch (error) {
       console.error("Failed to register push token:", error);
     }
@@ -165,48 +164,31 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Setup notification handlers
   useEffect(() => {
-    const unsubscribeBackground = messaging().onNotificationOpenedApp(
-      (remoteMessage) => {
-        console.log(
-          "📱 Notification opened from background:",
-          remoteMessage.data
-        );
-        handleNotificationNavigation(remoteMessage.data);
-      }
-    );
-
-    // Handle notification when app is completely quit
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage) => {
-        if (remoteMessage) {
-          console.log(
-            "📱 Notification opened from quit state:",
-            remoteMessage.data
-          );
-          handleNotificationNavigation(remoteMessage.data);
-        }
-      });
-
-    // Handle foreground notifications
-    // const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
-    //   console.log('📱 Foreground notification:', remoteMessage.data);
-
-    //   // Update local state for in-app notifications
-    //   if (remoteMessage.data?.type === 'NEW_MESSAGE') {
-    //     // Refresh conversations to show updated unread counts
-    //     queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    //     queryClient.invalidateQueries({ queryKey: ['unreadCounts'] });
+    // const unsubscribeBackground = messaging().onNotificationOpenedApp(
+    //   (remoteMessage) => {
+    //     console.log(
+    //       "📱 Notification opened from background:",
+    //       remoteMessage.data
+    //     );
+    //     handleNotificationNavigation(remoteMessage.data);
     //   }
-
-    //   // You can show a local notification here using:
-    //   // Alert.alert(remoteMessage.notification?.title, remoteMessage.notification?.body);
-    // });
-
-    return () => {
-      unsubscribeBackground();
-      //unsubscribeForeground();
-    };
+    // );
+    // Handle notification when app is completely quit
+    // messaging()
+    //   .getInitialNotification()
+    //   .then((remoteMessage) => {
+    //     if (remoteMessage) {
+    //       console.log(
+    //         "📱 Notification opened from quit state:",
+    //         remoteMessage.data
+    //       );
+    //       handleNotificationNavigation(remoteMessage.data);
+    //     }
+    //   });
+    // return () => {
+    //   unsubscribeBackground();
+    //   //unsubscribeForeground();
+    // };
   }, [handleNotificationNavigation, queryClient]);
 
   useEffect(() => {
@@ -215,7 +197,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       console.log(userId, "this is userId");
       if (socketRef.current) return;
 
-      const newSocket = io("http://192.168.174.53:4000", {
+      const newSocket = io("http://10.42.21.150:4000", {
         transports: ["websocket"],
         auth: { userId: user?.id, token: refreshToken },
         // Enhanced reconnection settings
@@ -414,7 +396,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         socketRef.current = null;
       };
     }
-  }, [userId, refreshToken, registerPushToken, queue, clearQueue]);
+  }, [userId, refreshToken]);
 
   useEffect(() => {
     if (socket?.connected) {

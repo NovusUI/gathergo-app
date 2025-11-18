@@ -1,4 +1,5 @@
 import { Text, TextInput, View } from "react-native";
+import tw from "twrnc";
 
 interface TextAreaProps {
   value: string;
@@ -6,7 +7,7 @@ interface TextAreaProps {
   maxLength?: number;
   placeholder?: string;
   error?: string;
-  className?:string
+  className?: string;
 }
 
 export default function TextArea({
@@ -15,16 +16,16 @@ export default function TextArea({
   maxLength = 300,
   placeholder = "Write something about yourself...",
   error,
-  className
+  className = "",
 }: TextAreaProps) {
- 
-
   return (
-    <View className="w-full">
+    <View style={tw`w-full`}>
       <TextInput
-        className={` w-full min-h-[120px] rounded-2xl bg-[#1B2A50]/40 text-white p-4 text-base ${
-          error ? "border border-red-500" : "" 
-        } ${className}`}
+        style={tw.style(
+          `w-full min-h-[120px] rounded-2xl bg-[#1B2A50]/40 text-white p-4 text-base`,
+          error && `border border-red-500`,
+          className // apply extra styles passed via prop
+        )}
         placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         value={value}
@@ -33,10 +34,10 @@ export default function TextArea({
         maxLength={maxLength}
         textAlignVertical="top"
       />
-      <Text className="text-right text-sm text-gray-400 mt-1">
+      <Text style={tw`text-right text-sm text-gray-400 mt-1`}>
         {value?.length || 0}/{maxLength}
       </Text>
-      {error && <Text className="text-red-400 text-sm mt-1">{error}</Text>}
+      {error && <Text style={tw`text-red-400 text-sm mt-1`}>{error}</Text>}
     </View>
   );
 }

@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import tw from "twrnc";
 
 interface Props {
   value: string;
@@ -35,12 +36,11 @@ const ChatInput = ({ value, setValue, sending, onSend, carpoolId }: Props) => {
     event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>
   ) => {
     const { height } = event.nativeEvent.contentSize;
-    // Limit height growth
     setInputHeight(Math.min(height + 10, MAX_HEIGHT));
   };
 
-  const handleInputChange = (value: string) => {
-    setValue(value);
+  const handleInputChange = (text: string) => {
+    setValue(text);
 
     if (!socket) return;
 
@@ -51,33 +51,35 @@ const ChatInput = ({ value, setValue, sending, onSend, carpoolId }: Props) => {
       socket.emit("typing", { carpoolId, isTyping: false });
     }, 2000);
   };
+
   return (
     <TouchableWithoutFeedback onPress={focusInput}>
-      <View className="w-full flex-row items-end p-2 rounded-full bg-[#1B2A50]/60">
+      <View
+        style={tw`w-full flex-row items-end p-2 rounded-full bg-[#1B2A50]/60`}
+      >
         <TextInput
           ref={inputRef}
-          className="pl-4 pr-3 flex-1 text-white text-base"
+          style={[
+            tw`pl-4 pr-3 flex-1 text-white text-base`,
+            { height: Math.max(40, inputHeight), maxHeight: MAX_HEIGHT },
+          ]}
           placeholder="Message"
           placeholderTextColor="#9CA3AF"
           value={value}
           onChangeText={handleInputChange}
           multiline
           onContentSizeChange={handleContentSizeChange}
-          style={{
-            height: Math.max(40, inputHeight),
-            maxHeight: MAX_HEIGHT,
-          }}
         />
 
         <TouchableOpacity
-          className="rounded-full p-3 bg-[#455479] ml-2"
+          style={tw`rounded-full p-3 bg-[#455479] ml-2`}
           onPress={onSend}
           disabled={sending}
         >
           {!sending && (
             <Image
               source={require("../../assets/sendicon.png")}
-              style={{ width: 20, height: 20 }}
+              style={tw`w-5 h-5`}
               resizeMode="contain"
             />
           )}

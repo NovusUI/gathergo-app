@@ -1,3 +1,4 @@
+// EventPage.tsx
 import AvatarWithLabel from "@/components/AvatarWithLabel";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
@@ -34,6 +35,7 @@ import {
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { usePaystack } from "react-native-paystack-webview";
+import tw from "twrnc";
 
 const EventPage = () => {
   const { id } = useLocalSearchParams(); // eventId
@@ -78,18 +80,18 @@ const EventPage = () => {
   };
 
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ["100"], []);
+  const snapPoints = useMemo(() => ["100%"], []);
   const openSheet = useCallback(() => {
-    bottomSheetRef.current?.snapToIndex(1);
+    // BottomSheetModal: present / dismiss
+    bottomSheetRef.current?.present?.();
+    // fallback to snapToIndex if present isn't available
+    bottomSheetRef.current?.snapToIndex?.(1);
   }, []);
 
-  const { data, isPending, isError, error } = useEventDetails(eventId);
-
-  console.log(data);
+  const { data, isPending, isError } = useEventDetails(eventId);
 
   const { mutateAsync, isPending: gettingTickets } = useGetTickets({
     onSuccess: (data) => {
-      console.log(data);
       showGlobalSuccess("initiation successful");
       if (data.data.paymentUrl) {
         if (data.data.freeTickets.length > 0)
@@ -113,8 +115,6 @@ const EventPage = () => {
             },
           });
         }
-        // setPaymentUrl(data.data.paymentUrl);
-        // setShowPaymentWebView(true); // ✅ Show WebView
       } else {
         router.push(`/transaction/${data.data.transactionId}`);
       }
@@ -130,7 +130,6 @@ const EventPage = () => {
   const { mutateAsync: registerEvent, isPending: registeringEvent } =
     useRegisterEvent({
       onSuccess: (data) => {
-        console.log(data);
         showGlobalSuccess("initiation successful");
         if (data.data.paymentUrl) {
           if (user?.email) {
@@ -151,8 +150,6 @@ const EventPage = () => {
               },
             });
           }
-          // setPaymentUrl(data.data.paymentUrl);
-          // setShowPaymentWebView(true); // ✅ Show WebView
         } else {
           router.push(`/transaction/${data.data.transactionId}`);
         }
@@ -172,51 +169,51 @@ const EventPage = () => {
     await mutateAsync(selectedTickets);
   };
 
-  // ✅ Skeleton UI for loading
+  // Skeleton UI for loading
   if (isPending) {
     return (
-      <View className="flex-1 pt-10 bg-[#01082E]">
-        <CustomView className="px-3">
+      <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
+        <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Event Details"
             onClickBack={() => router.replace("/")}
           />
         </CustomView>
         <ScrollView>
-          <View className="bg-gray-700 h-60 w-full animate-pulse" />
-          <View className="py-2 px-5">
-            <View className="bg-gray-700 h-6 w-3/4 mb-4 rounded animate-pulse" />
-            <View className="bg-gray-700 h-4 w-full mb-2 rounded animate-pulse" />
-            <View className="bg-gray-700 h-4 w-5/6 rounded animate-pulse" />
+          <View style={tw`bg-gray-700 h-60 w-full`} />
+          <View style={tw`py-2 px-5`}>
+            <View style={tw`bg-gray-700 h-6 w-3/4 mb-4 rounded`} />
+            <View style={tw`bg-gray-700 h-4 w-full mb-2 rounded`} />
+            <View style={tw`bg-gray-700 h-4 w-5/6 rounded`} />
           </View>
-          <View className="!bg-[#1B2A50]/40 h-2 my-3" />
-          <View className="py-2 px-5">
-            <View className="bg-gray-700 h-5 w-1/2 mb-4 rounded animate-pulse" />
+          <View style={tw`bg-[#1B2A50]/40 h-2 my-3`} />
+          <View style={tw`py-2 px-5`}>
+            <View style={tw`bg-gray-700 h-5 w-1/2 mb-4 rounded`} />
             {[1, 2, 3, 4].map((_, i) => (
-              <View key={i} className="flex flex-row items-center gap-4 mb-4">
-                <View className="bg-gray-700 h-8 w-8 rounded-full animate-pulse" />
-                <View>
-                  <View className="bg-gray-700 h-4 w-32 mb-2 rounded animate-pulse" />
-                  <View className="bg-gray-700 h-3 w-24 rounded animate-pulse" />
+              <View key={i} style={tw`flex-row items-center mb-4`}>
+                <View style={tw`bg-gray-700 h-8 w-8 rounded-full`} />
+                <View style={tw`ml-3`}>
+                  <View style={tw`bg-gray-700 h-4 w-32 mb-2 rounded`} />
+                  <View style={tw`bg-gray-700 h-3 w-24 rounded`} />
                 </View>
               </View>
             ))}
           </View>
         </ScrollView>
-        <View className="py-5 px-5">
-          <View className="bg-gray-700 h-12 w-full rounded animate-pulse" />
+        <View style={tw`py-5 px-5`}>
+          <View style={tw`bg-gray-700 h-12 w-full rounded`} />
         </View>
       </View>
     );
   }
 
-  // ✅ Error / Not Found Fallback
+  // Error / Not Found Fallback
   if (isError || !data) {
     const isNotFound = data?.status_code === 404;
     return (
-      <View className="flex-1 bg-[#01082E] items-center justify-center px-5">
+      <View style={tw`flex-1 bg-[#01082E] items-center justify-center px-5`}>
         <Ionicons name="alert-circle-outline" size={60} color="#FF5555" />
-        <Text className="text-white text-xl mt-4">
+        <Text style={tw`text-white text-xl mt-4`}>
           {isNotFound ? "Event not found" : "Something went wrong"}
         </Text>
         <CustomButton
@@ -229,7 +226,7 @@ const EventPage = () => {
     );
   }
 
-  // ✅ Extract Event Data
+  // Extract Event Data
   const {
     title,
     description,
@@ -244,136 +241,159 @@ const EventPage = () => {
   } = data.data;
 
   const eventDateTime = formatEventDateTime(startDate, endDate);
+
   return (
-    <View className="flex-1 pt-20 pb-5 bg-[#01082E] flex flex-col items-center w-full">
-      <CustomView className="flex-1">
-        <CustomView className="px-3">
+    <View style={tw`flex-1 pt-10 pb-5 bg-[#01082E] items-center w-full`}>
+      <CustomView style={tw`flex-1`}>
+        <CustomView style={tw`px-3`}>
           <CustomeTopBarNav
             title="Event Details"
             onClickBack={() => router.replace("/")}
           />
         </CustomView>
-        <TouchableOpacity className="absolute right-5 top-10 z-20">
+
+        <TouchableOpacity style={tw`absolute right-5 top-10 z-20`}>
           <Image
             style={{ width: 35, height: 35 }}
             source={require("../../../assets/images/fire.png")}
           />
         </TouchableOpacity>
-        <ScrollView className="w-full max-w-500">
+
+        <ScrollView
+          style={tw`w-full`}
+          contentContainerStyle={tw`max-w-[500px]`}
+        >
           {imageUrl ? (
             <Image
-              source={imageUrl} // ✅ can be string or { uri }
+              source={imageUrl}
               style={{ width: "100%", height: 240 }}
-              cachePolicy="disk" // ✅ caches on disk
-              transition={400} // ✅ fade-in
-              contentFit="cover" // ✅ like resizeMode="cover"
+              cachePolicy="disk"
+              transition={400}
+              contentFit="cover"
             />
           ) : (
-            <View className="flex-1 items-center justify-center bg-gray-300 h-60">
+            <View
+              style={tw`flex-1 items-center justify-center bg-gray-300 h-60`}
+            >
               <Ionicons name="image-outline" size={40} color="gray" />
-              <Text className="text-gray-500 mt-2">No cover picture</Text>
+              <Text style={tw`text-gray-500 mt-2`}>No cover picture</Text>
             </View>
           )}
 
-          <CustomView className="py-2 px-5">
-            <Text className="text-white text-lg font-bold">{title}</Text>
+          <CustomView style={tw`py-2 px-5`}>
+            <Text style={tw`text-white text-lg font-bold`}>{title}</Text>
           </CustomView>
 
-          <CustomView className="!bg-[#1B2A50]/40 h-2" />
+          <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
 
-          <CustomView className="py-2 px-5 gap-3">
-            <Text className="uppercase text-white">About this event</Text>
-            <Text className="text-white">{description}</Text>
+          <CustomView style={tw`py-2 px-5`}>
+            <View style={tw`gap-3`}>
+              <Text style={tw`uppercase text-white`}>About this event</Text>
+              <Text style={tw`text-white`}>{description}</Text>
+            </View>
           </CustomView>
 
-          <CustomView className="!bg-[#1B2A50]/40 h-2" />
+          <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
 
-          <CustomView className="py-2 px-5">
-            <Text className="uppercase text-white">event details</Text>
-            <View className="ml-3 mt-5 gap-8">
-              <View className="flex flex-row gap-5 items-center">
+          <CustomView style={tw`py-2 px-5`}>
+            <Text style={tw`uppercase text-white`}>event details</Text>
+
+            <View style={tw`ml-3 mt-5`}>
+              <View style={tw`flex-row items-center mb-4`}>
                 <Calendar color="white" />
-                <EventDetails title="date & time" subtitle={eventDateTime} />
+                <View style={tw`ml-3 flex-1`}>
+                  <EventDetails title="date & time" subtitle={eventDateTime} />
+                </View>
               </View>
-              <View className="flex flex-row gap-5 items-center">
+
+              <View style={tw`flex-row items-center mb-4`}>
                 <MapIcon color="white" />
-                <EventDetails title="Location" subtitle={location} />
+                <View style={tw`ml-3 flex-1`}>
+                  <EventDetails title="Location" subtitle={location} />
+                </View>
               </View>
-              <View className="flex flex-row gap-5 items-center">
+
+              <View style={tw`flex-row items-center mb-4`}>
                 <Ticket color="white" />
-                {registrationType === "ticket" &&
-                eventTickets &&
-                eventTickets.length > 0 ? (
-                  // <></>
-                  <EventDetails
-                    title="Tickets"
-                    subtitle={
-                      eventTickets?.length
-                        ? (() => {
-                            const prices = eventTickets
-                              .map((t) => t.price)
-                              .filter(
-                                (p): p is number => p != null && !isNaN(p)
-                              );
+                <View style={tw`ml-3 flex-1`}>
+                  {registrationType === "ticket" &&
+                  eventTickets &&
+                  eventTickets.length > 0 ? (
+                    <EventDetails
+                      title="Tickets"
+                      subtitle={
+                        eventTickets?.length
+                          ? (() => {
+                              const prices = eventTickets
+                                .map((t) => t.price)
+                                .filter(
+                                  (p): p is number => p != null && !isNaN(p)
+                                );
 
-                            if (prices.length === 0) {
-                              return "No valid ticket prices";
-                            }
+                              if (prices.length === 0) {
+                                return "No valid ticket prices";
+                              }
 
-                            const minPrice = Math.min(...prices);
-                            const maxPrice = Math.max(...prices);
+                              const minPrice = Math.min(...prices);
+                              const maxPrice = Math.max(...prices);
 
-                            if (minPrice === 0 && maxPrice === 0) {
-                              return "Free";
-                            }
+                              if (minPrice === 0 && maxPrice === 0) {
+                                return "Free";
+                              }
 
-                            return `${
-                              eventTickets.length
-                            } Types, ${numberWithCommas(
-                              minPrice,
-                              true,
-                              null
-                            )} - ${numberWithCommas(maxPrice, true, null)}`;
-                          })()
-                        : "No tickets available"
-                    }
-                  />
-                ) : registrationType === "registration" ? (
-                  <EventDetails
-                    title="Registration"
-                    subtitle={
-                      registrationFee && registrationFee > 0
-                        ? `${numberWithCommas(registrationFee, true, null)}`
-                        : "Free RSVP event"
-                    }
-                  />
-                ) : null}
+                              return `${
+                                eventTickets.length
+                              } Types, ${numberWithCommas(
+                                minPrice,
+                                true,
+                                null
+                              )} - ${numberWithCommas(maxPrice, true, null)}`;
+                            })()
+                          : "No tickets available"
+                      }
+                    />
+                  ) : registrationType === "registration" ? (
+                    <EventDetails
+                      title="Registration"
+                      subtitle={
+                        registrationFee && registrationFee > 0
+                          ? `${numberWithCommas(registrationFee, true, null)}`
+                          : "Free RSVP event"
+                      }
+                    />
+                  ) : null}
+                </View>
               </View>
-              <View className="flex flex-row gap-5 items-center">
+
+              <View style={tw`flex-row items-center mb-4`}>
                 <Share2Icon color="white" />
-                <EventDetails title="Share" subtitle="Send to friend." />
+                <View style={tw`ml-3 flex-1`}>
+                  <EventDetails title="Share" subtitle="Send to friend." />
+                </View>
               </View>
             </View>
           </CustomView>
 
-          <CustomView className="!bg-[#1B2A50]/40 h-2" />
+          <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
         </ScrollView>
 
-        <View className="py-5 flex flex-col gap-5">
-          <View className="px-5 w-screen max-w-[500px] flex flex-row justify-between items-center">
+        <View style={tw`py-5`}>
+          <View
+            style={tw`px-5 w-full max-w-[500px] flex-row justify-between items-center`}
+          >
             <AvatarWithLabel
               imageUrl={creator.profilePicUrlTN}
               username={creator.username}
               role="Organizer"
             />
             {user?.id !== creator.id && (
-              <TouchableOpacity className="p-3 rounded-lg bg-[#0c1447]">
-                <Text className="text-white">Follow</Text>
+              <TouchableOpacity style={tw`p-3 rounded-lg bg-[#0c1447]`}>
+                <Text style={tw`text-white`}>Follow</Text>
               </TouchableOpacity>
             )}
             {user?.id === creator.id && (
               <TouchableOpacity
-                className="p-3 rounded-lg "
+                style={tw`p-3 rounded-lg`}
                 onPress={() => router.push(`/event/edit/${eventId}`)}
               >
                 <Edit2Icon color="#0FF1CF" />
@@ -381,7 +401,9 @@ const EventPage = () => {
             )}
           </View>
         </View>
-        {/* <View className="px-5 w-screen max-w-[500px]">
+
+        {registrationType === "ticket" ? (
+          <View style={tw`px-5 w-full max-w-[500px]`}>
             <CustomButton
               onPress={openSheet}
               buttonClassName="bg-[#0FF1CF] border-0 w-full max-w-[500px]"
@@ -389,24 +411,9 @@ const EventPage = () => {
               arrowCircleColor="bg-[#0C7F7F]"
               title="View tickets"
             />
-          </View> */}
-
-        {registrationType === "ticket" ? (
-          // Ticket flow
-          <>
-            <View className="px-5 w-screen max-w-[500px]">
-              <CustomButton
-                onPress={openSheet}
-                buttonClassName="bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-                textClassName="!text-black"
-                arrowCircleColor="bg-[#0C7F7F]"
-                title="View tickets"
-              />
-            </View>
-          </>
+          </View>
         ) : (
-          // Registration flow (paid or free)
-          <View className="px-5 w-screen max-w-[500px]">
+          <View style={tw`px-5 w-full max-w-[500px]`}>
             <CustomButton
               onPress={() => handleTransaction(true)}
               disabled={registeringEvent}
@@ -428,6 +435,7 @@ const EventPage = () => {
           </View>
         )}
       </CustomView>
+
       {/* BottomSheet for Tickets */}
       <BottomSheet
         index={-1}
@@ -443,13 +451,13 @@ const EventPage = () => {
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
-        <View className="flex flex-row justify-between items-center p-5">
-          <Text className="text-white">BUY TICKET</Text>
+        <View style={tw`flex-row justify-between items-center p-5`}>
+          <Text style={tw`text-white`}>BUY TICKET</Text>
           <AnimatedNumber value={ticketTotal} />
         </View>
 
-        <BottomSheetScrollView className="p-5">
-          <View className="py-5 gap-5">
+        <BottomSheetScrollView style={tw`p-5`}>
+          <View style={tw`py-5`}>
             {eventTickets?.map((ticket, index) => (
               <PricingCard
                 key={index}
@@ -474,7 +482,7 @@ const EventPage = () => {
           </View>
         </BottomSheetScrollView>
 
-        <View className="w-screen max-w-[500px] p-5">
+        <View style={tw`w-full max-w-[500px] p-5`}>
           <CustomButton
             onPress={() => handleTransaction(false)}
             disabled={selectedTickets.length === 0 || gettingTickets}
