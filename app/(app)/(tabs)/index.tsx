@@ -1,4 +1,3 @@
-// app/home.tsx
 import Tab from "@/components/Tab";
 import CarpoolCard from "@/components/ui/CarpoolCard";
 import EventCard from "@/components/ui/EventCard";
@@ -18,30 +17,27 @@ import {
 } from "react-native";
 
 import { useLocationManager } from "@/hooks/useLocationManager";
-import { Feather } from "@expo/vector-icons";
+import { useUnreadCounts } from "@/hooks/useSocketReactHook";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import tw from "twrnc";
 
 export default function HomeScreen() {
   const { coords, requestLocation } = useLocationManager();
+  const { data } = useUnreadCounts();
   useEffect(() => {
-    requestLocation(); // ask softly once
+    requestLocation();
   }, []);
 
   const tabs = ["Events", "Carpool", "Places"];
-
   const [activeTab, setActiveTab] = useState(tabs[0]);
   const { user } = useAuth();
 
   const { data: events, isPending: loading } = useForYouEvents(user?.id);
-  const {
-    data: carpoolsForYou,
-    isPending: pendingCarpoolData,
-    error,
-  } = useForYouCarpools();
+  const { data: carpoolsForYou, isPending: pendingCarpoolData } =
+    useForYouCarpools();
 
   const router = useRouter();
-  useEffect(() => {
-    console.log(user);
-  }, [user]);
+
   const dummyPlaces = [
     {
       id: "p1",
@@ -58,27 +54,49 @@ export default function HomeScreen() {
   ];
 
   return (
-    <View className="flex-1 bg-[#030A31] flex items-center flex-col pt-20 pb-5">
+    <View style={tw`flex-1 bg-[#030A31] pt-10 pb-5 items-center`}>
       {/* Header */}
-      <View className="flex flex-row justify-between items-center w-full max-w-[500px] px-5">
-        <Text className="text-white">Hello!</Text>
-        <View className="gap-8 flex-row">
-          <TouchableOpacity>
-            <Feather name="heart" size={30} color={"white"} />
+      <View
+        style={tw`flex-row justify-between items-center w-full max-w-[500px] px-5`}
+      >
+        <Text style={tw`text-white`}>Hello!</Text>
+        <View style={tw`flex-row items-center justify-between`}>
+          <TouchableOpacity style={tw`mr-5`}>
+            <Feather name="heart" size={40} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/conversations")}>
-            <Feather name="message-circle" size={30} color={"white"} />
+          <TouchableOpacity
+            style={tw`relative`}
+            onPress={() => router.push("/conversations")}
+          >
+            <Ionicons
+              size={40}
+              color="white"
+              name={
+                data?.totalUnread && data.totalUnread > 0
+                  ? "chatbubble"
+                  : "chatbubble-outline"
+              }
+            />
+            {data?.totalUnread && data.totalUnread > 0 && (
+              <View
+                style={tw`absolute right-0 bg-[#0FF1CF] rounded-full h-7 px-2 justify-center items-center`}
+              >
+                <Text style={tw`text-white font-bold text-sm`}>
+                  {data.totalUnread}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Featured Banner */}
-      <View className="mt-4 overflow-hidden">
+      <View style={tw`mt-4 overflow-hidden`}>
         <Image source={require("../../../assets/images/circleframe.png")} />
       </View>
 
       {/* Tabs */}
-      <View className="flex flex-row justify-between py-4 px-5 w-full max-w-[500px]">
+      <View style={tw`flex-row justify-between py-4 px-5 w-full max-w-[500px]`}>
         {tabs.map((tab, index) => (
           <Tab
             key={index}
@@ -91,19 +109,18 @@ export default function HomeScreen() {
       </View>
 
       {/* Event List */}
-      <ScrollView className="px-5 w-full max-w-[500px]">
-        <View className="mt-6 mb-20 gap-4">
+      <ScrollView style={tw`px-5 w-full max-w-[500px]`}>
+        <View style={tw`mt-6 mb-20`}>
           {activeTab === "Events" &&
             (loading ? (
               <ActivityIndicator color="#fff" size="large" />
             ) : events?.data?.length ? (
-              events.data?.map((event: any) => (
+              events.data.map((event: any) => (
                 <EventCard
                   key={event.id}
                   id={event.id}
                   title={event.title}
                   location={event.location}
-                  // date={new Date(event.startDate).toLocaleDateString()}
                   thumbnailUrl={event.thumbnailUrl}
                   imageUrl={event.imageUrl}
                   onPress={() => router.replace(`/event/${event.id}`)}
@@ -113,7 +130,7 @@ export default function HomeScreen() {
                 />
               ))
             ) : (
-              <Text className="text-gray-400 text-center">
+              <Text style={tw`text-gray-400 text-center`}>
                 No events found.
               </Text>
             ))}
@@ -124,6 +141,7 @@ export default function HomeScreen() {
             ) : carpoolsForYou?.data.length ? (
               carpoolsForYou.data.map((carpool: any) => (
                 <CarpoolCard
+                  key={carpool.id}
                   id={carpool.id}
                   pickupLocation={carpool.origin}
                   title={carpool.event.title}
@@ -135,7 +153,7 @@ export default function HomeScreen() {
                 />
               ))
             ) : (
-              <Text className="text-gray-400 text-center">
+              <Text style={tw`text-gray-400 text-center`}>
                 No carpool found for you.
               </Text>
             ))}

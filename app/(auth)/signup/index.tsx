@@ -3,23 +3,27 @@ import { useRouter } from "expo-router";
 import { Key, Mail, XIcon } from "lucide-react-native";
 import { Controller, useForm } from "react-hook-form";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
 import * as z from "zod";
 
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
 import { useSignUpMutation } from "@/services/mutations";
 import { showGlobalError } from "@/utils/globalErrorHandler";
- // hypothetical global error handler
 
 // Zod schema
-const signUpSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+const signUpSchema = z
+  .object({
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z
+      .string()
+      .min(6, "Password must be at least 6 characters"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 type SignUpFormData = z.infer<typeof signUpSchema>;
 
@@ -27,8 +31,11 @@ const SignUp = () => {
   const router = useRouter();
   const { mutate: signUp, isPending } = useSignUpMutation();
 
-  // React Hook Form
-  const { control, handleSubmit, formState: { errors } } = useForm<SignUpFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
   });
 
@@ -36,38 +43,34 @@ const SignUp = () => {
     signUp(
       { email: data.email, password: data.password },
       {
-        onSuccess: () => {
-          router.replace("/");
-        },
-        onError: (err: any) => {
-          // Send the error to a global handler
-          showGlobalError(err?.message || "Signup failed");
-        },
+        onSuccess: () => router.replace("/"),
+        onError: (err: any) => showGlobalError(err?.message || "Signup failed"),
       }
     );
   };
 
   return (
-    <View className="flex-1 bg-[#01082E] justify-center items-center px-5 py-14 gap-5">
-      
+    <View
+      style={tw`flex-1 bg-[#01082E] justify-center items-center px-5 py-14 gap-6`}
+    >
       {/* Back Button */}
       <TouchableOpacity
-        className="absolute top-10 left-8"
+        style={tw`absolute top-10 left-8`}
         onPress={() => router.replace("/login")}
       >
-       <XIcon color="white"/>
+        <XIcon color="white" />
       </TouchableOpacity>
 
       {/* Logo */}
-      <View className="flex flex-col justify-center items-center relative">
+      <View style={tw`flex-col justify-center items-center relative`}>
         <Image
           source={require("../../../assets/images/vector1.png")}
-          className="absolute -top-14 left-10"
+          style={tw`absolute -top-14 left-10`}
         />
         <Image source={require("../../../assets/images/gglogo.png")} />
       </View>
 
-      <Text className="text-white text-lg font-semibold">Sign Up</Text>
+      <Text style={tw`text-white text-lg font-semibold mt-5`}>Sign Up</Text>
 
       {/* Email */}
       <Controller
@@ -82,7 +85,9 @@ const SignUp = () => {
           />
         )}
       />
-      {errors.email && <Text className="text-red-500">{errors.email.message}</Text>}
+      {errors.email && (
+        <Text style={tw`text-red-500 self-start`}>{errors.email.message}</Text>
+      )}
 
       {/* Password */}
       <Controller
@@ -98,7 +103,11 @@ const SignUp = () => {
           />
         )}
       />
-      {errors.password && <Text className="text-red-500">{errors.password.message}</Text>}
+      {errors.password && (
+        <Text style={tw`text-red-500 self-start`}>
+          {errors.password.message}
+        </Text>
+      )}
 
       {/* Confirm Password */}
       <Controller
@@ -115,7 +124,9 @@ const SignUp = () => {
         )}
       />
       {errors.confirmPassword && (
-        <Text className="text-red-500">{errors.confirmPassword.message}</Text>
+        <Text style={tw`text-red-500 self-start`}>
+          {errors.confirmPassword.message}
+        </Text>
       )}
 
       {/* Sign Up Button */}
@@ -130,10 +141,13 @@ const SignUp = () => {
 
       {/* Back to Sign In */}
       <TouchableOpacity
-        className="w-full flex-row justify-center mt-5"
+        style={tw`w-full flex-row justify-center mt-5`}
         onPress={() => router.replace("/login")}
       >
-        <Text className="text-white">Already have an account? Sign in</Text>
+        <Text style={tw`text-white`}>
+          Already have an account?{" "}
+          <Text style={tw`font-semibold`}>Sign in</Text>
+        </Text>
       </TouchableOpacity>
     </View>
   );

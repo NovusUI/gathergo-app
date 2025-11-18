@@ -9,6 +9,7 @@ import { useGetUsersEvents, useUserProfile } from "@/services/queries";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
+import tw from "twrnc";
 
 const Profile = () => {
   const tabs = ["About", "Events", "Review"];
@@ -42,8 +43,8 @@ const Profile = () => {
     switch (activeTab) {
       case "About":
         return (
-          <View className="mt-4">
-            <Text className="text-white text-base">
+          <View style={tw`mt-4`}>
+            <Text style={tw`text-white text-base`}>
               {publicProfile?.data.bio || "No bio added yet."}
             </Text>
           </View>
@@ -60,8 +61,8 @@ const Profile = () => {
         );
       case "Review":
         return (
-          <View className="mt-4">
-            <Text className="text-white text-base">
+          <View style={tw`mt-4`}>
+            <Text style={tw`text-white text-base`}>
               {publicProfile?.data.reviews?.length
                 ? `${publicProfile?.data.reviews.length} reviews available`
                 : "No reviews yet."}
@@ -74,32 +75,36 @@ const Profile = () => {
   };
 
   return (
-    <View className="flex-1 bg-[#01082E] flex items-center flex-col pt-20 pb-10 px-5 overflow-hidden">
+    <View
+      style={tw`flex-1 bg-[#01082E] flex items-center flex-col pt-10 pb-10 px-5 overflow-hidden`}
+    >
       <CustomeTopBarNav
         title="profile"
         onClickBack={() => router.replace("/")}
       />
 
       {/* Header Info */}
-      <View className="flex flex-col gap-2 w-full max-w-[500px] mt-10 mb-5">
-        <View className="flex flex-row justify-between items-center w-full">
-          <Text className="text-white text-xl">
+      <View style={tw`flex flex-col gap-2 w-full max-w-[500px] mt-10 mb-5`}>
+        <View style={tw`flex flex-row justify-between items-center w-full`}>
+          <Text style={tw`text-white text-xl`}>
             {publicProfile?.data.name || "User"}
           </Text>
-          <Text className="text-white text-xl">5.0</Text>
+          <Text style={tw`text-white text-xl`}>5.0</Text>
         </View>
-        <View className="flex flex-row justify-between items-center w-full">
-          <Text className="text-white text-sm">
+        <View style={tw`flex flex-row justify-between items-center w-full`}>
+          <Text style={tw`text-white text-sm`}>
             @{publicProfile?.data.name}
           </Text>
-          <Text className="text-white text-sm">
+          <Text style={tw`text-white text-sm`}>
             ({publicProfile?.data.reviews?.length || 0} reviews)
           </Text>
         </View>
       </View>
 
       {/* Profile Image + Stats */}
-      <View className="flex flex-row justify-between items-center w-full max-w-[500px] gap-5">
+      <View
+        style={tw`flex flex-row justify-between items-center w-full max-w-[500px] gap-5`}
+      >
         <ProfileImageUploader uri={publicProfile?.data.profilePicUrl} />
         <StatsCard
           eventsCount={publicProfile?.data.eventsCount || 0}
@@ -109,13 +114,15 @@ const Profile = () => {
       </View>
 
       {/* Tabs */}
-      <View className="flex-row justify-between py-4 border-b border-gray-800 w-full max-w-[500px]">
+      <View
+        style={tw`flex-row justify-between py-4 border-b border-gray-800 w-full max-w-[500px]`}
+      >
         {tabs.map((tab) => (
           <Tab
             key={tab}
             title={tab}
             isActive={activeTab === tab}
-            className="w-1/4"
+            style={tw`w-1/4`}
             onPress={() => setActiveTab(tab)}
           />
         ))}
@@ -124,12 +131,12 @@ const Profile = () => {
       <CustomButton
         onPress={editBio}
         title="Edit bio"
-        buttonClassName="bg-[#0FF1CF] border-0 !w-full"
-        textClassName="!text-black"
+        buttonClassName={`bg-[#0FF1CF] border-0 w-full`}
+        textClassName={`text-black`}
         showArrow={false}
       />
 
-      <View className="w-full max-w-[500px] flex-1 mb-20">
+      <View style={tw`w-full max-w-[500px] flex-1 mb-20`}>
         {renderTabContent()}
       </View>
     </View>

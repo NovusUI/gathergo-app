@@ -119,6 +119,7 @@ const NewCarpool = () => {
               registrationType={item.registrationType}
               registrationFee={item.registrationFee}
               onPress={() => openSheet(item)}
+              startDate={item.startDate}
             />
           )}
           contentContainerStyle={{ gap: 16, paddingVertical: 10 }}
@@ -153,6 +154,7 @@ const NewCarpool = () => {
                 location={item.location}
                 imageUrl={item.imageUrl}
                 registrationType={item.registrationType}
+                startDate={item.startDate}
                 registrationFee={item.registrationFee}
                 onPress={() => openSheet(item)}
               />

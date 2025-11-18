@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Text, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import tw from "twrnc";
 
 // --- Component ---
 const ProfileSetup = () => {
@@ -117,15 +118,15 @@ const ProfileSetup = () => {
   const router = useRouter();
 
   return (
-    <View className="flex-1 items-center bg-[#01082E] px-5 pt-20 pb-10 gap-5">
+    <View style={tw`flex-1 items-center bg-[#01082E] px-5 pt-20 pb-10 gap-5`}>
       <CustomeTopBarNav
         title="Setup Profile"
         onClickBack={() => router.replace("/profile")}
       />
-      {/* <ScrollView className="w-full max-w-[500px] my-10"> */}
-      <View className="w-full max-w-[500px] flex-1 flex flex-col  gap-5">
-        <CustomView className="gap-2">
-          {/* Full Name */}
+
+      <View style={tw`w-full max-w-[500px] flex-1 flex flex-col gap-5`}>
+        {/* Full Name */}
+        <CustomView style={tw`gap-2`}>
           <Controller
             control={control}
             name="fullName"
@@ -140,8 +141,8 @@ const ProfileSetup = () => {
           />
         </CustomView>
 
-        <CustomView className="gap-2">
-          {/* Username */}
+        {/* Username */}
+        <CustomView style={tw`gap-2`}>
           <Controller
             control={control}
             name="username"
@@ -157,9 +158,8 @@ const ProfileSetup = () => {
           />
         </CustomView>
 
-        <CustomView className="gap-2 w-full max-w-[300px]">
-          {/* Nationality */}
-
+        {/* Nationality */}
+        <CustomView style={tw`gap-2 w-full max-w-[300px]`}>
           <Controller
             control={control}
             name="nationality"
@@ -171,12 +171,12 @@ const ProfileSetup = () => {
             )}
           />
           {errors.nationality && (
-            <Text className="text-red-500">{errors.nationality.message}</Text>
+            <Text style={tw`text-red-500`}>{errors.nationality.message}</Text>
           )}
         </CustomView>
 
-        <CustomView className="gap-2">
-          {/* Gender */}
+        {/* Gender */}
+        <CustomView style={tw`gap-2`}>
           <Controller
             control={control}
             name="gender"
@@ -195,12 +195,12 @@ const ProfileSetup = () => {
             )}
           />
           {errors.gender && (
-            <Text className="text-red-500">{errors.gender.message}</Text>
+            <Text style={tw`text-red-500`}>{errors.gender.message}</Text>
           )}
         </CustomView>
 
-        <CustomView className="gap-2">
-          {/* Birthday (Date Picker) */}
+        {/* Birthday (Date Picker) */}
+        <CustomView style={tw`gap-2`}>
           <Controller
             control={control}
             name="birthDate"
@@ -225,14 +225,13 @@ const ProfileSetup = () => {
           />
         </CustomView>
       </View>
-      {/* </ScrollView> */}
 
       {/* Next Button */}
       <CustomButton
         onPress={handleSubmit(onSubmit)}
         disabled={isPending}
         title={
-          isPending ? "Checking..." : isSubmitting ? "submitting..." : "Next"
+          isPending ? "Checking..." : isSubmitting ? "Submitting..." : "Next"
         }
         buttonClassName="bg-[#0FF1CF] border-0 !w-full"
         textClassName="!text-black"

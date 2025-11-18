@@ -1,4 +1,3 @@
-import React from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type PerksListProps = {

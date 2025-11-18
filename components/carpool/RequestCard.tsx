@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
 
 type RequestCardProps = {
   status: string;
@@ -42,7 +43,7 @@ export default function RequestCard({
         });
         showGlobalSuccess("Request updated successfully");
       },
-      onError: (error) => {
+      onError: () => {
         showGlobalError("Error responding to request");
       },
     }
@@ -56,8 +57,8 @@ export default function RequestCard({
         });
         showGlobalSuccess("Passenger removed successfully");
       },
-      onError: (error) => {
-        showGlobalError(error.message || "Error removing passenger");
+      onError: (error: any) => {
+        showGlobalError(error?.message || "Error removing passenger");
       },
     });
 
@@ -71,23 +72,16 @@ export default function RequestCard({
 
   return (
     <View
-      className={`flex-row items-start p-3 rounded-xl ${
-        isAccepted ? "" : "border"
-      }`}
-      style={{ borderColor: isAccepted ? "transparent" : "#00F0FF" }}
+      style={tw`flex-row items-start p-3 rounded-xl border`}
+      // conditional border color
     >
       {/* Avatar */}
-      <View className="w-fit h-fit rounded-xl overflow-hidden mr-3">
+      <View style={tw`w-[70px] h-[70px] rounded-xl overflow-hidden mr-3`}>
         {imageUrl ? (
           <Image
             source={imageUrl}
-            className="w-full h-full"
             contentFit="cover"
-            style={{
-              width: 70,
-              height: 70,
-              borderRadius: 10,
-            }}
+            style={tw`w-full h-full rounded-xl`}
           />
         ) : (
           <Feather name="user" color="teal" size={70} />
@@ -95,13 +89,13 @@ export default function RequestCard({
       </View>
 
       {/* Info + Actions */}
-      <View className="flex-1">
-        <Text className="text-white font-semibold text-base">{name}</Text>
-        <Text className="text-gray-300 text-sm mb-1">{message}</Text>
+      <View style={tw`flex-1`}>
+        <Text style={tw`text-white font-semibold text-base`}>{name}</Text>
+        <Text style={tw`text-gray-300 text-sm mb-1`}>{message}</Text>
 
         {/* Estimated distance (always shown if available) */}
         {estimatedDistance && (
-          <Text className="text-teal-400 text-xs mb-2">
+          <Text style={tw`text-teal-400 text-xs mb-2`}>
             {expanded
               ? `${estimatedDistance} from where you created the pool`
               : estimatedDistance}
@@ -112,34 +106,34 @@ export default function RequestCard({
         {note && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
             {expanded ? (
-              <Text className="text-gray-400 text-sm mb-2">{note}</Text>
+              <Text style={tw`text-gray-400 text-sm mb-2`}>{note}</Text>
             ) : (
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-gray-500 text-xs italic mb-2"
+                style={tw`text-gray-500 text-xs italic mb-2`}
               >
                 {note}
               </Text>
             )}
-            <Text className="text-blue-400 text-xs">
+            <Text style={tw`text-blue-400 text-xs`}>
               {expanded ? "Collapse ▲" : "Expand ▼"}
             </Text>
           </TouchableOpacity>
         )}
 
         {/* Actions */}
-        <View className="flex-row gap-3 mt-2">
+        <View style={tw`flex-row gap-3 mt-2`}>
           {isAccepted ? (
             <TouchableOpacity
               onPress={onRemovePassenger}
               activeOpacity={0.8}
               disabled={removePassengerPending}
-              className={`px-4 py-2 rounded-md ${
+              style={tw`px-4 py-2 rounded-md ${
                 removePassengerPending ? "bg-[#4a1a1a]" : "bg-[#2C0000]"
               }`}
             >
-              <Text className="text-red-500 font-semibold">
+              <Text style={tw`text-red-500 font-semibold`}>
                 {removePassengerPending ? "Removing..." : "Remove"}
               </Text>
             </TouchableOpacity>
@@ -149,11 +143,11 @@ export default function RequestCard({
                 onPress={() => respondToCarpoolReq("ACCEPTED")}
                 activeOpacity={0.8}
                 disabled={reqResPen}
-                className={`px-4 py-2 rounded-md ${
+                style={tw`px-4 py-2 rounded-md ${
                   reqResPen ? "bg-[#123232]" : "bg-[#002C2C]"
                 }`}
               >
-                <Text className="text-teal-400 font-semibold">
+                <Text style={tw`text-teal-400 font-semibold`}>
                   {reqResPen ? "Accepting..." : "Accept"}
                 </Text>
               </TouchableOpacity>
@@ -162,11 +156,11 @@ export default function RequestCard({
                 onPress={() => respondToCarpoolReq("DECLINED")}
                 activeOpacity={0.8}
                 disabled={reqResPen}
-                className={`px-4 py-2 rounded-md ${
+                style={tw`px-4 py-2 rounded-md ${
                   reqResPen ? "bg-[#4a1a1a]" : "bg-[#2C0000]"
                 }`}
               >
-                <Text className="text-red-500 font-semibold">
+                <Text style={tw`text-red-500 font-semibold`}>
                   {reqResPen ? "Declining..." : "Decline"}
                 </Text>
               </TouchableOpacity>

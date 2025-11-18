@@ -1,4 +1,4 @@
-const base_url = "http://192.168.114.150:4000/api/v1";
+const base_url = "http://10.42.21.150:4000/api/v1";
 
 export const AUTH_URLS = {
   login: base_url + "/auth/login",

@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { Text, View } from "react-native";
+import tw from "twrnc";
 
 type AvatarWithLabelProps = {
   imageUrl?: string | { uri: string };
@@ -17,7 +18,7 @@ export default function AvatarWithLabel({
   rounded = false,
 }: AvatarWithLabelProps) {
   return (
-    <View className="flex flex-row items-center gap-3">
+    <View style={tw`flex-row items-center gap-3`}>
       {imageUrl ? (
         <Image
           source={imageUrl}
@@ -32,18 +33,20 @@ export default function AvatarWithLabel({
         />
       ) : (
         <View
-          className="bg-gray-500"
-          style={{
-            width: size,
-            height: size,
-            borderRadius: rounded ? size / 2 : 10,
-          }}
+          style={[
+            tw`bg-gray-500`,
+            {
+              width: size,
+              height: size,
+              borderRadius: rounded ? size / 2 : 10,
+            },
+          ]}
         />
       )}
 
-      <View className="py-2">
-        <Text className="capitalize text-white">{username}</Text>
-        <Text className="text-[#8E8E8E] text-sm">{role}</Text>
+      <View style={tw`py-2`}>
+        <Text style={tw`capitalize text-white`}>{username}</Text>
+        <Text style={tw`text-[#8E8E8E] text-sm`}>{role}</Text>
       </View>
     </View>
   );

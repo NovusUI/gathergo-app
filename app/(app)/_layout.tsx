@@ -6,11 +6,7 @@ export default function AppLayout() {
   const { user, loading } = useAuth();
   const { isAuthenticated } = useAuthStore();
   const segments = useSegments();
-  console.log(
-    user?.hasPreferences,
-    user?.hasPreferences === true,
-    "jklklklkkl"
-  );
+
   if (loading) return null; // splash handling
 
   if (!isAuthenticated) {

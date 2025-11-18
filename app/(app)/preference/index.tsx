@@ -5,7 +5,8 @@ import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { saveItem } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
 
 const allPreferences = [
   "Cinema",
@@ -27,26 +28,24 @@ const allPreferences = [
   "Zoo",
 ];
 
-const index = () => {
+export default function PreferencesScreen() {
   const router = useRouter();
   const { user, setUser } = useAuth();
 
-  const [visiblePrefs, setVisiblePrefs] = useState(allPreferences);
+  const [visiblePrefs] = useState(allPreferences);
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
-  const { mutate: onUpdatePreference, isPending } = useSavePreferences({
-    onSuccess: async (data) => {
-      console.log(data);
 
+  const { mutate: onUpdatePreference, isPending } = useSavePreferences({
+    onSuccess: async () => {
       const updatedUser = { ...user, hasPreferences: true };
       setUser(updatedUser);
 
-      //   // optionally persist updated user locally
       await saveItem("user", JSON.stringify(updatedUser));
+
       showGlobalSuccess("Preferences saved!");
       router.replace("/");
     },
     onError: (err: any) => {
-      console.error(err, "error saving preference");
       showGlobalError(
         err?.response?.data?.message ||
           err?.message ||
@@ -56,14 +55,12 @@ const index = () => {
   });
 
   const handleSelect = (item: string) => {
-    if (selectedPrefs.includes(item)) {
-      setSelectedPrefs(selectedPrefs.filter((pref) => pref !== item));
-    } else {
-      setSelectedPrefs([...selectedPrefs, item]);
-    }
+    setSelectedPrefs((prev) =>
+      prev.includes(item) ? prev.filter((p) => p !== item) : [...prev, item]
+    );
   };
 
-  const savePreference = async () => {
+  const savePreference = () => {
     if (selectedPrefs.length === 0) {
       showGlobalError("Please select at least one preference");
       return;
@@ -73,44 +70,55 @@ const index = () => {
   };
 
   return (
-    <View className="flex-1 bg-[#01082E] flex flex-col justify-center items-center text-left  px-5 py-10 gap-5 overflow-scroll">
-      <View className="gap-8 flex-1 pt-10 flex flex-col  w-full max-w-[600px]">
-        <Text className="text-white text-4xl">Select your interest</Text>
-        <Text className="text-white">
-          This will help us to choose interesting events and content for you
-          that you will definitely like.
-        </Text>
+    <View style={tw`flex-1 bg-[#01082E] px-5 py-10`}>
+      <ScrollView contentContainerStyle={tw`flex-col items-center gap-5`}>
+        <View style={tw`w-full max-w-3xl gap-8 pt-10`}>
+          <Text style={tw`text-white text-4xl font-semibold`}>
+            Select your interest
+          </Text>
 
-        <View className="flex-row flex-wrap justify-between">
-          {visiblePrefs.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => handleSelect(item)}
-              className={`rounded-full px-5 py-3 mb-3 ${
-                selectedPrefs.includes(item) ? "bg-[#0FF1CF]" : "bg-white"
-              }`}
-            >
-              <Text
-                className={`text-sm ${
-                  selectedPrefs.includes(item) ? "text-black" : "text-black"
-                }`}
-              >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <Text style={tw`text-white text-base`}>
+            This will help us choose interesting events and content for you that
+            you will definitely like.
+          </Text>
+
+          {/* Preferences */}
+          <View style={tw`flex-row flex-wrap justify-between mt-4`}>
+            {visiblePrefs.map((item) => {
+              const selected = selectedPrefs.includes(item);
+
+              return (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => handleSelect(item)}
+                  style={tw.style(
+                    `rounded-full px-5 py-3 mb-3`,
+                    selected ? `bg-[#0FF1CF]` : `bg-white`
+                  )}
+                >
+                  <Text
+                    style={tw.style(
+                      `text-sm font-medium`,
+                      selected ? `text-black` : `text-black`
+                    )}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-      </View>
-      <CustomButton
-        onPress={savePreference}
-        title={isPending ? "Saving..." : "Next"}
-        disabled={isPending}
-        buttonClassName="bg-[#0FF1CF] border-0 w-full "
-        textClassName="!text-black"
-        arrowCircleColor="bg-[#0A7F7F]"
-      />
+
+        <CustomButton
+          onPress={savePreference}
+          title={isPending ? "Saving..." : "Next"}
+          disabled={isPending}
+          buttonClassName="bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-black"
+          arrowCircleColor="bg-[#0A7F7F]"
+        />
+      </ScrollView>
     </View>
   );
-};
-
-export default index;
+}

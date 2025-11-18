@@ -5,15 +5,14 @@ import PoolingWithA from "@/components/PoolingWithA";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { useAuth } from "@/context/AuthContext";
-import { useGetCarpoolDetails } from "@/services/queries";
-import { dummy } from "@/utils/utils";
-
 import { useFollowUser, useLeaveCarpool } from "@/services/mutations";
+import { useGetCarpoolDetails } from "@/services/queries";
 import { QUERY_KEYS } from "@/services/queryKeys";
 import {
   showGlobalSuccess,
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
+import { dummy } from "@/utils/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessagesSquareIcon } from "lucide-react-native";
@@ -21,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Svg, { Line } from "react-native-svg";
+import tw from "twrnc";
 import FlexrideBS, { FlexrideBSRef } from "./bottomSheets/FlexrideBS";
 import SendRequestBS, { SendRequestBSRef } from "./bottomSheets/SendRequestBS";
 import ShareRideLinkBS, {
@@ -181,64 +181,61 @@ const CarpoolPage = () => {
   const { title, disabled, action } = getButtonProps();
 
   return (
-    <View className="flex-1 pt-20 pb-5 bg-[#01082E] flex flex-col items-center w-full">
+    <View
+      style={tw`flex-1 pt-10 pb-5 bg-[#01082E] flex flex-col items-center w-full`}
+    >
       <CustomView className="px-5">
         <CustomeTopBarNav
           title={carpool.event?.title ?? "Carpool"}
           onClickBack={() => router.back()}
         />
       </CustomView>
+      <ScrollView style={tw`w-full max-w-[500px]`}>
+        {/* Divider */}
+        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
 
-      <ScrollView className="w-full max-w-500">
-        {/* divider */}
-        <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
-
-        <CustomView className="px-4">
+        <CustomView style={tw`px-4`}>
           <CustomView>
-            <Text className="text-lg text-white">CARPOOL DETAILS</Text>
-            <Text className="text-[#ADADAD]">{carpool.departureTime}</Text>
+            <Text style={tw`text-lg text-white`}>CARPOOL DETAILS</Text>
+            <Text style={tw`text-[#ADADAD]`}>{carpool.departureTime}</Text>
 
-            <CustomView className="my-5">
-              <View className="flex-row gap-5 items-center">
-                <View className="rounded-full w-4 h-4 bg-[#0FF1CF]" />
-                <Text className="text-white">{carpool.origin}</Text>
+            <CustomView style={tw`my-5`}>
+              <View style={tw`flex-row items-center gap-5`}>
+                <View style={tw`w-4 h-4 rounded-full bg-[#0FF1CF]`} />
+                <Text style={tw`text-white`}>{carpool.origin}</Text>
               </View>
-              <View className="w-4 flex-row justify-center items-center h-6">
+
+              <View style={tw`w-4 h-6 flex-row justify-center items-center`}>
                 <VerticalDashedLine />
               </View>
-              <View className="flex-row gap-5 items-center">
-                <View className="rounded-full w-4 h-4 bg-[#31C6F6]" />
-                <Text className="text-white">
+
+              <View style={tw`flex-row items-center gap-5`}>
+                <View style={tw`w-4 h-4 rounded-full bg-[#31C6F6]`} />
+                <Text style={tw`text-white`}>
                   {carpool.event.location ?? "Destination not set"}
                 </Text>
               </View>
             </CustomView>
 
-            <Text className="text-white">
+            <Text style={tw`text-white`}>
               {carpool.pricePerSeat > 0 ? `$${carpool.pricePerSeat}` : "Free"}
             </Text>
           </CustomView>
         </CustomView>
 
-        <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
+        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
 
-        <View className="px-10 py-5 flex-row justify-between items-center">
+        <View style={tw`px-10 py-5 flex-row justify-between items-center`}>
           <AvatarGroup
             avatars={carpool.passengers}
             onAdd={() => onAvaterClick()}
           />
           <TouchableOpacity>
-            <MessagesSquareIcon color={"white"} />
+            <MessagesSquareIcon color="white" />
           </TouchableOpacity>
         </View>
 
-        <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
-
-        {/* <CustomView className="mx-5 gap-5">
-          <Text className="text-lg text-white">Pooling with a</Text>
-          <EventDetails title="car model" subtitle="Benz gle" />
-          <EventDetails title="color" subtitle="Wine" />
-        </CustomView> */}
+        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
 
         <PoolingWithA
           description={data.data.description}
@@ -246,37 +243,37 @@ const CarpoolPage = () => {
           openSheet={() => flexrideRef.current?.open()}
         />
 
-        <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
+        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
 
-        <CustomView className="mx-5 gap-5">
-          <Text className="text-lg text-white">Pooler's note</Text>
-          <Text className="text-white mr-5">
+        <CustomView style={tw`mx-5 gap-5`}>
+          <Text style={tw`text-lg text-white`}>Pooler's note</Text>
+          <Text style={tw`text-white mr-5`}>
             {carpool.note ?? "No notes provided"}
           </Text>
         </CustomView>
       </ScrollView>
-
       {/* Bottom bar */}
-      <CustomView className="px-5 pt-6 flex-row justify-between items-center">
+      <CustomView style={tw`px-5 pt-6 flex-row justify-between items-center`}>
         <AvatarWithLabel
           imageUrl={carpool.driver.profilePicUrlTN}
           username={carpool.driver.username}
           role="Pooler"
         />
+
         {user?.id !== carpool.driver.id && (
           <TouchableOpacity
-            className="p-3 rounded-lg bg-[#0c1447]"
+            style={tw`p-3 rounded-lg bg-[#0c1447]`}
             onPress={onFollow}
             disabled={isFollowing}
           >
-            <Text className="text-white">
+            <Text style={tw`text-white`}>
               {isFollowing ? "following..." : followStatus}
             </Text>
           </TouchableOpacity>
         )}
       </CustomView>
 
-      <CustomView className="px-5 pb-5">
+      <CustomView style={tw`px-5 pb-5`}>
         {owner ? (
           <CustomButton
             onPress={() => requestBSRef.current?.open()}
