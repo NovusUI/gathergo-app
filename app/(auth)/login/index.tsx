@@ -19,7 +19,7 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import * as z from "zod";
 
-const GOOGLE_AUTH_URL = "http://10.42.21.150:4000/api/v1/auth/google";
+const GOOGLE_AUTH_URL = "http://10.114.200.150:4000/api/v1/auth/google";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),

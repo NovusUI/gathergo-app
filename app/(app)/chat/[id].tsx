@@ -18,6 +18,7 @@ import OverlappingImages from "@/components/ui/OverlappingImages";
 import { TypingIndicator } from "@/components/ui/TypingIndicator";
 import UserChatView from "@/components/ui/UserChatView";
 import { useAuth } from "@/context/AuthContext";
+import { usePushNotification } from "@/context/PushNotificationContext";
 import { useSocket } from "@/context/SocketContext";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useConversations } from "@/hooks/useSocketReactHook";
@@ -31,8 +32,8 @@ const ChatPage = () => {
   const { id } = useLocalSearchParams();
   const [value, setValue] = useState("");
   const carpoolId = Array.isArray(id) ? id[0] : id;
-  const { socket, updateConversationAfterSend, clearNotificationData } =
-    useSocket();
+  const { socket, updateConversationAfterSend } = useSocket();
+  const { clearNotificationData } = usePushNotification();
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const { addMessage } = useMessageQueueStore();
 

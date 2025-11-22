@@ -8,9 +8,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { Text, View } from "react-native";
+import tw from "twrnc";
 
 const index = () => {
   const { setUser } = useAuth();
+
   const {
     control,
     handleSubmit,
@@ -35,9 +37,13 @@ const index = () => {
     await editBio(data);
     console.log("Bio submitted:", data);
   };
+
   return (
-    <View className="flex-1 flex flex-col  justify-center items-center bg-[#01082E] px-5 pt-20 pb-10 gap-5">
-      <Text className="text-white">Bio</Text>
+    <View
+      style={tw`flex-1 flex flex-col justify-center items-center bg-[#01082E] px-5 pt-20 pb-10 gap-5`}
+    >
+      <Text style={tw`text-white`}>Bio</Text>
+
       <Controller
         control={control}
         name="bio"
@@ -53,7 +59,7 @@ const index = () => {
       <CustomButton
         title={editBioPending ? "Saving..." : "Save"}
         onPress={handleSubmit(onSubmit)}
-        buttonClassName="!w-full"
+        buttonClassName="!w-full" // keep as-is since CustomButton handles it internally
         arrowCircleColor="transparent border-sm border-white"
         disabled={editBioPending}
       />

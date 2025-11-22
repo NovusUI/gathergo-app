@@ -1,5 +1,5 @@
-import { NotificationHandler } from "@/components/NotificationHandler";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -61,17 +61,18 @@ export default function RootLayout() {
         persistOptions={{ persister }}
       >
         <AuthProvider>
-          <SocketProvider>
-            <PaystackProvider
-              debug
-              publicKey="pk_test_430fb933c2b87c6f0f6a29b40b97d2d1caf60fbe"
-              defaultChannels={["bank", "bank_transfer", "card", "ussd"]}
-            >
-              <NotificationHandler />
-              <AppContent />
-              <Toast config={toastConfig} />
-            </PaystackProvider>
-          </SocketProvider>
+          <PushNotificationProvider>
+            <SocketProvider>
+              <PaystackProvider
+                debug
+                publicKey="pk_test_430fb933c2b87c6f0f6a29b40b97d2d1caf60fbe"
+                defaultChannels={["bank", "bank_transfer", "card", "ussd"]}
+              >
+                <AppContent />
+                <Toast config={toastConfig} />
+              </PaystackProvider>
+            </SocketProvider>
+          </PushNotificationProvider>
         </AuthProvider>
       </PersistQueryClientProvider>
     </GestureHandlerRootView>
