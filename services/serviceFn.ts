@@ -22,6 +22,7 @@ import {
   AUTH_URLS,
   CARPOOL_URL,
   EVENT_URL,
+  NOTIFICATION_URL,
   SEARCH_URL,
   TRANSACTION_URL,
   USER_URL,
@@ -377,5 +378,28 @@ export const unfollowUser = async (
     USER_URL.unfollowUser(userId)
   );
   // Assume API returns { exists: true/false }
+  return response.data;
+};
+
+export const registerPushToken = async (payload: {
+  token: string;
+  platform: string;
+}): Promise<StandardResponse> => {
+  console.log(payload.platform);
+  const response = await client.post<StandardResponse>(
+    NOTIFICATION_URL.registerPushToken,
+    payload
+  );
+
+  return response.data;
+};
+
+export const removePushToken = async (payload: {
+  token: string;
+}): Promise<StandardResponse> => {
+  const response = await client.post<StandardResponse>(
+    NOTIFICATION_URL.removePushToken,
+    payload
+  );
   return response.data;
 };

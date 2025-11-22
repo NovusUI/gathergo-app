@@ -8,11 +8,7 @@
     "scheme": "gathergoapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "platforms": ["ios", "android", "web"],
     "splash": {
       "image": "./assets/images/gglogo.png",
       "resizeMode": "contain",
@@ -31,7 +27,8 @@
         "backgroundColor": "#01082E"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gathergo.dev"
+      "package": "com.gathergo.dev",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

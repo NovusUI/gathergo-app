@@ -31,7 +31,9 @@ import {
   loginFn,
   logoutFn,
   registerForEvent,
+  registerPushToken,
   removePassenger,
+  removePushToken,
   requestCarpool,
   respondToCarpoolRequest,
   signUpFn,
@@ -298,5 +300,32 @@ export const useUnfollowUser = (
     mutationFn: () => unfollowUser(userId),
     ...options,
   });
+  return { mutate, mutateAsync, isPending, error };
+};
+
+// mutations.ts - Add these mutations
+export const useRegisterPushToken = (
+  options?: UseMutationOptions<
+    StandardResponse,
+    AxiosError,
+    { token: string; platform: string }
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: registerPushToken,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useRemovePushToken = (
+  options?: UseMutationOptions<StandardResponse, AxiosError, { token: string }>
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: removePushToken,
+    ...options,
+  });
+
   return { mutate, mutateAsync, isPending, error };
 };

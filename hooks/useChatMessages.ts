@@ -70,7 +70,7 @@ export function useChatMessages(carpoolId: string) {
       if (beforeId) qs.push(`beforeId=${beforeId}`);
       qs.push(`limit=${limit}`);
 
-      const url = `http://10.42.21.150:4000/api/v1/messages/${carpoolId}?${qs.join(
+      const url = `http://10.114.200.150:4000/api/v1/messages/${carpoolId}?${qs.join(
         "&"
       )}`;
 

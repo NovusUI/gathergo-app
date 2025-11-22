@@ -1,4 +1,4 @@
-const base_url = "http://10.42.21.150:4000/api/v1";
+const base_url = "http://10.114.200.150:4000/api/v1";
 
 export const AUTH_URLS = {
   login: base_url + "/auth/login",
@@ -52,4 +52,9 @@ export const CARPOOL_URL = {
   removePassenger: (requestId: string) =>
     base_url + `/carpool/passenger/remove/${requestId}`,
   leaveCarpool: (carpoolId: string) => base_url + `/carpool/leave/${carpoolId}`,
+};
+
+export const NOTIFICATION_URL = {
+  registerPushToken: base_url + "/backgroundnotifications/registertoken",
+  removePushToken: base_url + "/backgroundnotifications/removetoken",
 };
