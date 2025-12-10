@@ -8,4 +8,5 @@ export const QUERY_KEYS = {
   getUserEvents: ["getUserEvents"] as const,
   carpoolDetails: ["carpoolDetails"] as const,
   carpoolForYou: ["carpoolForYou"] as const,
+  carpoolChat: ["carpoolChat"] as const,
 };

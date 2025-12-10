@@ -66,7 +66,7 @@ export const PushNotificationProvider = ({
       navigationHandledRef.current = true;
       console.log("🚀 Navigating to chat from notification:", data.carpoolId);
 
-      router.push(`/chat/${data.carpoolId}`);
+      if (data.link) router.push(data.link);
 
       setTimeout(() => {
         clearNotificationData();

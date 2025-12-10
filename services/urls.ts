@@ -1,4 +1,4 @@
-const base_url = "http://10.114.200.150:4000/api/v1";
+const base_url = "http://10.170.32.53:4000/api/v1";
 
 export const AUTH_URLS = {
   login: base_url + "/auth/login",
@@ -43,6 +43,7 @@ export const SEARCH_URL = {
 export const CARPOOL_URL = {
   createCarpool: base_url + "/carpool",
   getCarpoolDetails: (id: string) => base_url + `/carpool/${id}`,
+  getCarpoolChatAccess: (id: string) => base_url + `/carpool/${id}/chat-access`,
   getForYouCarpool: base_url + "/carpool/for-you",
   updateCarpool: (carpoolId: string) => base_url + `/carpool/${carpoolId}`,
   requestCarpool: (carpoolId: string) =>

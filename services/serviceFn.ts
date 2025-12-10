@@ -403,3 +403,15 @@ export const removePushToken = async (payload: {
   );
   return response.data;
 };
+
+export const getCarpoolChatAccess = async ({
+  queryKey,
+}): Promise<StandardResponse> => {
+  const [, carpoolId] = queryKey;
+
+  const response = await client.get<StandardResponse>(
+    CARPOOL_URL.getCarpoolChatAccess(carpoolId)
+  );
+
+  return response.data;
+};

@@ -70,7 +70,7 @@ export function useChatMessages(carpoolId: string) {
       if (beforeId) qs.push(`beforeId=${beforeId}`);
       qs.push(`limit=${limit}`);
 
-      const url = `http://10.114.200.150:4000/api/v1/messages/${carpoolId}?${qs.join(
+      const url = `http://10.170.32.53:4000/api/v1/messages/${carpoolId}?${qs.join(
         "&"
       )}`;
 
@@ -227,7 +227,7 @@ export function useChatMessages(carpoolId: string) {
     socket.on("disconnect", handleDisconnect);
 
     // Join the room initially if connected
-    if (isConnected) {
+    if (socket.connected) {
       joinChatRoom();
     }
 
@@ -244,7 +244,8 @@ export function useChatMessages(carpoolId: string) {
   useEffect(() => {
     if (!socket) return;
 
-    if (isConnected) {
+    console.log(socket.connected, isConnected, "this is sockets");
+    if (socket.connected) {
       // Rejoin room when connection is restored
       if (joinedRoomsRef.current.has(carpoolId)) {
         console.log("Connection restored, rejoining room:", carpoolId);
