@@ -17,8 +17,9 @@ import {
 } from "react-native";
 
 import { useLocationManager } from "@/hooks/useLocationManager";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useUnreadCounts } from "@/hooks/useSocketReactHook";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import tw from "twrnc";
 
 export default function HomeScreen() {
@@ -31,12 +32,15 @@ export default function HomeScreen() {
   const tabs = ["Events", "Carpool", "Places"];
   const [activeTab, setActiveTab] = useState(tabs[0]);
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const { data: events, isPending: loading } = useForYouEvents(user?.id);
   const { data: carpoolsForYou, isPending: pendingCarpoolData } =
     useForYouCarpools();
 
   const router = useRouter();
+
+  console.log(carpoolsForYou?.data[1].event.startDate, "is date valid");
 
   const dummyPlaces = [
     {
@@ -61,15 +65,31 @@ export default function HomeScreen() {
       >
         <Text style={tw`text-white`}>Hello!</Text>
         <View style={tw`flex-row items-center justify-between`}>
-          <TouchableOpacity style={tw`mr-5`}>
-            <Feather name="heart" size={40} color="white" />
+          <TouchableOpacity
+            style={tw`mr-5 relative`}
+            onPress={() => router.push("/notifications")}
+          >
+            <Ionicons
+              size={30}
+              color={"white"}
+              name={unreadCount > 0 ? "heart" : "heart-outline"}
+            />
+            {unreadCount > 0 && (
+              <View
+                style={tw`absolute right-0 bg-[#0FF1CF] rounded-full h-5  px-2 justify-center items-center`}
+              >
+                <Text style={tw`text-white font-bold text-sm`}>
+                  {unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={tw`relative`}
             onPress={() => router.push("/conversations")}
           >
             <Ionicons
-              size={40}
+              size={30}
               color="white"
               name={
                 data?.totalUnread && data.totalUnread > 0
@@ -79,9 +99,9 @@ export default function HomeScreen() {
             />
             {data?.totalUnread && data.totalUnread > 0 && (
               <View
-                style={tw`absolute right-0 bg-[#0FF1CF] rounded-full h-7 px-2 justify-center items-center`}
+                style={tw`absolute right-0 bg-[#0FF1CF] rounded-full h-5 px-2  justify-center items-center`}
               >
-                <Text style={tw`text-white font-bold text-sm`}>
+                <Text style={tw`text-white font-bold text-xs`}>
                   {data.totalUnread}
                 </Text>
               </View>

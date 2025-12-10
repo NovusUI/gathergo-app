@@ -1,4 +1,6 @@
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ConversationProvider } from "@/context/ConversationContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
@@ -63,14 +65,18 @@ export default function RootLayout() {
         <AuthProvider>
           <PushNotificationProvider>
             <SocketProvider>
-              <PaystackProvider
-                debug
-                publicKey="pk_test_430fb933c2b87c6f0f6a29b40b97d2d1caf60fbe"
-                defaultChannels={["bank", "bank_transfer", "card", "ussd"]}
-              >
-                <AppContent />
-                <Toast config={toastConfig} />
-              </PaystackProvider>
+              <NotificationProvider>
+                <ConversationProvider>
+                  <PaystackProvider
+                    debug
+                    publicKey="pk_test_430fb933c2b87c6f0f6a29b40b97d2d1caf60fbe"
+                    defaultChannels={["bank", "bank_transfer", "card", "ussd"]}
+                  >
+                    <AppContent />
+                    <Toast config={toastConfig} />
+                  </PaystackProvider>
+                </ConversationProvider>
+              </NotificationProvider>
             </SocketProvider>
           </PushNotificationProvider>
         </AuthProvider>

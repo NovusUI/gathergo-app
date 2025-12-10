@@ -68,7 +68,7 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
         <BottomSheetScrollView style={tw`p-5`}>
           <View style={tw`py-5 gap-5`}>
             {combinedRequest.length > 0 ? (
-              carpool.passengers.map((p: any) => (
+              combinedRequest.map((p: any) => (
                 <RequestCard
                   status={p.status}
                   key={p.id}

@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./queryKeys";
 import {
   getAllUserEvent,
+  getCarpoolChatAccess,
   getCarpoolDetails,
   getCarpoolsForYou,
   getCurrentUserFn,
@@ -139,6 +140,16 @@ export const useTicketOrRegByTransactionRef = (
     queryKey: [QUERY_KEYS.ticketOrReg, tId, type], // stable primitive
     queryFn: getTicketOrRegByTransactionId,
     staleTime: 1000 * 60 * 5,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useGetCarpoolChatAccess = (id: string, options = {}) => {
+  return useQuery<StandardResponse>({
+    queryKey: [QUERY_KEYS.carpoolChat, id], // stable primitive
+    queryFn: getCarpoolChatAccess,
+    staleTime: 1000 * 60,
     retry: 1,
     ...options,
   });
