@@ -2,27 +2,47 @@ import client from "@/api/client";
 import {
   CompleteProfileData,
   EventsResponse,
+  PhoneFirebaseAuthPayload,
   StandardResponse,
   authResponse,
   checkUsernameRes,
   publicProfileRes,
   uploadProfilePictureRes,
 } from "@/types/auth";
-import { CarpoolForm } from "@/types/carpool";
 import {
+  CarpoolForm,
+  PaginatedEventCarpoolsResponse,
+} from "@/types/carpool";
+import {
+  DonationResponse,
   EventDetailsResponse,
   GetTickets,
   GetTicketsResponse,
+  InitiateDonationPayload,
+  PaginatedDashboardEventsResponse,
   PaginatedEventResponse,
   PaginatedSeachResponse,
 } from "@/types/event";
 import { QueryFunctionContext } from "@tanstack/react-query";
 
+import { uploadClient } from "@/api/uploadClient";
+import {
+  BulkScanResponse,
+  ScanHistoryResponse,
+  ScanResponse,
+  ScannerPermissionResponse,
+  ScannerStatsResponse,
+  SearchUsersResponse,
+  ValidationResponse,
+} from "@/types/scanner";
 import {
   AUTH_URLS,
   CARPOOL_URL,
+  DASHBOARD_URL,
+  DONATION_URL,
   EVENT_URL,
   NOTIFICATION_URL,
+  SCANNER_URL,
   SEARCH_URL,
   TRANSACTION_URL,
   USER_URL,
@@ -56,6 +76,16 @@ export const googleLoginFn = async (
     token: googleToken,
   });
   return data; // should match UserResponse
+};
+
+export const phoneFirebaseAuthFn = async (
+  payload: PhoneFirebaseAuthPayload
+): Promise<authResponse> => {
+  const { data } = await client.post<authResponse>(
+    AUTH_URLS.phoneFirebaseToken,
+    payload
+  );
+  return data;
 };
 
 export const signUpFn = async (
@@ -129,38 +159,67 @@ export const edtUserBio = async (payload: {
   return response.data;
 };
 
+// export const uploadPicture = async (
+//   formData: FormData
+// ): Promise<uploadProfilePictureRes> => {
+//   const response = await client.post<uploadProfilePictureRes>(
+//     USER_URL.profilePictureUpload,
+//     formData
+//   );
+
+//   return response.data;
+// };
+
 export const uploadPicture = async (
   formData: FormData
 ): Promise<uploadProfilePictureRes> => {
-  const response = await client.post<uploadProfilePictureRes>(
-    USER_URL.profilePictureUpload,
-    formData
-  );
-
-  return response.data;
+  // Use fetch client instead of axios
+  const data = await uploadClient.upload("/user/profile-picture", formData);
+  return data;
 };
+
+// export const createEvent = async (
+//   formData: FormData
+// ): Promise<StandardResponse> => {
+//   const response = await client.post<StandardResponse>(
+//     EVENT_URL.createEvent,
+//     formData
+//   );
+
+//   return response.data;
+// };
 
 export const createEvent = async (
   formData: FormData
 ): Promise<StandardResponse> => {
-  const response = await client.post<StandardResponse>(
-    EVENT_URL.createEvent,
-    formData
-  );
-
-  return response.data;
+  // Use fetch client instead of axios
+  const data = await uploadClient.upload(EVENT_URL.createEvent, formData);
+  return data;
 };
+
+// export const updateEvent = async (
+//   formData: FormData,
+//   eventId: string
+// ): Promise<StandardResponse> => {
+//   const response = await client.patch<StandardResponse>(
+//     EVENT_URL.updateEvent(eventId),
+//     formData
+//   );
+
+//   return response.data;
+// };
 
 export const updateEvent = async (
   formData: FormData,
   eventId: string
 ): Promise<StandardResponse> => {
-  const response = await client.patch<StandardResponse>(
+  // Use fetch client instead of axios
+  const data = await uploadClient.upload(
     EVENT_URL.updateEvent(eventId),
-    formData
+    formData,
+    { method: "PATCH" }
   );
-
-  return response.data;
+  return data;
 };
 
 export const getEventsForYou = async ({
@@ -235,6 +294,16 @@ export const registerForEvent = async (
   return response.data;
 };
 
+export const initiateDonation = async (
+  payload: InitiateDonationPayload
+): Promise<DonationResponse> => {
+  const response = await client.post<DonationResponse>(
+    DONATION_URL.initiateDonation,
+    payload
+  );
+  return response.data;
+};
+
 export const getAllUserEvent = async (
   ctx: QueryFunctionContext<[string, string | undefined, number]>
 ): Promise<PaginatedEventResponse> => {
@@ -297,6 +366,39 @@ export const getCarpoolsForYou = async ({
 }): Promise<StandardResponse> => {
   const response = await client.get<StandardResponse>(
     CARPOOL_URL.getForYouCarpool
+  );
+
+  return response.data;
+};
+
+export const getPaginatedEventCarpools = async (
+  ctx: QueryFunctionContext<
+    [
+      string,
+      {
+        eventId: string;
+        filter?: "all" | "close_to_you" | "followed";
+        latitude?: number;
+        longitude?: number;
+        pageSize: number;
+      },
+    ]
+  >
+): Promise<PaginatedEventCarpoolsResponse> => {
+  const [, payload] = ctx.queryKey;
+  const page = (ctx.pageParam as number) ?? 1;
+
+  const response = await client.get<PaginatedEventCarpoolsResponse>(
+    CARPOOL_URL.getPaginatedEventCarpools(payload.eventId),
+    {
+      params: {
+        page,
+        pageSize: payload.pageSize,
+        filter: payload.filter ?? "all",
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+      },
+    }
   );
 
   return response.data;
@@ -413,5 +515,239 @@ export const getCarpoolChatAccess = async ({
     CARPOOL_URL.getCarpoolChatAccess(carpoolId)
   );
 
+  return response.data;
+};
+
+export const getEventImageStatus = async ({
+  queryKey,
+}): Promise<StandardResponse> => {
+  const [, eventId] = queryKey;
+
+  const response = await client.get<StandardResponse>(
+    EVENT_URL.getEventImageUploadStatus(eventId)
+  );
+
+  return response.data;
+};
+
+export const requestCarpoolAfterCancel = async (
+  payload: {
+    cancelCarpoolId: string;
+    origin: string;
+    note?: string;
+    startPoint?: { lng: number; lat: number };
+  },
+  carpoolId: string
+): Promise<StandardResponse> => {
+  const response = await client.post<StandardResponse>(
+    CARPOOL_URL.requestCarpoolAfterCancel(carpoolId),
+    payload
+  );
+  return response.data;
+};
+
+export const getDashboardData = async (): Promise<StandardResponse> => {
+  const response = await client.get<StandardResponse>(
+    DASHBOARD_URL.getDashboard
+  );
+
+  return response.data;
+};
+
+export const getEventDashboardData = async ({
+  queryKey,
+}): Promise<StandardResponse> => {
+  const [_, eventId] = queryKey;
+  const response = await client.get<StandardResponse>(
+    DASHBOARD_URL.getEventDashboard(eventId)
+  );
+
+  return response.data;
+};
+
+export const getDashboardEvents = async (
+  ctx: QueryFunctionContext<[string, string | undefined, number]>
+): Promise<PaginatedDashboardEventsResponse> => {
+  const [, filter, pageSize] = ctx.queryKey;
+  const page = (ctx.pageParam as number) ?? 1;
+
+  const response = await client.get<PaginatedDashboardEventsResponse>(
+    DASHBOARD_URL.getDashboardEvents,
+    {
+      params: { filter, page, pageSize },
+    }
+  );
+  console.log(response.data);
+  return response.data;
+};
+
+export const getPayments = async (
+  ctx: QueryFunctionContext<[string, string | undefined, number]>
+): Promise<PaginatedEventResponse> => {
+  const [, eventId, pageSize] = ctx.queryKey;
+  const page = (ctx.pageParam as number) ?? 1;
+
+  const response = await client.get<PaginatedEventResponse>(
+    DASHBOARD_URL.getPayments,
+    {
+      params: { eventId, page, pageSize },
+    }
+  );
+  console.log(response.data);
+  return response.data;
+};
+
+export const getShortcut = async (): Promise<StandardResponse> => {
+  console.log("is it?");
+  const response = await client.get<StandardResponse>(
+    DASHBOARD_URL.getShortcut
+  );
+
+  console.log("returning data");
+
+  return response.data;
+};
+
+export const getShortcutEvent = async ({
+  queryKey,
+}): Promise<StandardResponse> => {
+  const [_, eventId] = queryKey;
+  const response = await client.get<StandardResponse>(
+    DASHBOARD_URL.getShortcutEvent(eventId)
+  );
+
+  return response.data;
+};
+
+export const quickScanFn = async (
+  qrCode: string
+): Promise<ValidationResponse> => {
+  const response = await client.get<ValidationResponse>(SCANNER_URL.quickScan, {
+    params: { qrCode },
+  });
+  return response.data;
+};
+
+export const scanFn = async (payload: {
+  qrCode: string;
+  markAsUsed?: boolean;
+  location?: string;
+  notes?: string;
+}): Promise<ScanResponse> => {
+  console.log(payload, "scan pl");
+  const response = await client.post<ScanResponse>(SCANNER_URL.scan, payload);
+  return response.data;
+};
+
+export const bulkScanFn = async (payload: {
+  scans: Array<{ qrCode: string; markAsUsed?: boolean }>;
+}): Promise<BulkScanResponse> => {
+  const response = await client.post<BulkScanResponse>(
+    SCANNER_URL.bulkScan,
+    payload
+  );
+  return response.data;
+};
+
+export const validateScanFn = async (
+  qrCode: string
+): Promise<ValidationResponse> => {
+  const response = await client.get<ValidationResponse>(
+    SCANNER_URL.validate(qrCode)
+  );
+  return response.data;
+};
+
+export const getScanHistoryFn = async (
+  ctx: QueryFunctionContext<[string, any]>
+): Promise<ScanHistoryResponse> => {
+  const [, filters] = ctx.queryKey;
+  const page = (ctx.pageParam as number) ?? 1;
+
+  const response = await client.get<ScanHistoryResponse>(
+    SCANNER_URL.scanHistory,
+    { params: { ...filters, page } }
+  );
+  return response.data;
+};
+
+export const getScannerStatsFn = async (): Promise<ScannerStatsResponse> => {
+  const response = await client.get<ScannerStatsResponse>(
+    SCANNER_URL.scannerStats
+  );
+  return response.data;
+};
+
+// Scanner permissions functions
+export const grantScannerPermissionFn = async (payload: {
+  scannerId?: string;
+  userEmail?: string;
+
+  expiresAt?: string;
+}): Promise<ScannerPermissionResponse> => {
+  const response = await client.post<ScannerPermissionResponse>(
+    SCANNER_URL.grantPermission,
+    payload
+  );
+  return response.data;
+};
+
+export const updateScannerPermissionFn = async (
+  permissionId: string,
+  payload: { isActive?: boolean; expiresAt?: string }
+): Promise<ScannerPermissionResponse> => {
+  const response = await client.patch<ScannerPermissionResponse>(
+    SCANNER_URL.updatePermission(permissionId),
+    payload
+  );
+  return response.data;
+};
+
+export const revokeScannerPermissionFn = async (
+  permissionId: string
+): Promise<StandardResponse> => {
+  const response = await client.delete<StandardResponse>(
+    SCANNER_URL.revokePermission(permissionId)
+  );
+  return response.data;
+};
+
+export const getGrantedScannerPermissionsFn = async ({
+  queryKey,
+}): Promise<ScannerPermissionResponse> => {
+  const response = await client.get<ScannerPermissionResponse>(
+    SCANNER_URL.grantedPermissions
+  );
+  return response.data;
+};
+
+export const getMyScannerPermissionsFn =
+  async (): Promise<ScannerPermissionResponse> => {
+    const response = await client.get<ScannerPermissionResponse>(
+      SCANNER_URL.myPermissions
+    );
+    return response.data;
+  };
+
+export const searchScannerUsersFn = async (
+  ctx: QueryFunctionContext<[string, any]>
+): Promise<SearchUsersResponse> => {
+  const [, query] = ctx.queryKey;
+  const page = (ctx.pageParam as number) ?? 1;
+
+  const response = await client.get<SearchUsersResponse>(
+    SCANNER_URL.searchUsers,
+    { params: { ...query, page } }
+  );
+  return response.data;
+};
+
+export const canScanFn = async (
+  eventId: string
+): Promise<{ canScan: boolean; canMarkAsUsed: boolean }> => {
+  const response = await client.get<{
+    canScan: boolean;
+    canMarkAsUsed: boolean;
+  }>(SCANNER_URL.canScan(eventId));
   return response.data;
 };

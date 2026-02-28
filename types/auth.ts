@@ -8,10 +8,13 @@ export type User = {
   bio?: string;
   profilePicUrl?: string;
   username?: string;
+  phoneNumber?: string;
+  phoneVerifiedAt?: string;
+  authProvider?: "email" | "google" | "phone";
   // add anything else you expect from backend (e.g. avatar, role, phone)
 };
 
-export type Registration = "ticket" | "registration";
+export type Registration = "ticket" | "registration" | "donation";
 
 export type EventData = {
   id: string;
@@ -42,8 +45,24 @@ export type EventData = {
     profilePicUrlTN: string;
   };
   reason: string;
+  isImageProcessing: boolean;
+  donationTarget: number;
+  isFollowingCreator: boolean;
+  isFollowedByCreator: boolean;
+  totalDonations: number;
 };
 
+type DashboardEvent = {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  participants: number;
+  raised: number;
+  goal: number;
+  date: string;
+  type: "upcoming" | "past";
+};
 type AuthData = {
   accessToken: string;
   user: User;
@@ -66,6 +85,25 @@ export interface authResponse extends StandardResponse {
   data: AuthData;
 }
 
+export interface PhoneVerificationArtifact {
+  sessionId?: string;
+  idToken?: string;
+  verificationId?: string;
+  smsCode?: string;
+  provider?: "firebase_pnv";
+}
+
+export interface PhoneFirebaseAuthPayload {
+  phoneNumber: string;
+  verificationArtifact: PhoneVerificationArtifact;
+  deviceInfo?: {
+    platform?: string;
+    osVersion?: string;
+    appVersion?: string;
+    deviceName?: string;
+  };
+}
+
 export interface publicProfileData extends User {
   bio: string;
   followingCount: number;
@@ -82,6 +120,9 @@ export interface EventsResponse extends StandardResponse {
   data: EventData[];
 }
 
+export interface DashboardEventResponse extends StandardResponse {
+  data: DashboardEvent[];
+}
 export interface checkUsernameRes extends StandardResponse {
   data: {
     available: boolean;

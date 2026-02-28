@@ -1,7 +1,14 @@
 import { Picker } from "@react-native-picker/picker";
 import { Phone } from "lucide-react-native";
-import { forwardRef, useEffect, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import {
+  forwardRef,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 interface PhoneInputProps {
   placeholder?: string;
@@ -12,6 +19,7 @@ interface PhoneInputProps {
 
 const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
   ({ placeholder = "Enter phone number", value, onChangeText, error }, ref) => {
+    const inputRef = useRef<TextInput | null>(null);
     const [selectedCode, setSelectedCode] = useState("+234"); // Default Nigeria
     const [countries, setCountries] = useState<
       { label: string; value: string }[]
@@ -41,8 +49,24 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
       fetchCountries();
     }, []);
 
+    const setRefs = useCallback(
+      (node: TextInput | null) => {
+        inputRef.current = node;
+        if (!ref) return;
+        if (typeof ref === "function") {
+          ref(node);
+        } else {
+          (ref as MutableRefObject<TextInput | null>).current = node;
+        }
+      },
+      [ref]
+    );
+
     return (
-      <View className="mb-4 w-full max-w-96 bg-[#1B2A50]/40 p-2 rounded-xl">
+      <Pressable
+        onPress={() => inputRef.current?.focus()}
+        className="mb-4 w-full max-w-96 bg-[#1B2A50]/40 p-2 rounded-xl"
+      >
         <View className="flex-row items-center px-2">
           {/* Phone icon */}
           <View className="mr-2">
@@ -69,7 +93,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
 
           {/* Phone Number Input */}
           <TextInput
-            ref={ref}
+            ref={setRefs}
             className="flex-1 py-3 text-white outline-none ml-2"
             placeholder={placeholder}
             placeholderTextColor="#9CA3AF"
@@ -81,9 +105,11 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
 
         {/* Error Message */}
         {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
-      </View>
+      </Pressable>
     );
   }
 );
+
+PhoneNumberInput.displayName = "PhoneNumberInput";
 
 export default PhoneNumberInput;

@@ -1,8 +1,9 @@
 import { Image, View } from "react-native";
+import { UserRound } from "lucide-react-native";
 import tw from "twrnc";
 
 interface Props {
-  images: any[];
+  images: Array<string | null | undefined>;
   size?: number;
   overlap?: number;
   className?: string;
@@ -17,9 +18,8 @@ const OverlappingImages = ({
   return (
     <View style={tw.style("flex-row items-center", className)}>
       {images.map((image, index) => (
-        <Image
+        <View
           key={index}
-          source={image}
           style={tw.style({
             width: size,
             height: size,
@@ -28,8 +28,18 @@ const OverlappingImages = ({
             zIndex: images.length - index,
             borderWidth: 2,
             borderColor: "white",
+            overflow: "hidden",
+            backgroundColor: "#1B2A50",
+            alignItems: "center",
+            justifyContent: "center",
           })}
-        />
+        >
+          {image ? (
+            <Image source={{ uri: image }} style={tw.style({ width: size, height: size })} />
+          ) : (
+            <UserRound size={Math.max(12, size * 0.45)} color="#8FA5E2" />
+          )}
+        </View>
       ))}
     </View>
   );

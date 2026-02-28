@@ -1,5 +1,8 @@
 // components/NotificationItem.tsx
-import { Text, TouchableOpacity, View } from "react-native";
+import { spacing } from "@/constants/spacing";
+import { formatShortDate } from "@/utils/dateTimeHandler";
+import { Image } from "expo-image";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 interface NotificationItemProps {
@@ -29,26 +32,99 @@ export const NotificationItem = ({
     onPress();
   };
 
+  const isUsername = notification.message.startsWith("@");
+
+  const renderNotificationType = () => {
+    switch (notification.type.split("_")[1]) {
+      case "donationprogress":
+        return <></>;
+
+      default:
+        return (
+          <View style={[tw`flex-row w-full bg-[#01082E]`, styles.inner]}>
+            <View
+              style={tw`w-[91px] h-[84px] rounded-lg overflow-hidden relative`}
+            >
+              <Image
+                source={notification.imageUrl}
+                placeholder={
+                  notification.imageUrl
+                    ? { uri: notification.imageUrl }
+                    : undefined
+                }
+                cachePolicy="disk"
+                style={{ width: 91, height: 84, borderRadius: 8 }}
+                contentFit="cover"
+                transition={500}
+              />
+              <View style={[tw`absolute bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`, styles.dateBadge]}>
+                <Text style={tw`text-white text-xs`}>
+                  {formatShortDate(notification.createdAt)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.content}>
+              {/* Added flex-1 here */}
+              <Text
+                style={tw`text-white font-semibold text-lg`}
+                numberOfLines={1} // Prevents title from wrapping
+                ellipsizeMode="tail"
+              >
+                {notification.title}
+              </Text>
+              <Text
+                style={tw`text-white`}
+                numberOfLines={2} // Limits message to 2 lines
+                ellipsizeMode="tail"
+              >
+                {isUsername ? (
+                  <>
+                    <Text style={tw`font-bold text-[#3D50DF]`}>
+                      {notification.message.split(" ").slice(0, 1).join(" ")}
+                    </Text>
+                    <Text>
+                      {notification.message.split(" ").slice(1).join(" ")}
+                    </Text>
+                  </>
+                ) : (
+                  notification.message
+                )}
+              </Text>
+            </View>
+          </View>
+        );
+    }
+  };
+
   return (
     <TouchableOpacity
       onPress={handlePress}
-      style={tw`p-4 border-b border-gray-200 ${
-        !notification.read ? "bg-blue-50" : "bg-white"
+      style={tw`border-b bg-[#01082E] ${
+        !notification.read ? "border-[#0FF1CF]" : ""
       }`}
+      hitSlop={{ top: spacing.xs, bottom: spacing.xs, left: 0, right: 0 }}
     >
-      <View style={tw`flex-row justify-between items-start`}>
-        <View style={tw`flex-1`}>
-          <Text style={tw`font-semibold text-base`}>{notification.title}</Text>
-          <Text style={tw`text-gray-600 mt-1`}>{notification.message}</Text>
-          <Text style={tw`text-gray-400 text-xs mt-2`}>
-            {new Date(notification.createdAt).toLocaleDateString()} •{" "}
-            {new Date(notification.createdAt).toLocaleTimeString()}
-          </Text>
-        </View>
-        {!notification.read && (
-          <View style={tw`w-2 h-2 bg-blue-500 rounded-full ml-2 mt-1`} />
-        )}
-      </View>
+      <View style={styles.outer}>{renderNotificationType()}</View>
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  outer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  inner: {
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  dateBadge: {
+    top: spacing.xs,
+    left: spacing.xs,
+    padding: spacing.xs,
+  },
+  content: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+});

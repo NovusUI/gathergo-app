@@ -21,6 +21,7 @@ import { showGlobalError, showGlobalWarning } from "@/utils/globalErrorHandler";
 import { useQueryClient } from "@tanstack/react-query";
 import { MessageCircleWarning } from "lucide-react-native";
 import { Text, View } from "react-native";
+import tw from "twrnc";
 
 export type FlexrideBSRef = {
   open: () => void;
@@ -67,7 +68,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
 
     // expose functions to parent
     useImperativeHandle(ref, () => ({
-      open: () => bottomSheetCarRef.current?.snapToIndex(1), // or snapToIndex(0)
+      open: () => bottomSheetCarRef.current?.snapToIndex(0),
       close: () => bottomSheetCarRef.current?.close(),
     }));
 
@@ -76,6 +77,9 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
         ref={bottomSheetCarRef}
         index={-1}
         snapPoints={snapPointsCar}
+        android_keyboardInputMode="adjustResize"
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
         enablePanDownToClose
         backdropComponent={(props) => (
           <BottomSheetBackdrop
@@ -86,12 +90,19 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
-        <BottomSheetScrollView className="p-5">
-          <View className="py-5 gap-5">
+        <BottomSheetScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            paddingBottom: 120,
+          }}
+        >
+          <View style={tw`py-5 gap-5`}>
             <CustomView>
-              <Text className="text-white mb-1">Car model</Text>
+              <Text style={tw`text-white mb-1`}>Car model</Text>
               <Input
-                className="h-16"
+                style={tw`h-12`}
                 placeholder="E.g., Benz GLE"
                 onChangeText={setCarModel}
                 value={carModel}
@@ -99,24 +110,24 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
             </CustomView>
 
             <CustomView>
-              <Text className="text-white mb-1">Color</Text>
+              <Text style={tw`text-white mb-1`}>Color</Text>
               <Input
-                className="h-16"
+                style={tw`h-12`}
                 placeholder="E.g., Wine red"
                 onChangeText={setCarColor}
                 value={carColor}
               />
             </CustomView>
-            <View className="gap-3 flex-row items-center">
+            <View style={tw`gap-3 flex-row items-center`}>
               <MessageCircleWarning color={"red"} />
-              <Text className="text-red-600">
+              <Text style={tw`text-red-600`}>
                 Please dont input your plate number
               </Text>
             </View>
           </View>
         </BottomSheetScrollView>
 
-        <View className="w-screen max-w-[500px] p-5">
+        <View style={tw`w-screen max-w-[500px] p-5`}>
           <CustomButton
             title={isCarpoolUpdating ? "Flexing ride" : "Save details"}
             buttonClassName="bg-[#0FF1CF] w-full border-0"
@@ -130,5 +141,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
     );
   }
 );
+
+FlexrideBS.displayName = "FlexrideBS";
 
 export default FlexrideBS;

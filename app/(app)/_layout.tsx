@@ -13,9 +13,17 @@ export default function AppLayout() {
     return <Redirect href="/onboarding" />;
   }
 
+  //skip redirect if alreadfy on profile-setup
+
+  const isOnProfileSetup = segments.includes("profile-setup");
+
+  if (!user?.isProfileComplete && !isOnProfileSetup) {
+    return <Redirect href={"/profile-setup"} />;
+  }
+
   // Skip redirect if already on /preference
   const isOnPreference = segments.includes("preference");
-  if (!user?.hasPreferences && !isOnPreference) {
+  if (user?.isProfileComplete && !user?.hasPreferences && !isOnPreference) {
     return <Redirect href="/preference" />;
   }
 

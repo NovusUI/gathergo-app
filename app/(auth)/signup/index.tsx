@@ -1,8 +1,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { Key, Mail, XIcon } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  Keyboard,
+  KeyboardEvent,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import tw from "twrnc";
 import * as z from "zod";
 
@@ -29,6 +40,7 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 
 const SignUp = () => {
   const router = useRouter();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { mutate: signUp, isPending } = useSignUpMutation();
 
   const {
@@ -49,10 +61,46 @@ const SignUp = () => {
     );
   };
 
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      "keyboardDidShow",
+      (event: KeyboardEvent) => {
+        setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      }
+    );
+    const frameSub = Keyboard.addListener(
+      "keyboardDidChangeFrame",
+      (event: KeyboardEvent) => {
+        setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      }
+    );
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      frameSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   return (
-    <View
-      style={tw`flex-1 bg-[#01082E] justify-center items-center px-5 py-14 gap-6`}
+    <KeyboardAvoidingView
+      style={tw`flex-1 bg-[#01082E]`}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
+      <ScrollView
+        contentContainerStyle={[
+          tw`flex-grow justify-center items-center px-5 py-14 gap-6`,
+          Platform.OS === "android" && keyboardHeight > 0
+            ? { paddingBottom: keyboardHeight + 24 }
+            : null,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       {/* Back Button */}
       <TouchableOpacity
         style={tw`absolute top-10 left-8`}
@@ -149,7 +197,8 @@ const SignUp = () => {
           <Text style={tw`font-semibold`}>Sign in</Text>
         </Text>
       </TouchableOpacity>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

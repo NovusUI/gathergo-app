@@ -2,13 +2,21 @@ import CustomButton from "@/components/buttons/CustomBtn1"
 import PhoneNumberInput from "@/components/inputs/PhoneNumberInput"
 import { useRouter } from "expo-router"
 import { InfoIcon } from "lucide-react-native"
-import { Text, View } from "react-native"
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native"
 
 
-const index = () => {
+const AddPhoneNumberScreen = () => {
     const router = useRouter()
   return (
-    <View className="flex-1 bg-[#01082E] flex flex-col  items-center px-5 py-10 gap-5 overflow-scroll">
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#01082E" }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingHorizontal: 20, paddingVertical: 40, rowGap: 20 }}
+      >
         <Text className="text-white">Add your Phone number</Text>
         <Text className="text-white text-xs">frank.ze@myemail.com</Text>
         <View className="flex-1 flex flex-col w-full max-w-[500px] justify-center items-center gap-10">
@@ -21,16 +29,16 @@ const index = () => {
             </View>
 
             <Text className="text-white">
-                We'll send you a code to verify this mobile number. Message and data rates may apply.
+            We&apos;ll send you a code to verify this mobile number. Message and data rates may apply.
             </Text>
             <Text className="text-white">
             Your emails and phone numbers will be used to offer relevant features, content and advertising as covered in our Privacy Policy.
             </Text>
         </View>
         <CustomButton onPress={()=>router.replace("/verify-phonenumber")} title="Get code by sms" buttonClassName='bg-[#0FF1CF] border-0 w-full' textClassName="!text-black" showArrow={false}/>
-
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
-export default index
+export default AddPhoneNumberScreen

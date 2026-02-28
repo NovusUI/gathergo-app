@@ -1,4 +1,5 @@
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
 
 type PerksListProps = {
   value: string[];
@@ -28,31 +29,31 @@ const PerksList: React.FC<PerksListProps> = ({ value, onChange }) => {
         return (
           <View
             key={index}
-            className="flex-row items-center bg-blue-900 rounded-2xl p-4 mb-3"
+            style={tw`flex-row items-center bg-blue-900 rounded-2xl p-4 mb-3`}
           >
-            <View className="flex-1">
+            <View style={tw`flex-1`}>
               {isInput ? (
                 <TextInput
                   value={perk}
                   onChangeText={(text) => handleInputChange(text, index)}
                   placeholder="Enter perk..."
                   placeholderTextColor="#94a3b8"
-                  className="text-white text-base"
+                  style={tw`text-white text-base`}
                 />
               ) : (
-                <Text className="text-white text-base">{perk}</Text>
+                <Text style={tw`text-white text-base`}>{perk}</Text>
               )}
             </View>
 
             <TouchableOpacity onPress={() => deletePerk(index)}>
-              <Text className="text-red-400 text-sm ml-3">❌</Text>
+              <Text style={tw`text-red-400 text-sm ml-3`}>❌</Text>
             </TouchableOpacity>
           </View>
         );
       })}
 
       <TouchableOpacity onPress={addPerk}>
-        <Text className="text-teal-400 text-sm mt-2">Add New Perk</Text>
+        <Text style={tw`text-teal-400 text-sm mt-2`}>Add Ticket Perk</Text>
       </TouchableOpacity>
     </View>
   );

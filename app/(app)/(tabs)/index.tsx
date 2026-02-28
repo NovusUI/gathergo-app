@@ -1,7 +1,7 @@
 import Tab from "@/components/Tab";
 import CarpoolCard from "@/components/ui/CarpoolCard";
 import EventCard from "@/components/ui/EventCard";
-import PlaceCard from "@/components/ui/PlaceCard";
+import { layoutSpacing, spacing } from "@/constants/spacing";
 
 import { useAuth } from "@/context/AuthContext";
 import { useForYouCarpools, useForYouEvents } from "@/services/queries";
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -23,13 +24,13 @@ import { Ionicons } from "@expo/vector-icons";
 import tw from "twrnc";
 
 export default function HomeScreen() {
-  const { coords, requestLocation } = useLocationManager();
+  const { requestLocation } = useLocationManager();
   const { data } = useUnreadCounts();
   useEffect(() => {
     requestLocation();
-  }, []);
+  }, [requestLocation]);
 
-  const tabs = ["Events", "Carpool", "Places"];
+  const tabs = ["Events", "Carpool", "Circle"];
   const [activeTab, setActiveTab] = useState(tabs[0]);
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
@@ -40,33 +41,16 @@ export default function HomeScreen() {
 
   const router = useRouter();
 
-  console.log(carpoolsForYou?.data[1].event.startDate, "is date valid");
-
-  const dummyPlaces = [
-    {
-      id: "p1",
-      name: "Nike Art Gallery",
-      description: "A cultural hub for Nigerian art",
-      imageUrl: "https://via.placeholder.com/80",
-    },
-    {
-      id: "p2",
-      name: "Lekki Conservation Center",
-      description: "Nature reserve and canopy walk",
-      imageUrl: "https://via.placeholder.com/80",
-    },
-  ];
+  const displayName = user?.username || user?.name || "there";
 
   return (
-    <View style={tw`flex-1 bg-[#030A31] pt-10 pb-5 items-center`}>
+    <View style={[tw`flex-1 bg-[#030A31] items-center`, styles.screen]}>
       {/* Header */}
-      <View
-        style={tw`flex-row justify-between items-center w-full max-w-[500px] px-5`}
-      >
-        <Text style={tw`text-white`}>Hello!</Text>
+      <View style={[tw`flex-row justify-between items-center w-full max-w-[500px]`, styles.header]}>
+        <Text style={tw`text-white`}>{`Hello ${displayName} 😊`}</Text>
         <View style={tw`flex-row items-center justify-between`}>
           <TouchableOpacity
-            style={tw`mr-5 relative`}
+            style={[tw`relative`, styles.headerIconButton]}
             onPress={() => router.push("/notifications")}
           >
             <Ionicons
@@ -111,12 +95,15 @@ export default function HomeScreen() {
       </View>
 
       {/* Featured Banner */}
-      <View style={tw`mt-4 overflow-hidden`}>
+      <TouchableOpacity
+        style={[tw`overflow-hidden`, styles.banner]}
+        onPress={() => router.push("/circle")}
+      >
         <Image source={require("../../../assets/images/circleframe.png")} />
-      </View>
+      </TouchableOpacity>
 
       {/* Tabs */}
-      <View style={tw`flex-row justify-between py-4 px-5 w-full max-w-[500px]`}>
+      <View style={[tw`flex-row justify-between w-full max-w-[500px]`, styles.tabs]}>
         {tabs.map((tab, index) => (
           <Tab
             key={index}
@@ -129,26 +116,28 @@ export default function HomeScreen() {
       </View>
 
       {/* Event List */}
-      <ScrollView style={tw`px-5 w-full max-w-[500px]`}>
-        <View style={tw`mt-6 mb-20`}>
+      <ScrollView style={[tw`w-full max-w-[500px]`, styles.scroll]}>
+        <View style={styles.listSection}>
           {activeTab === "Events" &&
             (loading ? (
               <ActivityIndicator color="#fff" size="large" />
             ) : events?.data?.length ? (
-              events.data.map((event: any) => (
-                <EventCard
-                  key={event.id}
-                  id={event.id}
-                  title={event.title}
-                  location={event.location}
-                  thumbnailUrl={event.thumbnailUrl}
-                  imageUrl={event.imageUrl}
-                  onPress={() => router.replace(`/event/${event.id}`)}
-                  registrationType={event.registrationType}
-                  registrationFee={event.registrationFee}
-                  startDate={event.startDate}
-                />
-              ))
+              <View style={styles.listGroup}>
+                {events.data.map((event: any) => (
+                  <EventCard
+                    key={event.id}
+                    id={event.id}
+                    title={event.title}
+                    location={event.location}
+                    thumbnailUrl={event.thumbnailUrl}
+                    imageUrl={event.imageUrl}
+                    onPress={() => router.replace(`/event/${event.id}`)}
+                    registrationType={event.registrationType}
+                    registrationFee={event.registrationFee}
+                    startDate={event.startDate}
+                  />
+                ))}
+              </View>
             ) : (
               <Text style={tw`text-gray-400 text-center`}>
                 No events found.
@@ -159,37 +148,86 @@ export default function HomeScreen() {
             (pendingCarpoolData ? (
               <ActivityIndicator color="#fff" size="large" />
             ) : carpoolsForYou?.data.length ? (
-              carpoolsForYou.data.map((carpool: any) => (
-                <CarpoolCard
-                  key={carpool.id}
-                  id={carpool.id}
-                  pickupLocation={carpool.origin}
-                  title={carpool.event.title}
-                  imageUrl={carpool.event.imageUrl}
-                  thumbnailUrl={carpool.event.thumbnailUrl}
-                  startDate={carpool.event.startDate}
-                  departureTime={carpool.departureTime}
-                  onPress={() => router.push(`/carpool/${carpool.id}`)}
-                />
-              ))
+              <View style={styles.listGroup}>
+                {carpoolsForYou.data.map((carpool: any) => (
+                  <CarpoolCard
+                    key={carpool.id}
+                    id={carpool.id}
+                    pickupLocation={carpool.origin}
+                    title={carpool.event.title}
+                    imageUrl={carpool.event.imageUrl}
+                    thumbnailUrl={carpool.event.thumbnailUrl}
+                    startDate={carpool.event.startDate}
+                    departureTime={carpool.departureTime}
+                    onPress={() => router.push(`/carpool/${carpool.id}`)}
+                  />
+                ))}
+              </View>
             ) : (
               <Text style={tw`text-gray-400 text-center`}>
                 No carpool found for you.
               </Text>
             ))}
 
-          {activeTab === "Places" &&
-            dummyPlaces.map((place) => (
-              <PlaceCard
-                key={place.id}
-                name={place.name}
-                description={place.description}
-                imageUrl={place.imageUrl}
-                onPress={() => console.log(`Clicked on ${place.name}`)}
+          {activeTab === "Circle" && (
+            <TouchableOpacity
+              style={styles.circleBanner}
+              onPress={() => router.push("/circle")}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={require("../../../assets/images/circleframe.png")}
+                style={styles.circleBannerImage}
               />
-            ))}
+              <Text style={tw`text-white text-base font-semibold mt-3 text-center`}>
+                Circle is coming soon
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    paddingTop: layoutSpacing.pageTop,
+    paddingBottom: layoutSpacing.pageBottom,
+  },
+  header: {
+    paddingHorizontal: layoutSpacing.pageHorizontal,
+  },
+  headerIconButton: {
+    marginRight: spacing.xl,
+  },
+  banner: {
+    marginTop: spacing.lg,
+  },
+  tabs: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: layoutSpacing.pageHorizontal,
+  },
+  scroll: {
+    paddingHorizontal: layoutSpacing.pageHorizontal,
+  },
+  listSection: {
+    marginTop: spacing.lg,
+    marginBottom: layoutSpacing.listBottomInset,
+  },
+  listGroup: {
+    gap: layoutSpacing.listGap,
+  },
+  circleBanner: {
+    padding: spacing.lg,
+    borderRadius: 16,
+    backgroundColor: "#101C45",
+    alignItems: "center",
+  },
+  circleBannerImage: {
+    width: "100%",
+    maxWidth: 420,
+    height: 140,
+    borderRadius: 12,
+  },
+});

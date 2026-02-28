@@ -3,13 +3,17 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
-import TextArea from "@/components/inputs/CustomTextArea";
 import EventCard from "@/components/ui/EventCard";
+import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationManager } from "@/hooks/useLocationManager";
 import { CarpoolFormValues, carpoolSchema } from "@/schemas/carpool";
 import { useCreateCarpool } from "@/services/mutations";
-import { useForYouEvents, useGetSearchResult } from "@/services/queries";
+import {
+  useEventDetails,
+  useForYouEvents,
+  useGetSearchResult,
+} from "@/services/queries";
 import { CarpoolForm } from "@/types/carpool";
 import { extractTime } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
@@ -17,23 +21,52 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
+  BottomSheetTextInput,
 } from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Switch, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import tw from "twrnc";
 
 const NewCarpool = () => {
   const router = useRouter();
+  const { eventId: routeEventId, autoOpenEventPicker } = useLocalSearchParams<{
+    eventId?: string;
+    autoOpenEventPicker?: string;
+  }>();
   const [query, setQuery] = useState("");
+  const searchInputRef = useRef<TextInput | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [picker, setPicker] = useState<null | string>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const hasAutoOpenedRef = useRef(false);
   const { coords, requestLocation, error, openSettings } = useLocationManager();
   console.log(error, coords);
+  const preselectedEventId = Array.isArray(routeEventId)
+    ? routeEventId[0]
+    : routeEventId;
+  const shouldAutoOpen =
+    (Array.isArray(autoOpenEventPicker)
+      ? autoOpenEventPicker[0]
+      : autoOpenEventPicker) === "1";
+
+  const { data: preselectedEvent } = useEventDetails(preselectedEventId || "", {
+    enabled: Boolean(preselectedEventId),
+  });
 
   const {
     data: searchResults,
@@ -52,12 +85,45 @@ const NewCarpool = () => {
 
   // Bottom sheet setup
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ["50%", "100%"], []);
+  const bottomSheetScrollRef = useRef<any>(null);
+  const snapPoints = useMemo(() => ["92%"], []);
 
   const openSheet = useCallback((event: any) => {
     setSelectedEvent(event);
     bottomSheetRef.current?.present();
   }, []);
+
+  const scrollSheetToBottom = useCallback(() => {
+    setTimeout(() => {
+      bottomSheetScrollRef.current?.scrollToEnd?.({ animated: true });
+    }, 140);
+  }, []);
+
+  useEffect(() => {
+    if (!isSheetOpen) return;
+
+    const onShow = Keyboard.addListener("keyboardDidShow", () => {
+      scrollSheetToBottom();
+    });
+
+    return () => {
+      onShow.remove();
+    };
+  }, [isSheetOpen, scrollSheetToBottom]);
+
+  useEffect(() => {
+    if (!shouldAutoOpen || !preselectedEventId || hasAutoOpenedRef.current) {
+      return;
+    }
+
+    const resolvedEvent = preselectedEvent?.data;
+    if (!resolvedEvent) {
+      return;
+    }
+
+    hasAutoOpenedRef.current = true;
+    openSheet(resolvedEvent);
+  }, [openSheet, preselectedEvent?.data, preselectedEventId, shouldAutoOpen]);
 
   const {
     control,
@@ -99,7 +165,7 @@ const NewCarpool = () => {
   const renderContent = () => {
     if (isPending || loading) {
       return (
-        <View className="flex-1 justify-center items-center">
+        <View style={tw`flex-1 justify-center items-center`}>
           <ActivityIndicator color="#0FF1CF" size="large" />
         </View>
       );
@@ -136,14 +202,14 @@ const NewCarpool = () => {
           }
         />
       ) : (
-        <View className="mt-5">
-          <Text className="text-white text-center">No Events found</Text>
+        <View style={tw`mt-5`}>
+          <Text style={tw`text-white text-center`}>No Events found</Text>
         </View>
       );
     } else {
       return eventsSuggestion?.data.length ? (
         <View>
-          <Text className="text-white text-center">Suggestions</Text>
+          <Text style={tw`text-white text-center`}>Suggestions</Text>
           <FlatList
             data={eventsSuggestion?.data}
             keyExtractor={(item) => item.id}
@@ -163,8 +229,8 @@ const NewCarpool = () => {
           />
         </View>
       ) : (
-        <View className="mt-5">
-          <Text className="text-white text-center">No suggestions</Text>
+        <View style={tw`mt-5`}>
+          <Text style={tw`text-white text-center`}>No suggestions</Text>
         </View>
       );
     }
@@ -172,7 +238,6 @@ const NewCarpool = () => {
 
   const {
     mutateAsync,
-    error: createCarpoolError,
     isPending: createCarpoolPending,
   } = useCreateCarpool({
     onSuccess: (data) => {
@@ -188,21 +253,39 @@ const NewCarpool = () => {
 
   const createCarpool = async (data: CarpoolFormValues) => {
     console.log(data);
+    if (!selectedEvent?.id) {
+      showGlobalError("Select an event first");
+      return;
+    }
+
+    let startPoint: { lng: number; lat: number } | undefined = undefined;
+    if (data.useCurrentLocation) {
+      if (coords) {
+        startPoint = { lng: coords.lng, lat: coords.lat };
+      } else {
+        const liveCoords = await requestLocation(true);
+        if (!liveCoords) {
+          showGlobalError("Enable location or turn off current location");
+          return;
+        }
+        startPoint = { lng: liveCoords.lng, lat: liveCoords.lat };
+      }
+    }
 
     const payload: CarpoolForm = {
       origin: data.isToEvent ? data.poolLocation : data.poolDestination,
       departureTime: data.departureTime,
       note: data.notes,
-      startPoint:
-        data.useCurrentLocation && coords
-          ? { lng: coords?.lng, lat: coords?.lat }
-          : undefined,
+      startPoint,
       eventId: selectedEvent.id,
     };
 
     console.log(payload);
-
-    mutateAsync(payload);
+    try {
+      await mutateAsync(payload);
+    } catch (e) {
+      console.log("create carpool failed", e);
+    }
   };
 
   const onError = (errors: any) => {
@@ -211,31 +294,43 @@ const NewCarpool = () => {
   };
 
   return (
-    <View className="flex-1 pt-20 pb-10 bg-[#01082E] flex flex-col items-center w-full">
-      <View className="flex-1 w-full max-w-[500px] px-5">
+    <View style={[tw`flex-1 pb-10 bg-[#01082E] flex flex-col items-center w-full`, styles.screen]}>
+      <View style={tw`flex-1 w-full max-w-[500px] px-5`}>
         <CustomeTopBarNav
           title="Create carpool"
           onClickBack={() => router.replace("/")}
         />
 
-        <View className="flex-row items-center bg-[#1A2755] rounded-full px-4 py-4 my-5 w-full max-w-[500px]">
+        <Pressable
+          onPress={() => searchInputRef.current?.focus()}
+          style={[
+            tw`flex-row items-center bg-[#1A2755] rounded-full w-full max-w-[500px]`,
+            styles.searchBar,
+          ]}
+        >
           <SearchIcon size={20} color="white" />
           <TextInput
+            ref={searchInputRef}
             placeholder={`Search an event to carpool`}
             placeholderTextColor="#94A3B8"
             value={query}
             onChangeText={setQuery}
-            className="flex-1 text-white ml-3"
+            style={tw`flex-1 text-white ml-3`}
           />
-        </View>
+        </Pressable>
 
-        <CustomView className="flex-1 mb-20">{renderContent()}</CustomView>
+        <CustomView style={tw`flex-1 mb-20`}>{renderContent()}</CustomView>
       </View>
 
       {/* Carpool Bottom Sheet */}
       <BottomSheetModal
         ref={bottomSheetRef}
         snapPoints={snapPoints}
+        android_keyboardInputMode="adjustResize"
+        keyboardBehavior="fillParent"
+        keyboardBlurBehavior="restore"
+        enablePanDownToClose
+        onChange={(index) => setIsSheetOpen(index >= 0)}
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
@@ -272,15 +367,19 @@ const NewCarpool = () => {
             </Text>
           </View>
         )}
-        <BottomSheetScrollView contentContainerStyle={{ padding: 20 }}>
-          <Text className="text-white text-lg font-semibold mb-3">
+        <BottomSheetScrollView
+          ref={bottomSheetScrollRef}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 20, paddingBottom:180 }}
+        >
+          <Text style={tw`text-white text-lg font-semibold mb-3`}>
             {selectedEvent?.title}
           </Text>
 
           {/* Switch To / From */}
-          <View className="flex-row items-center justify-between gap-3 my-4">
+          <View style={tw`flex-row items-center justify-between gap-3 my-4`}>
             <Text
-              className={`text-white ${isToEvent ? "font-bold" : "opacity-50"}`}
+              style={tw`text-white ${isToEvent ? "font-bold" : "opacity-50"}`}
             >
               To Event
             </Text>
@@ -299,9 +398,7 @@ const NewCarpool = () => {
             />
 
             <Text
-              className={`text-white ${
-                !isToEvent ? "font-bold" : "opacity-50"
-              }`}
+              style={tw`text-white ${!isToEvent ? "font-bold" : "opacity-50"}`}
             >
               From Event
             </Text>
@@ -309,36 +406,40 @@ const NewCarpool = () => {
 
           {/* Conditional fields */}
           {isToEvent ? (
-            <View className="mt-5">
-              <Text className="text-white mb-1">Pool Location</Text>
+            <View style={tw`mt-5`}>
+              <Text style={tw`text-white mb-1`}>Pool Location</Text>
 
-              <CustomView className=" mb-5">
+              <CustomView style={tw` mb-5`}>
                 <Controller
                   control={control}
                   name="poolLocation"
                   render={({ field: { value, onChange } }) => (
                     <Input
-                      className="h-16"
+                      style={tw`h-12`}
+                      placeholderTextColor="#475569"
                       placeholder="Enter a landmark, busstop, or area"
                       onChangeText={onChange}
                       value={value}
+                      onFocus={scrollSheetToBottom}
                     />
                   )}
                 />
                 {errors.poolLocation && (
-                  <Text className="text-red-400 mt-1 text-sm">
+                  <Text style={tw`text-red-400 mt-1 text-sm`}>
                     {errors.poolLocation.message}
                   </Text>
                 )}
               </CustomView>
 
-              <View className="flex-row items-center justify-between mb-5">
+              <View style={tw`flex-row items-center justify-between mb-5`}>
                 <Controller
                   control={control}
                   name="useCurrentLocation"
                   render={({ field: { value, onChange } }) => (
-                    <View className="flex-row items-center justify-between mb-5 gap-5">
-                      <Text className="text-white">
+                    <View
+                      style={tw`flex-row items-center justify-between mb-5 gap-5`}
+                    >
+                      <Text style={tw`text-white`}>
                         Close to current location?
                       </Text>
                       <Switch
@@ -353,9 +454,9 @@ const NewCarpool = () => {
             </View>
           ) : (
             <>
-              <Text className="text-white mb-1">Pool Destination</Text>
+              <Text style={tw`text-white mb-1`}>Pool Destination</Text>
 
-              <CustomView className="flex-1 mb-5">
+              <CustomView style={tw`flex-1 mb-5`}>
                 <Controller
                   control={control}
                   name="poolDestination"
@@ -364,11 +465,12 @@ const NewCarpool = () => {
                       placeholder="Enter a landmark, busstop, or area"
                       onChangeText={onChange}
                       value={value}
+                      onFocus={scrollSheetToBottom}
                     />
                   )}
                 />
                 {errors.poolDestination && (
-                  <Text className="text-red-400 mt-1 text-sm">
+                  <Text style={tw`text-red-400 mt-1 text-sm`}>
                     {errors.poolDestination.message}
                   </Text>
                 )}
@@ -376,9 +478,9 @@ const NewCarpool = () => {
             </>
           )}
 
-          <View className="mb-5">
+          <View style={tw`mb-5`}>
             {/* Departure time */}
-            <Text className="text-white mb-1">Departure Time</Text>
+            <Text style={tw`text-white mb-1`}>Departure Time</Text>
             <Controller
               control={control}
               name="departureTime"
@@ -402,46 +504,66 @@ const NewCarpool = () => {
               )}
             />
             {errors.departureTime && (
-              <Text className="text-red-400 mt-1 text-sm">
+              <Text style={tw`text-red-400 mt-1 text-sm`}>
                 {errors.departureTime.message}
               </Text>
             )}
           </View>
 
           {/* Notes */}
-          <Text className="text-white mb-1">Notes</Text>
+          <Text style={tw`text-white mb-1`}>Notes</Text>
 
-          <CustomView className="flex-1 mb-5">
+          <CustomView style={tw`flex-1 mb-5`}>
             <Controller
               control={control}
               name="notes"
               render={({ field }) => (
-                <TextArea
-                  placeholder="Any extra details?"
-                  maxLength={200}
-                  className="min-h-[50px]"
-                  {...field}
-                  value={field.value ?? ""}
-                />
+                <View style={tw`w-full`}>
+                  <BottomSheetTextInput
+                    style={tw`w-full min-h-[120px] rounded-2xl bg-[#1B2A50]/40 text-white p-4 text-base`}
+                    placeholder="Any extra details?"
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    maxLength={200}
+                    textAlignVertical="top"
+                    value={field.value ?? ""}
+                    onChangeText={field.onChange}
+                    onFocus={scrollSheetToBottom}
+                  />
+                  <Text style={tw`text-right text-sm text-gray-400 mt-1`}>
+                    {(field.value?.length || 0)}/200
+                  </Text>
+                </View>
               )}
             />
           </CustomView>
 
-          {/* Submit Button */}
+          <View style={tw`w-full mb-6 mt-2`}>
+            <CustomButton
+              onPress={handleSubmit(createCarpool, onError)}
+              title={createCarpoolPending ? "Creating carpool" : `Create Carpool`}
+              buttonClassName={"bg-[#0FF1CF] w-full border-0"}
+              textClassName={`!text-black`}
+              showArrow={false}
+              disabled={createCarpoolPending}
+            />
+          </View>
         </BottomSheetScrollView>
-        <View className="w-screen max-w-[500px] p-5">
-          <CustomButton
-            onPress={handleSubmit(createCarpool, onError)}
-            title={createCarpoolPending ? "Creating carpool" : `Create Carpool`}
-            buttonClassName="bg-[#0FF1CF] w-full border-0"
-            textClassName="!text-black"
-            showArrow={false}
-            disabled={createCarpoolPending}
-          />
-        </View>
       </BottomSheetModal>
     </View>
   );
 };
 
 export default NewCarpool;
+
+const styles = StyleSheet.create({
+  screen: {
+    paddingTop: layoutSpacing.pageTop,
+  },
+  searchBar: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+  },
+});

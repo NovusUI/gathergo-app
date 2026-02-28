@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react-native";
+import { ChevronLeft } from "lucide-react-native";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
@@ -24,7 +24,7 @@ const CustomeTopBarNav = ({
       {/* Left Section */}
       <View style={tw`flex-row items-center gap-2`}>
         <TouchableOpacity onPress={onClickBack} style={tw`p-2`}>
-          <ArrowLeft color="white" />
+          <ChevronLeft color={"white"} />
         </TouchableOpacity>
         <Text style={tw`text-white text-lg font-semibold`}>{title}</Text>
       </View>

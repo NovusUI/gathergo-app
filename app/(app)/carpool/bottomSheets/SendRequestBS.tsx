@@ -34,10 +34,12 @@ export type SendRequestBSRef = {
 
 export type SendRequestProp = {
   carpoolId: string;
+  onRequestSuccess?: (response: any) => void;
+  onHasExistingCarpool?: (response: any) => void;
 };
 
 const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
-  ({ carpoolId }, ref) => {
+  ({ carpoolId, onRequestSuccess, onHasExistingCarpool }, ref) => {
     const { coords, requestLocation, error, openSettings } =
       useLocationManager();
     const [useCurrentLocation, setUseCurrentLocation] = useState(false);
@@ -67,17 +69,42 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
 
     // expose open/close methods
     useImperativeHandle(ref, () => ({
-      open: () => bottomSheetReqRef.current?.snapToIndex(0),
+      open: () => {
+        // Reset form when opening
+        setPoolLocation("");
+        setNotes("");
+        setUseCurrentLocation(false);
+        bottomSheetReqRef.current?.snapToIndex(0);
+      },
       close: () => bottomSheetReqRef.current?.close(),
     }));
 
     const { mutateAsync, isPending } = useRequestCarpool(carpoolId, {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        // Check if user has an existing carpool
+        if (response.data.hasExistingCarpool) {
+          // Pass the response to parent component to handle the modal
+          if (onHasExistingCarpool) {
+            onHasExistingCarpool(response);
+          }
+          return;
+        }
+
         queryClient.invalidateQueries({
           queryKey: [QUERY_KEYS.carpoolDetails, carpoolId],
         });
-        showGlobalSuccess("Request sent successfully");
+
+        if (response.data.message) {
+          showGlobalSuccess(response.message);
+        } else {
+          showGlobalSuccess("Request sent successfully");
+        }
         bottomSheetReqRef.current?.close();
+
+        // Notify parent of success
+        if (onRequestSuccess) {
+          onRequestSuccess(response);
+        }
       },
       onError: () => {
         showGlobalError("Error requesting carpool");
@@ -85,8 +112,6 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
     });
 
     const sendRequest = () => {
-      console.log(poolLocation, notes, coords);
-
       if (poolLocation.trim().length > 0) {
         mutateAsync({
           origin: poolLocation,
@@ -103,6 +128,9 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
         index={-1}
         ref={bottomSheetReqRef}
         snapPoints={snapPoints2}
+        android_keyboardInputMode="adjustResize"
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
         enablePanDownToClose
         backdropComponent={(props) => (
           <BottomSheetBackdrop
@@ -113,7 +141,14 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
-        <BottomSheetScrollView style={tw`p-5`}>
+        <BottomSheetScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            paddingBottom: 120,
+          }}
+        >
           <View style={tw`py-5`}>
             {error && (
               <View
@@ -131,7 +166,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
             <CustomView>
               <Text style={tw`text-white mb-1`}>Request location</Text>
               <Input
-                className="h-16"
+                style={tw`h-12`}
                 placeholder="Enter a landmark, busstop, or area"
                 onChangeText={setPoolLocation}
                 value={poolLocation}
@@ -174,5 +209,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
     );
   }
 );
+
+SendRequestBS.displayName = "SendRequestBS";
 
 export default SendRequestBS;

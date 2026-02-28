@@ -5,7 +5,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { Share2 } from "lucide-react-native";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Share, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 export type ShareRideBSRef = {
@@ -22,6 +22,15 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef>((_, ref) => {
     open: () => bottomSheetRef.current?.snapToIndex(1),
     close: () => bottomSheetRef.current?.close(),
   }));
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `🚗 Join my carpool 👉 https://yourapp.com/carpool/`,
+      });
+    } catch (err) {
+      console.error("Error sharing:", err);
+    }
+  };
 
   return (
     <BottomSheet
@@ -51,7 +60,7 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef>((_, ref) => {
 
           {/* Share button */}
           <TouchableOpacity
-            onPress={() => {}}
+            onPress={handleShare}
             style={tw`flex-row items-center gap-2 bg-[#0FF1CF] px-6 py-3 rounded-2xl shadow-md`}
           >
             <Share2 color="#000" size={20} />

@@ -1,6 +1,7 @@
 import { numberWithCommas } from "@/utils/utils";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Text } from "react-native";
+import tw from "twrnc";
 
 interface AnimatedNumberProps {
   value: number;
@@ -27,8 +28,8 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ value }) => {
   }, [value]);
 
   return (
-    <Text className="text-white text-2xl">
-     {numberWithCommas(displayValue, true, null)}
+    <Text style={tw`text-white text-2xl`}>
+      {numberWithCommas(displayValue, true, null)}
     </Text>
   );
 };

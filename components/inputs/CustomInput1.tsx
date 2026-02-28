@@ -1,6 +1,14 @@
 import { Eye, EyeOff } from "lucide-react-native";
-import { forwardRef, useEffect, useState } from "react";
 import {
+  forwardRef,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  Pressable,
   Text,
   TextInput,
   TextInputProps,
@@ -56,10 +64,13 @@ const Input = forwardRef<TextInput, InputProps>(
       iconColor = "#6B7280",
       numeric = false,
       moneyFormat = false,
-      ...props
+      style: inputStyle,
+      placeholderTextColor,
+      ...restProps
     },
     ref
   ) => {
+    const inputRef = useRef<TextInput | null>(null);
     const [isSecure, setIsSecure] = useState(secureTextEntry);
     const [displayValue, setDisplayValue] = useState("");
 
@@ -85,8 +96,22 @@ const Input = forwardRef<TextInput, InputProps>(
       }
     };
 
+    const setRefs = useCallback(
+      (node: TextInput | null) => {
+        inputRef.current = node;
+        if (!ref) return;
+        if (typeof ref === "function") {
+          ref(node);
+        } else {
+          (ref as MutableRefObject<TextInput | null>).current = node;
+        }
+      },
+      [ref]
+    );
+
     return (
-      <View
+      <Pressable
+        onPress={() => inputRef.current?.focus()}
         style={tw.style("w-full max-w-[500px] bg-[#1B2A50]/40 p-2 rounded-xl")}
       >
         <View style={tw`flex-row items-center px-5`}>
@@ -97,17 +122,21 @@ const Input = forwardRef<TextInput, InputProps>(
           )}
 
           <TextInput
-            ref={ref}
-            style={tw.style("flex-1 py-3 text-white", {
-              outlineStyle: "none",
-            })}
+            {...restProps}
+            ref={setRefs}
+            style={tw.style(
+              "flex-1 py-3 text-white",
+              {
+                outlineStyle: "none",
+              },
+              inputStyle
+            )}
             placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={placeholderTextColor ?? "#9CA3AF"}
             value={displayValue}
             onChangeText={handleChangeText}
             secureTextEntry={isSecure}
             keyboardType={moneyFormat || numeric ? "numeric" : "default"}
-            {...props}
           />
 
           {RightIcon ? (
@@ -129,9 +158,11 @@ const Input = forwardRef<TextInput, InputProps>(
         </View>
 
         {error && <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>}
-      </View>
+      </Pressable>
     );
   }
 );
+
+Input.displayName = "Input";
 
 export default Input;

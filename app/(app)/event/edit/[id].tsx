@@ -10,6 +10,7 @@ import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import TextArea from "@/components/inputs/CustomTextArea";
 import FormLabel from "@/components/labels/FormLabel";
+import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
   EventFormData,
@@ -32,7 +33,15 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { XIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import tw from "twrnc";
 
 const EditEvent = () => {
   const { id } = useLocalSearchParams();
@@ -328,16 +337,21 @@ const EditEvent = () => {
   // *********** Loading & Error States ************ //
   if (isPending) {
     return (
-      <View className="flex-1 pt-10 bg-[#01082E] items-center justify-center">
-        <Text className="text-white">Loading event details...</Text>
+      <View
+        style={[
+          tw`flex-1 bg-[#01082E] items-center justify-center`,
+          { paddingTop: spacing.xxl },
+        ]}
+      >
+        <Text style={tw`text-white`}>Loading event details...</Text>
       </View>
     );
   }
 
   if (isError || !eventData) {
     return (
-      <View className="flex-1 bg-[#01082E] items-center justify-center px-5">
-        <Text className="text-white text-xl mt-4">
+      <View style={tw`flex-1 bg-[#01082E] items-center justify-center px-5`}>
+        <Text style={tw`text-white text-xl mt-4`}>
           Event not found or error loading
         </Text>
         <CustomButton
@@ -355,8 +369,18 @@ const EditEvent = () => {
   const registrationTypeWatch = watch("registrationType");
 
   return (
-    <View className="flex-1 pt-20 pb-5 bg-[#01082E] flex flex-col items-center w-full">
-      <View className="flex-1 w-full max-w-[500px]">
+    <KeyboardAvoidingView
+      style={tw`flex-1 bg-[#01082E]`}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
+    >
+      <View
+        style={[
+          tw`flex-1 pb-5 bg-[#01082E] flex flex-col items-center w-full`,
+          { paddingTop: spacing.xxl },
+        ]}
+      >
+      <View style={tw`flex-1 w-full max-w-[500px]`}>
         <CustomView className="px-5">
           <CustomeTopBarNav
             title="Edit Event"
@@ -364,7 +388,7 @@ const EditEvent = () => {
           />
         </CustomView>
 
-        <ScrollView className="w-full max-w-500">
+        <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
           {/* Cover Image */}
           <CustomView className="px-5">
             <Controller
@@ -377,7 +401,7 @@ const EditEvent = () => {
                     onChange={onChange}
                   />
                   {errors.imgUrl && (
-                    <Text className="text-red-500">
+                    <Text style={tw`text-red-500`}>
                       {errors.imgUrl.message}
                     </Text>
                   )}
@@ -402,7 +426,7 @@ const EditEvent = () => {
                 )}
               />
               {errors.eventName && (
-                <Text className="text-red-500">{errors.eventName.message}</Text>
+                <Text style={tw`text-red-500`}>{errors.eventName.message}</Text>
               )}
             </CustomView>
 
@@ -422,7 +446,7 @@ const EditEvent = () => {
                 )}
               />
               {errors.description && (
-                <Text className="text-red-500">
+                <Text style={tw`text-red-500`}>
                   {errors.description.message}
                 </Text>
               )}
@@ -435,26 +459,26 @@ const EditEvent = () => {
           <CustomView className="px-5">
             <FormLabel text="event information" />
             <TouchableOpacity
-              className="bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center"
+              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
               onPress={() => openSheet("Date and Time")}
             >
-              <Text className="text-white text-base">Date and Time</Text>
-              {startDateWatch && <Text className="text-[#0FF1CF]">✓</Text>}
+              <Text style={tw`text-white text-base`}>Date and Time</Text>
+              {startDateWatch && <Text style={tw`text-[#0FF1CF]`}>✓</Text>}
             </TouchableOpacity>
             <TouchableOpacity
-              className="bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center"
+              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
               onPress={() => openSheet("Location")}
             >
-              <Text className="text-white text-base">Location</Text>
-              {locationWatch && <Text className="text-[#0FF1CF]">✓</Text>}
+              <Text style={tw`text-white text-base`}>Location</Text>
+              {locationWatch && <Text style={tw`text-[#0FF1CF]`}>✓</Text>}
             </TouchableOpacity>
             <TouchableOpacity
-              className="bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center"
+              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
               onPress={() => openSheet("Pricing")}
             >
-              <Text className="text-white text-base">Pricing</Text>
+              <Text style={tw`text-white text-base`}>Pricing</Text>
               {registrationTypeWatch && (
-                <Text className="text-[#0FF1CF]">✓</Text>
+                <Text style={tw`text-[#0FF1CF]`}>✓</Text>
               )}
             </TouchableOpacity>
           </CustomView>
@@ -491,6 +515,9 @@ const EditEvent = () => {
         index={-1}
         ref={bottomSheetRef}
         snapPoints={snapPoints}
+        android_keyboardInputMode="adjustResize"
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
         enablePanDownToClose
         backdropComponent={(props) => (
           <BottomSheetBackdrop
@@ -501,17 +528,21 @@ const EditEvent = () => {
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
-        <BottomSheetScrollView className="p-5">
-          <View className="flex flex-row justify-between items-center">
-            <Text className="text-white">{activeSection}</Text>
+        <BottomSheetScrollView
+          style={tw`p-5`}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 120 }}
+        >
+          <View style={tw`flex flex-row justify-between items-center`}>
+            <Text style={tw`text-white`}>{activeSection}</Text>
             <TouchableOpacity
-              className="rounded-full bg-[#1B2A50] p-2"
+              style={tw`rounded-full bg-[#1B2A50] p-2`}
               onPress={closeSheet}
             >
               <XIcon size={15} color="white" />
             </TouchableOpacity>
           </View>
-          <View className="py-5">{renderSheetContent()}</View>
+          <View style={tw`py-5`}>{renderSheetContent()}</View>
         </BottomSheetScrollView>
       </BottomSheet>
 
@@ -520,6 +551,9 @@ const EditEvent = () => {
         index={-1}
         ref={bottomSheetTicketRef}
         snapPoints={snapTicket}
+        android_keyboardInputMode="adjustResize"
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
         enablePanDownToClose
         backdropComponent={(props) => (
           <BottomSheetBackdrop
@@ -530,17 +564,21 @@ const EditEvent = () => {
         )}
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
-        <BottomSheetScrollView className="p-5">
-          <View className="flex flex-row justify-between items-center">
-            <Text className="text-white">Create Ticket</Text>
+        <BottomSheetScrollView
+          style={tw`p-5`}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 120 }}
+        >
+          <View style={tw`flex flex-row justify-between items-center`}>
+            <Text style={tw`text-white`}>Create Ticket</Text>
             <TouchableOpacity
-              className="rounded-full bg-[#1B2A50] p-2"
+              style={tw`rounded-full bg-[#1B2A50] p-2`}
               onPress={closeSheetTicket}
             >
               <XIcon size={15} color="white" />
             </TouchableOpacity>
           </View>
-          <View className="py-5">
+          <View style={tw`py-5`}>
             <CreateTicket
               editingTicket={editingTicket}
               close={closeSheetTicket}
@@ -553,7 +591,8 @@ const EditEvent = () => {
           </View>
         </BottomSheetScrollView>
       </BottomSheet>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 

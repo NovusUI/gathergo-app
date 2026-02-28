@@ -1,11 +1,12 @@
 import { formatMessageTimestamp } from "@/utils/utils";
+import { UserRound } from "lucide-react-native";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 interface ConversationProps {
   title: string;
   lastMessage: {
-    imgUrl: string;
+    imgUrl?: string | null;
     text: string;
     date: string;
   };
@@ -34,10 +35,13 @@ const ConversationView = ({
       </View>
 
       <View style={tw`flex-row items-center mb-3`}>
-        <Image
-          source={require("../assets/animoji.png")}
-          style={tw`w-6 h-6 rounded-full mr-3`}
-        />
+        {lastMessage?.imgUrl ? (
+          <Image source={{ uri: lastMessage.imgUrl }} style={tw`w-6 h-6 rounded-full mr-3`} />
+        ) : (
+          <View style={tw`w-6 h-6 rounded-full mr-3 bg-[#1B2A50] items-center justify-center`}>
+            <UserRound size={12} color="#8FA5E2" />
+          </View>
+        )}
 
         <Text
           style={tw`text-xs text-white flex-1`}

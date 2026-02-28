@@ -10,6 +10,7 @@ import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import TextArea from "@/components/inputs/CustomTextArea";
 import FormLabel from "@/components/labels/FormLabel";
+import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
   EventFormData,
@@ -33,7 +34,16 @@ import { useRouter } from "expo-router";
 import { CheckCheck, XIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import tw from "twrnc";
 
 const NewEvent = () => {
   const router = useRouter();
@@ -97,6 +107,7 @@ const NewEvent = () => {
     setValue("registrationType", data.registrationType);
     setValue("registrationAttendees", data.registrationAttendees);
     setValue("registrationFee", data.registrationFee);
+    setValue("donationTarget", data.donationTarget);
     // setValue("tickets",data.tickets)
     closeSheet();
     clearErrors("registrationType");
@@ -174,6 +185,7 @@ const NewEvent = () => {
       tickets: [],
       registrationAttendees: undefined,
       registrationFee: undefined,
+      donationTarget: undefined,
     },
   });
 
@@ -217,15 +229,29 @@ const NewEvent = () => {
 
   const { mutateAsync, isPending } = useCreateEvent({
     onSuccess: async (data) => {
-      showGlobalSuccess("Event created");
+      showGlobalSuccess(
+        data.data.isImageProcessing
+          ? "Event created! Image uploading in background..."
+          : "Event created successfully!"
+      );
       await removeItem(CHACHE_KEYS.eventFormKey);
       router.replace(`/event/${data.data.id}`);
     },
     onError: (e) => {
       console.error(e);
+
       showGlobalError("Event Creation Failed");
     },
   });
+
+  // const createEventWithFetch = async (formData: FormData) => {
+  //   try {
+  //     const result = await uploadClient.upload('/events/create', formData);
+  //     return result;
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // };
 
   const onSubmit = async (data: EventFormData) => {
     const {
@@ -242,6 +268,7 @@ const NewEvent = () => {
       endDate,
       endRepeat,
       tickets,
+      donationTarget,
       ...rest
     } = data;
 
@@ -260,6 +287,9 @@ const NewEvent = () => {
         ? registrationType === "registration" && !registrationFee
           ? { registrationFee: 0 }
           : { registrationFee }
+        : {}),
+      ...(registrationType === "donation" && donationTarget
+        ? { donationTarget }
         : {}),
       registrationType,
       startDate: `${extractDate(startDate)}T${startTime}:00Z`,
@@ -284,21 +314,45 @@ const NewEvent = () => {
         type: "image/jpeg",
       } as any);
     }
-    mutateAsync(formData);
+
+    try {
+      await mutateAsync(formData);
+    } catch (error) {
+      // Error is already handled in onError callback
+      console.error("Submit error:", error);
+    }
+    // try {
+    //   const result = await createEventWithFetch(formData);
+    //   showGlobalSuccess("Event created");
+    //   await removeItem(CHACHE_KEYS.eventFormKey);
+    //   router.replace(`/event/${result.data.id}`);
+    // } catch (error) {
+    //   console.error(error);
+    //   showGlobalError("Event Creation Failed");
+    // }
   };
 
   return (
-    <View className="flex-1 pt-20 pb-10 bg-[#01082E] flex flex-col items-center w-full">
-      <View className="flex-1  w-full max-w-[500px]">
-        <CustomView className="px-5">
+    <KeyboardAvoidingView
+      style={tw`flex-1 bg-[#01082E]`}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
+    >
+      <View
+        style={[
+          tw`flex-1 pb-10 bg-[#01082E] items-center w-full`,
+          { paddingTop: spacing.xxl },
+        ]}
+      >
+      <View style={tw`flex-1 w-full max-w-[500px]`}>
+        <CustomView style={tw`px-5`}>
           <CustomeTopBarNav
             title="New Event"
             onClickBack={() => router.replace("/")}
           />
         </CustomView>
-
-        <ScrollView className=" w-full max-w-500">
-          <CustomView className="px-5">
+        <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
+          <CustomView style={tw`px-5`}>
             <Controller
               name="imgUrl"
               control={control}
@@ -306,7 +360,7 @@ const NewEvent = () => {
                 <View>
                   <CoverImagePicker value={value || null} onChange={onChange} />
                   {errors.imgUrl && (
-                    <Text className="text-red-500">
+                    <Text style={tw`text-red-500`}>
                       {errors.imgUrl.message}
                     </Text>
                   )}
@@ -315,8 +369,8 @@ const NewEvent = () => {
             />
           </CustomView>
 
-          <CustomView className="px-5">
-            <CustomView className="gap-2">
+          <CustomView style={tw`px-5`}>
+            <CustomView style={tw`gap-2`}>
               <FormLabel text="event name" />
               <Controller
                 name="eventName"
@@ -329,7 +383,7 @@ const NewEvent = () => {
                       value={value}
                     />
                     {errors.eventName && (
-                      <Text className="text-red-500">
+                      <Text style={tw`text-red-500`}>
                         {errors.eventName.message}
                       </Text>
                     )}
@@ -338,9 +392,8 @@ const NewEvent = () => {
               />
             </CustomView>
 
-            <CustomView className="gap-2">
+            <CustomView style={tw`gap-2`}>
               <FormLabel text="event description" />
-
               <Controller
                 name="description"
                 control={control}
@@ -353,7 +406,7 @@ const NewEvent = () => {
                       className="!bg-[#1B2A50]/40"
                     />
                     {errors.description && (
-                      <Text className="text-red-500">
+                      <Text style={tw`text-red-500`}>
                         {errors.description.message}
                       </Text>
                     )}
@@ -363,66 +416,66 @@ const NewEvent = () => {
             </CustomView>
           </CustomView>
 
-          <CustomView className="!bg-[#1B2A50]/40 h-2" />
+          <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
 
           {/* Event Information */}
-          <CustomView className="px-5">
+          <CustomView style={tw`px-5`}>
             <CustomView>
               <FormLabel text="event information" />
             </CustomView>
 
             <TouchableOpacity
-              className="bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center"
+              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
               onPress={() => openSheet("Date and Time")}
             >
               <View>
-                <Text className="text-white text-base">Date and Time</Text>
+                <Text style={tw`text-white text-base`}>Date and Time</Text>
                 {errors.startDate && (
-                  <Text className="text-red-500">
+                  <Text style={tw`text-red-500`}>
                     {errors.startDate.message}
                   </Text>
                 )}
               </View>
-              {!errors.startDate && startDate && (
-                <CheckCheck color={"#0FF1CF"} />
-              )}
+              {!errors.startDate && startDate && <CheckCheck color="#0FF1CF" />}
             </TouchableOpacity>
+
             <TouchableOpacity
-              className="bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center"
+              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
               onPress={() => openSheet("Location")}
             >
               <View>
-                <Text className="text-white text-base">Location</Text>
+                <Text style={tw`text-white text-base`}>Location</Text>
                 {errors.location && (
-                  <Text className="text-red-500">
+                  <Text style={tw`text-red-500`}>
                     {errors.location.message}
                   </Text>
                 )}
               </View>
-              {!errors.location && location && <CheckCheck color={"#0FF1CF"} />}
+              {!errors.location && location && <CheckCheck color="#0FF1CF" />}
             </TouchableOpacity>
+
             <TouchableOpacity
-              className="bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center"
+              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
               onPress={() => openSheet("Pricing")}
             >
               <View>
-                <Text className="text-white text-base">Pricing</Text>
+                <Text style={tw`text-white text-base`}>Pricing</Text>
                 {errors.registrationType && (
-                  <Text className="text-red-500">
+                  <Text style={tw`text-red-500`}>
                     {errors.registrationType.message}
                   </Text>
                 )}
               </View>
               {!errors.registrationType && registrationType && (
-                <CheckCheck color={"#0FF1CF"} />
+                <CheckCheck color="#0FF1CF" />
               )}
             </TouchableOpacity>
           </CustomView>
 
-          <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
+          <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
 
           {/* Tags */}
-          <CustomView className="px-5">
+          <CustomView style={tw`px-5`}>
             <CustomView>
               <FormLabel text="tag" />
             </CustomView>
@@ -433,15 +486,16 @@ const NewEvent = () => {
                 <View>
                   <EventTags selectedTags={value} onChange={onChange} />
                   {errors.tags && (
-                    <Text className="text-red-500">{errors.tags.message}</Text>
+                    <Text style={tw`text-red-500`}>{errors.tags.message}</Text>
                   )}
                 </View>
               )}
             />
           </CustomView>
 
-          <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
-          <CustomView className="flex items-center px-5">
+          <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+
+          <CustomView style={tw`items-center px-5`}>
             <CustomButton
               disabled={isPending}
               onPress={handleSubmit(onSubmit, onError)}
@@ -452,12 +506,14 @@ const NewEvent = () => {
             />
           </CustomView>
         </ScrollView>
-
         <BottomSheet
           index={-1}
           ref={bottomSheetRef}
           onChange={handleSheetChanges}
           snapPoints={snapPoints}
+          android_keyboardInputMode="adjustResize"
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="restore"
           enablePanDownToClose={true}
           backdropComponent={(props) => (
             <BottomSheetBackdrop
@@ -468,23 +524,33 @@ const NewEvent = () => {
           )}
           backgroundStyle={{ backgroundColor: "#01082E" }}
         >
-          <BottomSheetScrollView className="p-5">
-            <View className="flex flex-row justify-between items-center">
-              <Text className="text-white">{activeSection}</Text>
+          <BottomSheetScrollView
+            style={tw`p-5`}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 120 }}
+          >
+            <View style={tw`flex flex-row justify-between items-center`}>
+              <Text style={tw`text-white`}>{activeSection}</Text>
+
               <TouchableOpacity
-                className="rounded-full bg-[#1B2A50] p-2"
+                style={tw`rounded-full bg-[#1B2A50] p-2`}
                 onPress={() => closeSheet()}
               >
-                <XIcon size={"15"} color="white" />
+                <XIcon size={15} color="white" />
               </TouchableOpacity>
             </View>
-            <View className="py-5">{renderSheetContent()}</View>
+
+            <View style={tw`py-5`}>{renderSheetContent()}</View>
           </BottomSheetScrollView>
         </BottomSheet>
+
         <BottomSheet
           index={-1}
           ref={bottomSheetTicketRef}
           snapPoints={snapTicket}
+          android_keyboardInputMode="adjustResize"
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="restore"
           enablePanDownToClose={true}
           backdropComponent={(props) => (
             <BottomSheetBackdrop
@@ -495,21 +561,27 @@ const NewEvent = () => {
           )}
           backgroundStyle={{ backgroundColor: "#01082E" }}
         >
-          <BottomSheetScrollView className="p-5">
-            <View className="flex flex-row justify-between items-center">
-              <Text className="text-white">create ticket</Text>
+          <BottomSheetScrollView
+            style={tw`p-5`}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 120 }}
+          >
+            <View style={tw`flex flex-row justify-between items-center`}>
+              <Text style={tw`text-white`}>create ticket</Text>
+
               <TouchableOpacity
-                className="rounded-full bg-[#1B2A50] p-2"
+                style={tw`rounded-full bg-[#1B2A50] p-2`}
                 onPress={() => closeSheetTicket()}
               >
-                <XIcon size={"15"} color="white" />
+                <XIcon size={15} color="white" />
               </TouchableOpacity>
             </View>
-            <View className="py-5">
+
+            <View style={tw`py-5`}>
               <CreateTicket
                 editingTicket={editingTicket}
                 close={closeSheetTicket}
-                tickets={watch("tickets") || []} // always pass array
+                tickets={watch("tickets") || []}
                 setTicket={(updated: EventTicket[]) =>
                   setValue("tickets", updated)
                 }
@@ -518,7 +590,8 @@ const NewEvent = () => {
           </BottomSheetScrollView>
         </BottomSheet>
       </View>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 

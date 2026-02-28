@@ -1,13 +1,19 @@
 import { useAuth } from "@/context/AuthContext";
 import {
   CompleteProfileData,
+  PhoneFirebaseAuthPayload,
   StandardResponse,
   authResponse,
   checkUsernameRes,
   uploadProfilePictureRes,
 } from "@/types/auth";
 import { CarpoolForm } from "@/types/carpool";
-import { GetTickets, GetTicketsResponse } from "@/types/event";
+import {
+  DonationResponse,
+  GetTickets,
+  GetTicketsResponse,
+  InitiateDonationPayload,
+} from "@/types/event";
 import { saveItem } from "@/utils/storage";
 import {
   UseMutationOptions,
@@ -19,6 +25,8 @@ import { QUERY_KEYS } from "./queryKeys";
 import {
   SignUpPayload,
   UserResponse,
+  bulkScanFn,
+  canScanFn,
   checkUsernameExists,
   completUserProfile,
   createCarpool,
@@ -27,22 +35,41 @@ import {
   followUser,
   getTickets,
   googleLoginFn,
+  grantScannerPermissionFn,
+  initiateDonation,
   leaveCarpool,
   loginFn,
   logoutFn,
+  quickScanFn,
   registerForEvent,
   registerPushToken,
   removePassenger,
   removePushToken,
   requestCarpool,
+  requestCarpoolAfterCancel,
   respondToCarpoolRequest,
+  revokeScannerPermissionFn,
+  scanFn,
+  phoneFirebaseAuthFn,
   signUpFn,
   unfollowUser,
   updateCarpool,
   updateEvent,
   updatePreference,
+  updateScannerPermissionFn,
   uploadPicture,
+  validateScanFn,
 } from "./serviceFn";
+
+import {
+  BulkScanResponse,
+  GrantPermissionPayload,
+  PermissionPayload,
+  ScanResponse,
+  ScannerPermissionResponse,
+  UpdatePermissionPayload,
+  ValidationResponse,
+} from "@/types/scanner";
 
 export const useLogin = () => {
   const queryClient = useQueryClient();
@@ -104,6 +131,20 @@ export const useGoogleLogin = () => {
   });
 };
 
+export const usePhoneFirebaseAuth = () => {
+  const { setUser } = useAuth();
+
+  return useMutation<authResponse, any, PhoneFirebaseAuthPayload>({
+    mutationFn: phoneFirebaseAuthFn,
+    onSuccess: async (data) => {
+      setUser(data.data.user);
+
+      await saveItem("token", data.data.accessToken);
+      await saveItem("user", JSON.stringify(data.data.user));
+    },
+  });
+};
+
 export const useLogout = () => {
   const queryClient = useQueryClient();
 
@@ -148,8 +189,19 @@ export const useEditBio = (
   return { mutate, mutateAsync, isPending, error };
 };
 
+// export const useEditProfilePicture = (
+//   options: UseMutationOptions<uploadProfilePictureRes, AxiosError, FormData>
+// ) => {
+//   const { mutate, mutateAsync, isPending, error } = useMutation({
+//     mutationFn: uploadPicture,
+//     ...options,
+//   });
+
+//   return { mutate, mutateAsync, isPending, error };
+// };
+
 export const useEditProfilePicture = (
-  options: UseMutationOptions<uploadProfilePictureRes, AxiosError, FormData>
+  options: UseMutationOptions<uploadProfilePictureRes, Error, FormData>
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: uploadPicture,
@@ -159,8 +211,19 @@ export const useEditProfilePicture = (
   return { mutate, mutateAsync, isPending, error };
 };
 
+// export const useCreateEvent = (
+//   options: UseMutationOptions<StandardResponse, AxiosError, FormData>
+// ) => {
+//   const { mutate, mutateAsync, isPending, error } = useMutation({
+//     mutationFn: createEvent,
+//     ...options,
+//   });
+
+//   return { mutate, mutateAsync, isPending, error };
+// };
+
 export const useCreateEvent = (
-  options: UseMutationOptions<StandardResponse, AxiosError, FormData>
+  options: UseMutationOptions<StandardResponse, Error, FormData>
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: createEvent,
@@ -170,9 +233,21 @@ export const useCreateEvent = (
   return { mutate, mutateAsync, isPending, error };
 };
 
+// export const useUpdateEvent = (
+//   eventId: string,
+//   options: UseMutationOptions<StandardResponse, AxiosError, FormData>
+// ) => {
+//   const { mutate, mutateAsync, isPending, error } = useMutation({
+//     mutationFn: (formData: FormData) => updateEvent(formData, eventId),
+//     ...options,
+//   });
+
+//   return { mutate, mutateAsync, isPending, error };
+// };
+
 export const useUpdateEvent = (
   eventId: string,
-  options: UseMutationOptions<StandardResponse, AxiosError, FormData>
+  options: UseMutationOptions<StandardResponse, Error, FormData> // Changed AxiosError to Error
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: (formData: FormData) => updateEvent(formData, eventId),
@@ -198,6 +273,21 @@ export const useRegisterEvent = (
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: registerForEvent,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useInitiateDonation = (
+  options?: UseMutationOptions<
+    DonationResponse,
+    AxiosError,
+    InitiateDonationPayload
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: initiateDonation,
     ...options,
   });
 
@@ -324,6 +414,154 @@ export const useRemovePushToken = (
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: removePushToken,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useRequestCarpoolAfterCancel = (
+  carpoolId: string,
+  options: UseMutationOptions<
+    StandardResponse,
+    AxiosError,
+    {
+      cancelCarpoolId: string;
+      origin: string;
+      note?: string;
+      startPoint?: { lng: number; lat: number };
+    }
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: (requestData: {
+      cancelCarpoolId: string;
+      origin: string;
+      note?: string;
+      startPoint?: { lng: number; lat: number };
+    }) => requestCarpoolAfterCancel(requestData, carpoolId),
+    ...options,
+  });
+  return { mutate, mutateAsync, isPending, error };
+};
+
+// Scanner mutations
+export const useQuickScan = (
+  options?: UseMutationOptions<ValidationResponse, AxiosError, string>
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: quickScanFn,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useScan = (
+  options?: UseMutationOptions<
+    ScanResponse,
+    AxiosError,
+    {
+      qrCode: string;
+      markAsUsed?: boolean;
+      location?: string;
+      notes?: string;
+    }
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: scanFn,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useBulkScan = (
+  options?: UseMutationOptions<
+    BulkScanResponse,
+    AxiosError,
+    {
+      scans: Array<{ qrCode: string; markAsUsed?: boolean }>;
+    }
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: bulkScanFn,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useValidateScan = (
+  options?: UseMutationOptions<ValidationResponse, AxiosError, string>
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: validateScanFn,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+// Scanner permission mutations
+export const useGrantScannerPermission = (
+  options?: UseMutationOptions<
+    ScannerPermissionResponse,
+    AxiosError,
+    GrantPermissionPayload
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: grantScannerPermissionFn,
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useUpdateScannerPermission = (
+  options?: UseMutationOptions<
+    ScannerPermissionResponse,
+    AxiosError,
+    UpdatePermissionPayload & { permissionId: string }
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: (
+      payload: UpdatePermissionPayload & { permissionId: string }
+    ) => {
+      const { permissionId, ...rest } = payload;
+      return updateScannerPermissionFn(permissionId, rest);
+    },
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useRevokeScannerPermission = (
+  options?: UseMutationOptions<StandardResponse, AxiosError, PermissionPayload>
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: (payload: PermissionPayload) =>
+      revokeScannerPermissionFn(payload.permissionId),
+    ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useCanScan = (
+  eventId: string,
+  options?: UseMutationOptions<
+    { canScan: boolean; canMarkAsUsed: boolean },
+    AxiosError
+  >
+) => {
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: () => canScanFn(eventId),
     ...options,
   });
 

@@ -7,10 +7,15 @@ import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
-import { Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+} from "react-native";
 import tw from "twrnc";
 
-const index = () => {
+const EditBioScreen = () => {
   const { setUser } = useAuth();
 
   const {
@@ -39,9 +44,15 @@ const index = () => {
   };
 
   return (
-    <View
-      style={tw`flex-1 flex flex-col justify-center items-center bg-[#01082E] px-5 pt-20 pb-10 gap-5`}
+    <KeyboardAvoidingView
+      style={tw`flex-1 bg-[#01082E]`}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
+      <ScrollView
+        contentContainerStyle={tw`flex-grow justify-center items-center px-5 pt-20 pb-10 gap-5`}
+        keyboardShouldPersistTaps="handled"
+      >
       <Text style={tw`text-white`}>Bio</Text>
 
       <Controller
@@ -63,8 +74,9 @@ const index = () => {
         arrowCircleColor="transparent border-sm border-white"
         disabled={editBioPending}
       />
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
-export default index;
+export default EditBioScreen;

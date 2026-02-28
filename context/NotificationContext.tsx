@@ -2,20 +2,33 @@
 import { useSocket } from "@/context/SocketContext";
 import { Notification } from "@/types/notification";
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useEffect } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 interface NotificationContextType {
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
   loadMoreNotifications: (before?: string, beforeId?: string) => void;
   getNotificationTray: () => void;
+  initialLoading: boolean;
 }
+
+type NotificationsListData = {
+  pageParams: { before: string | null; beforeId: string | null }[];
+  pages: Notification[][];
+};
 
 const NotificationContext = createContext<NotificationContextType>({
   markAsRead: () => {},
   markAllAsRead: () => {},
   loadMoreNotifications: () => {},
   getNotificationTray: () => {},
+  initialLoading: false,
 });
 
 export const NotificationProvider = ({
@@ -25,6 +38,7 @@ export const NotificationProvider = ({
 }) => {
   const { socket } = useSocket();
   const queryClient = useQueryClient();
+  const [initialLoading, setInitialLoading] = useState(false);
 
   // Mark notification as read
   const markAsRead = useCallback(
@@ -59,10 +73,24 @@ export const NotificationProvider = ({
   useEffect(() => {
     if (!socket) return;
 
+    const updateMeta = (hasMore: boolean) => {
+      queryClient.setQueryData(
+        ["notifications", "meta"],
+        (old: { hasMore?: boolean; lastUpdatedAt?: number } | undefined) => ({
+          ...old,
+          hasMore,
+          lastUpdatedAt: Date.now(),
+        })
+      );
+    };
+
     // Get initial notification state when socket connects
     const handleConnect = () => {
       console.log("✅ Socket connected, loading notifications");
-      //socket.emit("getNotificationTray", {});
+      const cachedList = queryClient.getQueryData(["notifications", "list"]);
+      if (!cachedList) {
+        setInitialLoading(true);
+      }
     };
 
     // Handle notification tray
@@ -77,19 +105,42 @@ export const NotificationProvider = ({
         "notifications"
       );
 
-      queryClient.setQueryData(["notifications", "list"], (old: any) => {
-        // Always replace with fresh data for the first page
-        return {
-          pageParams: [{ before: null, beforeId: null }],
-          pages: [tray.notifications],
-        };
-      });
+      queryClient.setQueryData(
+        ["notifications", "list"],
+        (old: NotificationsListData | undefined) => {
+          const cachedPages = old?.pages ?? [];
+          const mergedPages = mergeLatestPage(cachedPages, tray.notifications);
+          const pageParams = mergedPages.map((page, index) => {
+            if (old?.pageParams?.[index]) {
+              return old.pageParams[index];
+            }
+
+            if (index === 0) {
+              return { before: null, beforeId: null };
+            }
+
+            const tail = page[page.length - 1];
+            return {
+              before: tail?.createdAt ?? null,
+              beforeId: tail?.id ?? null,
+            };
+          });
+
+          return {
+            pageParams,
+            pages: mergedPages,
+          };
+        }
+      );
+
+      updateMeta(tray.hasMore);
 
       // Set unread count separately
       queryClient.setQueryData(
         ["notifications", "unreadCount"],
         tray.totalUnread
       );
+      setInitialLoading(false);
     };
 
     // Handle new notification in real-time
@@ -101,36 +152,53 @@ export const NotificationProvider = ({
         ...newNotification.data,
         type: newNotification.notificationType,
       });
+
       const notification = {
         ...newNotification.data,
         type: newNotification.notificationType,
       };
-      queryClient.setQueryData(["notifications", "list"], (old: any) => {
-        if (!old || !old.pages || old.pages.length === 0) {
+
+      let inserted = false;
+
+      queryClient.setQueryData(
+        ["notifications", "list"],
+        (old: NotificationsListData | undefined) => {
+          if (!old || !old.pages || old.pages.length === 0) {
+            inserted = true;
+            return {
+              pageParams: [{ before: null, beforeId: null }],
+              pages: [[notification]],
+            };
+          }
+
+          const exists = old.pages.some((page) =>
+            page.some((item) => item.id === notification.id)
+          );
+          if (exists) {
+            return old;
+          }
+
+          inserted = true;
+
+          // Prepend to the first page (most recent notifications)
+          const updatedFirstPage = [notification, ...old.pages[0]];
+
+          // Keep the rest of the pages as-is
           return {
-            pageParams: [{ before: null, beforeId: null }],
-            pages: [[notification]],
+            ...old,
+            pages: [updatedFirstPage, ...old.pages.slice(1)],
           };
         }
-
-        // Prepend to the first page (most recent notifications)
-        const updatedFirstPage = [notification, ...old.pages[0]];
-
-        // Keep the rest of the pages as-is
-        return {
-          ...old,
-          pages: [updatedFirstPage, ...old.pages.slice(1)],
-        };
-      });
-
-      // Increment unread count
-      queryClient.setQueryData(
-        ["notifications", "unreadCount"],
-        (old: number | undefined) => (old || 0) + 1
       );
-    };
 
-    // In NotificationContext.tsx, update the handleNotifications function:
+      if (inserted) {
+        // Increment unread count only when the incoming item was truly new
+        queryClient.setQueryData(
+          ["notifications", "unreadCount"],
+          (old: number | undefined) => (old || 0) + 1
+        );
+      }
+    };
 
     // Handle loaded notifications (for pagination)
     const handleNotifications = (response: {
@@ -144,75 +212,84 @@ export const NotificationProvider = ({
         response.hasMore
       );
 
-      queryClient.setQueryData(["notifications", "list"], (old: any) => {
-        if (!old || !old.pages || old.pages.length === 0) {
+      updateMeta(response.hasMore);
+
+      queryClient.setQueryData(
+        ["notifications", "list"],
+        (old: NotificationsListData | undefined) => {
+          if (!old || !old.pages || old.pages.length === 0) {
+            return {
+              pageParams: [{ before: null, beforeId: null }],
+              pages: [response.notifications],
+            };
+          }
+
+          // Check if we already have these notifications (refresh vs pagination)
+          const existingIds = new Set(old.pages.flat().map((n) => n.id));
+          const newNotifications = response.notifications.filter(
+            (n) => !existingIds.has(n.id)
+          );
+
+          if (newNotifications.length === 0) {
+            console.log("📄 No new notifications to add");
+            return old;
+          }
+
+          // Append as a new page for pagination
+          console.log(
+            "📄 Appending",
+            newNotifications.length,
+            "new notifications as new page"
+          );
+
           return {
-            pageParams: [{ before: null, beforeId: null }],
-            pages: [response.notifications],
+            ...old,
+            pages: [...old.pages, newNotifications],
+            pageParams: [
+              ...old.pageParams,
+              {
+                before: newNotifications[newNotifications.length - 1]?.createdAt,
+                beforeId: newNotifications[newNotifications.length - 1]?.id,
+              },
+            ],
           };
         }
-
-        // Check if we already have these notifications (refresh vs pagination)
-        const existingIds = new Set(
-          old.pages.flat().map((n: Notification) => n.id)
-        );
-        const newNotifications = response.notifications.filter(
-          (n) => !existingIds.has(n.id)
-        );
-
-        if (newNotifications.length === 0) {
-          console.log("📄 No new notifications to add");
-          return old; // No change
-        }
-
-        // Append as a new page for pagination
-        console.log(
-          "📄 Appending",
-          newNotifications.length,
-          "new notifications as new page"
-        );
-
-        return {
-          ...old,
-          pages: [...old.pages, newNotifications],
-          pageParams: [
-            ...old.pageParams,
-            {
-              before: newNotifications[newNotifications.length - 1]?.createdAt,
-              beforeId: newNotifications[newNotifications.length - 1]?.id,
-            },
-          ],
-        };
-      });
+      );
     };
 
     // Handle notification marked as read
     const handleNotificationRead = (updatedNotification: Notification) => {
       console.log("✅ Notification marked as read:", updatedNotification.id);
 
-      // Update in notifications list - similar to message read status updates
-      queryClient.setQueryData(["notifications", "list"], (old: any) => {
-        if (!old) return old;
+      let unreadChanged = false;
 
-        const flatNotifications = old.pages.flat();
-
-        // Update the specific notification
-        const updatedNotifications = flatNotifications.map(
-          (item: Notification) =>
-            item.id === updatedNotification.id ? { ...item, read: true } : item
-        );
-
-        return {
-          ...old,
-          pages: [updatedNotifications],
-        };
-      });
-
-      // Decrement unread count
       queryClient.setQueryData(
-        ["notifications", "unreadCount"],
-        (old: number | undefined) => Math.max(0, (old || 1) - 1)
+        ["notifications", "list"],
+        (old: NotificationsListData | undefined) => {
+          if (!old || !old.pages) return old;
+
+          const updatedPages = old.pages.map((page) =>
+            page.map((item) => {
+              if (item.id !== updatedNotification.id) return item;
+              if (!item.read) unreadChanged = true;
+              return item.read ? item : { ...item, read: true };
+            })
+          );
+
+          return {
+            ...old,
+            pages: updatedPages,
+          };
+        }
       );
+
+      if (unreadChanged) {
+        // Decrement unread count only for unread -> read transitions
+        queryClient.setQueryData(
+          ["notifications", "unreadCount"],
+          (old: number | undefined) => Math.max(0, (old || 1) - 1)
+        );
+      }
     };
 
     // Handle all notifications read
@@ -220,22 +297,21 @@ export const NotificationProvider = ({
       console.log("✅ All notifications marked as read");
 
       // Update all notifications to read
-      queryClient.setQueryData(["notifications", "list"], (old: any) => {
-        if (!old) return old;
+      queryClient.setQueryData(
+        ["notifications", "list"],
+        (old: NotificationsListData | undefined) => {
+          if (!old || !old.pages) return old;
 
-        const flatNotifications = old.pages.flat();
-        const updatedNotifications = flatNotifications.map(
-          (item: Notification) => ({
-            ...item,
-            read: true,
-          })
-        );
+          const updatedPages = old.pages.map((page) =>
+            page.map((item) => (item.read ? item : { ...item, read: true }))
+          );
 
-        return {
-          ...old,
-          pages: [updatedNotifications],
-        };
-      });
+          return {
+            ...old,
+            pages: updatedPages,
+          };
+        }
+      );
 
       // Reset unread count to 0
       queryClient.setQueryData(["notifications", "unreadCount"], 0);
@@ -279,6 +355,7 @@ export const NotificationProvider = ({
         markAllAsRead,
         loadMoreNotifications,
         getNotificationTray,
+        initialLoading,
       }}
     >
       {children}

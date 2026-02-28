@@ -4,9 +4,9 @@ import client from "@/api/client";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import {
-  InfiniteData,
-  useInfiniteQuery,
-  useQueryClient,
+    InfiniteData,
+    useInfiniteQuery,
+    useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -70,7 +70,7 @@ export function useChatMessages(carpoolId: string) {
       if (beforeId) qs.push(`beforeId=${beforeId}`);
       qs.push(`limit=${limit}`);
 
-      const url = `http://10.170.32.53:4000/api/v1/messages/${carpoolId}?${qs.join(
+      const url = `http://172.25.243.53:4000/api/v1/messages/${carpoolId}?${qs.join(
         "&"
       )}`;
 

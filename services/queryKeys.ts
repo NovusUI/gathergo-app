@@ -8,5 +8,21 @@ export const QUERY_KEYS = {
   getUserEvents: ["getUserEvents"] as const,
   carpoolDetails: ["carpoolDetails"] as const,
   carpoolForYou: ["carpoolForYou"] as const,
+  eventCarpoolsPaginated: ["eventCarpoolsPaginated"] as const,
   carpoolChat: ["carpoolChat"] as const,
+  eventImageStatus: ["eventImageStatus"] as const,
+
+  getDashboard: ["dashboarddata"] as const,
+  getEventDashboard: ["getEventDashboard"] as const,
+  getDashboardEvents: ["getDashboardEvents"] as const,
+  getShortcut: ["getShortcut"] as const,
+  getShortcutEvent: ["getShortcutEvent"] as const,
+  getPayments: ["getPayments"] as const,
+
+  scannerStats: ["scannerStats"] as const,
+  scanHistory: ["scanHistory"] as const,
+  myScannerPermissions: ["myScannerPermissions"] as const,
+  grantedScannerPermissions: ["grantedScannerPermissions"] as const,
+  scannerUsersSearch: ["scannerUsersSearch"] as const,
+  canScan: ["canScan"] as const,
 };
