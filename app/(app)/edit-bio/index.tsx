@@ -4,8 +4,8 @@ import { useAuth } from "@/context/AuthContext";
 import { BioFormValues, bioSchema } from "@/schemas/bio";
 import { useEditBio } from "@/services/mutations";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import {
 import tw from "twrnc";
 
 const EditBioScreen = () => {
+  const router = useLockedRouter();
   const { setUser } = useAuth();
 
   const {

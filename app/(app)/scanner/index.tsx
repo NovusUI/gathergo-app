@@ -15,9 +15,11 @@ import PermissionBadge from "@/components/scanner/PermissionBadge";
 import QuickScanCard from "@/components/scanner/QuickScanCard";
 import ScannerStats from "@/components/scanner/ScannerStats";
 import { useScanner, useScannerPermissions } from "@/hooks/useScanner";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 
 const ScannerHome = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const [refreshing, setRefreshing] = useState(false);
 
   const {
@@ -89,7 +91,7 @@ const ScannerHome = () => {
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
           title="QR Scanner"
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/")}
         />
       </View>
 
@@ -217,8 +219,7 @@ const ScannerHome = () => {
           </View>
           <Text style={tw`text-gray-400 text-sm`}>
             • Everyone can scan QR codes to view details{"\n"}• Only event
-            owners and authorized scanners can mark as used{"\n"}• Permissions
-            are granted per event{"\n"}• All scans are logged for security
+            owners and authorized scanners can mark as used{"\n"}• Granting a user scanner permission gives them access to scan any of your events{"\n"}• All scans are logged for security
           </Text>
         </View>
       </ScrollView>

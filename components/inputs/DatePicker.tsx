@@ -80,10 +80,14 @@ const DatePicker = forwardRef<View, DatePickerProps>(
         </TouchableOpacity>
 
         {/* Error */}
-        {error && <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>}
+        {Boolean(error) && (
+          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+        )}
       </View>
     );
   }
 );
+
+DatePicker.displayName = "DatePicker";
 
 export default DatePicker;

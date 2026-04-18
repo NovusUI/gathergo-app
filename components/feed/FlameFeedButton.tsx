@@ -55,10 +55,15 @@ export default function FlameFeedButton({
       onPress={onPress}
       disabled={disabled}
       style={[
-        tw`relative items-center justify-center`,
+        tw`relative items-center justify-center rounded-full bg-[#041130]/85 p-2`,
         { transform: [{ scale: pulse }] },
       ]}
     >
+      {unreadCount > 0 && (
+        <View
+          style={tw`absolute inset-0 rounded-full bg-[#FF7A1A]/10`}
+        />
+      )}
       <ExpoFire intensity={intensity} />
 
       {unreadCount > 0 && (

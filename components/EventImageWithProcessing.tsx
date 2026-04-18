@@ -1,7 +1,9 @@
 // components/EventImageWithProcessing.tsx
+import { EventArtworkFallback } from "@/components/ui/ArtworkFallback";
+import { Registration } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import tw from "twrnc";
 
@@ -9,12 +11,19 @@ interface EventImageWithProcessingProps {
   imageUrl?: string | null;
   isProcessing: boolean;
   height?: number;
+  registrationType?: Registration | null;
 }
 
 export const EventImageWithProcessing: React.FC<
   EventImageWithProcessingProps
-> = ({ imageUrl, isProcessing, height = 240 }) => {
-  if (imageUrl && !isProcessing) {
+> = ({ imageUrl, isProcessing, height = 240, registrationType }) => {
+  const [showImage, setShowImage] = useState(Boolean(imageUrl));
+
+  useEffect(() => {
+    setShowImage(Boolean(imageUrl));
+  }, [imageUrl]);
+
+  if (showImage && !isProcessing) {
     return (
       <Image
         source={imageUrl}
@@ -22,6 +31,7 @@ export const EventImageWithProcessing: React.FC<
         cachePolicy="disk"
         transition={400}
         contentFit="cover"
+        onError={() => setShowImage(false)}
       />
     );
   }
@@ -34,7 +44,7 @@ export const EventImageWithProcessing: React.FC<
           { height },
         ]}
       >
-        {imageUrl ? (
+        {showImage ? (
           <>
             <Image
               source={imageUrl}
@@ -42,6 +52,7 @@ export const EventImageWithProcessing: React.FC<
               cachePolicy="disk"
               contentFit="cover"
               blurRadius={10}
+              onError={() => setShowImage(false)}
             />
             <View style={tw`absolute inset-0 items-center justify-center`}>
               <Ionicons name="cloud-upload-outline" size={40} color="#0FF1CF" />
@@ -69,11 +80,9 @@ export const EventImageWithProcessing: React.FC<
   }
 
   return (
-    <View
-      style={[tw`flex-1 items-center justify-center bg-gray-300`, { height }]}
-    >
-      <Ionicons name="image-outline" size={40} color="gray" />
-      <Text style={tw`text-gray-500 mt-2`}>No cover picture</Text>
-    </View>
+    <EventArtworkFallback
+      registrationType={registrationType}
+      height={height}
+    />
   );
 };

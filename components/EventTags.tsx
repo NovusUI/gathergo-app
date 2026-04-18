@@ -1,3 +1,4 @@
+import { DEFAULT_EVENT_TAGS } from "@/constants/impact";
 import { useState } from "react";
 import { View, ViewStyle } from "react-native";
 import tw from "twrnc";
@@ -10,22 +11,8 @@ interface EventTagsProps {
   containerStyle?: ViewStyle;
 }
 
-const defaultTags = [
-  "Concerts",
-  "Educational",
-  "Fun",
-  "Tech",
-  "Sport",
-  "Gaming",
-  "Conferences",
-  "Fashion",
-  "Work Shop",
-  "Networking",
-  "Fund Raising",
-];
-
 export default function EventTags({
-  tags = defaultTags,
+  tags = DEFAULT_EVENT_TAGS,
   selectedTags: controlledSelectedTags,
   onChange,
   containerStyle,

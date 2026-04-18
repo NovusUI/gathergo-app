@@ -91,10 +91,14 @@ const Dropdown = forwardRef<View, DropdownProps>(
           />
         </View>
 
-        {error && <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>}
+        {Boolean(error) && (
+          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+        )}
       </View>
     );
   }
 );
+
+Dropdown.displayName = "Dropdown";
 
 export default Dropdown;

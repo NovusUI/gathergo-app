@@ -1,13 +1,11 @@
-// In Pricing.tsx, update the component:
-
 import { EventPricing, EventTicket, eventPricingSchema } from "@/schemas/event";
-import { showGlobalError, showGlobalWarning } from "@/utils/globalErrorHandler";
+import { showGlobalError } from "@/utils/globalErrorHandler";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, PlusCircle } from "lucide-react-native";
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useMemo } from "react";
+import { Controller, Resolver, useForm } from "react-hook-form";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
+import tw, { style as twStyle } from "twrnc";
 import CustomSwitcher from "../CustomSwitcher";
 import CustomView from "../View";
 import CustomButton from "../buttons/CustomBtn1";
@@ -22,7 +20,33 @@ interface Props {
   setTicket: (updated: EventTicket[]) => void;
   onEdit?: (data: EventTicket) => void;
   editMode?: boolean;
+  insideBottomSheet?: boolean;
+  allowedRegistrationTypes?: readonly EventPricing["registrationType"][];
 }
+
+const ALL_REGISTRATION_TYPES = [
+  "donation",
+  "ticket",
+  "registration",
+] as const satisfies readonly EventPricing["registrationType"][];
+
+const registrationTypeContent = {
+  donation: {
+    label: "Donation",
+    helper: "Set a fundraising goal. The impact stays locked to 100%.",
+  },
+  ticket: {
+    label: "Ticket",
+    helper: "Offer multiple ticket tiers for the same event.",
+  },
+  registration: {
+    label: "Registration",
+    helper: "Use a single free or paid entry option.",
+  },
+} satisfies Record<
+  EventPricing["registrationType"],
+  { label: string; helper: string }
+>;
 
 const Pricing = ({
   createTicket,
@@ -32,18 +56,29 @@ const Pricing = ({
   setTicket,
   onEdit,
   editMode = false,
+  insideBottomSheet = false,
+  allowedRegistrationTypes = ALL_REGISTRATION_TYPES,
 }: Props) => {
+  const allowedTypesKey = allowedRegistrationTypes.join("|");
+  const normalizedAllowedRegistrationTypes = useMemo(
+    () =>
+      (allowedTypesKey
+        ? allowedTypesKey.split("|")
+        : [...ALL_REGISTRATION_TYPES]) as EventPricing["registrationType"][],
+    [allowedTypesKey]
+  );
+
   const {
     control,
     watch,
     setValue,
     reset,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<EventPricing>({
-    resolver: zodResolver(eventPricingSchema),
+    resolver: zodResolver(eventPricingSchema) as Resolver<EventPricing>,
     defaultValues: initialData || {
-      registrationType: undefined,
+      registrationType: undefined as unknown as EventPricing["registrationType"],
       paid: false,
       registrationFee: undefined,
       donationTarget: undefined,
@@ -56,12 +91,33 @@ const Pricing = ({
   useEffect(() => {
     if (initialData) {
       reset(initialData);
+      return;
     }
-  }, [initialData, reset]);
+
+    if (normalizedAllowedRegistrationTypes.length === 1) {
+      reset({
+        registrationType: normalizedAllowedRegistrationTypes[0],
+        paid: false,
+        registrationFee: undefined,
+        donationTarget: undefined,
+        limited: false,
+        registrationAttendees: undefined,
+        tickets: [],
+      });
+    }
+  }, [initialData, normalizedAllowedRegistrationTypes, reset]);
 
   const registrationType = watch("registrationType");
   const paid = watch("paid");
   const limited = watch("limited");
+  const isPricingTypeLocked = editMode && Boolean(registrationType);
+  const showTypeSelector =
+    normalizedAllowedRegistrationTypes.length > 1 && !isPricingTypeLocked;
+  const ticketsSignature = JSON.stringify(tickets ?? []);
+  const syncedTickets = useMemo(
+    () => JSON.parse(ticketsSignature) as EventTicket[],
+    [ticketsSignature]
+  );
 
   const ErrorText = ({ message }: { message?: string }) =>
     message ? <Text style={tw`text-red-500`}>{message}</Text> : null;
@@ -71,19 +127,33 @@ const Pricing = ({
   };
 
   useEffect(() => {
-    const subscription = watch((value) => {
-      console.log("Form changed:", value);
-    });
-    return () => subscription.unsubscribe();
-  }, [watch]);
+    if (
+      registrationType &&
+      !normalizedAllowedRegistrationTypes.includes(registrationType)
+    ) {
+      setValue("registrationType", normalizedAllowedRegistrationTypes[0], {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: false,
+      });
+    }
+  }, [
+    normalizedAllowedRegistrationTypes,
+    allowedTypesKey,
+    registrationType,
+    setValue,
+  ]);
 
   useEffect(() => {
-    if (tickets) setValue("tickets", tickets);
-  }, [tickets]);
+    setValue("tickets", syncedTickets, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: false,
+    });
+  }, [setValue, syncedTickets]);
 
   const onSubmit = (data: EventPricing) => {
     onSave(data);
-    console.log(data);
   };
 
   const onDelete = (id: string) => {
@@ -92,12 +162,13 @@ const Pricing = ({
   };
 
   const changePricing = (
-    type: "registration" | "ticket" | "donation", // Add donation
-    onChange: (event: any) => void
+    type: "registration" | "ticket" | "donation",
+    onChange: (event: EventPricing["registrationType"]) => void
   ) => {
-    if (editMode) {
-      if (registrationType !== type)
-        showGlobalWarning("you can't change pricing types");
+    if (
+      isPricingTypeLocked ||
+      !normalizedAllowedRegistrationTypes.includes(type)
+    ) {
       return;
     }
 
@@ -107,75 +178,73 @@ const Pricing = ({
   return (
     <>
       <CustomView style={tw`mb-16`}>
-        <Controller
-          control={control}
-          name="registrationType"
-          render={({ field: { value, onChange } }) => (
-            <CustomView style={tw`flex-row justify-between flex-wrap`}>
-              <TouchableOpacity
-                onPress={() => changePricing("donation", onChange)} // Add this
-                style={tw`${
-                  registrationType === "donation"
-                    ? "bg-[#0FF1CF]"
-                    : "bg-[#101C45]"
-                } p-5 rounded-xl mt-3 w-[30%] justify-center items-center`}
-              >
-                <Text
-                  style={tw`${
-                    registrationType === "donation"
-                      ? "text-black"
-                      : "text-white"
-                  } text-center text-sm`}
-                >
-                  Donation
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => changePricing("ticket", onChange)}
-                style={tw`${
-                  registrationType === "ticket"
-                    ? "bg-[#0FF1CF]"
-                    : "bg-[#101C45]"
-                } p-5 rounded-xl mt-3 w-[30%] justify-center items-center`}
-              >
-                <Text
-                  style={tw`${
-                    registrationType === "ticket" ? "text-black" : "text-white"
-                  } text-center text-sm`}
-                >
-                  Ticket
-                </Text>
-              </TouchableOpacity>
+        {showTypeSelector ? (
+          <Controller
+            control={control}
+            name="registrationType"
+            render={({ field: { onChange } }) => (
+              <CustomView style={tw`flex-row justify-between flex-wrap`}>
+                {normalizedAllowedRegistrationTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    disabled={isPricingTypeLocked}
+                    onPress={() => changePricing(type, onChange)}
+                    style={[
+                      tw`mt-3 items-center justify-center rounded-xl p-5`,
+                      registrationType === type
+                        ? tw`bg-[#0FF1CF]`
+                        : tw`bg-[#101C45]`,
+                      {
+                        width:
+                          normalizedAllowedRegistrationTypes.length === 2
+                            ? "48%"
+                            : "30%",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={twStyle(
+                        "text-center text-sm",
+                        registrationType === type ? "text-black" : "text-white"
+                      )}
+                    >
+                      {registrationTypeContent[type].label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </CustomView>
+            )}
+          />
+        ) : (
+          <View style={tw`mt-3 rounded-2xl bg-[#08143B] p-4`}>
+            <Text style={tw`text-sm font-semibold text-white`}>
+              {
+                registrationTypeContent[normalizedAllowedRegistrationTypes[0]]
+                  .label
+              }{" "}
+              setup
+            </Text>
+            <Text style={tw`mt-2 text-sm leading-5 text-[#A9B8DD]`}>
+              {
+                registrationTypeContent[normalizedAllowedRegistrationTypes[0]]
+                  .helper
+              }
+            </Text>
+          </View>
+        )}
 
-              <TouchableOpacity
-                onPress={() => changePricing("registration", onChange)}
-                style={tw`${
-                  registrationType === "registration"
-                    ? "bg-[#0FF1CF]"
-                    : "bg-[#101C45]"
-                } p-5 rounded-xl mt-3 w-[30%] justify-center items-center`}
-              >
-                <Text
-                  style={tw`${
-                    registrationType === "registration"
-                      ? "text-black"
-                      : "text-white"
-                  } text-center text-sm`}
-                >
-                  Registration
-                </Text>
-              </TouchableOpacity>
-            </CustomView>
-          )}
-        />
+        {isPricingTypeLocked && (
+          <Text style={tw`mt-3 text-xs text-gray-400`}>
+            Pricing type cannot be changed after the event is created.
+          </Text>
+        )}
 
-        {!registrationType && (
+        {!registrationType && showTypeSelector && (
           <View style={tw`mt-5 gap-5 flex-row px-5`}>
             <Info color="white" size={15} />
             <Text style={tw`text-white text-sm`}>
               • Ticket: Multiple price options (up to 5 different ticket types)
               {"\n"}• Registration: Single price tag only
-              {"\n"}• Donation: Set a fundraising target (minimum ₦50,000)
             </Text>
           </View>
         )}
@@ -240,6 +309,7 @@ const Pricing = ({
                   render={({ field: { value, onChange } }) => (
                     <>
                       <Input
+                        insideBottomSheet={insideBottomSheet}
                         numeric
                         moneyFormat
                         onChangeText={onChange}
@@ -274,6 +344,7 @@ const Pricing = ({
                   render={({ field: { value, onChange } }) => (
                     <>
                       <Input
+                        insideBottomSheet={insideBottomSheet}
                         onChangeText={onChange}
                         value={value?.toString()}
                         placeholder="Price"
@@ -296,14 +367,14 @@ const Pricing = ({
           </CustomView>
         )}
 
-        {registrationType === "donation" && ( // Add this new section
+        {registrationType === "donation" && (
           <CustomView>
             <CustomView>
               <Text style={tw`text-white text-lg mb-3 font-semibold`}>
                 Set Donation Target
               </Text>
               <Text style={tw`text-gray-400 mb-4 text-sm`}>
-                Minimum donation target: ₦50,000
+                Minimum donation target: ₦500,000
               </Text>
 
               <Controller
@@ -312,11 +383,12 @@ const Pricing = ({
                 render={({ field: { value, onChange } }) => (
                   <>
                     <Input
+                      insideBottomSheet={insideBottomSheet}
                       numeric
                       moneyFormat
                       onChangeText={onChange}
                       value={value?.toString()}
-                      placeholder="₦50,000 minimum"
+                      placeholder="₦500,000 minimum"
                     />
                     <ErrorText message={errors.donationTarget?.message} />
                     <Text style={tw`text-gray-400 mt-2 text-xs`}>

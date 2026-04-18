@@ -59,7 +59,7 @@ export const usePayments = (
 
   return {
     ...query,
-    paymenetsData: query.data,
+    paymentsData: query.data,
     fetchNextPage: query.fetchNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,

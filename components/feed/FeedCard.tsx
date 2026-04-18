@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import tw from "twrnc";
-import LiquidProgressBar from "./LiquidProgressBar";
 
 export interface FeedCardProps {
   feed: {
@@ -33,7 +32,7 @@ export interface FeedCardProps {
   onAction?: (action: any) => void;
 }
 
-const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
+const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const iconRotateAnim = useRef(new Animated.Value(0)).current;
@@ -56,8 +55,9 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
     ]).start();
 
     // Subtle icon rotation for frenzy feeds
+    let rotationLoop: Animated.CompositeAnimation | null = null;
     if (feed.type.includes("FRENZY")) {
-      Animated.loop(
+      rotationLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(iconRotateAnim, {
             toValue: 1,
@@ -71,10 +71,15 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
-        ])
-      ).start();
+        ]),
+      );
+      rotationLoop.start();
     }
-  }, []);
+
+    return () => {
+      rotationLoop?.stop();
+    };
+  }, [feed.type, iconRotateAnim, opacityAnim, scaleAnim]);
 
   // Get theme configuration based on feed type
   const getThemeConfig = () => {
@@ -177,19 +182,25 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
     const converted = numeric <= 1 ? numeric * 100 : numeric;
     return Math.max(0, Math.min(converted, 100));
   };
+  const normalizedPercentage = getNormalizedPercentage();
+  const primaryAction = feed.actions?.[0];
+  const supportMessage =
+    feed.metadata?.supportMessage ||
+    feed.metadata?.message ||
+    feed.metadata?.donationMessage ||
+    null;
 
-  // Render progress visualization
+  // Keep progress compact since the card background already carries the fill state.
   const renderProgress = () => {
-    const percentage = getNormalizedPercentage();
+    const percentage = normalizedPercentage;
     if (percentage === null) return null;
 
     const isDonation = feed.type.includes("DONATION");
-    const showWave = isDonation && percentage >= 90;
 
     return (
-      <View style={tw`mt-2 mb-1`}>
-        <View style={tw`flex-row justify-between items-center mb-1.5`}>
-          <Text style={tw`text-xs text-gray-400`}>
+      <View style={tw`mt-2`}>
+        <View style={tw`flex-row items-center justify-between`}>
+          <Text style={tw`text-[11px] text-gray-400`}>
             {isDonation ? "Fundraising" : "Progress"}
           </Text>
           <View style={tw`flex-row items-center`}>
@@ -197,7 +208,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
               feed.metadata.amountInNaira !== undefined && (
               <Text
                 style={[
-                  tw`text-xs font-bold mr-2`,
+                  tw`text-[11px] font-bold mr-2`,
                   { color: theme.accentColor },
                 ]}
               >
@@ -206,10 +217,10 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
             )}
             <Text
               style={[
-                tw`text-xs font-bold`,
+                tw`text-[11px] font-bold`,
                 {
                   color: theme.accentColor,
-                  fontSize: percentage >= 100 ? 16 : 14,
+                  fontSize: percentage >= 100 ? 15 : 13,
                 },
               ]}
             >
@@ -218,15 +229,8 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
           </View>
         </View>
 
-        <LiquidProgressBar
-          percentage={percentage}
-          color={theme.accentColor}
-          height={isDonation ? 10 : 7}
-          showWave={showWave}
-        />
-
         {feed.metadata.targetInNaira && (
-          <Text style={tw`text-xs text-gray-500 mt-1 text-right`}>
+          <Text style={tw`mt-1 text-[11px] text-gray-500`}>
             Goal: ₦{feed.metadata.targetInNaira.toLocaleString()}
           </Text>
         )}
@@ -330,159 +334,133 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onHide, onAction }) => {
   };
 
   return (
-    <Animated.View
-      style={[
-        tw`p-3 mb-2 rounded-xl border relative`,
-        {
-          backgroundColor: theme.bgColor,
-          borderColor: theme.borderColor,
-          transform: [{ scale: scaleAnim }],
-          opacity: opacityAnim,
-        },
-        feed.isPinned && {
-          borderLeftWidth: 4,
-          borderLeftColor: theme.accentColor,
-        },
-      ]}
+    <TouchableOpacity
+      activeOpacity={primaryAction ? 0.9 : 1}
+      disabled={!primaryAction}
+      onPress={() => primaryAction && onAction?.(primaryAction)}
     >
-      {/* Pinned indicator */}
-      {feed.isPinned && (
-        <View style={tw`absolute -left-1 top-3`}>
-          <Ionicons name="pin" size={13} color={theme.accentColor} />
-        </View>
-      )}
-
-      {/* Count badge */}
-      {renderCountBadge()}
-
-      <View style={tw`flex-row items-start`}>
-        {/* Animated icon container */}
-        <View style={tw`mr-2.5`}>
-          <Animated.View
+      <Animated.View
+        style={[
+          tw`mb-2 overflow-hidden rounded-2xl border relative`,
+          {
+            backgroundColor: theme.bgColor,
+            borderColor: theme.borderColor,
+            transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
+          },
+          feed.isPinned && {
+            borderLeftWidth: 4,
+            borderLeftColor: theme.accentColor,
+          },
+        ]}
+      >
+        {normalizedPercentage !== null && (
+          <View
             style={[
-              tw`w-10 h-10 rounded-lg items-center justify-center`,
+              tw`absolute inset-y-0 left-0`,
               {
-                backgroundColor: `${theme.accentColor}20`,
-                transform: [
-                  {
-                    rotate: feed.type.includes("FRENZY")
-                      ? iconRotation
-                      : "0deg",
-                  },
-                ],
+                width: `${normalizedPercentage}%`,
+                backgroundColor: `${theme.accentColor}22`,
               },
             ]}
-          >
-            <Ionicons
-              name={theme.icon as any}
-              size={20}
-              color={theme.iconColor}
-            />
-          </Animated.View>
-        </View>
+          />
+        )}
 
-        {/* Content */}
-        <View style={tw`flex-1`}>
-          {/* Header */}
-          <View style={tw`flex-row justify-between items-start mb-0.5`}>
-            <Text
-              numberOfLines={1}
+        {feed.isPinned && (
+          <View style={tw`absolute left-2 top-2`}>
+            <Ionicons name="pin" size={12} color={theme.accentColor} />
+          </View>
+        )}
+
+        {renderCountBadge()}
+
+        <View style={tw`flex-row items-start p-3`}>
+          <View style={tw`mr-2.5`}>
+            <Animated.View
               style={[
-                tw`text-white font-semibold text-sm flex-1 mr-2`,
-                { color: theme.accentColor },
+                tw`h-9 w-9 rounded-xl items-center justify-center`,
+                {
+                  backgroundColor: `${theme.accentColor}20`,
+                  transform: [
+                    {
+                      rotate: feed.type.includes("FRENZY")
+                        ? iconRotation
+                        : "0deg",
+                    },
+                  ],
+                },
               ]}
             >
-              {feed.title}
-            </Text>
-            <Text style={tw`text-xs text-gray-500`}>
-              {timeAgo(feed.createdAt)}
-            </Text>
+              <Ionicons
+                name={theme.icon as any}
+                size={18}
+                color={theme.iconColor}
+              />
+            </Animated.View>
           </View>
 
-          {/* User info */}
-          {feed.user && (
-            <View style={tw`flex-row items-center mb-1`}>
-              {feed.user.profilePicUrlTN ? (
-                <Image
-                  source={{ uri: feed.user.profilePicUrlTN }}
-                  style={tw`w-5 h-5 rounded-full mr-2`}
-                />
-              ) : (
-                <View
-                  style={tw`w-5 h-5 rounded-full bg-gray-700 mr-2 justify-center items-center`}
-                >
-                  <UserRound size={10} color="white" />
-                </View>
-              )}
-              <Text numberOfLines={1} style={tw`text-gray-300 text-xs`}>
-                {feed.user.username}
+          <View style={tw`flex-1`}>
+            <View style={tw`flex-row items-start justify-between mb-1`}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  tw`mr-3 flex-1 text-sm font-semibold text-white`,
+                  { color: theme.accentColor },
+                ]}
+              >
+                {feed.title}
+              </Text>
+              <Text style={tw`text-[11px] text-gray-500`}>
+                {timeAgo(feed.createdAt)}
               </Text>
             </View>
-          )}
 
-          {/* Content text */}
-          {feed.content && (
-            <Text numberOfLines={2} style={tw`text-white text-xs mb-2`}>
-              {feed.content}
-            </Text>
-          )}
-
-          {/* Progress visualization */}
-          {renderProgress()}
-
-          {/* Frenzy intensity */}
-          {renderFrenzyIntensity()}
-
-          {/* Celebration for milestones */}
-          {renderCelebration()}
-
-          {/* Actions */}
-          {feed.actions && feed.actions.length > 0 && (
-            <View style={tw`flex-row mt-2 flex-wrap gap-1.5`}>
-              {feed.actions.map((action, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    tw`px-2.5 py-1.5 rounded-md flex-row items-center`,
-                    {
-                      backgroundColor: theme.accentColor,
-                      minWidth: 84,
-                    },
-                  ]}
-                  onPress={() => onAction?.(action)}
-                >
-                  <Text
-                    numberOfLines={1}
-                    style={tw`text-black text-xs font-medium text-center flex-1`}
+            {feed.user && (
+              <View style={tw`mb-1.5 flex-row items-center`}>
+                {feed.user.profilePicUrlTN ? (
+                  <Image
+                    source={{ uri: feed.user.profilePicUrlTN }}
+                    style={tw`mr-2 h-5 w-5 rounded-full`}
+                  />
+                ) : (
+                  <View
+                    style={tw`mr-2 h-5 w-5 rounded-full bg-gray-700 justify-center items-center`}
                   >
-                    {action.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <UserRound size={10} color="white" />
+                  </View>
+                )}
+                <Text numberOfLines={1} style={tw`text-[11px] text-gray-300`}>
+                  {feed.user.username}
+                </Text>
+              </View>
+            )}
+
+            {Boolean(feed.content) && (
+              <Text
+                numberOfLines={2}
+                style={tw`text-xs leading-5 text-white`}
+              >
+                {feed.content}
+              </Text>
+            )}
+
+            {supportMessage && (
+              <View style={tw`mt-2 rounded-2xl bg-white/6 px-3 py-2`}>
+                <Text style={tw`text-[11px] leading-5 text-[#E5EDFF]`}>
+                  {`"${supportMessage}"`}
+                </Text>
+              </View>
+            )}
+
+            <View style={tw`mt-2`}>
+              {renderProgress()}
+              {renderFrenzyIntensity()}
+              {renderCelebration()}
             </View>
-          )}
-
-          {/* Footer */}
-          <View
-            style={tw`flex-row justify-between items-center mt-2 pt-2 border-t border-gray-800`}
-          >
-            <Text
-              style={[tw`text-xs capitalize`, { color: theme.accentColor }]}
-            >
-              {feed.type.replace(/_/g, " ").toLowerCase()}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => onHide?.(feed.id)}
-              style={tw`flex-row items-center`}
-            >
-              <Ionicons name="eye-off-outline" size={12} color="#666" />
-              <Text style={tw`text-xs text-gray-500 ml-1`}>Hide</Text>
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 

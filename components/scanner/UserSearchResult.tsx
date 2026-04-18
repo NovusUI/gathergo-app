@@ -44,7 +44,7 @@ const UserSearchResult: React.FC<UserSearchResultProps> = ({
         <Text style={tw`text-white font-semibold`}>
           {user.fullName || user.username || "User"}
         </Text>
-        {user.username && (
+        {Boolean(user.username) && (
           <Text style={tw`text-gray-400 text-sm`}>@{user.username}</Text>
         )}
         <View style={tw`flex-row items-center mt-1`}>

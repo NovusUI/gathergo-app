@@ -1,8 +1,8 @@
 import { usePayments } from "@/hooks/useDashboard";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { ChevronDown, X } from "lucide-react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -17,6 +17,7 @@ interface Payment {
   id: string;
   name: string;
   amount: number;
+  creatorPayable:number,
   time: string;
   date: string;
   event: string;
@@ -30,12 +31,14 @@ interface Props {
 }
 
 const PaymentCard = ({ payment }: { payment: Payment }) => {
+  console.log(payment.creatorPayable)
+
   return (
     <View style={tw`p-4 bg-[#1B2A50] rounded-xl gap-3 mb-2`}>
       <View style={tw`flex-row justify-between`}>
         <Text style={tw`text-white text-base font-medium`}>{payment.name}</Text>
         <Text style={tw`text-white text-base font-semibold`}>
-          {payment.amount.toLocaleString("en-NG", {
+          {payment.creatorPayable.toLocaleString("en-NG", {
             style: "currency",
             currency: "NGN",
           })}
@@ -60,30 +63,57 @@ const PaymentCard = ({ payment }: { payment: Payment }) => {
   );
 };
 
-const Payments = ({ title = "Payments", payments }: Props) => {
+const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
   const scrollViewRef = useRef<ScrollView>(null);
-
   const [isExpanded, setIsExpanded] = useState(false);
 
   const {
-    paymenetsData,
+    data: paymentsResponse,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading,
     isFetching,
+    error,
   } = usePayments("", undefined, { enabled: isExpanded });
 
-  const paymentsData = useMemo(
-    () => paymenetsData?.pages.flatMap((page) => page.data),
-    [paymenetsData]
-  );
+  // Flatten all payments from all pages
+  const allPayments = useMemo(() => {
+    if (!paymentsResponse?.pages) return [];
+    
+    const flattened = paymentsResponse.pages.flatMap((page) => {
+      // Log each page to verify structure
+      console.log('Page data:', page);
+      return page.data || []; // Fallback to empty array if data is undefined
+    });
+    
+    console.log('All payments count:', flattened.length);
+    return flattened;
+  }, [paymentsResponse]);
+
+  // Debug logging
+  useEffect(() => {
+    if (isExpanded) {
+      console.log('Modal opened, paymentsResponse:', paymentsResponse);
+      console.log('All payments:', allPayments);
+      console.log('Has next page:', hasNextPage);
+      console.log('Is fetching:', isFetching);
+      console.log('Error:', error);
+    }
+  }, [isExpanded, paymentsResponse, allPayments, hasNextPage, isFetching, error]);
 
   const handleScroll = useCallback(
     (event: any) => {
-      const { layoutMeasurement, contentOffset, contentSize } =
-        event.nativeEvent;
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
       const paddingToBottom = 20;
+
+      console.log('Scroll position:', {
+        layoutHeight: layoutMeasurement.height,
+        offsetY: contentOffset.y,
+        contentHeight: contentSize.height,
+        hasNextPage,
+        isFetchingNextPage
+      });
 
       if (
         hasNextPage &&
@@ -93,14 +123,15 @@ const Payments = ({ title = "Payments", payments }: Props) => {
         !isLoading &&
         !isFetching
       ) {
+        console.log('Fetching next page...');
         fetchNextPage();
       }
     },
-    [fetchNextPage, isFetchingNextPage, isLoading, isFetching]
+    [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isFetching]
   );
 
-  const initialDisplayPayments = payments.slice(0, 3);
-  const hasMorePayments = payments.length > 3;
+  const initialDisplayPayments = initialPayments.slice(0, 3);
+  const hasMorePayments = initialPayments.length > 3;
 
   if (isExpanded) {
     return (
@@ -116,11 +147,22 @@ const Payments = ({ title = "Payments", payments }: Props) => {
             <View
               style={tw`flex-row items-center justify-between p-4 border-b border-[#5669FF]`}
             >
-              <Text style={tw`text-white text-xl font-bold`}>All Payments</Text>
+              <Text style={tw`text-white text-xl font-bold`}>
+                All Payments ({allPayments.length})
+              </Text>
               <TouchableOpacity onPress={() => setIsExpanded(false)}>
                 <X color="white" size={24} />
               </TouchableOpacity>
             </View>
+
+            {/* Error Display */}
+            {error && (
+              <View style={tw`bg-red-500/20 p-4 m-4 rounded-lg`}>
+                <Text style={tw`text-red-500 text-center`}>
+                  Error loading payments: {error.message}
+                </Text>
+              </View>
+            )}
 
             {/* Payments List */}
             <ScrollView
@@ -131,20 +173,38 @@ const Payments = ({ title = "Payments", payments }: Props) => {
               scrollEventThrottle={400}
             >
               <View style={tw`gap-2 pb-4`}>
-                {paymentsData.map((payment, index) => (
-                  <PaymentCard
-                    key={`${payment.id}-${index}`}
-                    payment={payment}
-                  />
-                ))}
+                {allPayments.length === 0 && !isLoading && !isFetching ? (
+                  <View style={tw`py-8`}>
+                    <Text style={tw`text-white text-center`}>No payments found</Text>
+                  </View>
+                ) : (
+                  allPayments.map((payment, index) => (
+                    <PaymentCard
+                      key={`${payment.id}-${index}`}
+                      payment={payment}
+                    />
+                  ))
+                )}
 
                 {(isLoading || isFetchingNextPage) && (
                   <View style={tw`py-8`}>
-                    <ActivityIndicator size="large" color="#5669FF" />
+                    <ActivityIndicator tone="accent" size="large" />
+                    <Text style={tw`text-white text-center mt-2`}>
+                      {isLoading ? 'Loading payments...' : 'Loading more...'}
+                    </Text>
                   </View>
                 )}
               </View>
             </ScrollView>
+
+            {/* Bottom indicator when there's more data */}
+            {hasNextPage && !isFetchingNextPage && allPayments.length > 0 && (
+              <View style={tw`py-2 items-center border-t border-gray-700`}>
+                <Text style={tw`text-gray-400 text-sm`}>
+                  Scroll for more payments
+                </Text>
+              </View>
+            )}
           </View>
         </SafeAreaView>
       </Modal>
@@ -157,7 +217,7 @@ const Payments = ({ title = "Payments", payments }: Props) => {
         <Text style={tw`text-white text-lg font-bold mb-4`}>{title}</Text>
       </View>
 
-      {!payments?.length ? (
+      {!initialPayments?.length ? (
         <View style={tw``}>
           <Text style={tw`text-white text-center`}>No payments yet</Text>
         </View>

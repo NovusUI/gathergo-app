@@ -6,7 +6,9 @@ import { useNotification } from "@/context/NotificationContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNotificationTabs } from "@/hooks/useNotificationTabs";
 import { Notification } from "@/types/notification";
-import { useRouter } from "expo-router";
+import { normalizeNotificationLink } from "@/utils/notificationLinks";
+import { useLockedRouter } from "@/utils/navigation";
+import { formatBadgeCount } from "@/utils/utils";
 import { useCallback, useMemo, useState } from "react";
 import {
   Pressable,
@@ -44,7 +46,7 @@ export default function NotificationsScreen() {
 
   const { markAsRead } = useNotification();
   const [refreshing, setRefreshing] = useState(false);
-  const router = useRouter();
+  const router = useLockedRouter();
 
   const sections = useMemo(
     () =>
@@ -72,8 +74,9 @@ export default function NotificationsScreen() {
         markAsRead(notification.id);
       }
 
-      if (notification.link) {
-        router.push(notification.link);
+      const target = normalizeNotificationLink(notification.link, notification);
+      if (target) {
+        router.push(target);
       }
     },
     [markAsRead, router]
@@ -186,8 +189,10 @@ export default function NotificationsScreen() {
                 </Text>
 
                 {tab.badge ? (
-                  <View style={tw`ml-2 bg-red-500 px-2 rounded-full`}>
-                    <Text style={tw`text-white text-xs`}>{tab.badge}</Text>
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>
+                      {formatBadgeCount(tab.badge)}
+                    </Text>
                   </View>
                 ) : null}
               </View>
@@ -232,5 +237,20 @@ const styles = StyleSheet.create({
   footerLoading: {
     paddingVertical: spacing.lg,
     alignItems: "center",
+  },
+  tabBadge: {
+    marginLeft: spacing.xs,
+    backgroundColor: "#EF4444",
+    borderRadius: 999,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

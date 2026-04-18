@@ -1,10 +1,12 @@
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useScanner } from "@/hooks/useScanner";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { Flashlight, FlashlightOff, RotateCw, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
@@ -15,7 +17,7 @@ import tw from "twrnc";
 import ScanResultModal from "./scan-result";
 
 const ScannerScreen = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [flash, setFlash] = useState(false);
@@ -126,7 +128,7 @@ const ScannerScreen = () => {
         <View style={tw`pt-10 px-5 flex-row justify-between items-center`}>
           <TouchableOpacity
             style={tw`w-10 h-10 rounded-full bg-black/50 items-center justify-center`}
-            onPress={() => router.back()}
+            onPress={() => safeGoBack(router, "/scanner")}
           >
             <X size={24} color="white" />
           </TouchableOpacity>
@@ -151,7 +153,7 @@ const ScannerScreen = () => {
           </Text>
           {isProcessing && (
             <View style={tw`mt-4`}>
-              <ActivityIndicator size="large" color="#5669FF" />
+              <ActivityIndicator tone="accent" size="large" />
               <Text style={tw`text-white text-center mt-2`}>Processing...</Text>
             </View>
           )}

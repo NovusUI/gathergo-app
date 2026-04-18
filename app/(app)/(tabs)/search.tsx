@@ -1,12 +1,13 @@
 import CustomView from "@/components/View";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import EventCard from "@/components/ui/EventCard";
 import { useGetSearchResult } from "@/services/queries";
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -19,7 +20,7 @@ import {
 import tw from "twrnc";
 
 const SearchScreen = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<TextInput | null>(null);
 
@@ -40,7 +41,7 @@ const SearchScreen = () => {
     if (isPending) {
       return (
         <View style={tw`flex-1 justify-center items-center`}>
-          <ActivityIndicator color="#0FF1CF" size="large" />
+          <ActivityIndicator tone="accent" size="large" />
         </View>
       );
     }
@@ -67,8 +68,12 @@ const SearchScreen = () => {
             imageUrl={item.imageUrl}
             registrationType={item.registrationType}
             registrationFee={item.registrationFee}
+            donationTarget={item.donationTarget}
+            lowestTicketPrice={item.lowestTicketPrice}
             onPress={() => router.push(`/event/${item.id}`)}
             startDate={item.startDate}
+            impactTitle={item.impactTitle}
+            impactPercentage={item.impactPercentage}
           />
         )}
         contentContainerStyle={styles.listContent}
@@ -80,7 +85,7 @@ const SearchScreen = () => {
         onEndReachedThreshold={0.3}
         ListFooterComponent={
           isFetchingNextPage ? (
-            <ActivityIndicator color="#0FF1CF" style={styles.listFooterLoading} />
+            <ActivityIndicator tone="accent" style={styles.listFooterLoading} />
           ) : null
         }
       />

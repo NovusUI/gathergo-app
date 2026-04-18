@@ -1,6 +1,9 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import UserSearchResult from "@/components/scanner/UserSearchResult";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useScannerPermissions } from "@/hooks/useScanner";
+import { useLockedRouter } from "@/utils/navigation";
+import { safeGoBack } from "@/utils/navigation";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -15,7 +18,6 @@ import {
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -28,7 +30,7 @@ import {
 import tw from "twrnc";
 
 const GrantPermission = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const params = useLocalSearchParams();
   const eventId = params.eventId as string;
   const eventName = params.eventName as string;
@@ -89,7 +91,11 @@ const GrantPermission = () => {
         [
           {
             text: "OK",
-            onPress: () => router.back(),
+            onPress: () =>
+              safeGoBack(router, {
+                pathname: "/scanner/permissions",
+                params: { eventId, eventName },
+              }),
           },
         ]
       );
@@ -117,7 +123,11 @@ const GrantPermission = () => {
       Alert.alert("Success", `Permission invitation sent to ${searchQuery}`, [
         {
           text: "OK",
-          onPress: () => router.back(),
+          onPress: () =>
+            safeGoBack(router, {
+              pathname: "/scanner/permissions",
+              params: { eventId, eventName },
+            }),
         },
       ]);
     } catch (error: any) {
@@ -151,7 +161,12 @@ const GrantPermission = () => {
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
           title="Grant Scanning Permission"
-          onClickBack={() => router.back()}
+          onClickBack={() =>
+            safeGoBack(router, {
+              pathname: "/scanner/permissions",
+              params: { eventId, eventName },
+            })
+          }
         />
       </View>
 
@@ -237,7 +252,7 @@ const GrantPermission = () => {
                 </Text>
                 {isLoading.search ? (
                   <View style={tw`items-center py-8`}>
-                    <ActivityIndicator size="large" color="#5669FF" />
+                    <ActivityIndicator tone="accent" size="large" />
                     <Text style={tw`text-gray-400 mt-3`}>
                       Searching users...
                     </Text>
@@ -277,7 +292,7 @@ const GrantPermission = () => {
                         disabled={pagination.isFetchingMoreUsers}
                       >
                         {pagination.isFetchingMoreUsers ? (
-                          <ActivityIndicator color="#5669FF" />
+                          <ActivityIndicator tone="accent" />
                         ) : (
                           <Text style={tw`text-white`}>Load More Users</Text>
                         )}

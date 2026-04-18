@@ -1,6 +1,7 @@
 import { Globe } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import ActivityIndicator from "@/components/ui/AppLoader";
+import { View } from "react-native";
 import tw from "twrnc";
 import Dropdown from "./CustomDropDown";
 
@@ -49,7 +50,7 @@ export default function NationalityDropdown({
       <View
         style={tw`w-full max-w-[500px] bg-[#1B2A50]/40 p-4 rounded-xl flex-row justify-center`}
       >
-        <ActivityIndicator color="#0FF1CF" />
+        <ActivityIndicator tone="accent" />
       </View>
     );
   }

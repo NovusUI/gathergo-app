@@ -1,8 +1,9 @@
+import { usePressGuard } from "@/hooks/usePressGuard";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 interface CustomButtonProps {
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
   title?: string;
   showArrow?: boolean;
   arrowCircleColor?: string;
@@ -24,6 +25,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   arrowText = "→",
   disabled = false,
 }: CustomButtonProps) => {
+  const guardedOnPress = usePressGuard(onPress);
+
   return (
     <TouchableOpacity
       style={tw.style(
@@ -31,7 +34,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         buttonClassName,
         disabled ? "opacity-50" : "opacity-100"
       )}
-      onPress={!disabled ? onPress : undefined}
+      onPress={!disabled ? guardedOnPress : undefined}
       activeOpacity={disabled ? 1 : 0.7}
     >
       <Text

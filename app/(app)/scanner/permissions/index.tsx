@@ -1,11 +1,13 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import PermissionCard from "@/components/scanner/PermissionCard";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useScannerPermissions } from "@/hooks/useScanner";
+import { useLockedRouter } from "@/utils/navigation";
+import { safeGoBack } from "@/utils/navigation";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus, Shield, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
@@ -16,7 +18,7 @@ import {
 import tw from "twrnc";
 
 const ManagePermissions = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const params = useLocalSearchParams();
   const eventId = params.eventId as string;
   const eventName = params.eventName as string;
@@ -102,11 +104,11 @@ const ManagePermissions = () => {
         <View style={tw`pt-10 pb-4 px-5`}>
           <CustomeTopBarNav
             title="Manage Permissions"
-            onClickBack={() => router.back()}
+            onClickBack={() => safeGoBack(router, "/scanner")}
           />
         </View>
         <View style={tw`flex-1 items-center justify-center`}>
-          <ActivityIndicator size="large" color="#5669FF" />
+          <ActivityIndicator tone="accent" size="large" />
           <Text style={tw`text-gray-400 mt-4`}>Loading permissions...</Text>
         </View>
       </View>
@@ -119,7 +121,7 @@ const ManagePermissions = () => {
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
           title={eventName ? `Permissions: ${eventName}` : "Manage Permissions"}
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/scanner")}
         />
       </View>
 

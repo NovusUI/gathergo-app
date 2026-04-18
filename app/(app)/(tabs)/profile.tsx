@@ -7,6 +7,7 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useGetUsersEvents, useUserProfile } from "@/services/queries";
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { Settings } from "lucide-react-native";
 import { useState } from "react";
@@ -18,7 +19,7 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState(tabs[0]);
   const { user } = useAuth();
   const { data: publicProfile } = useUserProfile(user?.id);
-  const router = useRouter();
+  const router = useLockedRouter();
 
   // ✅ Fetch events here
   const {

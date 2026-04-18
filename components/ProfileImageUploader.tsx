@@ -76,7 +76,7 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
     <View style={tw`relative w-18 h-18`}>
       {/* Avatar */}
       <View style={tw`rounded-2xl w-18 h-18 bg-gray-100 overflow-hidden`}>
-        {image && (
+        {Boolean(image) && (
           <Image
             source={image}
             cachePolicy="disk"

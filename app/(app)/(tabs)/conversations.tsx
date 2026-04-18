@@ -1,5 +1,6 @@
 import ConversationView from "@/components/ConversationView";
 import { useSocket } from "@/context/SocketContext";
+import { useLockedRouter } from "@/utils/navigation";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MessageCircle, UserRound } from "lucide-react-native";
 import { useCallback, useState } from "react";
@@ -8,7 +9,7 @@ import tw from "twrnc";
 import { useConversations } from "../../../hooks/useSocketReactHook";
 
 const Conversations = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const { data: conversations = [] } = useConversations();
   const { socket } = useSocket();
 

@@ -22,7 +22,8 @@ export type EventData = {
   description: string;
   imageUrl: string;
   thumbnailUrl: string;
-  location: string;
+  location: string | null;
+  isPhysicalEvent: boolean;
   links: string[];
   startDate: string; // ISO date string
   endDate: string; // ISO date string
@@ -47,6 +48,10 @@ export type EventData = {
   reason: string;
   isImageProcessing: boolean;
   donationTarget: number;
+  lowestTicketPrice?: number | null;
+  impactTitle?: string | null;
+  impactDescription?: string | null;
+  impactPercentage?: number | null;
   isFollowingCreator: boolean;
   isFollowedByCreator: boolean;
   totalDonations: number;
@@ -63,10 +68,20 @@ type DashboardEvent = {
   date: string;
   type: "upcoming" | "past";
 };
-type AuthData = {
+export type AuthData = {
   accessToken: string;
   user: User;
   refreshToken: string;
+};
+
+export type EmailVerificationStateData = {
+  email: string;
+  requiresVerification: boolean;
+};
+
+export type PasswordResetStateData = {
+  email: string;
+  requiresPasswordReset: boolean;
 };
 enum gender {
   MALE = "MALE",
@@ -83,6 +98,45 @@ export interface StandardResponse {
 
 export interface authResponse extends StandardResponse {
   data: AuthData;
+}
+
+export interface signUpResponse extends StandardResponse {
+  data: AuthData | EmailVerificationStateData;
+}
+
+export interface verifyEmailResponse extends StandardResponse {
+  data: AuthData;
+}
+
+export interface resendEmailVerificationResponse extends StandardResponse {
+  data: EmailVerificationStateData;
+}
+
+export interface forgotPasswordResponse extends StandardResponse {
+  data: PasswordResetStateData;
+}
+
+export interface resetPasswordResponse extends StandardResponse {
+  data: Record<string, never>;
+}
+
+export interface VerifyEmailCodePayload {
+  email: string;
+  code: string;
+}
+
+export interface ResendEmailVerificationPayload {
+  email: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  code: string;
+  newPassword: string;
 }
 
 export interface PhoneVerificationArtifact {

@@ -1,5 +1,7 @@
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { usePhoneAuthFlow } from "@/hooks/usePhoneAuthFlow";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, ShieldCheck } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -7,7 +9,7 @@ import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 const PhoneVerifyScreen = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const { phone, verificationId } = useLocalSearchParams<{
     phone?: string | string[];
     verificationId?: string | string[];
@@ -32,7 +34,10 @@ const PhoneVerifyScreen = () => {
 
   return (
     <View style={tw`flex-1 bg-[#01082E] px-5 pt-14 pb-8`}>
-      <TouchableOpacity onPress={() => router.back()} style={tw`self-start p-2`}>
+      <TouchableOpacity
+        onPress={() => safeGoBack(router, "/phone-login")}
+        style={tw`self-start p-2`}
+      >
         <ArrowLeft color="white" size={20} />
       </TouchableOpacity>
 
@@ -78,4 +83,3 @@ const PhoneVerifyScreen = () => {
 };
 
 export default PhoneVerifyScreen;
-

@@ -1,7 +1,7 @@
 import { useCarpoolRequestRes, useRemovePassenger } from "@/services/mutations";
 import { QUERY_KEYS } from "@/services/queryKeys";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useState } from "react";
@@ -32,6 +32,36 @@ export default function RequestCard({
   const [expanded, setExpanded] = useState(false);
 
   const isAccepted = status === "ACCEPTED";
+  const locationText = message?.trim() || "Pickup point not shared yet";
+  const trimmedNote = note?.trim() || "";
+  const noteNeedsToggle = trimmedNote.length > 110;
+  const displayNote =
+    !trimmedNote || expanded || !noteNeedsToggle
+      ? trimmedNote
+      : `${trimmedNote.slice(0, 110).trimEnd()}...`;
+  const statusTone = isAccepted
+    ? {
+        cardBg: "#071A33",
+        border: "#1A5A52",
+        badgeBg: "#103B36",
+        badgeText: "#65F5C7",
+        accent: "#0FF1CF",
+      }
+    : {
+        cardBg: "#091737",
+        border: "#324978",
+        badgeBg: "#1B2C5A",
+        badgeText: "#BFD2FF",
+        accent: "#7DA7FF",
+      };
+  const statusLabel = isAccepted ? "Approved" : "Pending";
+  const statusCopy = isAccepted
+    ? "This rider already has a seat with you."
+    : "Give them a quick yes or no before the ride fills up.";
+  const distanceLabel =
+    estimatedDistance && estimatedDistance.trim().length > 0
+      ? estimatedDistance
+      : null;
   const queryClient = useQueryClient();
 
   const { mutateAsync: reqRes, isPending: reqResPen } = useCarpoolRequestRes(
@@ -72,101 +102,166 @@ export default function RequestCard({
 
   return (
     <View
-      style={tw`flex-row items-start p-3 rounded-xl border`}
-      // conditional border color
+      style={[
+        tw`rounded-[28px] border px-4 py-4`,
+        {
+          backgroundColor: statusTone.cardBg,
+          borderColor: statusTone.border,
+        },
+      ]}
     >
-      {/* Avatar */}
-      <View style={tw`w-[70px] h-[70px] rounded-xl overflow-hidden mr-3`}>
-        {imageUrl ? (
-          <Image
-            source={imageUrl}
-            contentFit="cover"
-            style={tw`w-full h-full rounded-xl`}
-          />
-        ) : (
-          <Feather name="user" color="teal" size={70} />
-        )}
+      <View style={tw`flex-row items-start`}>
+        <View
+          style={tw`mr-3 h-14 w-14 items-center justify-center overflow-hidden rounded-[20px] bg-[#122451]`}
+        >
+          {imageUrl ? (
+            <Image source={imageUrl} contentFit="cover" style={tw`h-full w-full`} />
+          ) : (
+            <Feather name="user" color={statusTone.accent} size={26} />
+          )}
+        </View>
+
+        <View style={tw`flex-1`}>
+          <View style={tw`flex-row items-start justify-between gap-3`}>
+            <View style={tw`flex-1`}>
+              <Text style={tw`text-base font-semibold text-white`}>{name}</Text>
+              <Text style={tw`mt-1 text-xs leading-5 text-[#9FB0D8]`}>
+                {statusCopy}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                tw`rounded-full px-3 py-1`,
+                { backgroundColor: statusTone.badgeBg },
+              ]}
+            >
+              <Text
+                style={[
+                  tw`text-[10px] font-semibold uppercase tracking-[1px]`,
+                  { color: statusTone.badgeText },
+                ]}
+              >
+                {statusLabel}
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
 
-      {/* Info + Actions */}
-      <View style={tw`flex-1`}>
-        <Text style={tw`text-white font-semibold text-base`}>{name}</Text>
-        <Text style={tw`text-gray-300 text-sm mb-1`}>{message}</Text>
+      <View style={tw`mt-4 rounded-[24px] border border-[#20355E] bg-[#0D1B44] px-4 py-4`}>
+        <View style={tw`flex-row items-start justify-between gap-3`}>
+          <View style={tw`flex-1`}>
+            <View style={tw`flex-row items-center`}>
+              <View style={tw`mr-3 h-8 w-8 items-center justify-center rounded-full bg-[#0FF1CF]/14`}>
+                <Ionicons name="location-outline" size={16} color="#0FF1CF" />
+              </View>
+              <View style={tw`flex-1`}>
+                <Text style={tw`text-[11px] uppercase tracking-[1px] text-[#7387B7]`}>
+                  Pickup spot
+                </Text>
+                <Text style={tw`mt-1 text-sm leading-5 text-white`}>
+                  {locationText}
+                </Text>
+              </View>
+            </View>
+          </View>
 
-        {/* Estimated distance (always shown if available) */}
-        {estimatedDistance && (
-          <Text style={tw`text-teal-400 text-xs mb-2`}>
-            {expanded
-              ? `${estimatedDistance} from where you created the pool`
-              : estimatedDistance}
-          </Text>
-        )}
+          {distanceLabel && (
+            <View style={tw`rounded-full bg-white/6 px-3 py-2`}>
+              <View style={tw`flex-row items-center`}>
+                <Ionicons name="navigate-outline" size={13} color="#9FB0D8" />
+                <Text style={tw`ml-1 text-[11px] font-medium text-[#D5E1FF]`}>
+                  {distanceLabel}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
 
-        {/* Note (only if exists) */}
-        {note && (
-          <TouchableOpacity onPress={() => setExpanded(!expanded)}>
-            {expanded ? (
-              <Text style={tw`text-gray-400 text-sm mb-2`}>{note}</Text>
-            ) : (
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={tw`text-gray-500 text-xs italic mb-2`}
-              >
-                {note}
+        {trimmedNote ? (
+          <View style={tw`mt-3 rounded-[22px] bg-white/6 px-4 py-3`}>
+            <View style={tw`flex-row items-start`}>
+              <View style={tw`mr-3 mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-white/7`}>
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={14}
+                  color="#C5D4FF"
+                />
+              </View>
+              <View style={tw`flex-1`}>
+                <Text style={tw`text-[11px] uppercase tracking-[1px] text-[#7387B7]`}>
+                  Passenger note
+                </Text>
+                <Text style={tw`mt-1 text-sm leading-5 text-[#E5EDFF]`}>
+                  {displayNote}
+                </Text>
+                {noteNeedsToggle && (
+                  <TouchableOpacity
+                    onPress={() => setExpanded(!expanded)}
+                    style={tw`mt-2 self-start`}
+                  >
+                    <Text style={tw`text-xs font-semibold text-[#0FF1CF]`}>
+                      {expanded ? "Show less" : "Read more"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={tw`mt-4 flex-row items-center gap-3`}>
+        {isAccepted ? (
+          <>
+            <View style={tw`flex-1 rounded-[20px] border border-[#1A5A52] bg-[#0D2A28] px-4 py-3`}>
+              <Text style={tw`text-xs uppercase tracking-[1px] text-[#8DE7D1]`}>
+                Riding with you
               </Text>
-            )}
-            <Text style={tw`text-blue-400 text-xs`}>
-              {expanded ? "Collapse ▲" : "Expand ▼"}
-            </Text>
-          </TouchableOpacity>
-        )}
+              <Text style={tw`mt-1 text-sm text-white`}>
+                This seat is already confirmed.
+              </Text>
+            </View>
 
-        {/* Actions */}
-        <View style={tw`flex-row gap-3 mt-2`}>
-          {isAccepted ? (
             <TouchableOpacity
               onPress={onRemovePassenger}
               activeOpacity={0.8}
               disabled={removePassengerPending}
-              style={tw`px-4 py-2 rounded-md ${
-                removePassengerPending ? "bg-[#4a1a1a]" : "bg-[#2C0000]"
-              }`}
+              style={tw`rounded-[20px] border border-[#6B2533] bg-[#2A0F18] px-5 py-3`}
             >
-              <Text style={tw`text-red-500 font-semibold`}>
+              <Text style={tw`text-sm font-semibold text-[#FF9AAF]`}>
                 {removePassengerPending ? "Removing..." : "Remove"}
               </Text>
             </TouchableOpacity>
-          ) : (
-            <>
-              <TouchableOpacity
-                onPress={() => respondToCarpoolReq("ACCEPTED")}
-                activeOpacity={0.8}
-                disabled={reqResPen}
-                style={tw`px-4 py-2 rounded-md ${
-                  reqResPen ? "bg-[#123232]" : "bg-[#002C2C]"
-                }`}
-              >
-                <Text style={tw`text-teal-400 font-semibold`}>
-                  {reqResPen ? "Accepting..." : "Accept"}
-                </Text>
-              </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={() => respondToCarpoolReq("ACCEPTED")}
+              activeOpacity={0.8}
+              disabled={reqResPen}
+              style={tw`flex-1 flex-row items-center justify-center rounded-[20px] bg-[#0FF1CF] px-4 py-3`}
+            >
+              <Ionicons name="checkmark" size={16} color="#041130" />
+              <Text style={tw`ml-2 text-sm font-semibold text-[#041130]`}>
+                {reqResPen ? "Accepting..." : "Accept"}
+              </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => respondToCarpoolReq("DECLINED")}
-                activeOpacity={0.8}
-                disabled={reqResPen}
-                style={tw`px-4 py-2 rounded-md ${
-                  reqResPen ? "bg-[#4a1a1a]" : "bg-[#2C0000]"
-                }`}
-              >
-                <Text style={tw`text-red-500 font-semibold`}>
-                  {reqResPen ? "Declining..." : "Decline"}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+            <TouchableOpacity
+              onPress={() => respondToCarpoolReq("DECLINED")}
+              activeOpacity={0.8}
+              disabled={reqResPen}
+              style={tw`flex-1 flex-row items-center justify-center rounded-[20px] border border-[#6B2533] bg-[#24101A] px-4 py-3`}
+            >
+              <Ionicons name="close" size={16} color="#FF9AAF" />
+              <Text style={tw`ml-2 text-sm font-semibold text-[#FF9AAF]`}>
+                {reqResPen ? "Declining..." : "Decline"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>
   );

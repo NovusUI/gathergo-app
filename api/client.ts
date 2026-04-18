@@ -1,10 +1,11 @@
 // src/api/client.ts
 
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import { API_BASE_URL, REFRESH_TOKEN_URL } from "@/constants/network";
 import { useAuthStore } from "../store/auth";
 
 const client = axios.create({
-  baseURL: "http://172.25.243.53:4000/api/v1", // adjust
+  baseURL: API_BASE_URL,
   timeout: 100000,
 });
 
@@ -83,7 +84,7 @@ client.interceptors.response.use(
         }
 
         const refreshResponse = await axios.post(
-          "http://172.25.243.53:4000/api/v1/auth/refresh",
+          REFRESH_TOKEN_URL,
           { refreshToken }
         );
 

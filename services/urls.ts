@@ -1,8 +1,14 @@
-const base_url = "http://172.25.243.53:4000/api/v1";
+import { API_BASE_URL } from "@/constants/network";
+
+const base_url = API_BASE_URL;
 
 export const AUTH_URLS = {
   login: base_url + "/auth/login",
   signup: base_url + "/auth/signup",
+  verifyEmail: base_url + "/auth/verify-email",
+  resendEmailVerification: base_url + "/auth/resend-email-verification",
+  forgotPassword: base_url + "/auth/forgot-password",
+  resetPassword: base_url + "/auth/reset-password",
   googleLogin: base_url + "/auth/google",
   phoneFirebaseToken: base_url + "/auth/phone/firebase-token",
   logout: "/auth/logout",
@@ -39,6 +45,14 @@ export const TRANSACTION_URL = {
     base_url + `/transaction-reference/ticketorreg/${id}`,
 };
 
+export const TICKET_URL = {
+  myTickets: base_url + "/tickets/my-tickets",
+};
+
+export const REGISTRATION_URL = {
+  myRegistrations: base_url + "/registrations/my",
+};
+
 export const SEARCH_URL = {
   getSearchResult: base_url + "/search",
 };
@@ -71,8 +85,23 @@ export const DONATION_URL = {
   initiateDonation: base_url + "/transaction-reference/initiateDonation",
 };
 
+export const WALLET_URL = {
+  overview: base_url + "/wallet/overview",
+  onboarding: base_url + "/wallet/onboarding",
+  payoutProfile: base_url + "/wallet/payout-profile",
+  banks: base_url + "/wallet/banks",
+  kyc: base_url + "/wallet/kyc",
+  personalKycStart: base_url + "/wallet/kyc/personal/start",
+  personalKycLiveness: base_url + "/wallet/kyc/personal/liveness",
+  businessKycStart: base_url + "/wallet/kyc/business/start",
+  businessRepresentativeKycStart: base_url + "/wallet/kyc/business/representative",
+  notifyOnKycResolution: base_url + "/wallet/kyc/notify-on-resolution",
+  submitKyc: base_url + "/wallet/kyc/submit",
+};
+
 export const DASHBOARD_URL = {
   getDashboard: base_url + "/dashboard/overview",
+  getHomeAdCards: base_url + "/dashboard/home-cards",
   getEventDashboard: (eventId: string) =>
     base_url + `/dashboard/event/${eventId}`,
   getDashboardEvents: base_url + `/dashboard/dashboardevents/list`,

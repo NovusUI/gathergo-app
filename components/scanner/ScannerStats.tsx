@@ -53,7 +53,7 @@ const ScannerStats: React.FC<ScannerStatsProps> = ({ stats }) => {
         </View>
       </View>
 
-      <View style={tw`space-y-3`}>
+      <View style={tw`gap-3`}>
         <View style={tw`flex-row items-center`}>
           <CheckCircle size={16} color="#0FF1CF" />
           <Text style={tw`text-white text-sm ml-2`}>

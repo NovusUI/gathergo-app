@@ -1,3 +1,6 @@
+import { usePressGuard } from "@/hooks/usePressGuard";
+import { pushWithLock } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { ArrowRight, QrCode, Shield, Zap } from "lucide-react-native";
 import React from "react";
@@ -13,22 +16,23 @@ const QuickScanCard: React.FC<QuickScanCardProps> = ({
   onPress,
   compact = false,
 }) => {
-  const router = useRouter();
+  const router = useLockedRouter();
 
   const handlePress = () => {
     if (onPress) {
       onPress();
     } else {
-      router.push("/scanner/scanner-screen");
+      pushWithLock(router, "/scanner/scanner-screen");
     }
   };
+  const guardedPress = usePressGuard(handlePress);
 
   // Compact version for dashboard
   if (compact) {
     return (
       <TouchableOpacity
         style={tw`bg-gradient-to-r from-[#5669FF] to-[#9D4EDD] rounded-xl p-4`}
-        onPress={handlePress}
+        onPress={guardedPress}
         activeOpacity={0.9}
       >
         <View style={tw`flex-row items-center justify-between`}>
@@ -51,7 +55,7 @@ const QuickScanCard: React.FC<QuickScanCardProps> = ({
   return (
     <TouchableOpacity
       style={tw`bg-gradient-to-r from-[#5669FF] to-[#9D4EDD] rounded-2xl p-5`}
-      onPress={handlePress}
+      onPress={guardedPress}
       activeOpacity={0.9}
     >
       <View style={tw`flex-row items-center justify-between mb-4`}>

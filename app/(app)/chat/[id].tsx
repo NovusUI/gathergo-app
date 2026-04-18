@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLockedRouter } from "@/utils/navigation";
 import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -28,6 +29,7 @@ import { usePushNotification } from "@/context/PushNotificationContext";
 import { useSocket } from "@/context/SocketContext";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useConversations } from "@/hooks/useSocketReactHook";
+import { safeGoBack } from "@/utils/navigation";
 import { useMessageQueueStore } from "@/store/messageQueue";
 import { useQueryClient } from "@tanstack/react-query";
 import { MessageCircle } from "lucide-react-native";
@@ -37,7 +39,7 @@ import tw from "twrnc";
 import { useCarpoolDetails } from "@/hooks/useCarpoolDetails";
 
 const ChatPage = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
   const [value, setValue] = useState("");
@@ -138,7 +140,7 @@ const ChatPage = () => {
       Alert.alert("Chat Not Available", carpoolDetails.reason, [
         {
           text: "OK",
-          onPress: () => router.back(),
+          onPress: () => safeGoBack(router, "/conversations"),
           style: "default",
         },
         {
@@ -409,7 +411,7 @@ const ChatPage = () => {
   if (isLoadingCarpoolDetails) {
     return (
       <View style={tw`flex-1 pt-10 bg-[#01082E] justify-center items-center`}>
-        <ActivityIndicator size="large" color="white" />
+        <ActivityIndicator tone="accent" size="large" />
         <Text style={tw`text-white mt-4`}>Loading carpool details...</Text>
       </View>
     );
@@ -431,7 +433,7 @@ const ChatPage = () => {
           <Text style={tw`text-white`}>Retry</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/conversations")}
           style={tw`mt-4 px-6 py-3 rounded-full border border-white`}
         >
           <Text style={tw`text-white`}>Go Back</Text>
@@ -450,7 +452,7 @@ const ChatPage = () => {
           You are not a member of this carpool
         </Text>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/conversations")}
           style={tw`bg-blue-500 px-6 py-3 rounded-full`}
         >
           <Text style={tw`text-white`}>Go Back</Text>
@@ -471,7 +473,7 @@ const ChatPage = () => {
       >
         <CustomeTopBarNav
           title={carpoolDetails?.event?.name || carpoolDetails?.name || "Chat"}
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/conversations")}
         />
 
         {/* Display carpool participant images */}
@@ -499,7 +501,7 @@ const ChatPage = () => {
             {getUserRole() === "driver" ? "Driver" : "Passenger"} •{" "}
             {carpoolDetails.status.toLowerCase()}
           </Text>
-          {carpoolDetails.expiresAt && (
+          {Boolean(carpoolDetails.expiresAt) && (
             <Text style={tw`text-yellow-400 text-xs mt-1`}>
               Chat expires:{" "}
               {new Date(carpoolDetails.expiresAt).toLocaleDateString()}
@@ -509,7 +511,9 @@ const ChatPage = () => {
       )}
 
       {/* Show eligibility status banner if not fully eligible */}
-      {carpoolDetails && !carpoolDetails.canChat && carpoolDetails.reason && (
+      {carpoolDetails &&
+        !carpoolDetails.canChat &&
+        Boolean(carpoolDetails.reason) && (
         <View style={tw`bg-red-500 mx-4 p-3 rounded-lg mb-4`}>
           <Text style={tw`text-white text-center font-semibold`}>
             Chat Restricted: {carpoolDetails.reason}
@@ -550,7 +554,7 @@ const ChatPage = () => {
             }
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator color="white" style={tw`py-3`} />
+                <ActivityIndicator tone="accent" style={tw`py-3`} />
               ) : null
             }
           />

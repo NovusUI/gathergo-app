@@ -2,6 +2,7 @@
 import { useAuthStore } from "@/store/auth";
 import { useMessageQueueStore } from "@/store/messageQueue";
 import { showGlobalError } from "@/utils/globalErrorHandler";
+import { SOCKET_URL } from "@/constants/network";
 import {
     createContext,
     useContext,
@@ -36,7 +37,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     if (userId && refreshToken) {
       if (socketRef.current) return;
 
-      const newSocket = io("http://172.25.243.53:4000", {
+      const newSocket = io(SOCKET_URL, {
         transports: ["websocket"],
         auth: { userId: user?.id, token: refreshToken },
         // Enhanced reconnection settings

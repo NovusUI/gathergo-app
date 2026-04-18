@@ -1,8 +1,9 @@
 // components/GoogleWebView.tsx
 import { AUTH_URLS } from '@/services/urls';
+import ActivityIndicator from '@/components/ui/AppLoader';
 import { X } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 
 interface GoogleWebViewProps {
@@ -94,7 +95,7 @@ const GoogleWebView: React.FC<GoogleWebViewProps> = ({ onSuccess, onError, onClo
       
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4285F4" />
+          <ActivityIndicator tone="dark" size="large" />
         </View>
       )}
       

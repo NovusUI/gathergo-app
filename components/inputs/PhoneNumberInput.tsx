@@ -104,7 +104,9 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
         </View>
 
         {/* Error Message */}
-        {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+        {Boolean(error) && (
+          <Text className="text-red-500 text-xs mt-1">{error}</Text>
+        )}
       </Pressable>
     );
   }

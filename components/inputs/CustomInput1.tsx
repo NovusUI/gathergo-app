@@ -1,9 +1,10 @@
 import { Eye, EyeOff } from "lucide-react-native";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import {
+  ComponentType,
   forwardRef,
   MutableRefObject,
   useCallback,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -17,7 +18,7 @@ import {
 } from "react-native";
 import tw from "twrnc";
 
-type IconType = React.ComponentType<{
+type IconType = ComponentType<{
   size?: number;
   color?: string;
 }>;
@@ -31,6 +32,7 @@ interface InputProps extends TextInputProps {
   iconColor?: string;
   numeric?: boolean;
   moneyFormat?: boolean; // New prop
+  insideBottomSheet?: boolean;
 }
 
 // Helper function to format number with commas
@@ -64,6 +66,7 @@ const Input = forwardRef<TextInput, InputProps>(
       iconColor = "#6B7280",
       numeric = false,
       moneyFormat = false,
+      insideBottomSheet = false,
       style: inputStyle,
       placeholderTextColor,
       ...restProps
@@ -72,15 +75,10 @@ const Input = forwardRef<TextInput, InputProps>(
   ) => {
     const inputRef = useRef<TextInput | null>(null);
     const [isSecure, setIsSecure] = useState(secureTextEntry);
-    const [displayValue, setDisplayValue] = useState("");
-
-    useEffect(() => {
-      if (moneyFormat && value) {
-        setDisplayValue(formatMoney(value.toString()));
-      } else {
-        setDisplayValue(value?.toString() || "");
-      }
-    }, [value, moneyFormat]);
+    const InputComponent = insideBottomSheet ? BottomSheetTextInput : TextInput;
+    const resolvedValue = moneyFormat
+      ? formatMoney(value?.toString() || "")
+      : value?.toString() || "";
 
     const handleChangeText = (text: string) => {
       if (!onChangeText) return;
@@ -121,7 +119,7 @@ const Input = forwardRef<TextInput, InputProps>(
             </View>
           )}
 
-          <TextInput
+          <InputComponent
             {...restProps}
             ref={setRefs}
             style={tw.style(
@@ -133,7 +131,7 @@ const Input = forwardRef<TextInput, InputProps>(
             )}
             placeholder={placeholder}
             placeholderTextColor={placeholderTextColor ?? "#9CA3AF"}
-            value={displayValue}
+            value={resolvedValue}
             onChangeText={handleChangeText}
             secureTextEntry={isSecure}
             keyboardType={moneyFormat || numeric ? "numeric" : "default"}
@@ -157,7 +155,9 @@ const Input = forwardRef<TextInput, InputProps>(
           ) : null}
         </View>
 
-        {error && <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>}
+        {Boolean(error) && (
+          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+        )}
       </Pressable>
     );
   }

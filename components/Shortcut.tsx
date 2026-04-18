@@ -1,4 +1,6 @@
-import { useRouter } from "expo-router";
+import { usePressGuard } from "@/hooks/usePressGuard";
+import { pushWithLock } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
@@ -15,16 +17,35 @@ const Shortcut = ({
   iconColor = "#FF932E",
   isCurrent = false,
 }: Props) => {
-  const router = useRouter();
+  const router = useLockedRouter();
+
+  const resolveLink = (target: string) => {
+    const normalized = target.replace(/^\/+/, "");
+
+    if (
+      normalized === "events/create" ||
+      normalized === "create-event" ||
+      normalized === "new-event"
+    ) {
+      return "/new-event";
+    }
+
+    if (normalized.startsWith("events/")) {
+      const eventId = normalized.split("/")[1];
+      return eventId ? `/event/${eventId}` : "/new-event";
+    }
+
+    if (normalized.startsWith("dashboard/")) {
+      return `/${normalized}`;
+    }
+
+    return `/${normalized}`;
+  };
 
   const handlePress = () => {
-    if (link.startsWith("events/")) {
-      const eventId = link.split("/")[1];
-      router.push(`/dashboard/${eventId}`);
-    } else {
-      router.replace(`/${link}`);
-    }
+    pushWithLock(router, resolveLink(link));
   };
+  const guardedPress = usePressGuard(handlePress);
 
   return (
     <TouchableOpacity
@@ -34,7 +55,7 @@ const Shortcut = ({
           ? tw`border-2 border-[#F1D417] bg-[#1B2A50]`
           : tw`bg-[#1B2A50]`,
       ]}
-      onPress={handlePress}
+      onPress={guardedPress}
     >
       <View
         style={[

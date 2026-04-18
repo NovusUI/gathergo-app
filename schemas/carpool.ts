@@ -7,6 +7,12 @@ export const carpoolSchema = z
     useCurrentLocation: z.boolean(),
     poolDestination: z.string().optional(),
     departureTime: z.string().min(1, "Departure time is required"),
+    availableSeats: z
+      .union([
+        z.number().min(1, "At least one seat is required").max(10),
+        z.string().transform((val) => (val === "" ? 3 : Number(val))),
+      ])
+      .optional(),
     notes: z
       .string()
       .max(200, "Notes must not exceed 200 characters")

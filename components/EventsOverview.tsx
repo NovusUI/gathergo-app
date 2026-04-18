@@ -1,8 +1,11 @@
+import ActivityIndicator from "@/components/ui/AppLoader";
+import { usePressGuard } from "@/hooks/usePressGuard";
 import { useDashboardEvents } from "@/hooks/useDashboard";
+import { pushWithLock } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { ChevronDown, X } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -38,8 +41,10 @@ const EventCard = ({
   event: Event;
   onPress?: () => void;
 }) => {
+  const guardedPress = usePressGuard(onPress);
+
   return (
-    <TouchableOpacity onPress={onPress}>
+    <TouchableOpacity onPress={guardedPress}>
       <CustomView
         style={tw`flex-row items-center justify-between px-4 py-4 border-t border-[#0FF1CF] bg-[#1B2A50]/50`}
       >
@@ -49,7 +54,7 @@ const EventCard = ({
             {event.title}
           </Text>
           <Text style={tw`text-sm text-gray-300`}>
-            {event.participants.toLocaleString()} Participants • $
+            {event.participants.toLocaleString()} Participants • 
             {event.raised.toLocaleString("en-NG", {
               style: "currency",
               currency: "NGN",
@@ -83,6 +88,7 @@ const EventCard = ({
 };
 
 const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
+  const router = useLockedRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("upcoming");
 
@@ -100,10 +106,6 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
     () => data?.pages.flatMap((page) => page.data),
     [data]
   );
-
-  useEffect(() => {
-    console.log(dashboardEventsData, "dbe");
-  }, [data]);
 
   // const handleFetchMore = useCallback(async () => {
   //   if (!fetchMoreEvents || loading || !hasMore) return;
@@ -151,49 +153,60 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
         visible={isExpanded}
         onRequestClose={() => setIsExpanded(false)}
       >
-        {!isLoading && (
-          <SafeAreaView style={tw`flex-1 bg-[#01082E]`}>
-            <View style={tw`flex-1`}>
-              {/* Header */}
-              <View
-                style={tw`flex-row items-center justify-between p-4 border-b border-[#0FF1CF]`}
-              >
-                <Text style={tw`text-white text-xl font-bold`}>All Events</Text>
-                <TouchableOpacity onPress={() => setIsExpanded(false)}>
-                  <X color="white" size={24} />
-                </TouchableOpacity>
-              </View>
+        <SafeAreaView style={tw`flex-1 bg-[#01082E]`}>
+          <View style={tw`flex-1`}>
+            {/* Header */}
+            <View
+              style={tw`flex-row items-center justify-between p-4 border-b border-[#0FF1CF]`}
+            >
+              <Text style={tw`text-white text-xl font-bold`}>All Events</Text>
+              <TouchableOpacity onPress={() => setIsExpanded(false)}>
+                <X color="white" size={24} />
+              </TouchableOpacity>
+            </View>
 
-              {/* Filter */}
-              <View style={tw`flex-row p-4 gap-2`}>
-                {(["all", "upcoming", "past"] as const).map((filterType) => (
-                  <TouchableOpacity
-                    key={filterType}
-                    onPress={() => {
-                      setFilter(filterType);
-                    }}
+            {/* Filter */}
+            <View style={tw`flex-row p-4 gap-2`}>
+              {(["all", "upcoming", "past"] as const).map((filterType) => (
+                <TouchableOpacity
+                  key={filterType}
+                  onPress={() => {
+                    setFilter(filterType);
+                  }}
+                  style={[
+                    tw`px-4 py-2 rounded-full`,
+                    filter === filterType
+                      ? tw`bg-[#0FF1CF]`
+                      : tw`bg-[#1B2A50]`,
+                  ]}
+                >
+                  <Text
                     style={[
-                      tw`px-4 py-2 rounded-full`,
+                      tw`capitalize`,
                       filter === filterType
-                        ? tw`bg-[#0FF1CF]`
-                        : tw`bg-[#1B2A50]`,
+                        ? tw`text-black font-semibold`
+                        : tw`text-white`,
                     ]}
                   >
-                    <Text
-                      style={[
-                        tw`capitalize`,
-                        filter === filterType
-                          ? tw`text-black font-semibold`
-                          : tw`text-white`,
-                      ]}
-                    >
-                      {filterType} events
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    {filterType} events
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-              {/* Events List */}
+            {isLoading ? (
+              <View style={tw`flex-1 items-center justify-center px-6`}>
+                <View style={tw`w-full max-w-[420px] rounded-[28px] bg-[#101C45] px-8 py-10 items-center`}>
+                  <ActivityIndicator tone="accent" size="large" />
+                  <Text style={tw`mt-5 text-center text-xl font-semibold text-white`}>
+                    Loading events
+                  </Text>
+                  <Text style={tw`mt-2 text-center text-sm leading-6 text-[#A8BAE4]`}>
+                    Updating your event list for this tab.
+                  </Text>
+                </View>
+              </View>
+            ) : (
               <ScrollView
                 ref={scrollViewRef}
                 style={tw`flex-1 px-4`}
@@ -203,12 +216,16 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
               >
                 <View style={tw`gap-1 pb-4`}>
                   {dashboardEventsData?.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      onPress={() => pushWithLock(router, `/event/${event.id}`)}
+                    />
                   ))}
 
                   {isFetchingNextPage && (
                     <View style={tw`py-8`}>
-                      <ActivityIndicator size="large" color="#0FF1CF" />
+                      <ActivityIndicator tone="accent" size="large" />
                     </View>
                   )}
 
@@ -219,9 +236,9 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
                   )}
                 </View>
               </ScrollView>
-            </View>
-          </SafeAreaView>
-        )}
+            )}
+          </View>
+        </SafeAreaView>
       </Modal>
     );
   }
@@ -236,7 +253,11 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
       </View>
 
       {initialDisplayEvents.map((event) => (
-        <EventCard key={event.id} event={event} />
+        <EventCard
+          key={event.id}
+          event={event}
+          onPress={() => pushWithLock(router, `/event/${event.id}`)}
+        />
       ))}
 
       {hasMoreEvents && (

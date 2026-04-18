@@ -1,12 +1,13 @@
 import CustomButton from "@/components/buttons/CustomBtn1"
 import PhoneNumberInput from "@/components/inputs/PhoneNumberInput"
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router"
 import { InfoIcon } from "lucide-react-native"
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native"
 
 
 const AddPhoneNumberScreen = () => {
-    const router = useRouter()
+    const router = useLockedRouter()
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#01082E" }}

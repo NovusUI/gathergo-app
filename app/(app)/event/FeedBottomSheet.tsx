@@ -1,22 +1,23 @@
 // components/event/FeedBottomSheet.tsx
 import FeedRenderer from "@/components/feed/FeedRenderer";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { FeedItem } from "@/hooks/useEventFeed";
 import { useLocationManager } from "@/hooks/useLocationManager";
-import { EventCarpoolFilter } from "@/types/carpool";
 import { useEventDetails, usePaginatedEventCarpools } from "@/services/queries";
+import { EventCarpoolFilter } from "@/types/carpool";
 import { numberWithCommas } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
-import BottomSheet, {
+import { useFocusEffect } from "@react-navigation/native";
+import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
+  BottomSheetModal,
 } from "@gorhom/bottom-sheet";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import tw from "twrnc";
 
@@ -46,19 +47,19 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   onAction,
   feedData,
 }) => {
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "carpool">("feed");
   const [carpoolFilter, setCarpoolFilter] = useState<EventCarpoolFilter>("all");
   const [requestingCloseToYou, setRequestingCloseToYou] = useState(false);
   const { coords, requestLocation, error: locationError, openSettings } =
     useLocationManager();
-  // const snapPoints = useMemo(() => ["75%", "90%"], []);
+  const snapPoints = useMemo(() => ["100%"], []);
 
-  const snapPoints = useMemo(() => {
-    // Calculate based on screen height
-    const screenHeight = Dimensions.get("window").height;
-    return [screenHeight * 0.6, screenHeight * 0.9];
-  }, []);
+  // const snapPoints = useMemo(() => {
+  //   // Calculate based on screen height
+  //   const screenHeight = Dimensions.get("window").height;
+  //   return [screenHeight * 0.6, screenHeight * 0.9];
+  // }, []);
 
   // Use provided feedData or fallback to hook
   //const feedHook = useEventFeed(eventId);
@@ -94,16 +95,23 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const carpoolTotal = carpoolPages?.pages?.[0]?.meta?.total ?? 0;
 
   const { data: eventData } = useEventDetails(eventId);
+  const supportsCarpool = eventData?.data?.isPhysicalEvent !== false;
   const [refreshing, setRefreshing] = useState(false);
 
   // Open/close handling
   useEffect(() => {
     if (isVisible) {
-      bottomSheetRef.current?.snapToIndex(0);
+      bottomSheetRef.current?.present();
     } else {
-      bottomSheetRef.current?.close();
+      bottomSheetRef.current?.dismiss();
     }
   }, [isVisible]);
+
+  useEffect(() => {
+    if (!supportsCarpool && activeTab === "carpool") {
+      setActiveTab("feed");
+    }
+  }, [activeTab, supportsCarpool]);
 
   const handleFilterChange = async (filter: EventCarpoolFilter) => {
     setCarpoolFilter(filter);
@@ -119,15 +127,6 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     }
   };
 
-  const handleSheetChanges = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     feed?.refresh();
@@ -136,7 +135,6 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
   const handleLoadMore = useCallback(() => {
     if (feed?.hasMore && !feed?.loadingMore) {
-      console.log("⬇️ Triggering load more from onEndReached");
       feed?.loadMore();
     }
   }, [feed?.hasMore, feed?.loadingMore, feed?.loadMore]);
@@ -226,6 +224,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       totalDonations,
     } = eventData.data;
 
+
     return (
       <View style={tw`p-4 bg-[#101C45] mx-4 mt-2 rounded-xl`}>
         <Text style={tw`text-white font-bold mb-2`}>
@@ -284,7 +283,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                   tw`h-full bg-[#0FF1CF] rounded-full`,
                   {
                     width: `${Math.min(
-                      ((totalDonations || 0) / donationTarget) * 100,
+                      ((totalDonations/100 || 0) / donationTarget) * 100,
                       100
                     )}%`,
                   },
@@ -352,25 +351,27 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 Live Feed
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={tw.style(
-                "px-3 py-1.5 rounded-full",
-                activeTab === "carpool" ? "bg-[#0FF1CF]" : "bg-[#1B2A50]"
-              )}
-              onPress={() => setActiveTab("carpool")}
-            >
-              <Text
+            {supportsCarpool && (
+              <TouchableOpacity
                 style={tw.style(
-                  "text-xs font-semibold",
-                  activeTab === "carpool" ? "text-black" : "text-white"
+                  "px-3 py-1.5 rounded-full",
+                  activeTab === "carpool" ? "bg-[#0FF1CF]" : "bg-[#1B2A50]"
                 )}
+                onPress={() => setActiveTab("carpool")}
               >
-                Carpool
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={tw.style(
+                    "text-xs font-semibold",
+                    activeTab === "carpool" ? "text-black" : "text-white"
+                  )}
+                >
+                  Carpool
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={tw`flex-row items-center`}>
-            {activeTab === "feed" && feed?.error && (
+            {activeTab === "feed" && Boolean(feed?.error) && (
               <Text style={tw`text-red-500 text-xs mr-3`}>{feed?.error}</Text>
             )}
             <TouchableOpacity onPress={onClose}>
@@ -405,7 +406,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
             </Text>
 
             {feed?.loading && feed?.regularFeeds?.length === 0 && (
-              <ActivityIndicator size="large" color="#0FF1CF" style={tw`py-10`} />
+              <ActivityIndicator tone="accent" size="large" style={tw`py-10`} />
             )}
           </>
         ) : (
@@ -430,7 +431,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               <FilterChip label="Followed" value="followed" />
             </View>
 
-            {locationError && carpoolFilter === "close_to_you" && (
+            {Boolean(locationError) && carpoolFilter === "close_to_you" && (
               <View style={tw`bg-red-500/20 border border-red-500/40 p-3 rounded-lg`}>
                 <Text style={tw`text-red-300 text-xs mb-2`}>{locationError}</Text>
                 <TouchableOpacity
@@ -443,7 +444,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
             )}
 
             {(carpoolsLoading || requestingCloseToYou) && (
-              <ActivityIndicator size="large" color="#0FF1CF" style={tw`py-8`} />
+              <ActivityIndicator tone="accent" size="large" style={tw`py-8`} />
             )}
           </View>
         )}
@@ -469,10 +470,10 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       <>
         {/* Loading More Indicator */}
         {activeTab === "feed" && feed?.loadingMore && (
-          <ActivityIndicator color="#0FF1CF" style={tw`py-4`} />
+          <ActivityIndicator tone="accent" style={tw`py-4`} />
         )}
         {activeTab === "carpool" && carpoolsLoadingMore && (
-          <ActivityIndicator color="#0FF1CF" style={tw`py-4`} />
+          <ActivityIndicator tone="accent" style={tw`py-4`} />
         )}
 
         {/* End of Feed Message */}
@@ -528,12 +529,17 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   );
 
   return (
-    <BottomSheet
+    <BottomSheetModal
       ref={bottomSheetRef}
-      index={isVisible ? 0 : -1}
       snapPoints={snapPoints}
-      onChange={handleSheetChanges}
+      index={0}
+      enableDynamicSizing={false}
+      topInset={0}
+      onDismiss={onClose}
       enablePanDownToClose
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       backdropComponent={(props) => (
         <BottomSheetBackdrop
           {...props}
@@ -545,6 +551,8 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       handleIndicatorStyle={{ backgroundColor: "#666" }}
     >
       <BottomSheetFlatList
+        key={activeTab}
+        focusHook={useFocusEffect}
         data={activeTab === "feed" ? feed?.regularFeeds || [] : carpoolList}
         keyExtractor={(item: any) => item.id}
         renderItem={activeTab === "feed" ? renderFeedItem : renderCarpoolItem}
@@ -552,6 +560,15 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         ListFooterComponent={ListFooterComponent}
         ListEmptyComponent={ListEmptyComponent}
         contentContainerStyle={tw`pb-20`}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={false}
+        extraData={{
+          activeTab,
+          feedCount: feed?.regularFeeds?.length || 0,
+          pinnedCount: feed?.pinnedFeeds?.length || 0,
+          carpoolCount: carpoolList.length,
+        }}
         refreshing={activeTab === "feed" ? refreshing : false}
         onRefresh={
           activeTab === "feed"
@@ -568,7 +585,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         onEndReachedThreshold={0.3} // Load more when 30% from bottom
         showsVerticalScrollIndicator={false}
       />
-    </BottomSheet>
+    </BottomSheetModal>
   );
 };
 

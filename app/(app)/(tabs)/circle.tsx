@@ -1,24 +1,20 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
-import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
+import { useLockedRouter } from "@/utils/navigation";
 import { Sparkles, Users } from "lucide-react-native";
 import { Text, View } from "react-native";
 import tw from "twrnc";
 
 export default function CircleScreen() {
-  const router = useRouter();
+  const router = useLockedRouter();
 
   return (
     <View style={tw`flex-1 bg-[#030A31] pt-10 px-5`}>
       <CustomeTopBarNav title="Circle" onClickBack={() => router.replace("/")} />
 
       <View style={tw`w-full max-w-[500px] self-center flex-1 items-center justify-center`}>
-        <Image
-          source={require("../../../assets/images/circleframe.png")}
-          style={{ width: 260, height: 180 }}
-          contentFit="contain"
-        />
+        <GgCircleArtwork width={260} height={180} />
 
         <View style={tw`mt-6 bg-[#101C45] border border-[#22306B] rounded-2xl p-5 w-full`}>
           <View style={tw`flex-row items-center mb-3`}>

@@ -4,9 +4,11 @@ import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
 import Payments from "@/components/ui/Payments";
 import { useDashboardData, useShortcut } from "@/hooks/useDashboard";
-import { useRouter } from "expo-router";
+import { useWalletOnboarding } from "@/services/queries";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { useEffect } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 const shortcuts = [
@@ -38,9 +40,10 @@ const shortcuts = [
 ];
 
 const Dashboard = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
 
   const { isLoading, data, error } = useDashboardData();
+  const { data: onboarding } = useWalletOnboarding();
 
   const { shortcuts, isLoading: loadingShortcuts } = useShortcut();
 
@@ -96,7 +99,10 @@ const Dashboard = () => {
     <View style={tw`flex-1 bg-[#01082E]`}>
       {/* Top Navigation */}
       <View style={tw`pt-10 pb-4 px-5`}>
-        <CustomeTopBarNav title="Dashboard" onClickBack={() => router.back()} />
+        <CustomeTopBarNav
+          title="Dashboard"
+          onClickBack={() => safeGoBack(router, "/")}
+        />
       </View>
 
       {/* Main Scrollable Content */}
@@ -105,6 +111,25 @@ const Dashboard = () => {
         contentContainerStyle={tw`px-5`}
         showsVerticalScrollIndicator={false}
       >
+        {onboarding?.data?.showPersistentAlert && (
+          <TouchableOpacity
+            style={tw`bg-[#1B2A50] border border-[#F1D417] rounded-2xl p-4 mb-5`}
+            onPress={() => router.push('/wallet')}
+          >
+            <Text style={tw`text-[#F1D417] font-bold text-base mb-1`}>
+              Action needed
+            </Text>
+            <Text style={tw`text-white text-sm mb-2`}>
+              {onboarding.data.nextAction === 'ADD_SETTLEMENT_ACCOUNT'
+                ? 'Add your settlement account to unlock creator payouts.'
+                : onboarding.data.nextAction === 'COMPLETE_KYC'
+                  ? 'Complete verification so your earnings can be settled.'
+                  : 'Finish wallet setup to enable ALAT transfer.'}
+            </Text>
+            <Text style={tw`text-[#0FF1CF] text-sm font-semibold`}>Open wallet</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Events Overview */}
         <View style={tw`mb-6`}>
           <EventsOverview initialEvents={data?.data.events} />
@@ -112,9 +137,7 @@ const Dashboard = () => {
 
         {/* Payments */}
         <View style={tw`mb-24`}>
-          {" "}
-          {/* Extra bottom margin for Quick Access */}
-          <Payments payments={data?.data.payments} />
+          <Payments payments={data?.data.payments || []} />
         </View>
       </ScrollView>
 

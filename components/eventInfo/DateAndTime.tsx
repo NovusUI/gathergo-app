@@ -7,7 +7,7 @@ import { extractDate, extractTime } from "@/utils/dateTimeHandler";
 import { showGlobalError } from "@/utils/globalErrorHandler";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, Resolver, useForm } from "react-hook-form";
 import { Text, TouchableOpacity } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import tw from "twrnc";
@@ -19,12 +19,14 @@ interface DateAndTimeProps {
   onSave: (data: DateTimeFormData) => void;
   initialData?: DateTimeFormData | null;
   editMode: boolean;
+  allowRecurring?: boolean;
 }
 
 const DateAndTime = ({
   onSave,
   initialData,
   editMode = false,
+  allowRecurring = false,
 }: DateAndTimeProps) => {
   const [picker, setPicker] = useState<
     | null
@@ -42,7 +44,9 @@ const DateAndTime = ({
     watch,
     setValue,
   } = useForm<DateTimeFormData>({
-    resolver: zodResolver(editMode ? dateTimeEditSchema : dateTimeSchema),
+    resolver: zodResolver(
+      editMode ? dateTimeEditSchema : dateTimeSchema
+    ) as Resolver<DateTimeFormData>,
     defaultValues: initialData || {
       startDate: undefined,
       endDate: undefined,
@@ -58,12 +62,16 @@ const DateAndTime = ({
   const repeat = watch("repeat");
 
   useEffect(() => {
+    if (!allowRecurring) {
+      return;
+    }
+
     if (isRecurring) {
       setValue("repeat", repeat === "NONE" ? "DAILY" : repeat);
     } else {
       setValue("repeat", "NONE");
     }
-  }, [isRecurring]);
+  }, [allowRecurring, isRecurring, repeat, setValue]);
 
   const onError = (errors: any) => {
     showGlobalError("Error in form");
@@ -79,6 +87,16 @@ const DateAndTime = ({
   ];
 
   const onSubmit = (data: DateTimeFormData) => {
+    if (!allowRecurring) {
+      onSave({
+        ...data,
+        isRecurring: initialData?.isRecurring || false,
+        repeat: initialData?.repeat || "NONE",
+        endRepeat: initialData?.endRepeat,
+      });
+      return;
+    }
+
     onSave(data);
   };
 
@@ -95,9 +113,7 @@ const DateAndTime = ({
         isVisible={true}
         mode={mode}
         onConfirm={(selected) => {
-          onChange(
-            mode === "date" ? extractDate(selected) : extractTime(selected)
-          );
+          onChange(mode === "date" ? selected : extractTime(selected));
           setPicker(null);
         }}
         onCancel={() => setPicker(null)}
@@ -114,38 +130,48 @@ const DateAndTime = ({
 
   return (
     <CustomView style={tw`mb-16`}>
-      {/* Toggle recurring */}
-      <Controller
-        control={control}
-        name="isRecurring"
-        render={({ field: { value, onChange } }) => (
-          <CustomView style={tw`flex-row justify-between`}>
-            <TouchableOpacity
-              onPress={() => onChange(false)}
-              style={tw`
-                ${!value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
-                p-5 rounded-xl mt-3 w-[45%] justify-center items-center
-              `}
-            >
-              <Text style={tw`${!value ? "text-black" : "text-white"}`}>
-                One off event
-              </Text>
-            </TouchableOpacity>
+      {allowRecurring ? (
+        <Controller
+          control={control}
+          name="isRecurring"
+          render={({ field: { value, onChange } }) => (
+            <CustomView style={tw`flex-row justify-between`}>
+              <TouchableOpacity
+                onPress={() => onChange(false)}
+                style={tw`
+                  ${!value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
+                  p-5 rounded-xl mt-3 w-[45%] justify-center items-center
+                `}
+              >
+                <Text style={tw`${!value ? "text-black" : "text-white"}`}>
+                  One off event
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => onChange(true)}
-              style={tw`
-                ${value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
-                p-5 rounded-xl mt-3 w-[45%] justify-center items-center
-              `}
-            >
-              <Text style={tw`${value ? "text-black" : "text-white"}`}>
-                Recurring Event
-              </Text>
-            </TouchableOpacity>
-          </CustomView>
-        )}
-      />
+              <TouchableOpacity
+                onPress={() => onChange(true)}
+                style={tw`
+                  ${value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
+                  p-5 rounded-xl mt-3 w-[45%] justify-center items-center
+                `}
+              >
+                <Text style={tw`${value ? "text-black" : "text-white"}`}>
+                  Recurring Event
+                </Text>
+              </TouchableOpacity>
+            </CustomView>
+          )}
+        />
+      ) : (
+        <CustomView style={tw`mt-3 rounded-2xl bg-[#101C45] p-4`}>
+          <Text style={tw`text-sm font-semibold text-white`}>
+            Repeat events are hidden for now
+          </Text>
+          <Text style={tw`mt-2 text-sm leading-5 text-[#A9BBE5]`}>
+            Set a single event window for now. We are working on recurring events.
+          </Text>
+        </CustomView>
+      )}
 
       {/* Date & time fields */}
       <CustomView style={tw`gap-5 mb-5`}>
@@ -161,7 +187,7 @@ const DateAndTime = ({
                     ? value
                     : value
                     ? extractDate(value)
-                    : value
+                    : ""
                 }
                 onPress={() => setPicker("startDate")}
               />
@@ -183,7 +209,7 @@ const DateAndTime = ({
                     ? value
                     : value
                     ? extractDate(value)
-                    : value
+                    : ""
                 }
                 onPress={() => setPicker("endDate")}
               />
@@ -200,7 +226,7 @@ const DateAndTime = ({
             <>
               <CustomEventInfoSelector
                 title="start time"
-                value={value}
+                value={value ?? ""}
                 onPress={() => setPicker("startTime")}
               />
               <ErrorText message={errors.startTime?.message} />
@@ -216,7 +242,7 @@ const DateAndTime = ({
             <>
               <CustomEventInfoSelector
                 title="end time"
-                value={value}
+                value={value ?? ""}
                 onPress={() => setPicker("endTime")}
               />
               <ErrorText message={errors.endTime?.message} />
@@ -225,7 +251,7 @@ const DateAndTime = ({
           )}
         />
 
-        {isRecurring && (
+        {allowRecurring && isRecurring && (
           <>
             <Controller
               control={control}
@@ -234,7 +260,7 @@ const DateAndTime = ({
                 <>
                   <CustomEventInfoSelector
                     title="repeat"
-                    value={value}
+                    value={value ?? ""}
                     onPress={() => setPicker("repeat")}
                   />
                   <ErrorText message={errors.repeat?.message} />
@@ -245,7 +271,10 @@ const DateAndTime = ({
                         <TouchableOpacity
                           key={option.value}
                           onPress={() => {
-                            setValue("repeat", option.value);
+                            setValue(
+                              "repeat",
+                              option.value as DateTimeFormData["repeat"]
+                            );
                             setPicker(null);
                           }}
                           style={tw`p-3`}
@@ -278,7 +307,7 @@ const DateAndTime = ({
                         ? value
                         : value
                         ? extractDate(value)
-                        : value
+                        : ""
                     }
                     onPress={() => setPicker("endRepeat")}
                   />

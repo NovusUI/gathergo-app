@@ -4,6 +4,9 @@ export type CarpoolForm = {
   departureTime: string; // ISO string
   note?: string;
   description?: string;
+  vehicleIcon?: string;
+  availableSeats?: number;
+  pricePerSeat?: number;
   startPoint?: {
     lat: number;
     lng: number;
@@ -34,6 +37,7 @@ export interface EventCarpoolListItem {
   seatsLeft: number;
   pricePerSeat: number;
   description: string | null;
+  vehicleIcon: string | null;
   note: string | null;
   status: string;
   expiresAt: string;

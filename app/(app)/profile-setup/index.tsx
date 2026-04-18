@@ -3,6 +3,7 @@ import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
 import DatePicker from "@/components/inputs/DatePicker";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useAuth } from "@/context/AuthContext";
 import { ProfileFormData, profileSchema } from "@/schemas/profile";
 import {
@@ -12,15 +13,18 @@ import {
 import { CompleteProfileData } from "@/types/auth";
 import { extractDate } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { useDebounce } from "@/utils/useDebounce";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { AtSign, CakeIcon, UserRoundPen } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
+  KeyboardEvent,
   Platform,
   ScrollView,
   Text,
@@ -36,7 +40,10 @@ import tw from "twrnc";
 
 const ProfileSetup = () => {
   const { setUser } = useAuth();
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const [picker, setPicker] = useState<boolean>(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [usernameStatus, setUsernameStatus] = useState<"" | "available" | "taken">("");
   const {
     control,
     watch,
@@ -98,11 +105,13 @@ const ProfileSetup = () => {
         if (!isMounted) return;
 
         if (data.data.available) {
+          setUsernameStatus("available");
           clearErrors("username");
         } else {
+          setUsernameStatus("taken");
           setError("username", {
             type: "manual",
-            message: "Username already taken",
+            message: "Already claimed. Try a cleaner variation.",
           });
         }
       } catch {
@@ -114,7 +123,40 @@ const ProfileSetup = () => {
     return () => {
       isMounted = false;
     };
+  }, [debouncedUsername, checkUsername, clearErrors, setError]);
+
+  useEffect(() => {
+    if (!debouncedUsername) {
+      setUsernameStatus("");
+    }
   }, [debouncedUsername]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      "keyboardDidShow",
+      (event: KeyboardEvent) => {
+        setKeyboardHeight(event.endCoordinates?.height ?? 0);
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 120);
+      }
+    );
+    const frameSub = Keyboard.addListener(
+      "keyboardDidChangeFrame",
+      (event: KeyboardEvent) => {
+        setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      }
+    );
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      frameSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // --- Submit handler ---
   const onSubmit = async (data: CompleteProfileData) => {
@@ -122,7 +164,7 @@ const ProfileSetup = () => {
     console.log("Profile ready to save:", data);
   };
 
-  const router = useRouter();
+  const router = useLockedRouter();
 
   const getBirthdayVibe = () => {
     if (!birthDate) return "";
@@ -160,33 +202,67 @@ const ProfileSetup = () => {
     return "Respect always — your generation’s courage shaped the world we live in.";
   };
 
+  const scrollToInputArea = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  };
+
   return (
     <KeyboardAvoidingView
       style={tw`flex-1 bg-[#01082E]`}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <ScrollView
-        contentContainerStyle={tw`flex-grow items-center px-5 pt-20 pb-10 gap-5`}
+        ref={scrollViewRef}
+        contentContainerStyle={[
+          tw`flex-grow items-center px-5 pt-20 gap-5`,
+          keyboardHeight > 0 ? tw`justify-start` : null,
+          Platform.OS === "android" && keyboardHeight > 0
+            ? { paddingBottom: keyboardHeight + 32 }
+            : { paddingBottom: 40 },
+        ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
       <CustomeTopBarNav
-        title="Setup Profile"
-        onClickBack={() => router.back()}
+        title="Profile"
+        onClickBack={() => safeGoBack(router, "/")}
       />
 
       <View style={tw`w-full max-w-[500px] flex-1 flex flex-col gap-5`}>
+        <View style={tw`gap-2`}>
+          <Text style={tw`text-white text-3xl font-bold`}>
+            Make your presence known
+          </Text>
+          <Text style={tw`text-[#B9C7F1] text-sm leading-6`}>
+            Your profile helps people find you, trust you, and connect you to the right impact events.
+          </Text>
+        </View>
+
+        <View style={tw`bg-[#0FF1CF]/10 border border-[#0FF1CF]/25 rounded-2xl px-4 py-4 gap-1`}>
+          <Text style={tw`text-[#0FF1CF] text-[11px] font-bold tracking-widest uppercase`}>
+            Community-first
+          </Text>
+          <Text style={tw`text-white text-sm`}>
+            People show up more confidently when they know who&apos;s in the room.
+          </Text>
+        </View>
+
         {/* Full Name */}
         <CustomView style={tw`gap-2`}>
+          <Text style={tw`text-white text-sm font-semibold`}>Name</Text>
           <Controller
             control={control}
             name="fullName"
             render={({ field: { value, onChange } }) => (
               <Input
-                placeholder="Full Name"
+                placeholder="What should people call you?"
                 value={value}
                 LeftIcon={UserRoundPen}
                 onChangeText={onChange}
+                onFocus={scrollToInputArea}
                 error={errors?.fullName?.message}
               />
             )}
@@ -196,33 +272,41 @@ const ProfileSetup = () => {
         {/* Username */}
 
         <CustomView style={tw`gap-2`}>
+          <Text style={tw`text-white text-sm font-semibold`}>Username</Text>
           <Controller
             control={control}
             name="username"
             render={({ field: { value, onChange } }) => (
               <View style={tw`relative`}>
                 <Input
-                  placeholder="Username"
+                  placeholder="Choose your @name"
                   value={value}
                   LeftIcon={AtSign}
                   onChangeText={(text) => onChange(text.toLowerCase())}
                   autoCapitalize="none"
+                  onFocus={scrollToInputArea}
                   error={errors?.username?.message}
                 />
                 {isPending && (
                   <View
                     style={tw`absolute right-3 top-0 bottom-0 justify-center`}
                   >
-                    <ActivityIndicator size="small" color="#0FF1CF" />
+                    <ActivityIndicator tone="accent" size="small" />
                   </View>
                 )}
               </View>
             )}
           />
+          {!errors?.username?.message && usernameStatus === "available" && (
+            <Text style={tw`text-[#0FF1CF] text-xs`}>
+              Nice. This one is yours.
+            </Text>
+          )}
         </CustomView>
 
         {/* Birthday (Date Picker) */}
         <CustomView style={tw`gap-2`}>
+          <Text style={tw`text-white text-sm font-semibold`}>Birthday</Text>
           <Controller
             control={control}
             name="birthDate"
@@ -230,7 +314,7 @@ const ProfileSetup = () => {
               <>
                 <DatePicker
                   LeftIcon={CakeIcon}
-                  placeholder="Select Birth date"
+                  placeholder="When were you born?"
                   value={
                     typeof value === "string"
                       ? value
@@ -258,7 +342,11 @@ const ProfileSetup = () => {
         onPress={handleSubmit(onSubmit)}
         disabled={isPending || completeProfilePending}
         title={
-          isPending ? "Checking..." : isSubmitting ? "Submitting..." : "Next"
+          isPending
+            ? "Checking..."
+            : isSubmitting
+            ? "Submitting..."
+            : "Step into GatherGo"
         }
         buttonClassName="bg-[#0FF1CF] border-0 !w-full"
         textClassName="!text-black"

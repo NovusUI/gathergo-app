@@ -2,6 +2,7 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import { useAuth } from "@/context/AuthContext";
 import { useSavePreferences } from "@/services/mutations";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import { useLockedRouter } from "@/utils/navigation";
 import { saveItem } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import { Sparkles } from "lucide-react-native";
@@ -59,21 +60,33 @@ const INTEREST_GRAPH: Record<string, string[]> = {
 };
 
 const STARTER_CLUSTERS = [
-  { label: "🎭 Arts & Culture", items: ["Art", "Cinema", "Museum", "Photography", "Design"] },
-  { label: "🎵 Music & Nightlife", items: ["Music", "Concert", "Festival", "Dance", "Nightlife"] },
-  { label: "💼 Work & Growth", items: ["Business", "Networking", "Career", "Leadership", "Startup"] },
-  { label: "🌿 Health & Outdoors", items: ["Wellness", "Fitness", "Outdoor", "Nature", "Adventure"] },
-  { label: "🍕 Food & Social", items: ["Food", "Brunches", "Travel", "Lifestyle", "Family"] },
-  { label: "💻 Tech & Innovation", items: ["Tech", "AI", "Gaming", "STEM", "Innovation"] },
+  {
+    label: "Arts, Culture & Storytelling",
+    items: ["Art", "Cinema", "Museum", "Photography", "Design"],
+  },
+  {
+    label: "Community & Social Good",
+    items: ["Food", "Brunches", "Culture", "Family", "Networking"],
+  },
+  {
+    label: "Health, Wellness & Care",
+    items: ["Wellness", "Health", "Fitness", "Mindfulness", "Sport"],
+  },
+  {
+    label: "Education, Learning & Growth",
+    items: ["Education", "Career", "Leadership", "Scientific", "STEM"],
+  },
+  {
+    label: "Climate, Nature & Outdoors",
+    items: ["Outdoor", "Nature", "Adventure", "Travel", "Zoo"],
+  },
+  {
+    label: "Innovation, Work & Future Ideas",
+    items: ["Tech", "AI", "Gaming", "Business", "Innovation"],
+  },
 ];
 
 const ALL_STARTER_ITEMS = STARTER_CLUSTERS.flatMap((c) => c.items);
-
-function getSourcesFor(suggestion: string, selectedPrefs: string[]): string[] {
-  return selectedPrefs.filter((sel) =>
-    (INTEREST_GRAPH[sel] || []).includes(suggestion)
-  );
-}
 
 function AnimatedChip({
   item,
@@ -129,7 +142,7 @@ function AnimatedChip({
 }
 
 export default function PreferencesScreen() {
-  const router = useRouter();
+  const router = useLockedRouter();
   const { user, setUser } = useAuth();
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
 
@@ -182,11 +195,16 @@ export default function PreferencesScreen() {
   return (
     <View style={tw`flex-1 bg-[#01082E] px-5 pt-14 pb-6`}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`gap-8 pb-4`}>
-        <View style={tw`gap-1`}>
-          <Text style={tw`text-white text-3xl font-bold tracking-tight`}>
-            What&apos;s your vibe?
+        <View style={tw`gap-2`}>
+          <Text style={tw`text-[#0FF1CF] text-[11px] font-bold tracking-widest uppercase`}>
+            Your Impact Map
           </Text>
-          <Text style={tw`text-gray-500 text-sm`}>Pick what you love.</Text>
+          <Text style={tw`text-white text-3xl font-bold tracking-tight`}>
+            What kind of impact calls you?
+          </Text>
+          <Text style={tw`text-gray-400 text-sm leading-5`}>
+            Choose the causes, communities, and spaces you naturally care about. We&apos;ll use this to shape your event world.
+          </Text>
         </View>
 
         {STARTER_CLUSTERS.map((cluster) => (
@@ -212,7 +230,7 @@ export default function PreferencesScreen() {
             <View style={tw`flex-row items-center gap-1.5`}>
               <Sparkles size={12} color="#0FF1CF" />
               <Text style={tw`text-gray-400 text-xs`}>
-                Because you like{" "}
+                This usually connects with{" "}
                 <Text style={tw`text-white font-semibold`}>{source}</Text>
               </Text>
             </View>
@@ -235,7 +253,8 @@ export default function PreferencesScreen() {
         {selectedPrefs.length > 0 && (
           <View style={tw`flex-row items-center justify-between px-1`}>
             <Text style={tw`text-gray-400 text-sm`}>
-              <Text style={tw`text-white font-bold`}>{selectedPrefs.length}</Text> selected
+              <Text style={tw`text-white font-bold`}>{selectedPrefs.length}</Text>{" "}
+              signals shaping your GatherGo feed
             </Text>
             <TouchableOpacity onPress={() => setSelectedPrefs([])}>
               <Text style={tw`text-[#FF8A8A] text-sm`}>Clear all</Text>
@@ -244,7 +263,7 @@ export default function PreferencesScreen() {
         )}
         <CustomButton
           onPress={savePreference}
-          title={isPending ? "Saving..." : "Continue"}
+          title={isPending ? "Saving..." : "Build my impact feed"}
           disabled={isPending || selectedPrefs.length === 0}
           buttonClassName="bg-[#0FF1CF] border-0 w-full"
           textClassName="!text-black"

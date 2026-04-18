@@ -3,6 +3,7 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
@@ -17,45 +18,68 @@ import {
 import { CarpoolForm } from "@/types/carpool";
 import { extractTime } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from "@gorhom/bottom-sheet";
+import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { AxiosError } from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, Resolver, useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
-  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import tw from "twrnc";
 
+const defaultCarpoolFormValues: CarpoolFormValues = {
+  isToEvent: true,
+  poolLocation: "",
+  useCurrentLocation: false,
+  poolDestination: "",
+  departureTime: "",
+  availableSeats: 3,
+  notes: "",
+};
+
+const isEventEligibleForCarpool = (event?: {
+  endDate?: string | null;
+  isPhysicalEvent?: boolean | null;
+}) => {
+  if (event?.isPhysicalEvent === false) return false;
+  if (!event?.endDate) return true;
+
+  const deadline = new Date(event.endDate);
+  if (Number.isNaN(deadline.getTime())) return true;
+
+  deadline.setHours(deadline.getHours() + 6);
+  return new Date() <= deadline;
+};
+
 const NewCarpool = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const { eventId: routeEventId, autoOpenEventPicker } = useLocalSearchParams<{
     eventId?: string;
     autoOpenEventPicker?: string;
   }>();
   const [query, setQuery] = useState("");
-  const searchInputRef = useRef<TextInput | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [isFormModalVisible, setIsFormModalVisible] = useState(false);
   const [picker, setPicker] = useState<null | string>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const searchInputRef = useRef<TextInput | null>(null);
   const hasAutoOpenedRef = useRef(false);
   const { coords, requestLocation, error, openSettings } = useLocationManager();
-  console.log(error, coords);
+
   const preselectedEventId = Array.isArray(routeEventId)
     ? routeEventId[0]
     : routeEventId;
@@ -77,39 +101,47 @@ const NewCarpool = () => {
   } = useGetSearchResult(query, "events", 10);
 
   const results = searchResults?.pages?.flatMap((page: any) => page.data) ?? [];
+  const eligibleResults = results.filter(isEventEligibleForCarpool);
 
   const { user } = useAuth();
   const { data: eventsSuggestion, isPending: loading } = useForYouEvents(
     user?.id
   );
+  const suggestedEvents = (eventsSuggestion?.data ?? []).filter(
+    isEventEligibleForCarpool
+  );
 
-  // Bottom sheet setup
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const bottomSheetScrollRef = useRef<any>(null);
-  const snapPoints = useMemo(() => ["92%"], []);
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<CarpoolFormValues>({
+    resolver: zodResolver(carpoolSchema) as Resolver<CarpoolFormValues>,
+    defaultValues: defaultCarpoolFormValues,
+  });
 
-  const openSheet = useCallback((event: any) => {
+  const isToEvent = watch("isToEvent");
+  const useCurrentLocation = watch("useCurrentLocation");
+
+  const closeFormModal = useCallback(() => {
+    setPicker(null);
+    setSelectedEvent(null);
+    setIsFormModalVisible(false);
+    reset(defaultCarpoolFormValues);
+  }, [reset]);
+
+  const openCarpoolForm = useCallback((event: any) => {
+    if (event?.isPhysicalEvent === false) {
+      showGlobalError("Carpool is only available for physical events");
+      return;
+    }
+
     setSelectedEvent(event);
-    bottomSheetRef.current?.present();
+    setIsFormModalVisible(true);
   }, []);
-
-  const scrollSheetToBottom = useCallback(() => {
-    setTimeout(() => {
-      bottomSheetScrollRef.current?.scrollToEnd?.({ animated: true });
-    }, 140);
-  }, []);
-
-  useEffect(() => {
-    if (!isSheetOpen) return;
-
-    const onShow = Keyboard.addListener("keyboardDidShow", () => {
-      scrollSheetToBottom();
-    });
-
-    return () => {
-      onShow.remove();
-    };
-  }, [isSheetOpen, scrollSheetToBottom]);
 
   useEffect(() => {
     if (!shouldAutoOpen || !preselectedEventId || hasAutoOpenedRef.current) {
@@ -122,59 +154,48 @@ const NewCarpool = () => {
     }
 
     hasAutoOpenedRef.current = true;
-    openSheet(resolvedEvent);
-  }, [openSheet, preselectedEvent?.data, preselectedEventId, shouldAutoOpen]);
+    openCarpoolForm(resolvedEvent);
+  }, [
+    openCarpoolForm,
+    preselectedEvent?.data,
+    preselectedEventId,
+    shouldAutoOpen,
+  ]);
 
-  const {
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<CarpoolFormValues>({
-    resolver: zodResolver(carpoolSchema),
-    defaultValues: {
-      isToEvent: true,
-      poolLocation: "",
-      useCurrentLocation: false,
-      poolDestination: "",
-      departureTime: "",
-      notes: "",
-    },
-  });
-
-  const isToEvent = watch("isToEvent");
-
-  const useCurrentLocation = watch("useCurrentLocation");
-
-  const toggleNearby = async () => {
-    const c = await requestLocation(true);
-    if (!c) {
-      alert("Enable location in settings to use this filter");
+  const toggleNearby = useCallback(async () => {
+    const currentCoords = await requestLocation(true);
+    if (!currentCoords) {
+      showGlobalError("Enable location in settings to use current location");
       setValue("useCurrentLocation", false);
-      return;
     }
-  };
+  }, [requestLocation, setValue]);
 
   useEffect(() => {
     if (useCurrentLocation && isToEvent) {
       toggleNearby();
     }
-  }, [useCurrentLocation, isToEvent]);
+  }, [isToEvent, toggleNearby, useCurrentLocation]);
 
-  const renderContent = () => {
+  const carpoolCreationDeadline = useMemo(() => {
+    if (!selectedEvent?.endDate) return null;
+    const deadline = new Date(selectedEvent.endDate);
+    deadline.setHours(deadline.getHours() + 6);
+    return deadline;
+  }, [selectedEvent?.endDate]);
+
+  const renderEventList = () => {
     if (isPending || loading) {
       return (
-        <View style={tw`flex-1 justify-center items-center`}>
-          <ActivityIndicator color="#0FF1CF" size="large" />
+        <View style={tw`flex-1 items-center justify-center`}>
+          <ActivityIndicator tone="accent" size="large" />
         </View>
       );
     }
 
     if (query.trim().length > 0) {
-      return results.length > 0 ? (
+      return eligibleResults.length > 0 ? (
         <FlatList
-          data={results}
+          data={eligibleResults}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <EventCard
@@ -182,10 +203,15 @@ const NewCarpool = () => {
               title={item.title}
               location={item.location}
               imageUrl={item.imageUrl}
+              thumbnailUrl={item.thumbnailUrl}
               registrationType={item.registrationType}
-              registrationFee={item.registrationFee}
-              onPress={() => openSheet(item)}
+              registrationFee={item.registrationFee ?? undefined}
+              donationTarget={item.donationTarget}
+              lowestTicketPrice={item.lowestTicketPrice}
               startDate={item.startDate}
+              impactTitle={item.impactTitle}
+              impactPercentage={item.impactPercentage}
+              onPress={() => openCarpoolForm(item)}
             />
           )}
           contentContainerStyle={{ gap: 16, paddingVertical: 10 }}
@@ -197,68 +223,91 @@ const NewCarpool = () => {
           onEndReachedThreshold={0.3}
           ListFooterComponent={
             isFetchingNextPage ? (
-              <ActivityIndicator color="#0FF1CF" style={{ margin: 16 }} />
+              <ActivityIndicator tone="accent" style={{ margin: 16 }} />
             ) : null
           }
         />
       ) : (
         <View style={tw`mt-5`}>
-          <Text style={tw`text-white text-center`}>No Events found</Text>
-        </View>
-      );
-    } else {
-      return eventsSuggestion?.data.length ? (
-        <View>
-          <Text style={tw`text-white text-center`}>Suggestions</Text>
-          <FlatList
-            data={eventsSuggestion?.data}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <EventCard
-                id={item.id}
-                title={item.title}
-                location={item.location}
-                imageUrl={item.imageUrl}
-                registrationType={item.registrationType}
-                startDate={item.startDate}
-                registrationFee={item.registrationFee}
-                onPress={() => openSheet(item)}
-              />
-            )}
-            contentContainerStyle={{ gap: 16, paddingVertical: 10 }}
-          />
-        </View>
-      ) : (
-        <View style={tw`mt-5`}>
-          <Text style={tw`text-white text-center`}>No suggestions</Text>
+          <Text style={tw`text-center text-white`}>
+            No physical events found
+          </Text>
         </View>
       );
     }
+
+    return suggestedEvents.length ? (
+      <View>
+        <Text style={tw`text-center text-white`}>Suggestions</Text>
+        <FlatList
+          data={suggestedEvents}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <EventCard
+              id={item.id}
+              title={item.title}
+              location={item.location}
+              imageUrl={item.imageUrl}
+              thumbnailUrl={item.thumbnailUrl}
+              registrationType={item.registrationType}
+              registrationFee={item.registrationFee ?? undefined}
+              donationTarget={item.donationTarget}
+              lowestTicketPrice={item.lowestTicketPrice}
+              startDate={item.startDate}
+              impactTitle={item.impactTitle}
+              impactPercentage={item.impactPercentage}
+              onPress={() => openCarpoolForm(item)}
+            />
+          )}
+          contentContainerStyle={{ gap: 16, paddingVertical: 10 }}
+        />
+      </View>
+    ) : (
+      <View style={tw`mt-5`}>
+        <Text style={tw`text-center text-white`}>
+          No physical event suggestions right now
+        </Text>
+      </View>
+    );
   };
 
-  const {
-    mutateAsync,
-    isPending: createCarpoolPending,
-  } = useCreateCarpool({
+  const { mutateAsync, isPending: createCarpoolPending } = useCreateCarpool({
     onSuccess: (data) => {
-      console.log(data);
-      showGlobalSuccess(data.message);
-      router.replace(`/carpool/${data.data.carpool.id}`);
+      closeFormModal();
+      const carpoolId =
+        data?.data?.carpool?.id || data?.data?.id || data?.data?.carpoolId;
+      showGlobalSuccess(data.message || "Carpool created");
+      if (carpoolId) {
+        router.replace(`/carpool/${carpoolId}`);
+      }
     },
     onError: (e) => {
-      console.log(e);
-      showGlobalError("failed to create carpool");
+      const error = e as AxiosError<{ message?: string }>;
+      showGlobalError(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to create carpool"
+      );
     },
   });
 
   const createCarpool = async (data: CarpoolFormValues) => {
-    console.log(data);
     if (!selectedEvent?.id) {
       showGlobalError("Select an event first");
       return;
     }
 
-    let startPoint: { lng: number; lat: number } | undefined = undefined;
+    if (selectedEvent?.isPhysicalEvent === false) {
+      showGlobalError("Carpool is only available for physical events");
+      return;
+    }
+
+    if (carpoolCreationDeadline && new Date() > carpoolCreationDeadline) {
+      showGlobalError("You can no longer create a carpool for this event");
+      return;
+    }
+
+    let startPoint: { lng: number; lat: number } | undefined;
     if (data.useCurrentLocation) {
       if (coords) {
         startPoint = { lng: coords.lng, lat: coords.lat };
@@ -273,14 +322,17 @@ const NewCarpool = () => {
     }
 
     const payload: CarpoolForm = {
-      origin: data.isToEvent ? data.poolLocation : data.poolDestination,
+      origin: data.isToEvent
+        ? data.poolLocation || ""
+        : data.poolDestination || "",
       departureTime: data.departureTime,
-      note: data.notes,
+      note: data.notes || undefined,
+      availableSeats: Number(data.availableSeats || 3),
+      pricePerSeat: 0,
       startPoint,
       eventId: selectedEvent.id,
     };
 
-    console.log(payload);
     try {
       await mutateAsync(payload);
     } catch (e) {
@@ -288,13 +340,18 @@ const NewCarpool = () => {
     }
   };
 
-  const onError = (errors: any) => {
+  const onError = (formErrors: any) => {
     showGlobalError("Error in form");
-    console.log(errors);
+    console.log(formErrors);
   };
 
   return (
-    <View style={[tw`flex-1 pb-10 bg-[#01082E] flex flex-col items-center w-full`, styles.screen]}>
+    <View
+      style={[
+        tw`flex-1 w-full items-center bg-[#01082E] pb-10`,
+        styles.screen,
+      ]}
+    >
       <View style={tw`flex-1 w-full max-w-[500px] px-5`}>
         <CustomeTopBarNav
           title="Create carpool"
@@ -304,252 +361,258 @@ const NewCarpool = () => {
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           style={[
-            tw`flex-row items-center bg-[#1A2755] rounded-full w-full max-w-[500px]`,
+            tw`flex-row items-center rounded-full bg-[#1A2755]`,
             styles.searchBar,
           ]}
         >
           <SearchIcon size={20} color="white" />
           <TextInput
             ref={searchInputRef}
-            placeholder={`Search an event to carpool`}
+            placeholder="Search a physical event to carpool"
             placeholderTextColor="#94A3B8"
             value={query}
             onChangeText={setQuery}
-            style={tw`flex-1 text-white ml-3`}
+            style={tw`ml-3 flex-1 text-white`}
           />
         </Pressable>
 
-        <CustomView style={tw`flex-1 mb-20`}>{renderContent()}</CustomView>
+        <CustomView style={tw`flex-1 mb-20`}>{renderEventList()}</CustomView>
       </View>
 
-      {/* Carpool Bottom Sheet */}
-      <BottomSheetModal
-        ref={bottomSheetRef}
-        snapPoints={snapPoints}
-        android_keyboardInputMode="adjustResize"
-        keyboardBehavior="fillParent"
-        keyboardBlurBehavior="restore"
-        enablePanDownToClose
-        onChange={(index) => setIsSheetOpen(index >= 0)}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-          />
-        )}
-        backgroundStyle={{ backgroundColor: "#01082E", borderRadius: 20 }}
+      <Modal
+        visible={isFormModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closeFormModal}
       >
-        {error && (
-          <View
-            style={{
-              marginTop: "auto", // pushes it to the bottom
-              backgroundColor: "#e74c3c",
-              paddingVertical: 12,
-              paddingHorizontal: 16,
-              borderRadius: 8,
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginHorizontal: 10,
-            }}
-          >
-            <Text style={{ color: "white", flex: 1 }}>{error}</Text>
-            <Text
-              onPress={openSettings}
-              style={{
-                color: "white",
-                fontWeight: "bold",
-                marginLeft: 12,
-              }}
-            >
-              Open Settings
-            </Text>
-          </View>
-        )}
-        <BottomSheetScrollView
-          ref={bottomSheetScrollRef}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 20, paddingBottom:180 }}
+        <KeyboardAvoidingView
+          style={tw`flex-1 justify-end bg-black/55`}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <Text style={tw`text-white text-lg font-semibold mb-3`}>
-            {selectedEvent?.title}
-          </Text>
+          <View style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}>
+            <View style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`} />
 
-          {/* Switch To / From */}
-          <View style={tw`flex-row items-center justify-between gap-3 my-4`}>
-            <Text
-              style={tw`text-white ${isToEvent ? "font-bold" : "opacity-50"}`}
+            <View style={tw`flex-row items-start justify-between gap-4`}>
+              <View style={tw`flex-1`}>
+                <Text style={tw`text-xl font-semibold text-white`}>
+                  {selectedEvent?.title || "Create carpool"}
+                </Text>
+                <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
+                  {selectedEvent?.location ||
+                    "Set the ride details riders need before they join."}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={closeFormModal}>
+                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
+                  Close
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={tw`pt-4 pb-6`}
+              keyboardShouldPersistTaps="handled"
             >
-              To Event
-            </Text>
-
-            <Controller
-              control={control}
-              name="isToEvent"
-              render={({ field: { value, onChange } }) => (
-                <Switch
-                  value={value}
-                  onValueChange={onChange}
-                  thumbColor="#0FF1CF"
-                  trackColor={{ false: "#1A2755", true: "#1A2755" }}
-                />
+              {Boolean(error) && (
+                <View style={tw`mb-4 rounded-2xl bg-[#5A1818] px-4 py-3`}>
+                  <Text style={tw`text-sm leading-5 text-white`}>{error}</Text>
+                  <TouchableOpacity onPress={openSettings}>
+                    <Text style={tw`mt-2 text-sm font-semibold text-[#FFD1D1]`}>
+                      Open settings
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               )}
-            />
 
-            <Text
-              style={tw`text-white ${!isToEvent ? "font-bold" : "opacity-50"}`}
-            >
-              From Event
-            </Text>
-          </View>
+              <View style={tw`rounded-2xl bg-[#0A173F] p-4`}>
+                <Text style={tw`text-sm font-semibold text-white`}>
+                  Make the ride plan easy to trust
+                </Text>
+                <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
+                  Share where you&apos;re coming from, when you&apos;re leaving,
+                  how many seats are open, and any extra note riders should know.
+                </Text>
+              </View>
 
-          {/* Conditional fields */}
-          {isToEvent ? (
-            <View style={tw`mt-5`}>
-              <Text style={tw`text-white mb-1`}>Pool Location</Text>
+              <View style={tw`mt-5 flex-row items-center justify-between gap-3`}>
+                <Text
+                  style={tw`text-white ${isToEvent ? "font-bold" : "opacity-50"}`}
+                >
+                  To Event
+                </Text>
 
-              <CustomView style={tw` mb-5`}>
                 <Controller
                   control={control}
-                  name="poolLocation"
+                  name="isToEvent"
                   render={({ field: { value, onChange } }) => (
-                    <Input
-                      style={tw`h-12`}
-                      placeholderTextColor="#475569"
-                      placeholder="Enter a landmark, busstop, or area"
-                      onChangeText={onChange}
+                    <Switch
                       value={value}
-                      onFocus={scrollSheetToBottom}
+                      onValueChange={onChange}
+                      thumbColor="#0FF1CF"
+                      trackColor={{ false: "#1A2755", true: "#1A2755" }}
                     />
                   )}
                 />
-                {errors.poolLocation && (
-                  <Text style={tw`text-red-400 mt-1 text-sm`}>
-                    {errors.poolLocation.message}
-                  </Text>
-                )}
-              </CustomView>
 
-              <View style={tw`flex-row items-center justify-between mb-5`}>
+                <Text
+                  style={tw`text-white ${!isToEvent ? "font-bold" : "opacity-50"}`}
+                >
+                  From Event
+                </Text>
+              </View>
+
+              {isToEvent ? (
+                <View style={tw`mt-5`}>
+                  <Text style={tw`mb-2 text-white`}>Pool Location</Text>
+                  <Controller
+                    control={control}
+                    name="poolLocation"
+                    render={({ field: { value, onChange } }) => (
+                      <Input
+                        style={tw`h-12`}
+                        placeholderTextColor="#475569"
+                        placeholder="Enter a landmark, bus stop, or area"
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    )}
+                  />
+                  {errors.poolLocation && (
+                    <Text style={tw`mt-1 text-sm text-red-400`}>
+                      {errors.poolLocation.message}
+                    </Text>
+                  )}
+
+                  <View style={tw`mt-4 flex-row items-center justify-between gap-5`}>
+                    <Text style={tw`flex-1 text-white`}>
+                      I am currently where I&apos;ll be pooling from
+                    </Text>
+                    <Controller
+                      control={control}
+                      name="useCurrentLocation"
+                      render={({ field: { value, onChange } }) => (
+                        <Switch
+                          value={value}
+                          onValueChange={onChange}
+                          thumbColor={value ? "#0FF1CF" : "#555"}
+                        />
+                      )}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <View style={tw`mt-5`}>
+                  <Text style={tw`mb-2 text-white`}>Pool Destination</Text>
+                  <Controller
+                    control={control}
+                    name="poolDestination"
+                    render={({ field: { value, onChange } }) => (
+                      <Input
+                        placeholder="Enter a landmark, bus stop, or area"
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    )}
+                  />
+                  {errors.poolDestination && (
+                    <Text style={tw`mt-1 text-sm text-red-400`}>
+                      {errors.poolDestination.message}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              <View style={tw`mt-5`}>
+                <Text style={tw`mb-2 text-white`}>Departure Time</Text>
                 <Controller
                   control={control}
-                  name="useCurrentLocation"
-                  render={({ field: { value, onChange } }) => (
-                    <View
-                      style={tw`flex-row items-center justify-between mb-5 gap-5`}
-                    >
-                      <Text style={tw`text-white`}>
-                        Close to current location?
-                      </Text>
-                      <Switch
-                        value={value}
-                        onValueChange={onChange}
-                        thumbColor={value ? "#0FF1CF" : "#555"}
+                  name="departureTime"
+                  render={({ field }) => (
+                    <>
+                      <CustomEventInfoSelector
+                        title="set time"
+                        value={field.value}
+                        onPress={() => setPicker("picker")}
                       />
+                      <DateTimePickerModal
+                        isVisible={!!picker}
+                        mode="time"
+                        onConfirm={(selected) => {
+                          field.onChange(extractTime(selected));
+                          setPicker(null);
+                        }}
+                        onCancel={() => setPicker(null)}
+                      />
+                    </>
+                  )}
+                />
+                {errors.departureTime && (
+                  <Text style={tw`mt-1 text-sm text-red-400`}>
+                    {errors.departureTime.message}
+                  </Text>
+                )}
+              </View>
+
+              <View style={tw`mt-5`}>
+                <Text style={tw`mb-2 text-white`}>Available Seats</Text>
+                <Controller
+                  control={control}
+                  name="availableSeats"
+                  render={({ field: { value, onChange } }) => (
+                    <Input
+                      numeric
+                      moneyFormat
+                      placeholder="How many seats are open?"
+                      value={value?.toString()}
+                      onChangeText={onChange}
+                    />
+                  )}
+                />
+                {errors.availableSeats && (
+                  <Text style={tw`mt-1 text-sm text-red-400`}>
+                    {errors.availableSeats.message}
+                  </Text>
+                )}
+              </View>
+
+              <View style={tw`mt-5`}>
+                <Text style={tw`mb-2 text-white`}>Notes</Text>
+                <Controller
+                  control={control}
+                  name="notes"
+                  render={({ field }) => (
+                    <View style={tw`w-full`}>
+                      <TextInput
+                        style={tw`min-h-[120px] rounded-2xl bg-[#0A173F] p-4 text-base text-white`}
+                        placeholder="Any extra details?"
+                        placeholderTextColor="#9CA3AF"
+                        multiline
+                        maxLength={200}
+                        textAlignVertical="top"
+                        value={field.value ?? ""}
+                        onChangeText={field.onChange}
+                      />
+                      <Text style={tw`mt-1 text-right text-sm text-gray-400`}>
+                        {(field.value?.length || 0)}/200
+                      </Text>
                     </View>
                   )}
                 />
               </View>
-            </View>
-          ) : (
-            <>
-              <Text style={tw`text-white mb-1`}>Pool Destination</Text>
+            </ScrollView>
 
-              <CustomView style={tw`flex-1 mb-5`}>
-                <Controller
-                  control={control}
-                  name="poolDestination"
-                  render={({ field: { value, onChange } }) => (
-                    <Input
-                      placeholder="Enter a landmark, busstop, or area"
-                      onChangeText={onChange}
-                      value={value}
-                      onFocus={scrollSheetToBottom}
-                    />
-                  )}
-                />
-                {errors.poolDestination && (
-                  <Text style={tw`text-red-400 mt-1 text-sm`}>
-                    {errors.poolDestination.message}
-                  </Text>
-                )}
-              </CustomView>
-            </>
-          )}
-
-          <View style={tw`mb-5`}>
-            {/* Departure time */}
-            <Text style={tw`text-white mb-1`}>Departure Time</Text>
-            <Controller
-              control={control}
-              name="departureTime"
-              render={({ field }) => (
-                <>
-                  <CustomEventInfoSelector
-                    title="set time"
-                    value={field.value}
-                    onPress={() => setPicker("picker")}
-                  />
-                  <DateTimePickerModal
-                    isVisible={!!picker}
-                    mode="time"
-                    onConfirm={(selected) => {
-                      field.onChange(extractTime(selected));
-                      setPicker(null);
-                    }}
-                    onCancel={() => setPicker(null)}
-                  />
-                </>
-              )}
-            />
-            {errors.departureTime && (
-              <Text style={tw`text-red-400 mt-1 text-sm`}>
-                {errors.departureTime.message}
-              </Text>
-            )}
-          </View>
-
-          {/* Notes */}
-          <Text style={tw`text-white mb-1`}>Notes</Text>
-
-          <CustomView style={tw`flex-1 mb-5`}>
-            <Controller
-              control={control}
-              name="notes"
-              render={({ field }) => (
-                <View style={tw`w-full`}>
-                  <BottomSheetTextInput
-                    style={tw`w-full min-h-[120px] rounded-2xl bg-[#1B2A50]/40 text-white p-4 text-base`}
-                    placeholder="Any extra details?"
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    maxLength={200}
-                    textAlignVertical="top"
-                    value={field.value ?? ""}
-                    onChangeText={field.onChange}
-                    onFocus={scrollSheetToBottom}
-                  />
-                  <Text style={tw`text-right text-sm text-gray-400 mt-1`}>
-                    {(field.value?.length || 0)}/200
-                  </Text>
-                </View>
-              )}
-            />
-          </CustomView>
-
-          <View style={tw`w-full mb-6 mt-2`}>
             <CustomButton
               onPress={handleSubmit(createCarpool, onError)}
-              title={createCarpoolPending ? "Creating carpool" : `Create Carpool`}
-              buttonClassName={"bg-[#0FF1CF] w-full border-0"}
-              textClassName={`!text-black`}
+              title={createCarpoolPending ? "Creating carpool" : "Create Carpool"}
+              buttonClassName="bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-black"
               showArrow={false}
               disabled={createCarpoolPending}
             />
           </View>
-        </BottomSheetScrollView>
-      </BottomSheetModal>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };

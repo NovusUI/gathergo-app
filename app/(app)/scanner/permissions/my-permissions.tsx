@@ -1,11 +1,13 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import EventPermissionCard from "@/components/scanner/EventPermissionCard";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useScanner } from "@/hooks/useScanner";
+import { useLockedRouter } from "@/utils/navigation";
+import { safeGoBack } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { Calendar, ChevronRight, Shield, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -15,7 +17,7 @@ import {
 import tw from "twrnc";
 
 const MyPermissions = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<
     "all" | "active" | "expiring" | "expired"
@@ -94,11 +96,11 @@ const MyPermissions = () => {
         <View style={tw`pt-10 pb-4 px-5`}>
           <CustomeTopBarNav
             title="My Permissions"
-            onClickBack={() => router.back()}
+            onClickBack={() => safeGoBack(router, "/scanner")}
           />
         </View>
         <View style={tw`flex-1 items-center justify-center`}>
-          <ActivityIndicator size="large" color="#5669FF" />
+          <ActivityIndicator tone="accent" size="large" />
           <Text style={tw`text-gray-400 mt-4`}>Loading permissions...</Text>
         </View>
       </View>
@@ -111,7 +113,7 @@ const MyPermissions = () => {
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
           title="My Scanning Permissions"
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/scanner")}
         />
       </View>
 

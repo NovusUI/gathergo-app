@@ -1,12 +1,13 @@
 import CustomButton from "@/components/buttons/CustomBtn1"
 import FourDigitCodeInput from "@/components/inputs/FourDigitInput"
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router"
 import { useState } from "react"
 import { Text, View } from "react-native"
 
 
 const index = () => {
-    const router = useRouter()
+    const router = useLockedRouter()
     const [code, setCode] = useState("");
   return (
     <View className="flex-1 bg-[#01082E] flex flex-col  items-center px-5 py-10 gap-5 overflow-scroll">

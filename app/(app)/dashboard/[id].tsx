@@ -1,16 +1,18 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
-import AccountInfoCard from "@/components/ui/AccountInfoCard";
 import DonationEventOverview from "@/components/ui/DonationEventOverview";
 import Payments from "@/components/ui/Payments";
 import RegistrationEventOverview from "@/components/ui/RegistrationEventOverview";
 import TicketEventOverview from "@/components/ui/TicketEventOverview";
 import { useEventDashboardData, useShortcutEvent } from "@/hooks/useDashboard";
+import { useEventDetails } from "@/services/queries";
 
 import { Payment } from "@/utils/mockPayments";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
@@ -100,30 +102,42 @@ const mockEventPayments: Payment[] = [
 
 const EventDashboard = () => {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
+  const router = useLockedRouter();
 
   const eventId = Array.isArray(id) ? id[0] : id;
   //const event = mockEventData[eventId as keyof typeof mockEventData];
 
   const { isLoading, data, error } = useEventDashboardData(eventId);
+  const { data: eventDetailsResponse } = useEventDetails(eventId, {
+    enabled: Boolean(eventId),
+  });
 
   const { isLoading: isShortcutLoading, data: shortcutData } =
     useShortcutEvent(eventId);
 
   const event = useMemo(() => data?.data.event, [data]);
+  const eventDetails = eventDetailsResponse?.data;
 
   const payments = useMemo(() => data?.data.payments || [], [data]);
+  const hasEventEnded = useMemo(() => {
+    const boundary = eventDetails?.endDate;
+    if (!boundary) return false;
 
-  useEffect(() => {
-    console.log(payments);
-  }, [payments]);
+    const parsedBoundary = new Date(boundary);
+    if (Number.isNaN(parsedBoundary.getTime())) return false;
+
+    return parsedBoundary.getTime() < Date.now();
+  }, [eventDetails?.endDate]);
   const shortcuts = useMemo(() => shortcutData?.data.shortcuts, [shortcutData]);
 
   if (isLoading) {
     return (
       <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
         <CustomView className={`px-3`}>
-          <CustomeTopBarNav title="Event" onClickBack={() => router.back()} />
+          <CustomeTopBarNav
+            title="Event"
+            onClickBack={() => safeGoBack(router, "/dashboard")}
+          />
         </CustomView>
         <ScrollView>
           <View
@@ -166,7 +180,7 @@ const EventDashboard = () => {
         <Text style={tw`text-white text-xl`}>Event not found</Text>
         <TouchableOpacity
           style={tw`mt-4 px-6 py-3 bg-[#5669FF] rounded-full`}
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/dashboard")}
         >
           <Text style={tw`text-white font-medium`}>Go Back</Text>
         </TouchableOpacity>
@@ -180,7 +194,7 @@ const EventDashboard = () => {
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
           title={event.title}
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/dashboard")}
         />
       </View>
 
@@ -191,6 +205,27 @@ const EventDashboard = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={tw`gap-4 mb-24`}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => router.push(`/event/${eventId}`)}
+            style={tw`rounded-3xl border border-[#24345A] bg-[#0A173F] p-4`}
+          >
+            <Text style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}>
+              {hasEventEnded ? "Ended event page" : "Public event page"}
+            </Text>
+            <Text style={tw`mt-2 text-lg font-semibold text-white`}>
+              Open attendee view
+            </Text>
+            <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
+              {hasEventEnded
+                ? "This event has ended, but the public page still holds the story, impact, and shareable details."
+                : "Preview the event page the same way attendees, donors, and guests see it."}
+            </Text>
+            <Text style={tw`mt-3 text-sm font-semibold text-[#0FF1CF]`}>
+              {hasEventEnded ? "View ended event page" : "Open event page"}
+            </Text>
+          </TouchableOpacity>
+
           {/* Event Overview based on type */}
           {event.type === "donation" && <DonationEventOverview event={event} />}
           {event.type === "ticket" && <TicketEventOverview event={event} />}
@@ -199,7 +234,7 @@ const EventDashboard = () => {
           )}
 
           {/* Account Info */}
-          <AccountInfoCard accountInfo={event.accountInfo} />
+          {/* <AccountInfoCard accountInfo={event.accountInfo} /> */}
 
           {/* Event Payments - Using the existing Payment component */}
           <Payments title="Event Payments" payments={payments} />

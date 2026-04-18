@@ -22,7 +22,7 @@ const CustomEventInfoSelector = ({ title, value, onPress }: Props) => {
         </View>
       )}
 
-      {value && (
+      {Boolean(value) && (
         <Text style={tw`text-gray-300`}>
           {typeof value === "string" ? value : JSON.stringify(value)}
         </Text>

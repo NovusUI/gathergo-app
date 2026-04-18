@@ -7,8 +7,8 @@ import {
   XCircle,
 } from "lucide-react-native";
 import React from "react";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import {
-  ActivityIndicator,
   Modal,
   Text,
   TouchableOpacity,

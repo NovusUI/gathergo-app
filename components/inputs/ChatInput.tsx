@@ -1,14 +1,13 @@
 import { useSocket } from "@/context/SocketContext";
-import { LoaderCircle } from "lucide-react-native";
+import { LoaderCircle, Send } from "lucide-react-native";
 import { useRef, useState } from "react";
 import {
-  Image,
   NativeSyntheticEvent,
   Pressable,
   TextInput,
   TextInputContentSizeChangeEventData,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import tw from "twrnc";
 
@@ -110,16 +109,9 @@ const ChatInput = ({
           disabled={sending || disabled || value.trim().length === 0}
         >
           {!sending && (
-            <Image
-              source={require("../../assets/sendicon.png")}
-              style={[
-                tw`w-4 h-4`,
-                disabled || value.trim().length === 0
-                  ? tw`opacity-30`
-                  : tw`opacity-100`,
-              ]}
-              resizeMode="contain"
-            />
+
+            <Send color={"#ffffff"}/>
+            
           )}
           {sending && (
             <LoaderCircle color={disabled ? "#6B7280" : "#fff"} size={20} />

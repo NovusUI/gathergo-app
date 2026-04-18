@@ -2,9 +2,18 @@ import { EventsResponse, StandardResponse } from "@/types/auth";
 import { PaginatedEventCarpoolsResponse } from "@/types/carpool";
 import {
   EventDetailsResponse,
+  OwnedRegistrationsResponse,
+  OwnedTicketsResponse,
   PaginatedDashboardEventsResponse,
   PaginatedEventResponse,
 } from "@/types/event";
+import { HomeAdCardsResponse } from "@/types/home";
+import {
+  WalletBanksResponse,
+  WalletKycResponse,
+  WalletOnboardingResponse,
+  WalletOverviewResponse,
+} from "@/types/wallet";
 import {
   ScanHistoryResponse,
   ScannerPermissionResponse,
@@ -22,13 +31,20 @@ import {
   getPaginatedEventCarpools,
   getCurrentUserFn,
   getDashboardData,
+  getHomeAdCards,
   getDashboardEvents,
   getEventDashboardData,
   getEventDetails,
+  getWalletBanksFn,
+  getWalletKycFn,
+  getWalletOnboardingFn,
+  getWalletOverviewFn,
   getEventImageStatus,
   getEventsForYou,
   getGrantedScannerPermissionsFn,
   getMyScannerPermissionsFn,
+  getMyRegistrationsFn,
+  getMyTicketsFn,
   getPayments,
   getScanHistoryFn,
   getScannerStatsFn,
@@ -40,6 +56,47 @@ import {
   getUserProfile,
   searchScannerUsersFn,
 } from "./serviceFn";
+
+
+export const useWalletOverview = (options = {}) => {
+  return useQuery<WalletOverviewResponse>({
+    queryKey: QUERY_KEYS.walletOverview,
+    queryFn: getWalletOverviewFn,
+    staleTime: 1000 * 30,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useWalletOnboarding = (options = {}) => {
+  return useQuery<WalletOnboardingResponse>({
+    queryKey: QUERY_KEYS.walletOnboarding,
+    queryFn: getWalletOnboardingFn,
+    staleTime: 1000 * 30,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useWalletKyc = (options = {}) => {
+  return useQuery<WalletKycResponse>({
+    queryKey: QUERY_KEYS.walletKyc,
+    queryFn: getWalletKycFn,
+    staleTime: 1000 * 30,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useWalletBanks = (options = {}) => {
+  return useQuery<WalletBanksResponse>({
+    queryKey: QUERY_KEYS.walletBanks,
+    queryFn: getWalletBanksFn,
+    staleTime: 1000 * 60 * 60,
+    retry: 1,
+    ...options,
+  });
+};
 
 export const useCurrentUser = () => {
   return useQuery({
@@ -182,6 +239,26 @@ export const useTransactionRef = (tId: string, options = {}) => {
   });
 };
 
+export const useMyTickets = (options = {}) => {
+  return useQuery<OwnedTicketsResponse>({
+    queryKey: QUERY_KEYS.myTickets,
+    queryFn: getMyTicketsFn,
+    staleTime: 1000 * 60,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useMyRegistrations = (options = {}) => {
+  return useQuery<OwnedRegistrationsResponse>({
+    queryKey: QUERY_KEYS.myRegistrations,
+    queryFn: getMyRegistrationsFn,
+    staleTime: 1000 * 60,
+    retry: 1,
+    ...options,
+  });
+};
+
 export const useTicketOrRegByTransactionRef = (
   tId: string,
   type: "REGISTRATION" | "TICKET",
@@ -226,6 +303,16 @@ export const useGetDashboard = (options = {}) => {
     queryFn: getDashboardData,
     staleTime: 1000 * 60,
     retry: 1,
+    ...options,
+  });
+};
+
+export const useHomeAdCards = (options = {}) => {
+  return useQuery<HomeAdCardsResponse>({
+    queryKey: [QUERY_KEYS.homeAdCards],
+    queryFn: getHomeAdCards,
+    staleTime: 1000 * 60,
+    retry: 0,
     ...options,
   });
 };

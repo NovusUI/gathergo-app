@@ -67,6 +67,12 @@ export function numberWithCommas(
   return value?.replace(/-/g, "");
 }
 
+export function formatBadgeCount(count: number, max = 99): string {
+  const safeCount = Math.max(0, Number(count) || 0);
+
+  return safeCount > max ? `${max}+` : `${safeCount}`;
+}
+
 // utils/formatTime.ts
 export function formatTo12Hour(timeString: string): string {
   // Split hours and minutes

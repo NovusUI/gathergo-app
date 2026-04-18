@@ -1,7 +1,8 @@
 // src/api/uploadClient.ts
+import { API_BASE_URL } from "@/constants/network";
 import { useAuthStore } from "../store/auth";
 
-const BASE_URL = "http://172.25.243.53:4000/api/v1";
+const BASE_URL = API_BASE_URL;
 
 interface UploadOptions {
   method?: "POST" | "PUT" | "PATCH";

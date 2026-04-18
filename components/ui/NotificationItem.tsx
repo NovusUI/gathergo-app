@@ -1,7 +1,9 @@
 // components/NotificationItem.tsx
+import { NotificationArtworkFallback } from "@/components/ui/ArtworkFallback";
 import { spacing } from "@/constants/spacing";
 import { formatShortDate } from "@/utils/dateTimeHandler";
 import { Image } from "expo-image";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
@@ -25,6 +27,12 @@ export const NotificationItem = ({
   onPress,
   onMarkAsRead,
 }: NotificationItemProps) => {
+  const [showImage, setShowImage] = useState(Boolean(notification.imageUrl));
+
+  useEffect(() => {
+    setShowImage(Boolean(notification.imageUrl));
+  }, [notification.imageUrl]);
+
   const handlePress = () => {
     if (!notification.read) {
       onMarkAsRead(notification.id);
@@ -45,18 +53,28 @@ export const NotificationItem = ({
             <View
               style={tw`w-[91px] h-[84px] rounded-lg overflow-hidden relative`}
             >
-              <Image
-                source={notification.imageUrl}
-                placeholder={
-                  notification.imageUrl
-                    ? { uri: notification.imageUrl }
-                    : undefined
-                }
-                cachePolicy="disk"
-                style={{ width: 91, height: 84, borderRadius: 8 }}
-                contentFit="cover"
-                transition={500}
-              />
+              {showImage ? (
+                <Image
+                  source={notification.imageUrl}
+                  placeholder={
+                    notification.imageUrl
+                      ? { uri: notification.imageUrl }
+                      : undefined
+                  }
+                  cachePolicy="disk"
+                  style={{ width: 91, height: 84, borderRadius: 8 }}
+                  contentFit="cover"
+                  transition={500}
+                  onError={() => setShowImage(false)}
+                />
+              ) : (
+                <NotificationArtworkFallback
+                  notificationType={notification.type}
+                  width={91}
+                  height={84}
+                  borderRadius={8}
+                />
+              )}
               <View style={[tw`absolute bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`, styles.dateBadge]}>
                 <Text style={tw`text-white text-xs`}>
                   {formatShortDate(notification.createdAt)}
@@ -64,17 +82,16 @@ export const NotificationItem = ({
               </View>
             </View>
             <View style={styles.content}>
-              {/* Added flex-1 here */}
               <Text
                 style={tw`text-white font-semibold text-lg`}
-                numberOfLines={1} // Prevents title from wrapping
+                numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {notification.title}
               </Text>
               <Text
                 style={tw`text-white`}
-                numberOfLines={2} // Limits message to 2 lines
+                numberOfLines={2}
                 ellipsizeMode="tail"
               >
                 {isUsername ? (

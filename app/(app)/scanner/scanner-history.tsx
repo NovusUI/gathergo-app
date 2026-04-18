@@ -1,10 +1,12 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useScanner } from "@/hooks/useScanner";
+import { useLockedRouter } from "@/utils/navigation";
+import { safeGoBack } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { Clock } from "lucide-react-native";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -14,7 +16,7 @@ import {
 import tw from "twrnc";
 
 const ScannerHistory = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<"all" | "ticket" | "registration">(
     "all"
@@ -66,7 +68,7 @@ const ScannerHistory = () => {
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
           title="Scan History"
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/scanner")}
         />
       </View>
 
@@ -143,7 +145,7 @@ const ScannerHistory = () => {
       >
         {isLoading.history ? (
           <View style={tw`items-center justify-center py-10`}>
-            <ActivityIndicator size="large" color="#5669FF" />
+            <ActivityIndicator tone="accent" size="large" />
             <Text style={tw`text-gray-400 mt-3`}>Loading history...</Text>
           </View>
         ) : error.history ? (

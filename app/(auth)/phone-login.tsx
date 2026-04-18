@@ -1,4 +1,6 @@
 import CustomButton from "@/components/buttons/CustomBtn1";
+import { safeGoBack } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Smartphone } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -6,7 +8,7 @@ import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 const PhoneLoginScreen = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
   const [phoneNumber, setPhoneNumber] = useState("");
 
   const canContinue = useMemo(
@@ -24,7 +26,10 @@ const PhoneLoginScreen = () => {
 
   return (
     <View style={tw`flex-1 bg-[#01082E] px-5 pt-14 pb-8`}>
-      <TouchableOpacity onPress={() => router.back()} style={tw`self-start p-2`}>
+      <TouchableOpacity
+        onPress={() => safeGoBack(router, "/login")}
+        style={tw`self-start p-2`}
+      >
         <ArrowLeft color="white" size={20} />
       </TouchableOpacity>
 
@@ -69,4 +74,3 @@ const PhoneLoginScreen = () => {
 };
 
 export default PhoneLoginScreen;
-

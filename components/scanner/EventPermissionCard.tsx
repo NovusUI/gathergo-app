@@ -1,9 +1,9 @@
 import {
-  Calendar,
-  ChevronRight,
-  Clock,
-  Shield,
-  Users,
+    Calendar,
+    ChevronRight,
+    Clock,
+    Shield,
+    Users,
 } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -73,7 +73,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
       </View>
 
       {/* Details */}
-      <View style={tw`space-y-2`}>
+      <View style={tw`gap-2`}>
         <View style={tw`flex-row items-center`}>
           <Calendar size={16} color="#5669FF" />
           <Text style={tw`text-gray-400 text-sm ml-2`}>
@@ -81,7 +81,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
           </Text>
         </View>
 
-        {permission.eventLocation && (
+        {Boolean(permission.eventLocation) && (
           <View style={tw`flex-row items-center`}>
             <Clock size={16} color="#FF932E" />
             <Text style={tw`text-gray-400 text-sm ml-2`}>
@@ -97,7 +97,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
           </Text>
         </View>
 
-        {permission.expiresAt && (
+        {Boolean(permission.expiresAt) && (
           <View style={tw`flex-row items-center`}>
             <Shield size={16} color={status.color} />
             <Text style={[tw`text-sm ml-2`, { color: status.color }]}>

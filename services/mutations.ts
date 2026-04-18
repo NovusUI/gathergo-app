@@ -1,19 +1,40 @@
 import { useAuth } from "@/context/AuthContext";
 import {
   CompleteProfileData,
+  ForgotPasswordPayload,
   PhoneFirebaseAuthPayload,
+  forgotPasswordResponse,
+  ResendEmailVerificationPayload,
+  ResetPasswordPayload,
+  resetPasswordResponse,
   StandardResponse,
   authResponse,
   checkUsernameRes,
+  resendEmailVerificationResponse,
+  signUpResponse,
   uploadProfilePictureRes,
+  VerifyEmailCodePayload,
+  verifyEmailResponse,
 } from "@/types/auth";
 import { CarpoolForm } from "@/types/carpool";
 import {
   DonationResponse,
-  GetTickets,
   GetTicketsResponse,
   InitiateDonationPayload,
+  RegistrationCheckoutPayload,
+  TicketCheckoutPayload,
 } from "@/types/event";
+import {
+  NotifyOnKycResolutionPayload,
+  NotifyOnKycResolutionResponse,
+  StartBusinessKycPayload,
+  StartBusinessRepresentativeKycPayload,
+  StartPersonalKycPayload,
+  SubmitWalletLivenessPayload,
+  UpsertWalletPayoutProfilePayload,
+  WalletKycResponse,
+  WalletPayoutProfileResponse,
+} from "@/types/wallet";
 import { saveItem } from "@/utils/storage";
 import {
   UseMutationOptions,
@@ -24,7 +45,6 @@ import { AxiosError } from "axios";
 import { QUERY_KEYS } from "./queryKeys";
 import {
   SignUpPayload,
-  UserResponse,
   bulkScanFn,
   canScanFn,
   checkUsernameExists,
@@ -33,21 +53,31 @@ import {
   createEvent,
   edtUserBio,
   followUser,
+  forgotPasswordFn,
   getTickets,
   googleLoginFn,
   grantScannerPermissionFn,
   initiateDonation,
   leaveCarpool,
   loginFn,
+  notifyOnKycResolutionFn,
   logoutFn,
   quickScanFn,
   registerForEvent,
+  startBusinessKycFn,
+  startBusinessRepresentativeKycFn,
+  startPersonalKycFn,
+  submitWalletKycFn,
+  submitWalletLivenessFn,
+  upsertWalletPayoutProfileFn,
   registerPushToken,
   removePassenger,
   removePushToken,
   requestCarpool,
   requestCarpoolAfterCancel,
+  resetPasswordFn,
   respondToCarpoolRequest,
+  resendEmailVerificationCodeFn,
   revokeScannerPermissionFn,
   scanFn,
   phoneFirebaseAuthFn,
@@ -59,6 +89,7 @@ import {
   updateScannerPermissionFn,
   uploadPicture,
   validateScanFn,
+  verifyEmailCodeFn,
 } from "./serviceFn";
 
 import {
@@ -70,6 +101,116 @@ import {
   UpdatePermissionPayload,
   ValidationResponse,
 } from "@/types/scanner";
+
+
+export const useUpsertWalletPayoutProfile = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WalletPayoutProfileResponse, AxiosError, UpsertWalletPayoutProfilePayload>({
+    mutationFn: upsertWalletPayoutProfileFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useStartPersonalKyc = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WalletKycResponse, AxiosError, StartPersonalKycPayload>({
+    mutationFn: startPersonalKycFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useSubmitWalletLiveness = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WalletKycResponse, AxiosError, SubmitWalletLivenessPayload>({
+    mutationFn: submitWalletLivenessFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useStartBusinessKyc = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WalletKycResponse, AxiosError, StartBusinessKycPayload>({
+    mutationFn: startBusinessKycFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useStartBusinessRepresentativeKyc = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WalletKycResponse, AxiosError, StartBusinessRepresentativeKycPayload>({
+    mutationFn: startBusinessRepresentativeKycFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useSubmitWalletKyc = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<WalletKycResponse, AxiosError, void>({
+    mutationFn: submitWalletKycFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useNotifyOnKycResolution = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    NotifyOnKycResolutionResponse,
+    AxiosError,
+    NotifyOnKycResolutionPayload
+  >({
+    mutationFn: notifyOnKycResolutionFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
 
 export const useLogin = () => {
   const queryClient = useQueryClient();
@@ -99,19 +240,42 @@ export const useSavePreferences = (
 };
 
 export const useSignUpMutation = () => {
-  const { setUser } = useAuth();
-  return useMutation<UserResponse, Error, SignUpPayload>({
+  return useMutation<signUpResponse, Error, SignUpPayload>({
     mutationFn: signUpFn,
     onSuccess: (data) => {
       console.log(data, "data");
-      //setUser(data); // automatically set user on signup success
-
-      // saveItem("user")
-      // saveItem("token")
     },
     onError: (error) => {
       console.log(error);
     },
+  });
+};
+
+export const useVerifyEmailCode = () => {
+  return useMutation<verifyEmailResponse, AxiosError, VerifyEmailCodePayload>({
+    mutationFn: verifyEmailCodeFn,
+  });
+};
+
+export const useResendEmailVerificationCode = () => {
+  return useMutation<
+    resendEmailVerificationResponse,
+    AxiosError,
+    ResendEmailVerificationPayload
+  >({
+    mutationFn: resendEmailVerificationCodeFn,
+  });
+};
+
+export const useForgotPassword = () => {
+  return useMutation<forgotPasswordResponse, AxiosError, ForgotPasswordPayload>({
+    mutationFn: forgotPasswordFn,
+  });
+};
+
+export const useResetPassword = () => {
+  return useMutation<resetPasswordResponse, AxiosError, ResetPasswordPayload>({
+    mutationFn: resetPasswordFn,
   });
 };
 
@@ -258,7 +422,7 @@ export const useUpdateEvent = (
 };
 
 export const useGetTickets = (
-  options: UseMutationOptions<GetTicketsResponse, AxiosError, GetTickets[]>
+  options: UseMutationOptions<GetTicketsResponse, AxiosError, TicketCheckoutPayload>
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: getTickets,
@@ -269,7 +433,7 @@ export const useGetTickets = (
 };
 
 export const useRegisterEvent = (
-  options: UseMutationOptions<StandardResponse, AxiosError, string>
+  options: UseMutationOptions<GetTicketsResponse, AxiosError, RegistrationCheckoutPayload>
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: registerForEvent,

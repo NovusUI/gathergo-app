@@ -3,6 +3,7 @@
 import client from "@/api/client";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
+import { API_BASE_URL } from "@/constants/network";
 import {
     InfiniteData,
     useInfiniteQuery,
@@ -70,7 +71,7 @@ export function useChatMessages(carpoolId: string) {
       if (beforeId) qs.push(`beforeId=${beforeId}`);
       qs.push(`limit=${limit}`);
 
-      const url = `http://172.25.243.53:4000/api/v1/messages/${carpoolId}?${qs.join(
+      const url = `${API_BASE_URL}/messages/${carpoolId}?${qs.join(
         "&"
       )}`;
 
