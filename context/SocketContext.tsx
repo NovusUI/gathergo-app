@@ -2,13 +2,14 @@
 import { useAuthStore } from "@/store/auth";
 import { useMessageQueueStore } from "@/store/messageQueue";
 import { showGlobalError } from "@/utils/globalErrorHandler";
+import { SOCKET_URL } from "@/constants/network";
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    createContext,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { Socket, io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
@@ -36,7 +37,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     if (userId && refreshToken) {
       if (socketRef.current) return;
 
-      const newSocket = io("http://10.170.32.53:4000", {
+      const newSocket = io(SOCKET_URL, {
         transports: ["websocket"],
         auth: { userId: user?.id, token: refreshToken },
         // Enhanced reconnection settings

@@ -1,10 +1,11 @@
 // src/api/client.ts
 
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import { API_BASE_URL, REFRESH_TOKEN_URL } from "@/constants/network";
 import { useAuthStore } from "../store/auth";
 
 const client = axios.create({
-  baseURL: "http://10.170.32.53:4000/api/v1", // adjust
+  baseURL: API_BASE_URL,
   timeout: 100000,
 });
 
@@ -34,6 +35,17 @@ client.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  if (config.data instanceof FormData) {
+    console.log("tasketeeeeeeees");
+    // Remove Content-Type header to let React Native set it automatically
+    // with the correct boundary
+    delete config.headers["Content-Type"];
+
+    // OR set it properly for FormData
+    //config.headers["Content-Type"] = "multipart/form-data";
+  }
+
   return config;
 });
 
@@ -66,10 +78,13 @@ client.interceptors.response.use(
       try {
         //onst refreshToken = await getItem("refresh_token");
         const { refreshToken } = useAuthStore.getState();
-        if (!refreshToken) throw new Error("No refresh token");
+        if (!refreshToken) {
+          // For unauthenticated flows (login/signup/phone auth), bubble the original 401.
+          return Promise.reject(error);
+        }
 
         const refreshResponse = await axios.post(
-          "http://10.170.32.53:4000/api/v1/auth/refresh",
+          REFRESH_TOKEN_URL,
           { refreshToken }
         );
 

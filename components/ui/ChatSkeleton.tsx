@@ -88,7 +88,7 @@ export const ChatSkeleton = () => {
       {/* Typing indicator skeleton */}
       <View className="self-start flex-row items-center mt-4">
         <View className="w-8 h-8 rounded-full bg-gray-600/50 mr-2" />
-        <View className="flex-row space-x-1">
+        <View className="flex-row gap-1">
           <View className="w-2 h-2 rounded-full bg-gray-600/50 animate-pulse" />
           <View className="w-2 h-2 rounded-full bg-gray-600/50 animate-pulse" />
           <View className="w-2 h-2 rounded-full bg-gray-600/50 animate-pulse" />

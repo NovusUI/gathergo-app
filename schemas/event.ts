@@ -1,43 +1,51 @@
 import { z } from "zod";
+import { isValidEventLink, normalizeEventLink } from "@/constants/eventLinks";
 
-export const eventTicketSchema = z.object({
+export const eventTicketSchema = z
+  .object({
     description: z.string().min(1, { message: "Description is required" }),
-  
-    limited: z.boolean().default(true),
-  
-    quantity: z.union([
-        z.number().min(5, { message: "Quantity must be at least 5" }),
-        z.string().transform((val) => val === '' ? null : Number(val))
-      ]).optional(),
-  
-    paid: z.boolean().default(true),
-    id:  z.uuidv4({ version: "v4" }),
 
-    isVisible: z.boolean().default(true) ,
-    updatedPrice: z.union([
-      z.number().min(0, { message: "Price must be 0 or more" }),
-      z.string().transform((val) => val === '' ? undefined: Number(val))
-    ]).optional(),
-    isNew: z.boolean().default(true),
-    price: z.union([
+    limited: z.boolean().default(true),
+
+    quantity: z
+      .union([
+        z.number().min(5, { message: "Quantity must be at least 5" }),
+        z.string().transform((val) => (val === "" ? null : Number(val))),
+      ])
+      .optional(),
+
+    paid: z.boolean().default(true),
+    id: z.uuidv4({ version: "v4" }),
+
+    isVisible: z.boolean().default(true),
+    updatedPrice: z
+      .union([
         z.number().min(0, { message: "Price must be 0 or more" }),
-        z.string().transform((val) => val === '' ? undefined : Number(val))
-      ]).optional(),
-    
-  
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
+      ])
+      .optional(),
+    isNew: z.boolean().default(true),
+    price: z
+      .union([
+        z.number().min(0, { message: "Price must be 0 or more" }),
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
+      ])
+      .optional(),
+
     type: z.string().min(1, { message: "Type is required" }),
-  
+
     perks: z.array(z.string()).optional(),
-  }).superRefine((data, ctx) => {
+  })
+  .superRefine((data, ctx) => {
     // Quantity validation
-    if (data.limited && (data.quantity === undefined || data.quantity < 5)) {
+    if (data.limited && (data.quantity == null || data.quantity < 5)) {
       ctx.addIssue({
         code: "custom",
         message: "Quantity must be at least 5 when stockType is limited",
         path: ["quantity"],
       });
     }
-  
+
     // Price validation
     if (data.paid && (data.price === undefined || data.price < 0)) {
       ctx.addIssue({
@@ -46,48 +54,95 @@ export const eventTicketSchema = z.object({
         path: ["price"],
       });
     }
-  
-  
   });
 
+export const eventSchema = z
+  .object({
+    imgUrl: z.url().optional(),
 
-  export const eventSchema = z.object({
-  imgUrl: z.url().optional(),
+    eventName: z
+      .string()
+      .min(1, "Event name is required")
+      .max(100, "Event name must be at most 100 characters"),
 
-  eventName: z.string()
-    .min(1, "Event name is required")
-    .max(100, "Event name must be at most 100 characters"),
+    description: z
+      .string()
+      .min(1, "Event description is required")
+      .max(100, "Event name must be at most 100 characters"),
 
-    description: z.string()
-    .min(1, "Event description is required")
-    .max(100, "Event name must be at most 100 characters"),
+    impactTitle: z
+      .string()
+      .min(1, "Choose an impact cause")
+      .max(80, "Impact cause must be at most 80 characters"),
 
-  repeat: z.enum([ "WEEKLY", "DAILY","NONE"]),
+    impactDescription: z
+      .string()
+      .min(1, "Describe the event's direct impact")
+      .max(180, "Impact note must be at most 180 characters"),
 
-  
-  startDate: z.coerce.date({
-    error: "Date and time is required"
-  }),
-  endDate: z.coerce.date(),
-  startTime: z.string(),
-  endTime: z.string(),
-  endRepeat: z.coerce.date().optional(),
-  isRecurring:z.boolean() ,
+    impactPercentage: z
+      .union([
+        z.number().min(1).max(100),
+        z.string().transform((val) => (val === "" ? 20 : Number(val))),
+      ])
+      .refine((value) => Number(value) >= 1 && Number(value) <= 100, {
+        message: "Impact percentage must be between 1 and 100",
+      }),
 
-  location: z.string().min(1, "Location is required"),
+    repeat: z.enum(["WEEKLY", "DAILY", "NONE"]),
 
-  tags: z.array(z.string()),
-  registrationType: z
-  .enum(["ticket", "registration"],{
-    error: "Pricing or registration is required"
-  }),
+    startDate: z.coerce.date({
+      error: "Date and time is required",
+    }),
+    endDate: z.coerce.date(),
+    startTime: z.string(),
+    endTime: z.string(),
+    endRepeat: z.coerce.date().optional(),
+    isRecurring: z.boolean(),
 
-  tickets: z.array(eventTicketSchema).optional(),
-  registrationAttendees: z.number().optional(),
-  registrationFee: z.number().optional()
-})
+    isPhysicalEvent: z.boolean().default(true),
+    location: z.string().default(""),
+    links: z.preprocess(
+      (value) => {
+        if (!Array.isArray(value)) {
+          return [];
+        }
 
+        return value
+          .map((item) =>
+            normalizeEventLink(typeof item === "string" ? item : "")
+          )
+          .filter(Boolean)
+          .slice(0, 5);
+      },
+      z
+        .array(
+          z.string().refine(isValidEventLink, {
+            message: "Each link must be a valid URL",
+          })
+        )
+        .max(5, "You can add up to 5 links")
+    ),
 
+    tags: z.array(z.string()),
+    registrationType: z.enum(["donation", "ticket", "registration"], {
+      error: "Pricing or registration is required",
+    }),
+
+    tickets: z.array(eventTicketSchema).optional(),
+    registrationAttendees: z.number().optional(),
+    registrationFee: z.number().optional(),
+    donationTarget: z.number().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isPhysicalEvent && data.location.trim().length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["location"],
+        message: "Location is required for a physical event",
+      });
+    }
+  });
 
 export const dateTimeSchema = z
   .object({
@@ -103,11 +158,19 @@ export const dateTimeSchema = z
       .string()
       .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid end time"),
 
-    repeat: z.enum(["DAILY", "WEEKLY","NONE"]).optional(),
+    repeat: z.enum(["DAILY", "WEEKLY", "NONE"]).optional(),
     endRepeat: z.coerce.date().optional(),
   })
   .superRefine((data, ctx) => {
-    const { startDate, endDate, startTime, endTime, isRecurring, repeat, endRepeat } = data;
+    const {
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      isRecurring,
+      repeat,
+      endRepeat,
+    } = data;
 
     const now = new Date();
 
@@ -143,7 +206,9 @@ export const dateTimeSchema = z
 
     // Inclusive day count
     const daysBetween =
-      Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
 
     // Recurring validations
     if (isRecurring) {
@@ -166,7 +231,8 @@ export const dateTimeSchema = z
           ctx.addIssue({
             code: "custom",
             path: ["repeat"],
-            message: "Weekly repeat is allowed only for ranges less than 7 days",
+            message:
+              "Weekly repeat is allowed only for ranges less than 7 days",
           });
         }
       }
@@ -191,9 +257,7 @@ export const dateTimeSchema = z
     }
   });
 
-
-
-  export const dateTimeEditSchema = z
+export const dateTimeEditSchema = z
   .object({
     startDate: z.coerce.date({ message: "Invalid start date" }),
     endDate: z.coerce.date({ message: "Invalid end date" }),
@@ -207,11 +271,19 @@ export const dateTimeSchema = z
       .string()
       .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid end time"),
 
-    repeat: z.enum(["DAILY", "WEEKLY","NONE"]).optional(),
+    repeat: z.enum(["DAILY", "WEEKLY", "NONE"]).optional(),
     endRepeat: z.coerce.date().optional(),
   })
   .superRefine((data, ctx) => {
-    const { startDate, endDate, startTime, endTime, isRecurring, repeat, endRepeat } = data;
+    const {
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      isRecurring,
+      repeat,
+      endRepeat,
+    } = data;
 
     const now = new Date();
 
@@ -247,7 +319,9 @@ export const dateTimeSchema = z
 
     // Inclusive day count
     const daysBetween =
-      Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
 
     // Recurring validations
     if (isRecurring) {
@@ -270,7 +344,8 @@ export const dateTimeSchema = z
           ctx.addIssue({
             code: "custom",
             path: ["repeat"],
-            message: "Weekly repeat is allowed only for ranges less than 7 days",
+            message:
+              "Weekly repeat is allowed only for ranges less than 7 days",
           });
         }
       }
@@ -295,69 +370,112 @@ export const dateTimeSchema = z
     }
   });
 
-
-  export const eventPricingSchema = z.object({
-    registrationType: z.enum(["ticket", "registration"]),
+export const eventPricingSchema = z
+  .object({
+    registrationType: z.enum(["ticket", "registration", "donation"]), // Add donation
     paid: z.boolean(),
-    registrationFee: z.union([
+    registrationFee: z
+      .union([
         z.number().min(0, "Registration fee must be 0 or more"),
-        z.string().transform((val) => val === '' ? undefined : Number(val))
-      ]).optional(),
-
-    registrationAttendees: z.union([
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
+      ])
+      .optional(),
+    donationTarget: z // Add donation target field
+      .union([
+        z.number().min(500000, "Donation target must be at least ₦500,000"),
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
+      ])
+      .optional(),
+    registrationAttendees: z
+      .union([
         z.number().min(1, "Must have at least 1 attendee"),
-        z.string().transform((val) => val === '' ? undefined : Number(val))
-      ]).optional(),
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
+      ])
+      .optional(),
     limited: z.boolean(),
-   
     tickets: z.array(eventTicketSchema).optional().default([]),
-  }).superRefine((data, ctx) => {
-    const { registrationType, paid, registrationFee, limited, registrationAttendees, tickets } = data;
-  
+  })
+  .superRefine((data, ctx) => {
+    const {
+      registrationType,
+      paid,
+      registrationFee,
+      limited,
+      registrationAttendees,
+      tickets,
+      donationTarget,
+    } = data;
+
     // Registration fee validation
-    if (registrationType === "registration" && paid && (!registrationFee || registrationFee < 0)) {
+    if (
+      registrationType === "registration" &&
+      paid &&
+      (!registrationFee || registrationFee < 0)
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["registrationFee"],
         message: "Registration fee is required when event is not free",
       });
     }
-  
+
     // Registration attendees validation
-    if (registrationType === "registration" && limited && (!registrationAttendees || registrationAttendees < 1)) {
+    if (
+      registrationType === "registration" &&
+      limited &&
+      (!registrationAttendees || registrationAttendees < 1)
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["registrationAttendees"],
         message: "Number of attendees is required when registration is limited",
       });
     }
-  
+
     // Tickets validation
     if (registrationType === "ticket" && (!tickets || tickets.length === 0)) {
       ctx.addIssue({
         code: "custom",
         path: ["tickets"],
-        message: "At least one ticket is required when registration type is ticket",
+        message:
+          "At least one ticket is required when registration type is ticket",
       });
     }
-  
-  
+
+    // Donation target validation - NEW
+    if (
+      registrationType === "donation" &&
+      (!donationTarget || donationTarget < 50000)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["donationTarget"],
+        message: "Donation target must be at least ₦500,000",
+      });
+    }
   });
 
+export const donationSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  amount: z.number().min(50000, "Minimum donation is ₦500,000"), // in kobo
+  status: z
+    .enum(["pending", "active", "completed", "refunded"])
+    .default("active"),
+  createdAt: z.date(),
+  transactionId: z.string(),
+  eventId: z.string().uuid(),
+  message: z.string().optional(),
+  isAnonymous: z.boolean().default(false),
+});
 
-
-
-
-
-
-
-
+export type Donation = z.infer<typeof donationSchema>;
 export type EventTicket = z.infer<typeof eventTicketSchema>;
 
 export type EventPricing = z.infer<typeof eventPricingSchema>;
 
 export type DateTimeFormData = z.infer<typeof dateTimeSchema>;
 
-export type DateTimeFormDataEditMode  = z.infer<typeof dateTimeEditSchema>;
+export type DateTimeFormDataEditMode = z.infer<typeof dateTimeEditSchema>;
 
 export type EventFormData = z.infer<typeof eventSchema>;

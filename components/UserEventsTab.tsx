@@ -1,6 +1,8 @@
 // components/UserEventsTab.tsx
+import ActivityIndicator from "@/components/ui/AppLoader";
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, FlatList, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 import tw from "twrnc";
 import EventCard from "./ui/EventCard";
 
@@ -19,7 +21,7 @@ export default function UserEventsTab({
   hasNextPage,
   isPending,
 }: UserEventsTabProps) {
-  const router = useRouter();
+  const router = useLockedRouter();
 
   if (isPending) {
     return (
@@ -50,6 +52,8 @@ export default function UserEventsTab({
           thumbnailUrl={item.thumbnailUrl}
           registrationType={item.registrationType}
           registrationFee={item.registrationFee}
+          donationTarget={item.donationTarget}
+          lowestTicketPrice={item.lowestTicketPrice}
           onPress={() => router.push(`/event/${item.id}`)}
           startDate={item.startDate}
         />

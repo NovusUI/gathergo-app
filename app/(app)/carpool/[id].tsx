@@ -5,22 +5,32 @@ import PoolingWithA from "@/components/PoolingWithA";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { useAuth } from "@/context/AuthContext";
-import { useFollowUser, useLeaveCarpool } from "@/services/mutations";
+import { useSocket } from "@/context/SocketContext";
+import {
+  useFollowUser,
+  useLeaveCarpool,
+  useRequestCarpoolAfterCancel,
+} from "@/services/mutations";
 import { useGetCarpoolDetails } from "@/services/queries";
 import { QUERY_KEYS } from "@/services/queryKeys";
 import {
+  showGlobalError,
   showGlobalSuccess,
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
+import { safeGoBack } from "@/utils/navigation";
 import { dummy } from "@/utils/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useLockedRouter } from "@/utils/navigation";
 import { MessagesSquareIcon } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Svg, { Line } from "react-native-svg";
 import tw from "twrnc";
+import CancelCarpoolModal from "./CancelCarpoolModal";
+import EditRideBS, { EditRideBSRef } from "./bottomSheets/EditRideBS";
 import FlexrideBS, { FlexrideBSRef } from "./bottomSheets/FlexrideBS";
 import SendRequestBS, { SendRequestBSRef } from "./bottomSheets/SendRequestBS";
 import ShareRideLinkBS, {
@@ -45,9 +55,18 @@ const VerticalDashedLine = () => (
 const CarpoolPage = () => {
   const { id } = useLocalSearchParams();
   const carpoolId = Array.isArray(id) ? id[0] : id;
-  const router = useRouter();
+  const router = useLockedRouter();
   const { user } = useAuth();
+  const { socket } = useSocket();
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [existingCarpoolInfo, setExistingCarpoolInfo] = useState<any>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [requestFormData, setRequestFormData] = useState<{
+    origin: string;
+    note?: string;
+    startPoint?: { lng: number; lat: number };
+  } | null>(null);
+
   const queryClient = useQueryClient();
 
   const { data, isPending, error } = useGetCarpoolDetails(carpoolId);
@@ -74,7 +93,71 @@ const CarpoolPage = () => {
     onError: () => {},
   });
 
+  const {
+    mutateAsync: requestAfterCancel,
+    isPending: requestAfterCancelPending,
+  } = useRequestCarpoolAfterCancel(carpoolId, {
+    onSuccess: (data) => {
+      console.log(data);
+      showGlobalSuccess("Existing carpool cancelled and new request sent!");
+      setShowCancelModal(false);
+      // Invalidate queries to refresh the carpool data
+      setExistingCarpoolInfo(null);
+      setRequestFormData(null);
+
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.carpoolDetails, carpoolId],
+      });
+    },
+    onError: (e) => {
+      console.log(e);
+      showGlobalError("Failed to cancel carpool and request ride");
+    },
+  });
+  // Function to handle when user has an existing carpool
+  const handleHasExistingCarpool = (response: any) => {
+    setExistingCarpoolInfo(response);
+    setShowCancelModal(true);
+
+    console.log(response);
+
+    // Store the form data for later use if they choose to cancel and request
+    setRequestFormData({
+      origin: response.data.targetCarpool?.origin || "",
+      note: response.data.targetCarpool?.note || "",
+      startPoint: response.data.targetCarpool?.startPoint,
+    });
+  };
+
+  const handleCancelAndRequest = async () => {
+    if (!existingCarpoolInfo?.data.existingCarpool?.id || !requestFormData) {
+      console.log("preventin");
+      return;
+    }
+    console.log("what's happening");
+    const payload = {
+      cancelCarpoolId: existingCarpoolInfo.data.existingCarpool.id,
+      origin: requestFormData.origin,
+      note: requestFormData.note,
+      ...(requestFormData.startPoint
+        ? { startPoint: requestFormData.startPoint }
+        : {}),
+    };
+    console.log(payload);
+
+    await requestAfterCancel(payload);
+  };
+
+  const handleKeepCarpool = () => {
+    setShowCancelModal(false);
+    setExistingCarpoolInfo(null);
+    setRequestFormData(null);
+
+    sendReqRef.current?.close();
+  };
+
   //bottomsheets ref
+  const editRideRef = useRef<EditRideBSRef>(null);
   const flexrideRef = useRef<FlexrideBSRef>(null);
   const requestBSRef = useRef<ViewRequestBSRef>(null);
   const sendReqRef = useRef<SendRequestBSRef>(null);
@@ -94,6 +177,24 @@ const CarpoolPage = () => {
     console.log(data?.data);
   }, [data]);
 
+  useEffect(() => {
+    if (!socket || !carpoolId) return;
+
+    const handleCarpoolUpdated = (payload: { carpoolId: string }) => {
+      if (payload.carpoolId !== carpoolId) return;
+
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.carpoolDetails, carpoolId],
+      });
+    };
+
+    socket.on("carpoolUpdated", handleCarpoolUpdated);
+
+    return () => {
+      socket.off("carpoolUpdated", handleCarpoolUpdated);
+    };
+  }, [socket, carpoolId, queryClient]);
+
   const onAvaterClick = () => {
     if (owner) {
       requestBSRef.current?.open();
@@ -104,16 +205,16 @@ const CarpoolPage = () => {
 
   if (isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#01082E]">
-        <Text className="text-white">Loading...</Text>
+      <View style={tw`flex-1 items-center justify-center bg-[#01082E]`}>
+        <Text style={tw`text-white`}>Loading...</Text>
       </View>
     );
   }
 
   if (error || !data) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#01082E]">
-        <Text className="text-white">Failed to load carpool</Text>
+      <View style={tw`flex-1 items-center justify-center bg-[#01082E]`}>
+        <Text style={tw`text-white`}>Failed to load carpool</Text>
       </View>
     );
   }
@@ -184,10 +285,10 @@ const CarpoolPage = () => {
     <View
       style={tw`flex-1 pt-10 pb-5 bg-[#01082E] flex flex-col items-center w-full`}
     >
-      <CustomView className="px-5">
+      <CustomView style={tw`px-5`}>
         <CustomeTopBarNav
           title={carpool.event?.title ?? "Carpool"}
-          onClickBack={() => router.back()}
+          onClickBack={() => safeGoBack(router, "/")}
         />
       </CustomView>
       <ScrollView style={tw`w-full max-w-[500px]`}>
@@ -196,7 +297,16 @@ const CarpoolPage = () => {
 
         <CustomView style={tw`px-4`}>
           <CustomView>
-            <Text style={tw`text-lg text-white`}>CARPOOL DETAILS</Text>
+            <View style={tw`flex-row items-center justify-between gap-4`}>
+              <Text style={tw`text-lg text-white`}>CARPOOL DETAILS</Text>
+              {owner ? (
+                <TouchableOpacity onPress={() => editRideRef.current?.open()}>
+                  <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
+                    Edit ride
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
             <Text style={tw`text-[#ADADAD]`}>{carpool.departureTime}</Text>
 
             <CustomView style={tw`my-5`}>
@@ -230,7 +340,9 @@ const CarpoolPage = () => {
             avatars={carpool.passengers}
             onAdd={() => onAvaterClick()}
           />
-          <TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.replace(`/chat/${carpoolId}`)}
+          >
             <MessagesSquareIcon color="white" />
           </TouchableOpacity>
         </View>
@@ -239,6 +351,7 @@ const CarpoolPage = () => {
 
         <PoolingWithA
           description={data.data.description}
+          vehicleIcon={data.data.vehicleIcon}
           owner={user?.id === data.data.driver.id}
           openSheet={() => flexrideRef.current?.open()}
         />
@@ -246,7 +359,7 @@ const CarpoolPage = () => {
         <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
 
         <CustomView style={tw`mx-5 gap-5`}>
-          <Text style={tw`text-lg text-white`}>Pooler's note</Text>
+          <Text style={tw`text-lg text-white`}>Pooler&apos;s note</Text>
           <Text style={tw`text-white mr-5`}>
             {carpool.note ?? "No notes provided"}
           </Text>
@@ -293,10 +406,45 @@ const CarpoolPage = () => {
           />
         )}
       </CustomView>
+      <CancelCarpoolModal
+        visible={showCancelModal}
+        onClose={handleKeepCarpool}
+        onCancelAndRequest={handleCancelAndRequest}
+        onKeepCarpool={handleKeepCarpool}
+        existingCarpool={{
+          eventTitle: existingCarpoolInfo?.existingCarpool?.eventTitle,
+          passengerCount:
+            existingCarpoolInfo?.existingCarpool?.passengerCount || 0,
+          hasActivePassengers:
+            existingCarpoolInfo?.existingCarpool?.hasActivePassengers || false,
+        }}
+        isLoading={requestAfterCancelPending}
+      />
 
-      <FlexrideBS carpoolId={carpoolId} ref={flexrideRef} />
+      <FlexrideBS
+        carpoolId={carpoolId}
+        vehicleIcon={data.data.vehicleIcon}
+        ref={flexrideRef}
+      />
+      <EditRideBS
+        ref={editRideRef}
+        carpoolId={carpoolId}
+        origin={data.data.origin}
+        departureTime={data.data.departureTime}
+        note={data.data.note}
+      />
       <ViewRequestBS ref={requestBSRef} carpool={carpool} dummy={dummy} />
-      <SendRequestBS carpoolId={carpoolId} ref={sendReqRef} />
+      <SendRequestBS
+        carpoolId={carpoolId}
+        ref={sendReqRef}
+        onHasExistingCarpool={handleHasExistingCarpool}
+        onRequestSuccess={(response) => {
+          // Handle successful request (without existing carpool)
+          queryClient.invalidateQueries({
+            queryKey: [QUERY_KEYS.carpoolDetails, carpoolId],
+          });
+        }}
+      />
       <ShareRideLinkBS ref={shareRideLinkRef} />
     </View>
   );

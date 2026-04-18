@@ -6,7 +6,6 @@ import { QUERY_KEYS } from "@/services/queryKeys";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Alert } from "react-native";
 
 interface CarpoolChatDetails {
   id: string;
@@ -21,7 +20,6 @@ interface CarpoolChatDetails {
   };
   passengers: Array<{
     id: string;
-    name: string;
     avatar: string;
     status: "ACCEPTED";
   }>;
@@ -174,7 +172,6 @@ export const useCarpoolDetails = (
                 ...old.data.passengers,
                 {
                   id: data.passenger.id,
-                  name: data.passenger.name,
                   avatar: data.passenger.avatar,
                   status: "ACCEPTED" as const,
                 },
@@ -185,50 +182,50 @@ export const useCarpoolDetails = (
       );
     };
 
-    const handleUserRemoved = (data: {
-      carpoolId: string;
-      userId: string;
-      message: string;
-    }) => {
-      // Only handle if current user is the one being removed
-      if (data.carpoolId !== carpoolId || data.userId !== user.id) return;
+    // const handleUserRemoved = (data: {
+    //   carpoolId: string;
+    //   userId: string;
+    //   message: string;
+    // }) => {
+    //   // Only handle if current user is the one being removed
+    //   if (data.carpoolId !== carpoolId || data.userId !== user.id) return;
 
-      // Update cache
-      queryClient.setQueryData(
-        [QUERY_KEYS.carpoolChat, carpoolId],
-        (old: any) => {
-          if (!old?.data) return old;
+    //   // Update cache
+    //   queryClient.setQueryData(
+    //     [QUERY_KEYS.carpoolChat, carpoolId],
+    //     (old: any) => {
+    //       if (!old?.data) return old;
 
-          return {
-            ...old,
-            data: {
-              ...old.data,
-              canChat: false,
-              reason: data.message || "You have been removed from this carpool",
-            },
-          };
-        }
-      );
+    //       return {
+    //         ...old,
+    //         data: {
+    //           ...old.data,
+    //           canChat: false,
+    //           reason: data.message || "You have been removed from this carpool",
+    //         },
+    //       };
+    //     }
+    //   );
 
-      // Show alert to user
-      Alert.alert(
-        "Removed from Carpool",
-        data.message || "You have been removed from this carpool",
-        [{ text: "OK", onPress: () => router.back() }]
-      );
-    };
+    //   // Show alert to user
+    //   Alert.alert(
+    //     "Removed from Carpool",
+    //     data.message || "You have been removed from this carpool",
+    //     [{ text: "OK", onPress: () => router.back() }]
+    //   );
+    // };
 
     // Subscribe to events
     socket.on("carpoolUpdated", handleCarpoolUpdate);
     socket.on("passengerRemoved", handlePassengerRemoved);
     socket.on("passengerAdded", handlePassengerAdded);
-    socket.on("userRemovedFromCarpool", handleUserRemoved);
+    //socket.on("userRemovedFromCarpool", handleUserRemoved);
 
     return () => {
       socket.off("carpoolUpdated", handleCarpoolUpdate);
       socket.off("passengerRemoved", handlePassengerRemoved);
       socket.off("passengerAdded", handlePassengerAdded);
-      socket.off("userRemovedFromCarpool", handleUserRemoved);
+      //socket.off("userRemovedFromCarpool", handleUserRemoved);
     };
   }, [socket, carpoolId, user?.id, queryClient, router]);
 

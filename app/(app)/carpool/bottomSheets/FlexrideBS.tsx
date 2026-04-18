@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -8,19 +9,22 @@ import {
 
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetModal,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 
-import CustomView from "@/components/View";
+import {
+  CARPOOL_VEHICLE_OPTIONS,
+  getCarpoolVehicleOption,
+  type CarpoolVehicleIconKey,
+} from "@/constants/carpool";
 import CustomButton from "@/components/buttons/CustomBtn1";
-import Input from "@/components/inputs/CustomInput1";
 import { useUpdateCarpool } from "@/services/mutations";
 import { QUERY_KEYS } from "@/services/queryKeys";
 import { showGlobalError, showGlobalWarning } from "@/utils/globalErrorHandler";
 import { useQueryClient } from "@tanstack/react-query";
-import { MessageCircleWarning } from "lucide-react-native";
-import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Text, TouchableOpacity, View } from "react-native";
+import tw, { style as twStyle } from "twrnc";
 
 export type FlexrideBSRef = {
   open: () => void;
@@ -29,11 +33,23 @@ export type FlexrideBSRef = {
 
 export type FlexrideProps = {
   carpoolId: string;
+  vehicleIcon?: string | null;
 };
 
 const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
-  ({ carpoolId }, ref) => {
+  ({ carpoolId, vehicleIcon }, ref) => {
     const queryClient = useQueryClient();
+    const [selectedIcon, setSelectedIcon] = useState<
+      CarpoolVehicleIconKey | null
+    >((vehicleIcon as CarpoolVehicleIconKey | null) ?? null);
+    const currentVehicle = getCarpoolVehicleOption(selectedIcon);
+    const snapPoints = useMemo(() => ["84%"], []);
+    const bottomSheetCarRef = useRef<BottomSheet>(null);
+
+    useEffect(() => {
+      setSelectedIcon((vehicleIcon as CarpoolVehicleIconKey | null) ?? null);
+    }, [vehicleIcon]);
+
     const { mutateAsync, isPending: isCarpoolUpdating } = useUpdateCarpool(
       carpoolId,
       {
@@ -45,29 +61,22 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
           bottomSheetCarRef.current?.close();
         },
         onError: () => {
-          showGlobalError("error saving description");
+          showGlobalError("Couldn't save ride vibe");
         },
       }
     );
 
-    const snapPointsCar = useMemo(() => ["70%"], []);
-
-    const [carModel, setCarModel] = useState("");
-    const [carColor, setCarColor] = useState("");
-
-    const saveDescription = () => {
-      if (carModel.trim().length > 0 && carColor.trim().length > 0) {
-        mutateAsync({ description: carModel + "$" + carColor });
-      } else {
-        showGlobalWarning("fill both model and color");
+    const saveRideVibe = async () => {
+      if (!selectedIcon) {
+        showGlobalWarning("Choose a ride icon first");
+        return;
       }
+
+      await mutateAsync({ vehicleIcon: selectedIcon });
     };
 
-    const bottomSheetCarRef = useRef<BottomSheetModal>(null);
-
-    // expose functions to parent
     useImperativeHandle(ref, () => ({
-      open: () => bottomSheetCarRef.current?.snapToIndex(1), // or snapToIndex(0)
+      open: () => bottomSheetCarRef.current?.snapToIndex(0),
       close: () => bottomSheetCarRef.current?.close(),
     }));
 
@@ -75,54 +84,111 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
       <BottomSheet
         ref={bottomSheetCarRef}
         index={-1}
-        snapPoints={snapPointsCar}
+        snapPoints={snapPoints}
         enablePanDownToClose
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
-            disappearsOnIndex={0}
+            disappearsOnIndex={-1}
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: "#041130" }}
       >
-        <BottomSheetScrollView className="p-5">
-          <View className="py-5 gap-5">
-            <CustomView>
-              <Text className="text-white mb-1">Car model</Text>
-              <Input
-                className="h-16"
-                placeholder="E.g., Benz GLE"
-                onChangeText={setCarModel}
-                value={carModel}
-              />
-            </CustomView>
-
-            <CustomView>
-              <Text className="text-white mb-1">Color</Text>
-              <Input
-                className="h-16"
-                placeholder="E.g., Wine red"
-                onChangeText={setCarColor}
-                value={carColor}
-              />
-            </CustomView>
-            <View className="gap-3 flex-row items-center">
-              <MessageCircleWarning color={"red"} />
-              <Text className="text-red-600">
-                Please dont input your plate number
+        <BottomSheetScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 180,
+          }}
+        >
+          <View style={tw`gap-5`}>
+            <View style={tw`gap-2`}>
+              <Text style={tw`text-2xl font-semibold text-white`}>
+                Flex your ride
               </Text>
+              <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
+                Pick the icon that best matches your vibe. It&apos;ll show up on
+                your carpool cards so riders can spot your style faster.
+              </Text>
+            </View>
+
+            <View style={tw`rounded-[28px] bg-[#0A173F] p-5`}>
+              <View style={tw`h-16 w-16 self-start rounded-full bg-[#0FF1CF]/15 items-center justify-center`}>
+                <Ionicons
+                  name={currentVehicle?.iconName || "sparkles-outline"}
+                  size={34}
+                  color="#0FF1CF"
+                />
+              </View>
+              <Text style={tw`mt-4 text-lg font-semibold text-white`}>
+                {currentVehicle?.label || "No ride icon selected yet"}
+              </Text>
+              <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
+                You can keep it normal with a city car, go dramatic with a
+                pirate ship, or fully commit to the chaos with a moon buggy.
+              </Text>
+            </View>
+
+            <View style={tw`flex-row flex-wrap gap-3`}>
+              {CARPOOL_VEHICLE_OPTIONS.map((option) => {
+                const isActive = selectedIcon === option.key;
+
+                return (
+                  <TouchableOpacity
+                    key={option.key}
+                    activeOpacity={0.9}
+                    onPress={() => setSelectedIcon(option.key)}
+                    style={twStyle(
+                      "w-[47%] rounded-[24px] border p-4",
+                      isActive
+                        ? "border-[#0FF1CF] bg-[#0FF1CF]/12"
+                        : "border-[#24345A] bg-[#0A173F]"
+                    )}
+                  >
+                    <View
+                      style={twStyle(
+                        "h-12 w-12 rounded-full items-center justify-center",
+                        isActive ? "bg-[#0FF1CF]/18" : "bg-[#13214A]"
+                      )}
+                    >
+                      <Ionicons
+                        name={option.iconName}
+                        size={24}
+                        color={isActive ? "#0FF1CF" : "#9FB0D8"}
+                      />
+                    </View>
+                    <Text
+                      style={twStyle(
+                        "mt-3 text-base font-semibold",
+                        isActive ? "text-white" : "text-[#D7E2FF]"
+                      )}
+                    >
+                      {option.label}
+                    </Text>
+                    <Text
+                      style={twStyle(
+                        "mt-1 text-xs",
+                        isActive ? "text-[#B9FFF4]" : "text-[#7F93C2]"
+                      )}
+                    >
+                      {isActive ? "Selected" : "Tap to choose"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </BottomSheetScrollView>
 
-        <View className="w-screen max-w-[500px] p-5">
+        <View style={tw`w-screen max-w-[500px] p-5`}>
           <CustomButton
-            title={isCarpoolUpdating ? "Flexing ride" : "Save details"}
+            title={isCarpoolUpdating ? "Saving vibe" : "Save ride vibe"}
             buttonClassName="bg-[#0FF1CF] w-full border-0"
             textClassName="!text-black"
             showArrow={false}
-            onPress={saveDescription}
+            onPress={saveRideVibe}
             disabled={isCarpoolUpdating}
           />
         </View>
@@ -130,5 +196,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
     );
   }
 );
+
+FlexrideBS.displayName = "FlexrideBS";
 
 export default FlexrideBS;

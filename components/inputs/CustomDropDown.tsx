@@ -1,17 +1,17 @@
 import { forwardRef, useState } from "react";
 import { Text, View } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
+import tw from "twrnc";
 
 type IconType = React.ComponentType<{
   size?: number;
   color?: string;
-  className?: string;
 }>;
 
 interface DropdownProps {
   LeftIcon?: IconType;
   placeholder?: string;
-  className?: string;
+  className?: string; // kept for API compatibility
   iconColor?: string;
   options: { label: string; value: string }[];
   selectedValue: string | null;
@@ -38,10 +38,15 @@ const Dropdown = forwardRef<View, DropdownProps>(
     const [items, setItems] = useState(options);
 
     return (
-      <View ref={ref} className={`mb-4  ${className}`}>
-        <View className="flex-row items-center w-[300px]">
+      <View ref={ref} style={[tw`mb-4`, className ? tw`${className}` : null]}>
+        <View
+          style={[
+            tw`flex-row items-center`,
+            { width: 300 }, // w-[300px]
+          ]}
+        >
           {LeftIcon && (
-            <View className="mr-2">
+            <View style={tw`mr-2`}>
               <LeftIcon size={20} color={iconColor} />
             </View>
           )}
@@ -86,10 +91,14 @@ const Dropdown = forwardRef<View, DropdownProps>(
           />
         </View>
 
-        {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+        {Boolean(error) && (
+          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+        )}
       </View>
     );
   }
 );
+
+Dropdown.displayName = "Dropdown";
 
 export default Dropdown;

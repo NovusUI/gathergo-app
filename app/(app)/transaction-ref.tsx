@@ -9,6 +9,7 @@ import BottomSheet, {
     BottomSheetScrollView
 } from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
+import { useLockedRouter } from "@/utils/navigation";
 import { Calendar, CircleCheckIcon, MapIcon, Ticket } from "lucide-react-native";
 import { useCallback, useMemo, useRef } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -30,7 +31,7 @@ const DashedLine = () => (
 
 const TransactionRef = () => {
 
-    const router = useRouter()
+    const router = useLockedRouter()
     const {user} =useAuth()
     
     const bottomSheetRef = useRef<BottomSheetModal>(null);

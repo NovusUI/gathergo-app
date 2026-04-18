@@ -81,7 +81,7 @@ export const ConversationProvider = ({
 
     const handleConnect = () => {
       console.log("✅ Socket connected, loading notifications");
-      socket.emit("getConversationTray", {});
+      //socket.emit("getConversationTray", {});
     };
 
     // Handle conversation tray updates

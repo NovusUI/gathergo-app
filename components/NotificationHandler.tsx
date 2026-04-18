@@ -1,12 +1,13 @@
 // components/NotificationHandler.tsx
 
 import { useSocket } from "@/context/SocketContext";
+import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 
 export const NotificationHandler = () => {
   const { notificationData, clearNotificationData } = useSocket();
-  const navigation = useRouter();
+  const navigation = useLockedRouter();
   const notificationHandled = useRef(false);
 
   useEffect(() => {

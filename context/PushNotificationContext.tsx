@@ -11,9 +11,11 @@ import { useAuth } from "./AuthContext";
 
 import { useRegisterPushToken, useRemovePushToken } from "@/services/mutations";
 import { useAuthStore } from "@/store/auth";
+import { normalizeNotificationLink } from "@/utils/notificationLinks";
+import { pushWithLock } from "@/utils/navigation";
+import { useLockedRouter } from "@/utils/navigation";
 import { registerForPushNotifications } from "@/utils/pushNotification";
 import * as Notifications from "expo-notifications";
-import { useRouter } from "expo-router";
 import { Platform } from "react-native";
 
 type PushNotificationContextType = {
@@ -47,7 +49,7 @@ export const PushNotificationProvider = ({
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notificationData, setNotificationData] = useState<any>(null);
   const { user } = useAuth();
-  const router = useRouter();
+  const router = useLockedRouter();
   const navigationHandledRef = useRef(false);
   const { token: accessToken } = useAuthStore();
 
@@ -61,12 +63,19 @@ export const PushNotificationProvider = ({
 
   const handleNotificationNavigation = useCallback(
     (data: any) => {
-      if (!data?.carpoolId || navigationHandledRef.current) return;
+      if (navigationHandledRef.current) return;
+
+      const target = normalizeNotificationLink(data?.link, {
+        eventId: data?.eventId,
+        carpoolId: data?.carpoolId,
+      });
+
+      if (!target) return;
 
       navigationHandledRef.current = true;
-      console.log("🚀 Navigating to chat from notification:", data.carpoolId);
+      console.log("🚀 Navigating from notification:", target);
 
-      if (data.link) router.push(data.link);
+      pushWithLock(router, target);
 
       setTimeout(() => {
         clearNotificationData();

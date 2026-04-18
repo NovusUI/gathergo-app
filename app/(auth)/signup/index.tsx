@@ -1,15 +1,30 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
 import { Key, Mail, XIcon } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import {
+  Keyboard,
+  KeyboardEvent,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import tw from "twrnc";
 import * as z from "zod";
 
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
+import LocalSvgAsset from "@/components/ui/LocalSvgAsset";
+import { useAuth } from "@/context/AuthContext";
 import { useSignUpMutation } from "@/services/mutations";
-import { showGlobalError } from "@/utils/globalErrorHandler";
+import { useAuthStore } from "@/store/auth";
+import { AuthData } from "@/types/auth";
+import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import { useLockedRouter } from "@/utils/navigation";
+import { saveItem } from "@/utils/storage";
 
 // Zod schema
 const signUpSchema = z
@@ -28,8 +43,10 @@ const signUpSchema = z
 type SignUpFormData = z.infer<typeof signUpSchema>;
 
 const SignUp = () => {
-  const router = useRouter();
+  const router = useLockedRouter();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { mutate: signUp, isPending } = useSignUpMutation();
+  const { setUser } = useAuth();
 
   const {
     control,
@@ -39,20 +56,94 @@ const SignUp = () => {
     resolver: zodResolver(signUpSchema),
   });
 
+  const completeAuthSession = async (authData: AuthData) => {
+    const { login } = useAuthStore.getState();
+    await login(authData.accessToken, authData.refreshToken);
+    setUser(authData.user);
+    await saveItem("user", JSON.stringify(authData.user));
+  };
+
   const onSubmit = (data: SignUpFormData) => {
+    const sanitizedEmail = data.email.replace(/\s+/g, "").trim();
+
     signUp(
-      { email: data.email, password: data.password },
+      { email: sanitizedEmail, password: data.password },
       {
-        onSuccess: () => router.replace("/"),
-        onError: (err: any) => showGlobalError(err?.message || "Signup failed"),
+        onSuccess: async (response) => {
+          try {
+            const payload = response.data;
+
+            if (
+              "requiresVerification" in payload &&
+              payload.requiresVerification
+            ) {
+              showGlobalSuccess(response.message, 4);
+              router.replace({
+                pathname: "/email-verify",
+                params: {
+                  email: payload.email,
+                  sentAt: String(Date.now()),
+                },
+              });
+              return;
+            }
+
+            await completeAuthSession(payload);
+            showGlobalSuccess("Account created successfully");
+          } catch {
+            showGlobalError(
+              "Account created, but we could not finish signing you in."
+            );
+          }
+        },
+        onError: (err: any) =>
+          showGlobalError(
+            err?.response?.data?.message || err?.message || "Signup failed"
+          ),
       }
     );
   };
 
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      "keyboardDidShow",
+      (event: KeyboardEvent) => {
+        setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      }
+    );
+    const frameSub = Keyboard.addListener(
+      "keyboardDidChangeFrame",
+      (event: KeyboardEvent) => {
+        setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      }
+    );
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      frameSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   return (
-    <View
-      style={tw`flex-1 bg-[#01082E] justify-center items-center px-5 py-14 gap-6`}
+    <KeyboardAvoidingView
+      style={tw`flex-1 bg-[#01082E]`}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
+      <ScrollView
+        contentContainerStyle={[
+          tw`flex-grow justify-center items-center px-5 py-14 gap-6`,
+          Platform.OS === "android" && keyboardHeight > 0
+            ? { paddingBottom: keyboardHeight + 24 }
+            : null,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       {/* Back Button */}
       <TouchableOpacity
         style={tw`absolute top-10 left-8`}
@@ -63,11 +154,13 @@ const SignUp = () => {
 
       {/* Logo */}
       <View style={tw`flex-col justify-center items-center relative`}>
-        <Image
-          source={require("../../../assets/images/vector1.png")}
+        <LocalSvgAsset
+          name="vector1"
+          width={109}
+          height={106}
           style={tw`absolute -top-14 left-10`}
         />
-        <Image source={require("../../../assets/images/gglogo.png")} />
+        <LocalSvgAsset name="gglogo" width={80} height={80} />
       </View>
 
       <Text style={tw`text-white text-lg font-semibold mt-5`}>Sign Up</Text>
@@ -81,7 +174,7 @@ const SignUp = () => {
             placeholder="Enter your email"
             LeftIcon={Mail}
             value={value}
-            onChangeText={onChange}
+            onChangeText={(text) => onChange(text.replace(/\s+/g, ""))}
           />
         )}
       />
@@ -149,7 +242,8 @@ const SignUp = () => {
           <Text style={tw`font-semibold`}>Sign in</Text>
         </Text>
       </TouchableOpacity>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

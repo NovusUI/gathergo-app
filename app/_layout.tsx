@@ -4,6 +4,7 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
+import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
@@ -29,7 +30,7 @@ function AppContent() {
   }, [loading]);
 
   if (loading) {
-    return null;
+    return <FullScreenLoader />;
   }
 
   return (
@@ -57,7 +58,7 @@ export default function RootLayout() {
   );
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#01082E" }}>
       <PersistQueryClientProvider
         client={queryClient}
         persistOptions={{ persister }}

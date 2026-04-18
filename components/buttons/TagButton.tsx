@@ -1,6 +1,10 @@
 import { Text, TouchableOpacity } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import tw from "twrnc";
 
 interface TagButtonProps {
   tag: string;
@@ -26,14 +30,14 @@ const TagButton = ({ tag, isSelected, onPress }: TagButtonProps) => {
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
         onPress={handlePress}
-        className={`px-4 py-2 rounded-xl ${
-          isSelected ? 'bg-teal-400' : 'bg-[#1b1b3a]'
+        style={tw`px-4 py-2 rounded-xl ${
+          isSelected ? "bg-teal-400" : "bg-[#1b1b3a]"
         }`}
       >
-        <Text className="text-white">{tag}</Text>
+        <Text style={tw`text-white`}>{tag}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-export default TagButton
+export default TagButton;

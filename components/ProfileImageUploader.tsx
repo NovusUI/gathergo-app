@@ -3,7 +3,7 @@ import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Plus } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import * as Progress from "react-native-progress";
 import tw from "twrnc";
@@ -13,19 +13,19 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
-    console.log(uri);
-  }, [uri]);
-
-  const { mutate } = useEditProfilePicture({
+  const { mutateAsync } = useEditProfilePicture({
     onSuccess: () => {
       setUploading(false);
       setProgress(1);
       showGlobalSuccess("Upload successful");
+      setTimeout(() => setProgress(0), 1000); // Hide progress after success
     },
-    onError: () => {
+    onError: (error) => {
       setUploading(false);
+      console.error("Upload error:", error);
       showGlobalError("Error occurred while uploading");
+      // Optionally revert to previous image
+      setImage(uri || null);
     },
   });
 
@@ -41,16 +41,34 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
       const selected = result.assets[0].uri;
       setImage(selected);
 
+      // Create FormData properly
       const formData = new FormData();
+
+      // Get file name from URI
+      const uriParts = selected.split("/");
+      const fileName = uriParts[uriParts.length - 1] || "profile.jpg";
+
+      // Determine MIME type
+      let mimeType = "image/jpeg";
+      if (fileName.toLowerCase().endsWith(".png")) {
+        mimeType = "image/png";
+      }
+
       formData.append("file", {
         uri: selected,
-        name: "profile.jpg",
-        type: "image/jpeg",
+        name: fileName,
+        type: mimeType,
       } as any);
 
       setUploading(true);
       setProgress(0);
-      mutate(formData);
+
+      try {
+        await mutateAsync(formData);
+      } catch (error) {
+        // Error is already handled in onError callback
+        console.error("Mutation error:", error);
+      }
     }
   };
 
@@ -58,7 +76,7 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
     <View style={tw`relative w-18 h-18`}>
       {/* Avatar */}
       <View style={tw`rounded-2xl w-18 h-18 bg-gray-100 overflow-hidden`}>
-        {image && (
+        {Boolean(image) && (
           <Image
             source={image}
             cachePolicy="disk"
@@ -87,7 +105,10 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
       {/* Floating + button */}
       <TouchableOpacity
         onPress={pickImage}
-        style={tw`absolute -right-3 bottom-2 bg-[#0FF1CF] w-8 h-8 rounded-full flex items-center justify-center shadow-lg`}
+        disabled={uploading}
+        style={tw`absolute -right-3 bottom-2 bg-[#0FF1CF] w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${
+          uploading ? "opacity-50" : ""
+        }`}
       >
         <Plus size={18} color="white" />
       </TouchableOpacity>

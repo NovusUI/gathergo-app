@@ -1,11 +1,16 @@
-import { DateTimeFormData, dateTimeEditSchema, dateTimeSchema } from "@/schemas/event";
+import {
+  DateTimeFormData,
+  dateTimeEditSchema,
+  dateTimeSchema,
+} from "@/schemas/event";
 import { extractDate, extractTime } from "@/utils/dateTimeHandler";
 import { showGlobalError } from "@/utils/globalErrorHandler";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, Resolver, useForm } from "react-hook-form";
 import { Text, TouchableOpacity } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import tw from "twrnc";
 import CustomEventInfoSelector from "../CustomEventInfoSelector";
 import CustomView from "../View";
 import CustomButton from "../buttons/CustomBtn1";
@@ -13,25 +18,38 @@ import CustomButton from "../buttons/CustomBtn1";
 interface DateAndTimeProps {
   onSave: (data: DateTimeFormData) => void;
   initialData?: DateTimeFormData | null;
-  editMode: boolean
+  editMode: boolean;
+  allowRecurring?: boolean;
 }
 
-const DateAndTime = ({onSave,initialData,editMode=false}:DateAndTimeProps) => {
-
-
-
-  const [picker, setPicker] = useState<null | "endDate" |  "startDate" | "startTime" | "endTime" | "repeat" | "endRepeat">(null);
+const DateAndTime = ({
+  onSave,
+  initialData,
+  editMode = false,
+  allowRecurring = false,
+}: DateAndTimeProps) => {
+  const [picker, setPicker] = useState<
+    | null
+    | "endDate"
+    | "startDate"
+    | "startTime"
+    | "endTime"
+    | "repeat"
+    | "endRepeat"
+  >(null);
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
     setValue,
-  } = useForm< DateTimeFormData>({
-    resolver: zodResolver(editMode ? dateTimeEditSchema : dateTimeSchema),
+  } = useForm<DateTimeFormData>({
+    resolver: zodResolver(
+      editMode ? dateTimeEditSchema : dateTimeSchema
+    ) as Resolver<DateTimeFormData>,
     defaultValues: initialData || {
       startDate: undefined,
-      endDate:undefined,
+      endDate: undefined,
       isRecurring: false,
       startTime: undefined,
       endTime: undefined,
@@ -41,34 +59,45 @@ const DateAndTime = ({onSave,initialData,editMode=false}:DateAndTimeProps) => {
   });
 
   const isRecurring = watch("isRecurring");
-  const repeat = watch("repeat")
+  const repeat = watch("repeat");
 
-
-  useEffect(()=>{
-    if(isRecurring){
-      setValue("repeat",repeat === "NONE" ? "DAILY": repeat)
-    }else{
-      setValue("repeat","NONE")
-      
+  useEffect(() => {
+    if (!allowRecurring) {
+      return;
     }
-  },[isRecurring])
+
+    if (isRecurring) {
+      setValue("repeat", repeat === "NONE" ? "DAILY" : repeat);
+    } else {
+      setValue("repeat", "NONE");
+    }
+  }, [allowRecurring, isRecurring, repeat, setValue]);
 
   const onError = (errors: any) => {
     showGlobalError("Error in form");
     console.log(errors);
   };
 
-  const ErrorText = ({ message }: { message?: string }) => message ? <Text className="text-red-500">{message}</Text> : null;
+  const ErrorText = ({ message }: { message?: string }) =>
+    message ? <Text className="text-red-500">{message}</Text> : null;
 
   const repeatOptions = [
     { label: "Daily", value: "DAILY" },
     { label: "Weekly", value: "WEEKLY" },
-
   ];
-  
 
   const onSubmit = (data: DateTimeFormData) => {
-    onSave( data);
+    if (!allowRecurring) {
+      onSave({
+        ...data,
+        isRecurring: initialData?.isRecurring || false,
+        repeat: initialData?.repeat || "NONE",
+        endRepeat: initialData?.endRepeat,
+      });
+      return;
+    }
+
+    onSave(data);
   };
 
   const renderDateTimePicker = (
@@ -78,13 +107,13 @@ const DateAndTime = ({onSave,initialData,editMode=false}:DateAndTimeProps) => {
     mode: "date" | "time"
   ) => {
     if (picker !== pickerType) return null;
-  
+
     return (
       <DateTimePickerModal
         isVisible={true}
         mode={mode}
         onConfirm={(selected) => {
-          onChange(mode === "date" ? extractDate(selected) : extractTime(selected));
+          onChange(mode === "date" ? selected : extractTime(selected));
           setPicker(null);
         }}
         onCancel={() => setPicker(null)}
@@ -99,98 +128,109 @@ const DateAndTime = ({onSave,initialData,editMode=false}:DateAndTimeProps) => {
     return () => subscription.unsubscribe();
   }, [watch]);
 
-
   return (
-    <CustomView className="mb-16">
-      {/* Toggle recurring */}
-      <Controller
-        control={control}
-        name="isRecurring"
-        render={({ field: { value, onChange } }) => (
-          <CustomView className="flex-row justify-between">
-            <TouchableOpacity
-              onPress={() => onChange(false)}
-              className={`${
-                !value ? "bg-[#0FF1CF]" : "bg-[#101C45]"
-              } p-5 rounded-xl mt-3 w-[45%] flex justify-center items-center`}
-            >
-              <Text
-                className={`${
-                  !value ? "text-black" : "text-white"
-                }`}
+    <CustomView style={tw`mb-16`}>
+      {allowRecurring ? (
+        <Controller
+          control={control}
+          name="isRecurring"
+          render={({ field: { value, onChange } }) => (
+            <CustomView style={tw`flex-row justify-between`}>
+              <TouchableOpacity
+                onPress={() => onChange(false)}
+                style={tw`
+                  ${!value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
+                  p-5 rounded-xl mt-3 w-[45%] justify-center items-center
+                `}
               >
-                One off event
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => onChange(true)}
-              className={`${
-                value ? "bg-[#0FF1CF]" : "bg-[#101C45]"
-              } p-5 rounded-xl mt-3 w-[45%] flex justify-center items-center`}
-            >
-              <Text
-                className={`${
-                  value ? "text-black" : "text-white"
-                }`}
+                <Text style={tw`${!value ? "text-black" : "text-white"}`}>
+                  One off event
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => onChange(true)}
+                style={tw`
+                  ${value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
+                  p-5 rounded-xl mt-3 w-[45%] justify-center items-center
+                `}
               >
-                Recurring Event
-              </Text>
-            </TouchableOpacity>
-          </CustomView>
-        )}
-      />
+                <Text style={tw`${value ? "text-black" : "text-white"}`}>
+                  Recurring Event
+                </Text>
+              </TouchableOpacity>
+            </CustomView>
+          )}
+        />
+      ) : (
+        <CustomView style={tw`mt-3 rounded-2xl bg-[#101C45] p-4`}>
+          <Text style={tw`text-sm font-semibold text-white`}>
+            Repeat events are hidden for now
+          </Text>
+          <Text style={tw`mt-2 text-sm leading-5 text-[#A9BBE5]`}>
+            Set a single event window for now. We are working on recurring events.
+          </Text>
+        </CustomView>
+      )}
 
       {/* Date & time fields */}
-      <CustomView className="gap-5 mb-5">
-      <Controller
-  control={control}
-  name="startDate"
-  render={({ field: { value, onChange } }) => (
-    <>
-      <CustomEventInfoSelector
-        title="date"
-        value={typeof value === "string"  ? value : value ?  extractDate(value): value }
-        onPress={() => setPicker("startDate")}
-      />
-      <ErrorText message={errors.startDate?.message} />
-      {renderDateTimePicker(value, onChange, "startDate", "date")}
-     
-    </>
-  )}
-/>
+      <CustomView style={tw`gap-5 mb-5`}>
+        <Controller
+          control={control}
+          name="startDate"
+          render={({ field: { value, onChange } }) => (
+            <>
+              <CustomEventInfoSelector
+                title="date"
+                value={
+                  typeof value === "string"
+                    ? value
+                    : value
+                    ? extractDate(value)
+                    : ""
+                }
+                onPress={() => setPicker("startDate")}
+              />
+              <ErrorText message={errors.startDate?.message} />
+              {renderDateTimePicker(value, onChange, "startDate", "date")}
+            </>
+          )}
+        />
 
-<Controller
-  control={control}
-  name="endDate"
-  render={({ field: { value, onChange } }) => (
-    <>
-      <CustomEventInfoSelector
-        title="End date"
-        value={ typeof value === "string"  ? value :  value ?  extractDate(value): value }
-        onPress={() => setPicker("endDate")}
-      />
-      <ErrorText message={errors.endDate?.message} />
-
-      {renderDateTimePicker(value, onChange, "endDate", "date")}
-
-    </>
-  )}
-/>
-
+        <Controller
+          control={control}
+          name="endDate"
+          render={({ field: { value, onChange } }) => (
+            <>
+              <CustomEventInfoSelector
+                title="End date"
+                value={
+                  typeof value === "string"
+                    ? value
+                    : value
+                    ? extractDate(value)
+                    : ""
+                }
+                onPress={() => setPicker("endDate")}
+              />
+              <ErrorText message={errors.endDate?.message} />
+              {renderDateTimePicker(value, onChange, "endDate", "date")}
+            </>
+          )}
+        />
 
         <Controller
           control={control}
           name="startTime"
           render={({ field: { value, onChange } }) => (
             <>
-            <CustomEventInfoSelector
-              title="start time"
-              value={value}
-              onPress={() => setPicker("startTime")}
-            />
-            <ErrorText message={errors.startTime?.message} />
-            {renderDateTimePicker(value, onChange, "startTime", "time")}
-           
+              <CustomEventInfoSelector
+                title="start time"
+                value={value ?? ""}
+                onPress={() => setPicker("startTime")}
+              />
+              <ErrorText message={errors.startTime?.message} />
+              {renderDateTimePicker(value, onChange, "startTime", "time")}
             </>
           )}
         />
@@ -200,67 +240,79 @@ const DateAndTime = ({onSave,initialData,editMode=false}:DateAndTimeProps) => {
           name="endTime"
           render={({ field: { value, onChange } }) => (
             <>
-            <CustomEventInfoSelector
-              title="end time"
-              value={value}
-              onPress={()=> setPicker("endTime")}
-            />
-            <ErrorText message={errors.endTime?.message} />
-            {renderDateTimePicker(value, onChange, "endTime", "time")}
+              <CustomEventInfoSelector
+                title="end time"
+                value={value ?? ""}
+                onPress={() => setPicker("endTime")}
+              />
+              <ErrorText message={errors.endTime?.message} />
+              {renderDateTimePicker(value, onChange, "endTime", "time")}
             </>
-            
           )}
         />
 
-        {isRecurring && (
+        {allowRecurring && isRecurring && (
           <>
             <Controller
               control={control}
               name="repeat"
-              render={({ field: { value, onChange } }) => (
+              render={({ field: { value } }) => (
                 <>
+                  <CustomEventInfoSelector
+                    title="repeat"
+                    value={value ?? ""}
+                    onPress={() => setPicker("repeat")}
+                  />
+                  <ErrorText message={errors.repeat?.message} />
 
-                <CustomEventInfoSelector
-                  title="repeat"
-                  value={value}
-                  onPress={()=>setPicker("repeat")}
-                />
-                <ErrorText message={errors.repeat?.message} />
-                {picker === "repeat" && (
-  <CustomView className="bg-white p-4 rounded-xl shadow-lg">
-    {repeatOptions.map(option => (
-      <TouchableOpacity
-        key={option.value}
-        onPress={() => {
-          setValue("repeat", option.value);
-          setPicker(null);
-        }}
-        className="p-3"
-      >
-        <Text className="text-black">{option.label}</Text>
-      </TouchableOpacity>
-    ))}
-    <TouchableOpacity onPress={() => setPicker(null)} className="p-3">
-      <Text className="text-red-500">Cancel</Text>
-    </TouchableOpacity>
-  </CustomView>
-)}
+                  {picker === "repeat" && (
+                    <CustomView style={tw`bg-white p-4 rounded-xl shadow-lg`}>
+                      {repeatOptions.map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          onPress={() => {
+                            setValue(
+                              "repeat",
+                              option.value as DateTimeFormData["repeat"]
+                            );
+                            setPicker(null);
+                          }}
+                          style={tw`p-3`}
+                        >
+                          <Text style={tw`text-black`}>{option.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+
+                      <TouchableOpacity
+                        onPress={() => setPicker(null)}
+                        style={tw`p-3`}
+                      >
+                        <Text style={tw`text-red-500`}>Cancel</Text>
+                      </TouchableOpacity>
+                    </CustomView>
+                  )}
                 </>
               )}
             />
-            
+
             <Controller
               control={control}
               name="endRepeat"
               render={({ field: { value, onChange } }) => (
                 <>
-                <CustomEventInfoSelector
-                  title="end repeat"
-                  value={typeof value === "string"  ? value : value? extractDate(value): value }
-                  onPress={()=>setPicker("endRepeat")}
-                />
-                <ErrorText message={errors.endRepeat?.message} />
-                {renderDateTimePicker(value, onChange, "endRepeat", "date")}
+                  <CustomEventInfoSelector
+                    title="end repeat"
+                    value={
+                      typeof value === "string"
+                        ? value
+                        : value
+                        ? extractDate(value)
+                        : ""
+                    }
+                    onPress={() => setPicker("endRepeat")}
+                  />
+                  <ErrorText message={errors.endRepeat?.message} />
+                  {renderDateTimePicker(value, onChange, "endRepeat", "date")}
                 </>
               )}
             />
@@ -270,7 +322,7 @@ const DateAndTime = ({onSave,initialData,editMode=false}:DateAndTimeProps) => {
 
       {/* Submit */}
       <CustomButton
-        onPress={handleSubmit(onSubmit,onError)}
+        onPress={handleSubmit(onSubmit, onError)}
         disabled={isSubmitting}
         showArrow={false}
         buttonClassName="bg-[#0FF1CF] w-full"

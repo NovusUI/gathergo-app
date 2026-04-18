@@ -8,10 +8,13 @@ export type User = {
   bio?: string;
   profilePicUrl?: string;
   username?: string;
+  phoneNumber?: string;
+  phoneVerifiedAt?: string;
+  authProvider?: "email" | "google" | "phone";
   // add anything else you expect from backend (e.g. avatar, role, phone)
 };
 
-export type Registration = "ticket" | "registration";
+export type Registration = "ticket" | "registration" | "donation";
 
 export type EventData = {
   id: string;
@@ -19,7 +22,8 @@ export type EventData = {
   description: string;
   imageUrl: string;
   thumbnailUrl: string;
-  location: string;
+  location: string | null;
+  isPhysicalEvent: boolean;
   links: string[];
   startDate: string; // ISO date string
   endDate: string; // ISO date string
@@ -42,12 +46,42 @@ export type EventData = {
     profilePicUrlTN: string;
   };
   reason: string;
+  isImageProcessing: boolean;
+  donationTarget: number;
+  lowestTicketPrice?: number | null;
+  impactTitle?: string | null;
+  impactDescription?: string | null;
+  impactPercentage?: number | null;
+  isFollowingCreator: boolean;
+  isFollowedByCreator: boolean;
+  totalDonations: number;
 };
 
-type AuthData = {
+type DashboardEvent = {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  participants: number;
+  raised: number;
+  goal: number;
+  date: string;
+  type: "upcoming" | "past";
+};
+export type AuthData = {
   accessToken: string;
   user: User;
   refreshToken: string;
+};
+
+export type EmailVerificationStateData = {
+  email: string;
+  requiresVerification: boolean;
+};
+
+export type PasswordResetStateData = {
+  email: string;
+  requiresPasswordReset: boolean;
 };
 enum gender {
   MALE = "MALE",
@@ -66,6 +100,64 @@ export interface authResponse extends StandardResponse {
   data: AuthData;
 }
 
+export interface signUpResponse extends StandardResponse {
+  data: AuthData | EmailVerificationStateData;
+}
+
+export interface verifyEmailResponse extends StandardResponse {
+  data: AuthData;
+}
+
+export interface resendEmailVerificationResponse extends StandardResponse {
+  data: EmailVerificationStateData;
+}
+
+export interface forgotPasswordResponse extends StandardResponse {
+  data: PasswordResetStateData;
+}
+
+export interface resetPasswordResponse extends StandardResponse {
+  data: Record<string, never>;
+}
+
+export interface VerifyEmailCodePayload {
+  email: string;
+  code: string;
+}
+
+export interface ResendEmailVerificationPayload {
+  email: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
+export interface PhoneVerificationArtifact {
+  sessionId?: string;
+  idToken?: string;
+  verificationId?: string;
+  smsCode?: string;
+  provider?: "firebase_pnv";
+}
+
+export interface PhoneFirebaseAuthPayload {
+  phoneNumber: string;
+  verificationArtifact: PhoneVerificationArtifact;
+  deviceInfo?: {
+    platform?: string;
+    osVersion?: string;
+    appVersion?: string;
+    deviceName?: string;
+  };
+}
+
 export interface publicProfileData extends User {
   bio: string;
   followingCount: number;
@@ -82,6 +174,9 @@ export interface EventsResponse extends StandardResponse {
   data: EventData[];
 }
 
+export interface DashboardEventResponse extends StandardResponse {
+  data: DashboardEvent[];
+}
 export interface checkUsernameRes extends StandardResponse {
   data: {
     available: boolean;
