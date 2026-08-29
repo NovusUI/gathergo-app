@@ -110,7 +110,7 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
           uploading ? "opacity-50" : ""
         }`}
       >
-        <Plus size={18} color="white" />
+        <Plus size={18} color="#01082E" />
       </TouchableOpacity>
     </View>
   );

@@ -1,8 +1,8 @@
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
-import { QUERY_KEYS } from "@/services/queryKeys";
 import { useUpdateCarpool } from "@/services/mutations";
+import { QUERY_KEYS } from "@/services/queryKeys";
 import { extractTime } from "@/utils/dateTimeHandler";
 import {
   showGlobalError,
@@ -10,14 +10,13 @@ import {
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
 import { formatTo12Hour } from "@/utils/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
   BottomSheetTextInput,
 } from "@gorhom/bottom-sheet";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { useQueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
 import {
   forwardRef,
   useEffect,
@@ -27,6 +26,7 @@ import {
   useState,
 } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import tw from "twrnc";
 
 export type EditRideBSRef = {
@@ -168,12 +168,10 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                   <Text style={tw`text-2xl font-semibold text-white`}>
                     Edit ride details
                   </Text>
-                  <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
-                    Update the pickup point, departure time, or note. Riders in
-                    the carpool will get the update in chat.
-                  </Text>
                 </View>
-                <TouchableOpacity onPress={() => bottomSheetRef.current?.close()}>
+                <TouchableOpacity
+                  onPress={() => bottomSheetRef.current?.close()}
+                >
                   <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
                     Close
                   </Text>

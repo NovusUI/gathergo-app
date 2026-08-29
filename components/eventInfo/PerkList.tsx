@@ -74,7 +74,7 @@ const PerksList: React.FC<PerksListProps> = ({
               <View
                 style={tw`mr-3 h-9 w-9 items-center justify-center rounded-xl bg-[#0FF1CF]/16`}
               >
-                <Ionicons name="sparkles-outline" size={17} color="#0FF1CF" />
+                <Ionicons name="gift-outline" size={17} color="#0FF1CF" />
               </View>
 
               <View style={tw`flex-1`}>
@@ -136,8 +136,8 @@ const PerksList: React.FC<PerksListProps> = ({
           onPress={addPerk}
           style={tw`mt-3 flex-row items-center justify-center rounded-2xl bg-[#0FF1CF] px-4 py-3`}
         >
-          <Ionicons name="add" size={18} color="#041130" />
-          <Text style={tw`ml-2 text-sm font-semibold text-[#041130]`}>
+          <Ionicons name="add" size={18} color="#01082E" />
+          <Text style={tw`ml-2 text-sm font-semibold text-[#01082E]`}>
             Add perk
           </Text>
         </TouchableOpacity>

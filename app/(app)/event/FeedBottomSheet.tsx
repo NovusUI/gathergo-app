@@ -7,23 +7,22 @@ import { useEventDetails, usePaginatedEventCarpools } from "@/services/queries";
 import { EventCarpoolFilter } from "@/types/carpool";
 import { numberWithCommas } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
 import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
   BottomSheetModal,
 } from "@gorhom/bottom-sheet";
+import { useFocusEffect } from "@react-navigation/native";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Text,
-  TouchableOpacity,
-  View
-} from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
+import DontationProgress from "./DontationProgress";
 
 interface FeedBottomSheetProps {
   eventId: string;
   isVisible: boolean;
+  initialTab?: "feed" | "carpool";
+  hasEventEnded?: boolean;
   onClose: () => void;
   onAction?: (action: any) => void;
   feedData?: {
@@ -43,16 +42,22 @@ interface FeedBottomSheetProps {
 const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   eventId,
   isVisible,
+  initialTab = "feed",
+  hasEventEnded = false,
   onClose,
   onAction,
   feedData,
 }) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const [activeTab, setActiveTab] = useState<"feed" | "carpool">("feed");
+  const [activeTab, setActiveTab] = useState<"feed" | "carpool">(initialTab);
   const [carpoolFilter, setCarpoolFilter] = useState<EventCarpoolFilter>("all");
   const [requestingCloseToYou, setRequestingCloseToYou] = useState(false);
-  const { coords, requestLocation, error: locationError, openSettings } =
-    useLocationManager();
+  const {
+    coords,
+    requestLocation,
+    error: locationError,
+    openSettings,
+  } = useLocationManager();
   const snapPoints = useMemo(() => ["100%"], []);
 
   // const snapPoints = useMemo(() => {
@@ -96,16 +101,18 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
   const { data: eventData } = useEventDetails(eventId);
   const supportsCarpool = eventData?.data?.isPhysicalEvent !== false;
+  const eventRegistrationFee = eventData?.data?.registrationFee ?? null;
   const [refreshing, setRefreshing] = useState(false);
 
   // Open/close handling
   useEffect(() => {
     if (isVisible) {
+      setActiveTab(initialTab);
       bottomSheetRef.current?.present();
     } else {
       bottomSheetRef.current?.dismiss();
     }
-  }, [isVisible]);
+  }, [initialTab, isVisible]);
 
   useEffect(() => {
     if (!supportsCarpool && activeTab === "carpool") {
@@ -142,11 +149,12 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     ({ item }: { item: any }) => (
       <FeedRenderer
         feed={item}
+        eventRegistrationFee={eventRegistrationFee}
         onHide={feed?.hideFeed}
         onAction={(action) => onAction?.(action)}
       />
     ),
-    [feed?.hideFeed, onAction]
+    [eventRegistrationFee, feed?.hideFeed, onAction]
   );
 
   const renderCarpoolItem = useCallback(
@@ -182,7 +190,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
             @{item.driver?.username || "driver"}
           </Text>
           <View style={tw`bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
-            <Text style={tw`text-xs text-black font-semibold`}>
+            <Text style={tw`text-xs text-[#01082E] font-semibold`}>
               {(() => {
                 if (carpoolFilter === "close_to_you") {
                   if (typeof item.distanceKm === "number") {
@@ -199,7 +207,10 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 ) {
                   return "You follow owner";
                 }
-                if (primaryReason === "distance" || reasons.includes("distance")) {
+                if (
+                  primaryReason === "distance" ||
+                  reasons.includes("distance")
+                ) {
                   return "Close to you";
                 }
                 return "Recommended";
@@ -224,14 +235,26 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       totalDonations,
     } = eventData.data;
 
-
     return (
       <View style={tw`p-4 bg-[#101C45] mx-4 mt-2 rounded-xl`}>
         <Text style={tw`text-white font-bold mb-2`}>
           {eventData.data.title}
         </Text>
 
-        {registrationType === "ticket" && eventTickets && (
+        {hasEventEnded && (
+          <View
+            style={tw`mb-3 rounded-xl border border-[#2B3C66] bg-[#1B2A50]/60 p-3`}
+          >
+            <Text style={tw`text-sm font-semibold text-[#8FA1CB]`}>
+              Event ended
+            </Text>
+            <Text style={tw`mt-1 text-xs leading-5 text-[#9FB0D8]`}>
+              Ticketing, registration, and donations are closed.
+            </Text>
+          </View>
+        )}
+
+        {!hasEventEnded && registrationType === "ticket" && eventTickets && (
           <View style={tw`mb-3`}>
             <Text style={tw`text-gray-300 mb-2`}>Available Tickets:</Text>
             {eventTickets.map((ticket: any, index: number) => (
@@ -254,7 +277,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           </View>
         )}
 
-        {registrationType === "registration" && (
+        {!hasEventEnded && registrationType === "registration" && (
           <TouchableOpacity
             style={tw`mb-3`}
             onPress={() => onAction?.({ type: "REGISTER" })}
@@ -268,34 +291,15 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           </TouchableOpacity>
         )}
 
-        {registrationType === "donation" && donationTarget && (
-          <TouchableOpacity
-            style={tw`mb-3`}
-            onPress={() => onAction?.({ type: "DONATE" })}
-          >
-            <Text style={tw`text-gray-300 mb-2`}>Donation Progress:</Text>
-            <Text style={tw`text-[#0FF1CF] font-bold text-lg mb-1`}>
-              ₦{numberWithCommas(donationTarget, false, null)} Goal
-            </Text>
-            <View style={tw`h-2 bg-gray-700 rounded-full overflow-hidden`}>
-              <View
-                style={[
-                  tw`h-full bg-[#0FF1CF] rounded-full`,
-                  {
-                    width: `${Math.min(
-                      ((totalDonations/100 || 0) / donationTarget) * 100,
-                      100
-                    )}%`,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={tw`text-gray-400 text-xs mt-1`}>
-              ₦{numberWithCommas((totalDonations || 0) / 100, false, null)}{" "}
-              raised
-            </Text>
-          </TouchableOpacity>
-        )}
+        {!hasEventEnded &&
+          registrationType === "donation" &&
+          donationTarget && (
+            <DontationProgress
+              onAction={onAction}
+              donationTarget={donationTarget}
+              totalDonations={totalDonations}
+            />
+          )}
       </View>
     );
   };
@@ -320,7 +324,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       <Text
         style={tw.style(
           "text-xs font-semibold",
-          carpoolFilter === value ? "text-black" : "text-white"
+          carpoolFilter === value ? "text-[#01082E]" : "text-white"
         )}
       >
         {label}
@@ -345,7 +349,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               <Text
                 style={tw.style(
                   "text-xs font-semibold",
-                  activeTab === "feed" ? "text-black" : "text-white"
+                  activeTab === "feed" ? "text-[#01082E]" : "text-white"
                 )}
               >
                 Live Feed
@@ -362,7 +366,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 <Text
                   style={tw.style(
                     "text-xs font-semibold",
-                    activeTab === "carpool" ? "text-black" : "text-white"
+                    activeTab === "carpool" ? "text-[#01082E]" : "text-white"
                   )}
                 >
                   Carpool
@@ -385,7 +389,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
             {renderEventInfo()}
 
             {feed?.pinnedFeeds && feed?.pinnedFeeds.length > 0 && (
-              <View style={tw`px-4 mt-4`}>
+              <View style={tw`px-4 mt-4 `}>
                 <Text style={tw`text-gray-400 mb-3`}>📌 Pinned</Text>
                 {feed.pinnedFeeds.map((pinnedFeed) => (
                   <View key={`pinned-${pinnedFeed?.id}`}>
@@ -396,7 +400,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
             )}
 
             <Text
-              style={tw`text-gray-400 mb-3 px-4 ${
+              style={tw`text-gray-400 mb-3 px-4 py-4 ${
                 feed?.pinnedFeeds && feed?.pinnedFeeds?.length > 0
                   ? "mt-4"
                   : "mt-0"
@@ -432,8 +436,12 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
             </View>
 
             {Boolean(locationError) && carpoolFilter === "close_to_you" && (
-              <View style={tw`bg-red-500/20 border border-red-500/40 p-3 rounded-lg`}>
-                <Text style={tw`text-red-300 text-xs mb-2`}>{locationError}</Text>
+              <View
+                style={tw`bg-red-500/20 border border-red-500/40 p-3 rounded-lg`}
+              >
+                <Text style={tw`text-red-300 text-xs mb-2`}>
+                  {locationError}
+                </Text>
                 <TouchableOpacity
                   onPress={openSettings}
                   style={tw`self-start bg-red-500/20 px-3 py-1 rounded-full`}
@@ -456,6 +464,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       carpoolsLoading,
       carpoolTotal,
       feed,
+      hasEventEnded,
       locationError,
       requestingCloseToYou,
       onClose,
@@ -487,11 +496,13 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               </Text>
             </View>
           )}
-        {activeTab === "carpool" && !hasMoreCarpools && carpoolList.length > 0 && (
-          <View style={tw`py-6 items-center`}>
-            <Text style={tw`text-gray-500`}>No more rides</Text>
-          </View>
-        )}
+        {activeTab === "carpool" &&
+          !hasMoreCarpools &&
+          carpoolList.length > 0 && (
+            <View style={tw`py-6 items-center`}>
+              <Text style={tw`text-gray-500`}>No more rides</Text>
+            </View>
+          )}
       </>
     ),
     [
@@ -565,6 +576,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         removeClippedSubviews={false}
         extraData={{
           activeTab,
+          eventRegistrationFee,
           feedCount: feed?.regularFeeds?.length || 0,
           pinnedCount: feed?.pinnedFeeds?.length || 0,
           carpoolCount: carpoolList.length,
@@ -577,11 +589,15 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 refreshCarpools();
               }
         }
-        onEndReached={activeTab === "feed" ? handleLoadMore : () => {
-          if (hasMoreCarpools && !carpoolsLoadingMore) {
-            loadMoreCarpools();
-          }
-        }}
+        onEndReached={
+          activeTab === "feed"
+            ? handleLoadMore
+            : () => {
+                if (hasMoreCarpools && !carpoolsLoadingMore) {
+                  loadMoreCarpools();
+                }
+              }
+        }
         onEndReachedThreshold={0.3} // Load more when 30% from bottom
         showsVerticalScrollIndicator={false}
       />

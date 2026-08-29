@@ -7,12 +7,7 @@ import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, Text } from "react-native";
 import tw from "twrnc";
 
 const EditBioScreen = () => {
@@ -54,27 +49,26 @@ const EditBioScreen = () => {
         contentContainerStyle={tw`flex-grow justify-center items-center px-5 pt-20 pb-10 gap-5`}
         keyboardShouldPersistTaps="handled"
       >
-      <Text style={tw`text-white`}>Bio</Text>
+        <Text style={tw`text-white`}>Bio</Text>
+        <Controller
+          control={control}
+          name="bio"
+          render={({ field: { value, onChange } }) => (
+            <TextArea
+              value={value}
+              onChange={onChange}
+              error={errors.bio?.message}
+            />
+          )}
+        />
 
-      <Controller
-        control={control}
-        name="bio"
-        render={({ field: { value, onChange } }) => (
-          <TextArea
-            value={value}
-            onChange={onChange}
-            error={errors.bio?.message}
-          />
-        )}
-      />
-
-      <CustomButton
-        title={editBioPending ? "Saving..." : "Save"}
-        onPress={handleSubmit(onSubmit)}
-        buttonClassName="!w-full" // keep as-is since CustomButton handles it internally
-        arrowCircleColor="transparent border-sm border-white"
-        disabled={editBioPending}
-      />
+        <CustomButton
+          title={editBioPending ? "Saving..." : "Save"}
+          onPress={handleSubmit(onSubmit)}
+          buttonClassName="!w-full" // keep as-is since CustomButton handles it internally
+          arrowCircleColor="transparent border-sm border-white"
+          disabled={editBioPending}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );

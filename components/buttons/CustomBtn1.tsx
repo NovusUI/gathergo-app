@@ -26,6 +26,14 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   disabled = false,
 }: CustomButtonProps) => {
   const guardedOnPress = usePressGuard(onPress);
+  const hasTealButtonBackground = buttonClassName.includes("bg-[#0FF1CF]");
+  const hasTealArrowBackground =
+    arrowCircleColor.includes("bg-[#0FF1CF]") ||
+    arrowClassName.includes("bg-[#0FF1CF]");
+  const tealTextStyle = hasTealButtonBackground ? { color: "#01082E" } : null;
+  const tealArrowTextStyle = hasTealArrowBackground
+    ? { color: "#01082E" }
+    : null;
 
   return (
     <TouchableOpacity
@@ -38,7 +46,11 @@ const CustomButton: React.FC<CustomButtonProps> = ({
       activeOpacity={disabled ? 1 : 0.7}
     >
       <Text
-        style={tw.style(`text-white font-bold mr-2 uppercase`, textClassName)}
+        style={tw.style(
+          `text-white font-bold mr-2 uppercase`,
+          textClassName,
+          tealTextStyle
+        )}
       >
         {title}
       </Text>
@@ -52,7 +64,14 @@ const CustomButton: React.FC<CustomButtonProps> = ({
             { width: 32, height: 32 } // equivalent to w-8 h-8
           )}
         >
-          <Text style={tw`text-white text-lg`}>{arrowText}</Text>
+          <Text
+            style={tw.style(
+              `text-white text-lg`,
+              tealArrowTextStyle
+            )}
+          >
+            {arrowText}
+          </Text>
         </View>
       )}
     </TouchableOpacity>

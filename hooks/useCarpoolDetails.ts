@@ -10,6 +10,14 @@ import { useEffect } from "react";
 interface CarpoolChatDetails {
   id: string;
   name: string;
+  origin?: string | null;
+  departureTime?: string | null;
+  vehicleIcon?: string | null;
+  availableSeats?: number | null;
+  seatsLeft?: number | null;
+  pricePerSeat?: number | null;
+  note?: string | null;
+  description?: string | null;
   status: "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
   expiresAt: string | null;
   driverId: string;
@@ -18,14 +26,16 @@ interface CarpoolChatDetails {
     name: string;
     avatar: string;
   };
-  passengers: Array<{
+  passengers: {
     id: string;
     avatar: string;
     status: "ACCEPTED";
-  }>;
+  }[];
   event?: {
     id: string;
     name: string;
+    title?: string;
+    location?: string | null;
   };
   canChat: boolean;
   reason?: string;
@@ -74,7 +84,8 @@ export const useCarpoolDetails = (
             const isActive = updatedData.status === "ACTIVE" && !isExpired;
             const isDriver = updatedData.driverId === user.id;
             const isPassenger = updatedData.passengers?.some(
-              (p) => p.status === "ACCEPTED" && p.id === user.id
+              (p: { status: string; id: string }) =>
+                p.status === "ACCEPTED" && p.id === user.id
             );
             const isMember = isDriver || isPassenger;
 

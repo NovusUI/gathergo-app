@@ -9,10 +9,16 @@ import {
 } from "@/types/event";
 import { HomeAdCardsResponse } from "@/types/home";
 import {
+  ImpactSuggestionPayload,
+  ImpactSuggestionResponse,
+} from "@/types/impact";
+import {
   WalletBanksResponse,
   WalletKycResponse,
   WalletOnboardingResponse,
   WalletOverviewResponse,
+  WalletSettlementsResponse,
+  WalletTransactionsResponse,
 } from "@/types/wallet";
 import {
   ScanHistoryResponse,
@@ -33,12 +39,15 @@ import {
   getDashboardData,
   getHomeAdCards,
   getDashboardEvents,
+  getImpactSuggestions,
   getEventDashboardData,
   getEventDetails,
   getWalletBanksFn,
   getWalletKycFn,
   getWalletOnboardingFn,
   getWalletOverviewFn,
+  getWalletSettlementsFn,
+  getWalletTransactionsFn,
   getEventImageStatus,
   getEventsForYou,
   getGrantedScannerPermissionsFn,
@@ -56,7 +65,6 @@ import {
   getUserProfile,
   searchScannerUsersFn,
 } from "./serviceFn";
-
 
 export const useWalletOverview = (options = {}) => {
   return useQuery<WalletOverviewResponse>({
@@ -93,6 +101,37 @@ export const useWalletBanks = (options = {}) => {
     queryKey: QUERY_KEYS.walletBanks,
     queryFn: getWalletBanksFn,
     staleTime: 1000 * 60 * 60,
+    retry: 1,
+    ...options,
+  });
+};
+
+const getWalletHistoryNextPage = (
+  lastPage: WalletTransactionsResponse | WalletSettlementsResponse
+) => {
+  if (!lastPage.meta?.hasNextPage) return undefined;
+  return lastPage.meta.page + 1;
+};
+
+export const useWalletTransactions = (pageSize = 20, options?: any) => {
+  return useInfiniteQuery<WalletTransactionsResponse>({
+    queryKey: [QUERY_KEYS.walletTransactions, pageSize],
+    queryFn: getWalletTransactionsFn,
+    initialPageParam: 1,
+    getNextPageParam: getWalletHistoryNextPage,
+    staleTime: 1000 * 30,
+    retry: 1,
+    ...options,
+  });
+};
+
+export const useWalletSettlements = (pageSize = 20, options?: any) => {
+  return useInfiniteQuery<WalletSettlementsResponse>({
+    queryKey: [QUERY_KEYS.walletSettlements, pageSize],
+    queryFn: getWalletSettlementsFn,
+    initialPageParam: 1,
+    getNextPageParam: getWalletHistoryNextPage,
+    staleTime: 1000 * 30,
     retry: 1,
     ...options,
   });
@@ -293,6 +332,19 @@ export const useEventImageStatus = (eventId: string, options = {}) => {
       const data = query.state.data?.data;
       return data?.isProcessing ? 3000 : false;
     },
+    ...options,
+  });
+};
+
+export const useImpactSuggestions = (
+  payload: ImpactSuggestionPayload,
+  options?: any
+) => {
+  return useQuery<ImpactSuggestionResponse>({
+    queryKey: [...QUERY_KEYS.impactSuggestions, payload],
+    queryFn: () => getImpactSuggestions(payload),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
     ...options,
   });
 };

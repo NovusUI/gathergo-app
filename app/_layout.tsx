@@ -5,11 +5,16 @@ import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
+import {
+  applyUrbanistFontDefaults,
+  URBANIST_FONT_ASSETS,
+} from "@/utils/fonts";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -50,12 +55,22 @@ export const toastConfig = {
 };
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(URBANIST_FONT_ASSETS);
   const [queryClient] = useState(() => new QueryClient());
   const [persister] = useState(() =>
     createAsyncStoragePersister({
       storage: AsyncStorage,
     })
   );
+  const fontsReady = fontsLoaded || Boolean(fontError);
+
+  if (fontsLoaded) {
+    applyUrbanistFontDefaults();
+  }
+
+  if (!fontsReady) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#01082E" }}>

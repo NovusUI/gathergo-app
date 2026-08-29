@@ -1,0 +1,91 @@
+import { Ionicons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import tw from "twrnc";
+
+type IoniconName = ComponentProps<typeof Ionicons>["name"];
+
+interface VibeCheckMessageCardProps {
+  actorLabel: string;
+  isComplete: boolean;
+  needsConfirmation: boolean;
+  rideIconName: IoniconName;
+  signalAction: string;
+  signalTitle: string;
+  time: string;
+  onPress?: () => void;
+}
+
+export default function VibeCheckMessageCard({
+  actorLabel,
+  isComplete,
+  needsConfirmation,
+  rideIconName,
+  signalAction,
+  signalTitle,
+  time,
+  onPress,
+}: VibeCheckMessageCardProps) {
+  const card = (
+    <View
+      style={[
+        tw`my-2 mx-3 rounded-3xl border p-4 gap-3`,
+        needsConfirmation
+          ? tw`bg-[#F8D05C]/10 border-[#F8D05C]/25`
+          : tw`bg-[#07143B] border-[#1B2A50]`,
+      ]}
+    >
+      <View style={tw`flex-row items-start gap-3`}>
+        <View
+          style={[
+            tw`w-11 h-11 rounded-2xl items-center justify-center border`,
+            needsConfirmation
+              ? tw`bg-[#F8D05C]/10 border-[#F8D05C]/25`
+              : tw`bg-[#0FF1CF]/10 border-[#0FF1CF]/20`,
+          ]}
+        >
+          <Ionicons
+            name={needsConfirmation ? "shield-checkmark-outline" : rideIconName}
+            size={23}
+            color={needsConfirmation ? "#F8D05C" : "#0FF1CF"}
+          />
+        </View>
+
+        <View style={tw`flex-1 min-w-0`}>
+          <Text style={tw`text-white text-sm font-semibold`}>
+            {signalTitle}
+          </Text>
+          <Text style={tw`text-[#DDE6FF] text-xs leading-5 mt-1`}>
+            {actorLabel} says {signalAction}
+          </Text>
+          <Text
+            style={[
+              tw`text-xs font-semibold mt-2`,
+              needsConfirmation ? tw`text-[#F8D05C]` : tw`text-[#8FA5E2]`,
+            ]}
+          >
+            {needsConfirmation
+              ? "Tap to complete your side"
+              : isComplete
+                ? "Handshake complete"
+                : "Waiting for the other side"}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={tw`text-[#8FA5E2] text-xs self-end`}>{time}</Text>
+    </View>
+  );
+
+  if (!needsConfirmation || !onPress) return card;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.86}
+      accessibilityRole="button"
+      onPress={onPress}
+    >
+      {card}
+    </TouchableOpacity>
+  );
+}

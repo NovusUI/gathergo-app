@@ -93,7 +93,7 @@ const getNotificationVisual = (
     normalized.includes("feed")
   ) {
     return {
-      icon: "sparkles-outline",
+      icon: "calendar-outline",
       title: "Event",
       background: "#0A173F",
       accent: "#0FF1CF",
@@ -217,21 +217,10 @@ export const EventArtworkFallback = ({
             color={visual.accent}
           />
         </View>
-        <Text
-          style={[
-            tw`mt-3 font-semibold text-white`,
-            compact ? tw`text-[11px]` : tw`text-lg`,
-          ]}
-          numberOfLines={1}
-        >
-          {compact ? visual.label : visual.title}
-        </Text>
         {!compact && (
           <Text
             style={tw`mt-2 text-center text-sm leading-5 text-[#C6D5F2]`}
-          >
-            {visual.subtitle}
-          </Text>
+          ></Text>
         )}
       </View>
     </View>

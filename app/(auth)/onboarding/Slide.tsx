@@ -218,7 +218,10 @@ export default function OnboardingSlide({
     <View
       style={[
         tw`flex-1 bg-[#01082E] justify-center items-center px-6`,
-        { paddingTop: isCompact ? 32 : 52, paddingBottom: isCompact ? 118 : 132 },
+        {
+          paddingTop: isCompact ? 32 : 52,
+          paddingBottom: isCompact ? 118 : 132,
+        },
       ]}
     >
       <Animated.View
@@ -293,7 +296,9 @@ export default function OnboardingSlide({
           )}
 
           {!!actionCards?.length && (
-            <View style={[styles.actionCards, { marginTop: isCompact ? 10 : 12 }]}>
+            <View
+              style={[styles.actionCards, { marginTop: isCompact ? 10 : 12 }]}
+            >
               {actionCards.map((card, index) => (
                 <View
                   key={card}
@@ -308,7 +313,10 @@ export default function OnboardingSlide({
                   <View
                     style={[
                       styles.actionBadge,
-                      { backgroundColor: index === 0 ? accentFrom : `${accentTo}DD` },
+                      {
+                        backgroundColor:
+                          index === 0 ? accentFrom : `${accentTo}DD`,
+                      },
                     ]}
                   />
                   <Text style={styles.actionCardText}>{card}</Text>
@@ -392,19 +400,6 @@ export default function OnboardingSlide({
           {title}
         </Text>
 
-        <Text
-          style={[
-            styles.description,
-            {
-              fontSize: isCompact ? 14 : 15,
-              lineHeight: isCompact ? 21 : 23,
-              marginBottom: isCompact ? 12 : 16,
-            },
-          ]}
-        >
-          {description}
-        </Text>
-
         {!!proofLine && (
           <View
             style={[
@@ -429,7 +424,7 @@ export default function OnboardingSlide({
               },
             ]}
           >
-             <Text style={styles.swipeCueArrow}>{"<<<"}</Text>
+            <Text style={styles.swipeCueArrow}>{"<<<"}</Text>
             <Text style={styles.swipeCueText}>Swipe to continue</Text>
           </Animated.View>
         )}

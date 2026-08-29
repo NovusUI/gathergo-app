@@ -52,6 +52,11 @@ export type EventData = {
   impactTitle?: string | null;
   impactDescription?: string | null;
   impactPercentage?: number | null;
+  impactSdgGoals?: import("./impact").SuggestedSdgGoal[] | null;
+  impactPaths?: import("./impact").SuggestedImpactPath[] | null;
+  impactCommitments?: import("./impact").SuggestedImpactCommitment[] | null;
+  impactMapSource?: string | null;
+  impactMapGeneratedAt?: string | null;
   isFollowingCreator: boolean;
   isFollowedByCreator: boolean;
   totalDonations: number;

@@ -1,6 +1,6 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import EventPermissionCard from "@/components/scanner/EventPermissionCard";
-import ActivityIndicator from "@/components/ui/AppLoader";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useScanner } from "@/hooks/useScanner";
 import { useLockedRouter } from "@/utils/navigation";
 import { safeGoBack } from "@/utils/navigation";
@@ -99,10 +99,10 @@ const MyPermissions = () => {
             onClickBack={() => safeGoBack(router, "/scanner")}
           />
         </View>
-        <View style={tw`flex-1 items-center justify-center`}>
-          <ActivityIndicator tone="accent" size="large" />
-          <Text style={tw`text-gray-400 mt-4`}>Loading permissions...</Text>
-        </View>
+        <ImpactPageLoader
+          title="Mapping your access"
+          message="Loading the events you can help check in."
+        />
       </View>
     );
   }

@@ -74,6 +74,7 @@ const CreateTicket = ({
   const limited = watch("limited");
   const paid = watch("paid");
   const isNew = watch("isNew");
+  const basePrice = watch("price");
 
   const onError = (errors: any) => {
     showGlobalError("Error in form");
@@ -117,9 +118,8 @@ const CreateTicket = ({
     <CustomView style={tw`gap-7`}>
       <View style={tw`gap-3`}>
         <View style={tw`gap-1`}>
-          <Text style={tw`text-base font-semibold text-white`}>Ticket name</Text>
-          <Text style={tw`text-sm leading-5 text-[#8EA3D1]`}>
-            Give this tier a clear name people will recognize at checkout.
+          <Text style={tw`text-base font-semibold text-white`}>
+            Ticket name
           </Text>
         </View>
         <Controller
@@ -143,9 +143,6 @@ const CreateTicket = ({
           <Text style={tw`text-base font-semibold text-white`}>
             Ticket description
           </Text>
-          <Text style={tw`text-sm leading-5 text-[#8EA3D1]`}>
-            Summarize what this ticket covers and who it is best for.
-          </Text>
         </View>
         <Controller
           control={control}
@@ -157,7 +154,7 @@ const CreateTicket = ({
                 maxLength={100}
                 onChange={onChange}
                 value={value}
-                placeholder="Perfect for early supporters who want the essentials."
+                placeholder="Summarize what this ticket covers and who it is best for."
               />
               <ErrorText message={errors.description?.message} />
             </>
@@ -167,9 +164,6 @@ const CreateTicket = ({
       <CustomView style={tw`gap-3`}>
         <View style={tw`gap-1`}>
           <Text style={tw`text-base font-semibold text-white`}>Perks</Text>
-          <Text style={tw`text-sm leading-5 text-[#8EA3D1]`}>
-            Call out the extras that make this ticket tier worth picking.
-          </Text>
         </View>
         <Controller
           control={control}
@@ -241,9 +235,15 @@ const CreateTicket = ({
                   insideBottomSheet={insideBottomSheet}
                   numeric
                   moneyFormat
-                  placeholder="enter price"
+                  placeholder={
+                    editMode && !isNew ? "enter new price" : "enter price"
+                  }
                   onChangeText={onChange}
-                  value={value?.toString() ?? ""}
+                  value={
+                    (
+                      editMode && !isNew ? value ?? basePrice : value
+                    )?.toString() ?? ""
+                  }
                 />
                 <ErrorText
                   message={

@@ -11,15 +11,14 @@ import {
 } from "@/services/queries";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import { showGlobalError } from "@/utils/globalErrorHandler";
-import { useLockedRouter } from "@/utils/navigation";
-import { safeGoBack } from "@/utils/navigation";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { numberWithCommas } from "@/utils/utils";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import {
   Calendar,
   CarFront,
@@ -87,11 +86,6 @@ const TransactionRef = () => {
     "TICKET"
   ).toUpperCase();
   const isStatusSuccess = data?.data.status === "SUCCESS";
-  const sponsorshipInfo = data?.data?.metadata?.sponsorship;
-  const isSponsoredRegistration =
-    isStatusSuccess &&
-    transactionType === "REGISTRATION" &&
-    sponsorshipInfo?.beneficiaryType === "SPONSORED";
   const isAwaitingTransfer = transactionStatus === "AWAITING_TRANSFER";
   const isFailedStatus = transactionStatus === "FAILED";
   const isProcessingStatus =
@@ -99,7 +93,6 @@ const TransactionRef = () => {
   const isWaitingStatus = isAwaitingTransfer || isProcessingStatus;
   const isAlatTransfer = paymentProvider === "ALAT_TRANSFER";
   const hasTickets =
-    !isSponsoredRegistration &&
     (transactionType === "TICKET" || transactionType === "REGISTRATION");
 
   const {
@@ -131,8 +124,6 @@ const TransactionRef = () => {
   const headlineCopy = isStatusSuccess
     ? transactionType === "DONATION"
       ? "Donation confirmed"
-      : isSponsoredRegistration
-        ? "Impact spot funded"
       : transactionType === "REGISTRATION"
         ? "Registration confirmed"
         : "Ticket purchase confirmed"
@@ -145,8 +136,6 @@ const TransactionRef = () => {
   const bodyCopy = isStatusSuccess
     ? transactionType === "DONATION"
       ? "Your support just powered this event forward. Thank you for donating."
-      : isSponsoredRegistration
-        ? "Your sponsored registration is paid for. The organizer will decide who receives the spot."
       : transactionType === "REGISTRATION"
         ? "You're officially in. Your event registration is complete."
         : "Your tickets are ready. You can open and scan them anytime."
@@ -199,11 +188,20 @@ const TransactionRef = () => {
 
   const goToEventFeed = useCallback(() => {
     if (eventIdForCta) {
-      router.replace(`/event/${eventIdForCta}?openFeed=1`);
+      router.replace(`/event/${eventIdForCta}?openFeed=1&feedTab=feed`);
       return;
     }
     router.replace("/");
   }, [eventIdForCta, router]);
+
+  const goToEventCarpools = useCallback(() => {
+    if (eventIdForCta && isPhysicalEventForCta) {
+      router.replace(`/event/${eventIdForCta}?openFeed=1&feedTab=carpool`);
+      return;
+    }
+
+    goToEventFeed();
+  }, [eventIdForCta, goToEventFeed, isPhysicalEventForCta, router]);
 
   return (
     <View
@@ -250,11 +248,6 @@ const TransactionRef = () => {
                   TAP TO VIEW YOUR PASSES
                 </Text>
               )}
-              {isStatusSuccess && isSponsoredRegistration && (
-                <Text style={tw`text-white text-xs mr-16`}>
-                  THIS SPOT IS WAITING FOR CREATOR ASSIGNMENT
-                </Text>
-              )}
             </TouchableOpacity>
           </View>
           <View
@@ -263,8 +256,6 @@ const TransactionRef = () => {
             <Text style={tw`text-white`}>
               {transactionType === "DONATION"
                 ? "Donation Details"
-                : isSponsoredRegistration
-                ? "Sponsored Registration"
                 : transactionType === "REGISTRATION"
                 ? "Registration Details"
                 : "Ticket Details"}
@@ -281,11 +272,7 @@ const TransactionRef = () => {
             <Text style={tw`text-white`}>{headlineCopy}</Text>
             <Text style={tw`text-white`}>
               {isStatusSuccess
-                ? isSponsoredRegistration
-                  ? "The creator will allocate this spot to someone who needs it."
-                  : "Thank you!"
-                : isSponsoredRegistration
-                  ? "The creator will allocate this spot to someone who needs it."
+                ? "Thank you!"
                 : isAwaitingTransfer
                   ? "We’ll confirm it here as soon as the bank transfer settles."
                   : isFailedStatus
@@ -393,7 +380,13 @@ const TransactionRef = () => {
                     : `${eventTitleForCta} is active. Catch live moments, updates, and community buzz as things unfold.`}
                 </Text>
 
-                <View style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}>
+                <TouchableOpacity
+                  activeOpacity={0.86}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open live feed"
+                  onPress={goToEventFeed}
+                  style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}
+                >
                   <Flame size={18} color="#0FF1CF" />
                   <View style={tw`flex-1`}>
                     <Text style={tw`text-white font-semibold`}>Live Feed</Text>
@@ -401,10 +394,16 @@ const TransactionRef = () => {
                       Real-time event updates, reactions, and buzz from attendees.
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
 
                 {isPhysicalEventForCta ? (
-                  <View style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}>
+                  <TouchableOpacity
+                    activeOpacity={0.86}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open carpool tab"
+                    onPress={goToEventCarpools}
+                    style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}
+                  >
                     <CarFront size={18} color="#0FF1CF" />
                     <View style={tw`flex-1`}>
                       <Text style={tw`text-white font-semibold`}>
@@ -414,7 +413,7 @@ const TransactionRef = () => {
                         Find nearby rides or create one and pull your crew together.
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             </View>
@@ -471,7 +470,7 @@ const TransactionRef = () => {
                     <TouchableOpacity
                       style={tw`px-5 py-2 rounded-3xl bg-[#0FF1CF] self-start`}
                     >
-                      <Text style={tw`capitalize`}>
+                      <Text style={tw`capitalize text-[#01082E]`}>
                         {transactionType === "REGISTRATION"
                           ? "Registration"
                           : tickets[currentIndex]?.eventTicketType}
@@ -523,7 +522,7 @@ const TransactionRef = () => {
                     onPress={handleNext}
                     style={tw`px-4 py-2 bg-[#0FF1CF] rounded-lg`}
                   >
-                    <Text style={tw`text-black`}>Next</Text>
+                    <Text style={tw`text-[#01082E]`}>Next</Text>
                   </TouchableOpacity>
                 </View>
               </View>

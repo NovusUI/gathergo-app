@@ -1,5 +1,5 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
-import ActivityIndicator from "@/components/ui/AppLoader";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useScanner } from "@/hooks/useScanner";
 import { useLockedRouter } from "@/utils/navigation";
 import { safeGoBack } from "@/utils/navigation";
@@ -144,10 +144,11 @@ const ScannerHistory = () => {
         }
       >
         {isLoading.history ? (
-          <View style={tw`items-center justify-center py-10`}>
-            <ActivityIndicator tone="accent" size="large" />
-            <Text style={tw`text-gray-400 mt-3`}>Loading history...</Text>
-          </View>
+          <ImpactPageLoader
+            compact
+            title="Mapping scan history"
+            message="Loading check-ins, passes, and recent access activity."
+          />
         ) : error.history ? (
           <View style={tw`items-center justify-center py-10`}>
             <Text style={tw`text-[#FF5757] mb-2`}>Failed to load history</Text>

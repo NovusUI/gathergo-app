@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = "http://localhost:4000/api/v1";
+const DEFAULT_API_BASE_URL = "http://10.228.2.134:4000/api/v1";
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
@@ -21,11 +21,11 @@ const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
 const configuredSocketUrl = process.env.EXPO_PUBLIC_SOCKET_URL?.trim();
 
 export const API_BASE_URL = ensureApiVersion(
-  configuredApiBaseUrl || DEFAULT_API_BASE_URL
+  DEFAULT_API_BASE_URL //configuredApiBaseUrl || DEFAULT_API_BASE_URL
 );
 
 export const SOCKET_URL = toSocketOrigin(
-  configuredSocketUrl || configuredApiBaseUrl || DEFAULT_API_BASE_URL
+  DEFAULT_API_BASE_URL //configuredSocketUrl || configuredApiBaseUrl || DEFAULT_API_BASE_URL
 );
 
 export const GOOGLE_AUTH_URL = `${API_BASE_URL}/auth/google`;

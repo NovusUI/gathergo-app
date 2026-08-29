@@ -13,6 +13,7 @@ export const QUERY_KEYS = {
   eventCarpoolsPaginated: ["eventCarpoolsPaginated"] as const,
   carpoolChat: ["carpoolChat"] as const,
   eventImageStatus: ["eventImageStatus"] as const,
+  impactSuggestions: ["impactSuggestions"] as const,
 
   getDashboard: ["dashboarddata"] as const,
   homeAdCards: ["homeAdCards"] as const,
@@ -23,6 +24,8 @@ export const QUERY_KEYS = {
   getPayments: ["getPayments"] as const,
   walletOverview: ["walletOverview"] as const,
   walletOnboarding: ["walletOnboarding"] as const,
+  walletTransactions: ["walletTransactions"] as const,
+  walletSettlements: ["walletSettlements"] as const,
   walletKyc: ["walletKyc"] as const,
   walletBanks: ["walletBanks"] as const,
 

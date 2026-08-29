@@ -1,5 +1,6 @@
 // app/notifications.tsx
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { NotificationItem } from "@/components/ui/NotificationItem";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useNotification } from "@/context/NotificationContext";
@@ -154,9 +155,11 @@ export default function NotificationsScreen() {
 
   if (loading) {
     return (
-      <View style={[tw`flex-1 bg-[#01082E] items-center justify-center`, styles.loadingScreen]}>
-        <Text style={tw`text-white`}>Loading notifications...</Text>
-      </View>
+      <ImpactPageLoader
+        title="Mapping updates"
+        message="Loading invites, payments, rides, and event signals."
+        style={styles.loadingScreen}
+      />
     );
   }
 

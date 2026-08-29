@@ -5,6 +5,7 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationManager } from "@/hooks/useLocationManager";
@@ -21,7 +22,7 @@ import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { AxiosError } from "axios";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
@@ -186,9 +187,12 @@ const NewCarpool = () => {
   const renderEventList = () => {
     if (isPending || loading) {
       return (
-        <View style={tw`flex-1 items-center justify-center`}>
-          <ActivityIndicator tone="accent" size="large" />
-        </View>
+        <ImpactPageLoader
+          compact
+          title="Mapping ride-ready events"
+          message="Finding physical events where people can gather and go together."
+          style={tw`flex-1`}
+        />
       );
     }
 
@@ -201,6 +205,7 @@ const NewCarpool = () => {
             <EventCard
               id={item.id}
               title={item.title}
+              description={item.description}
               location={item.location}
               imageUrl={item.imageUrl}
               thumbnailUrl={item.thumbnailUrl}
@@ -210,7 +215,12 @@ const NewCarpool = () => {
               lowestTicketPrice={item.lowestTicketPrice}
               startDate={item.startDate}
               impactTitle={item.impactTitle}
-              impactPercentage={item.impactPercentage}
+              impactDescription={item.impactDescription}
+              impactSdgGoals={item.impactSdgGoals}
+              impactPaths={item.impactPaths}
+              impactCommitments={item.impactCommitments}
+              impactMapSource={item.impactMapSource}
+              tags={item.tags}
               onPress={() => openCarpoolForm(item)}
             />
           )}
@@ -238,7 +248,7 @@ const NewCarpool = () => {
 
     return suggestedEvents.length ? (
       <View>
-        <Text style={tw`text-center text-white`}>Suggestions</Text>
+        <Text style={tw`text-left text-white`}>Suggestions</Text>
         <FlatList
           data={suggestedEvents}
           keyExtractor={(item) => item.id}
@@ -246,6 +256,7 @@ const NewCarpool = () => {
             <EventCard
               id={item.id}
               title={item.title}
+              description={item.description}
               location={item.location}
               imageUrl={item.imageUrl}
               thumbnailUrl={item.thumbnailUrl}
@@ -255,7 +266,12 @@ const NewCarpool = () => {
               lowestTicketPrice={item.lowestTicketPrice}
               startDate={item.startDate}
               impactTitle={item.impactTitle}
-              impactPercentage={item.impactPercentage}
+              impactDescription={item.impactDescription}
+              impactSdgGoals={item.impactSdgGoals}
+              impactPaths={item.impactPaths}
+              impactCommitments={item.impactCommitments}
+              impactMapSource={item.impactMapSource}
+              tags={item.tags}
               onPress={() => openCarpoolForm(item)}
             />
           )}
@@ -347,10 +363,7 @@ const NewCarpool = () => {
 
   return (
     <View
-      style={[
-        tw`flex-1 w-full items-center bg-[#01082E] pb-10`,
-        styles.screen,
-      ]}
+      style={[tw`flex-1 w-full items-center bg-[#01082E] pb-10`, styles.screen]}
     >
       <View style={tw`flex-1 w-full max-w-[500px] px-5`}>
         <CustomeTopBarNav
@@ -389,8 +402,12 @@ const NewCarpool = () => {
           style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}>
-            <View style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`} />
+          <View
+            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          >
+            <View
+              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+            />
 
             <View style={tw`flex-row items-start justify-between gap-4`}>
               <View style={tw`flex-1`}>
@@ -431,13 +448,18 @@ const NewCarpool = () => {
                 </Text>
                 <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
                   Share where you&apos;re coming from, when you&apos;re leaving,
-                  how many seats are open, and any extra note riders should know.
+                  how many seats are open, and any extra note riders should
+                  know.
                 </Text>
               </View>
 
-              <View style={tw`mt-5 flex-row items-center justify-between gap-3`}>
+              <View
+                style={tw`mt-5 flex-row items-center justify-between gap-3`}
+              >
                 <Text
-                  style={tw`text-white ${isToEvent ? "font-bold" : "opacity-50"}`}
+                  style={tw`text-white ${
+                    isToEvent ? "font-bold" : "opacity-50"
+                  }`}
                 >
                   To Event
                 </Text>
@@ -456,7 +478,9 @@ const NewCarpool = () => {
                 />
 
                 <Text
-                  style={tw`text-white ${!isToEvent ? "font-bold" : "opacity-50"}`}
+                  style={tw`text-white ${
+                    !isToEvent ? "font-bold" : "opacity-50"
+                  }`}
                 >
                   From Event
                 </Text>
@@ -484,9 +508,11 @@ const NewCarpool = () => {
                     </Text>
                   )}
 
-                  <View style={tw`mt-4 flex-row items-center justify-between gap-5`}>
+                  <View
+                    style={tw`mt-4 flex-row items-center justify-between gap-5`}
+                  >
                     <Text style={tw`flex-1 text-white`}>
-                      I am currently where I&apos;ll be pooling from
+                      I am currently close to where I&apos;ll be pooling from
                     </Text>
                     <Controller
                       control={control}
@@ -594,7 +620,7 @@ const NewCarpool = () => {
                         onChangeText={field.onChange}
                       />
                       <Text style={tw`mt-1 text-right text-sm text-gray-400`}>
-                        {(field.value?.length || 0)}/200
+                        {field.value?.length || 0}/200
                       </Text>
                     </View>
                   )}
@@ -604,7 +630,9 @@ const NewCarpool = () => {
 
             <CustomButton
               onPress={handleSubmit(createCarpool, onError)}
-              title={createCarpoolPending ? "Creating carpool" : "Create Carpool"}
+              title={
+                createCarpoolPending ? "Creating carpool" : "Create Carpool"
+              }
               buttonClassName="bg-[#0FF1CF] w-full border-0"
               textClassName="!text-black"
               showArrow={false}

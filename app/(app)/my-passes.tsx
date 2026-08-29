@@ -1,6 +1,7 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import { EventImageWithProcessing } from "@/components/EventImageWithProcessing";
 import CustomButton from "@/components/buttons/CustomBtn1";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useMyRegistrations, useMyTickets } from "@/services/queries";
 import { OwnedRegistration, OwnedTicket } from "@/types/event";
@@ -10,7 +11,6 @@ import { numberWithCommas } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Modal,
   RefreshControl,
   ScrollView,
@@ -516,10 +516,11 @@ const MyPassesPage = () => {
 
   if (isLoading && combinedPasses.length === 0) {
     return (
-      <View style={[tw`flex-1 bg-[#01082E] items-center justify-center`, styles.screen]}>
-        <ActivityIndicator size="large" color="#0FF1CF" />
-        <Text style={tw`text-white text-base mt-4`}>Loading your passes...</Text>
-      </View>
+      <ImpactPageLoader
+        title="Mapping your passes"
+        message="Loading tickets, registrations, and QR access."
+        style={styles.screen}
+      />
     );
   }
 

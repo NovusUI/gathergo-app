@@ -4,6 +4,13 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import PoolingWithA from "@/components/PoolingWithA";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import {
+  getCarpoolPassengerMessage,
+  getCarpoolVehicleOption,
+  getCarpoolVibeSafetyTips,
+  type CarpoolVibeSafetyTip,
+} from "@/constants/carpool";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import {
@@ -18,16 +25,23 @@ import {
   showGlobalSuccess,
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
-import { safeGoBack } from "@/utils/navigation";
-import { dummy } from "@/utils/utils";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
+import { dummy, formatTo12Hour } from "@/utils/utils";
+import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
-import { useLockedRouter } from "@/utils/navigation";
 import { MessagesSquareIcon } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import type { ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Text,
+  TouchableOpacity,
+  View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import Svg, { Line } from "react-native-svg";
 import tw from "twrnc";
 import CancelCarpoolModal from "./CancelCarpoolModal";
 import EditRideBS, { EditRideBSRef } from "./bottomSheets/EditRideBS";
@@ -38,18 +52,85 @@ import ShareRideLinkBS, {
 } from "./bottomSheets/ShareRideLinkBS";
 import ViewRequestBS, { ViewRequestBSRef } from "./bottomSheets/ViewRequestBS";
 
-const VerticalDashedLine = () => (
-  <Svg height="25" width="2">
-    <Line
-      x1="0"
-      y1="0"
-      x2="0"
-      y2="100%"
-      stroke="#31C6F6"
-      strokeWidth="2"
-      strokeDasharray="4,4" // dash length, gap length
+type IoniconName = ComponentProps<typeof Ionicons>["name"];
+
+const formatRideDepartureTime = (departureTime?: string | null) => {
+  const trimmed = departureTime?.trim();
+  if (!trimmed) return "Time pending";
+
+  const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (timeMatch) {
+    return formatTo12Hour(`${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`);
+  }
+
+  const parsedDate = new Date(trimmed);
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return parsedDate.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return trimmed;
+};
+
+const formatRideStatus = (status?: string | null) =>
+  status ? status.toLowerCase().replace(/_/g, " ") : "active";
+
+const RidePill = ({
+  iconName,
+  label,
+  value,
+}: {
+  iconName: IoniconName;
+  label: string;
+  value: string;
+}) => (
+  <View style={tw`flex-1 min-w-[125px] rounded-2xl bg-[#101C45] p-3`}>
+    <View style={tw`flex-row items-center gap-2`}>
+      <Ionicons name={iconName} size={15} color="#0FF1CF" />
+      <Text style={tw`text-[#8FA5E2] text-xs`}>{label}</Text>
+    </View>
+    <Text style={tw`text-white text-sm font-semibold mt-2`} numberOfLines={1}>
+      {value}
+    </Text>
+  </View>
+);
+
+const RouteStop = ({
+  accent,
+  label,
+  value,
+}: {
+  accent: string;
+  label: string;
+  value: string;
+}) => (
+  <View style={tw`flex-row gap-3`}>
+    <View
+      style={[tw`w-3 h-3 rounded-full mt-1`, { backgroundColor: accent }]}
     />
-  </Svg>
+    <View style={tw`flex-1 min-w-0`}>
+      <Text style={tw`text-[#8FA5E2] text-xs`}>{label}</Text>
+      <Text style={tw`text-white text-sm leading-5`} numberOfLines={2}>
+        {value}
+      </Text>
+    </View>
+  </View>
+);
+
+const SafetyTipRow = ({ tip }: { tip: CarpoolVibeSafetyTip }) => (
+  <View style={tw`flex-row gap-3`}>
+    <View
+      style={tw`w-9 h-9 rounded-full bg-[#0FF1CF]/10 items-center justify-center`}
+    >
+      <Ionicons name={tip.iconName} size={17} color="#0FF1CF" />
+    </View>
+    <View style={tw`flex-1 min-w-0`}>
+      <Text style={tw`text-white text-sm font-semibold`}>{tip.title}</Text>
+      <Text style={tw`text-[#A8BAE4] text-xs leading-5 mt-1`}>{tip.body}</Text>
+    </View>
+  </View>
 );
 
 const CarpoolPage = () => {
@@ -66,6 +147,7 @@ const CarpoolPage = () => {
     note?: string;
     startPoint?: { lng: number; lat: number };
   } | null>(null);
+  const [showFloatingChat, setShowFloatingChat] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -162,6 +244,64 @@ const CarpoolPage = () => {
   const requestBSRef = useRef<ViewRequestBSRef>(null);
   const sendReqRef = useRef<SendRequestBSRef>(null);
   const shareRideLinkRef = useRef<ShareRideBSRef>(null);
+  const chatAnchorFrameRef = useRef<{ y: number; height: number } | null>(null);
+  const scrollMetricsRef = useRef({ offsetY: 0, viewportHeight: 0 });
+
+  const openChat = useCallback(() => {
+    if (!carpoolId) return;
+
+    router.replace(`/chat/${carpoolId}`);
+  }, [carpoolId, router]);
+
+  const syncFloatingChatVisibility = useCallback(() => {
+    const frame = chatAnchorFrameRef.current;
+    const { offsetY, viewportHeight } = scrollMetricsRef.current;
+
+    if (!frame || viewportHeight <= 0) {
+      setShowFloatingChat(false);
+      return;
+    }
+
+    const viewportTop = offsetY;
+    const viewportBottom = offsetY + viewportHeight;
+    const isChatButtonVisible =
+      frame.y + frame.height > viewportTop + 12 &&
+      frame.y < viewportBottom - 12;
+
+    setShowFloatingChat((current) =>
+      current === !isChatButtonVisible ? current : !isChatButtonVisible
+    );
+  }, []);
+
+  const handleScrollViewLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      scrollMetricsRef.current = {
+        ...scrollMetricsRef.current,
+        viewportHeight: event.nativeEvent.layout.height,
+      };
+      syncFloatingChatVisibility();
+    },
+    [syncFloatingChatVisibility]
+  );
+
+  const handleRideDetailsScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollMetricsRef.current = {
+        offsetY: event.nativeEvent.contentOffset.y,
+        viewportHeight: event.nativeEvent.layoutMeasurement.height,
+      };
+      syncFloatingChatVisibility();
+    },
+    [syncFloatingChatVisibility]
+  );
+
+  const handleChatAnchorLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      chatAnchorFrameRef.current = event.nativeEvent.layout;
+      syncFloatingChatVisibility();
+    },
+    [syncFloatingChatVisibility]
+  );
 
   const status = useMemo(() => {
     if (data && data?.data.passengers.length > 0) {
@@ -205,9 +345,10 @@ const CarpoolPage = () => {
 
   if (isPending) {
     return (
-      <View style={tw`flex-1 items-center justify-center bg-[#01082E]`}>
-        <Text style={tw`text-white`}>Loading...</Text>
-      </View>
+      <ImpactPageLoader
+        title="Mapping your ride"
+        message="Loading the route, seats, vibe, and safety signals."
+      />
     );
   }
 
@@ -224,6 +365,33 @@ const CarpoolPage = () => {
   const rideUnavailable = carpool.status !== "ACTIVE";
   const isFollowingDriver = carpool.isFollowingDriver;
   const isFollowedByDriver = carpool.isFollowedByDriver;
+  const selectedVehicle = getCarpoolVehicleOption(carpool.vehicleIcon);
+  const rideIconName = selectedVehicle?.iconName ?? "car-outline";
+  const rideLabel = selectedVehicle?.label ?? "Shared ride";
+  const departureTimeLabel = formatRideDepartureTime(carpool.departureTime);
+  const destinationLabel = carpool.event?.location ?? "Destination not set";
+  const acceptedPassengerCount = carpool.passengers.filter(
+    (passenger: any) => passenger.status === "ACCEPTED"
+  ).length;
+  const crewCount = acceptedPassengerCount + 1;
+  const seatsLeft =
+    typeof carpool.seatsLeft === "number"
+      ? carpool.seatsLeft
+      : carpool.availableSeats;
+  const seatLabel =
+    typeof seatsLeft === "number"
+      ? `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`
+      : `${crewCount} rider${crewCount === 1 ? "" : "s"}`;
+  const priceLabel =
+    Number(carpool.pricePerSeat) > 0 ? `₦${carpool.pricePerSeat}` : "Free";
+  const rideCopy = selectedVehicle
+    ? owner
+      ? "This is the ride vibe riders see in chat and on carpool cards."
+      : getCarpoolPassengerMessage(selectedVehicle.key)
+    : owner
+    ? "Pick a ride vibe so this carpool has a little more personality."
+    : "This shared ride is ready for pickup details, timing, and quick confirmations.";
+  const safetyTips = getCarpoolVibeSafetyTips(carpool.vehicleIcon);
   const followStatus = isFollowingDriver
     ? "Following"
     : isFollowedByDriver
@@ -278,7 +446,6 @@ const CarpoolPage = () => {
         };
     }
   };
-
   const { title, disabled, action } = getButtonProps();
 
   return (
@@ -291,63 +458,172 @@ const CarpoolPage = () => {
           onClickBack={() => safeGoBack(router, "/")}
         />
       </CustomView>
-      <ScrollView style={tw`w-full max-w-[500px]`}>
-        {/* Divider */}
-        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-        <CustomView style={tw`px-4`}>
-          <CustomView>
-            <View style={tw`flex-row items-center justify-between gap-4`}>
-              <Text style={tw`text-lg text-white`}>CARPOOL DETAILS</Text>
-              {owner ? (
-                <TouchableOpacity onPress={() => editRideRef.current?.open()}>
-                  <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
-                    Edit ride
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
+      <ScrollView
+        style={tw`w-full max-w-[500px]`}
+        contentContainerStyle={tw`pb-4`}
+        onLayout={handleScrollViewLayout}
+        onScroll={handleRideDetailsScroll}
+        scrollEventThrottle={16}
+      >
+        <View style={tw`px-4 pt-2 gap-4`}>
+          <View
+            style={tw`rounded-[28px] bg-[#07143B] border border-[#1B2A50] overflow-hidden`}
+          >
+            <View style={tw`h-1 flex-row`}>
+              <View style={tw`flex-1 bg-[#0FF1CF]`} />
+              <View style={tw`flex-1 bg-[#31C6F6]`} />
+              <View style={tw`flex-1 bg-[#F8D05C]`} />
             </View>
-            <Text style={tw`text-[#ADADAD]`}>{carpool.departureTime}</Text>
 
-            <CustomView style={tw`my-5`}>
-              <View style={tw`flex-row items-center gap-5`}>
-                <View style={tw`w-4 h-4 rounded-full bg-[#0FF1CF]`} />
-                <Text style={tw`text-white`}>{carpool.origin}</Text>
+            <View style={tw`p-5 gap-4`}>
+              <View style={tw`flex-row items-start justify-between gap-4`}>
+                <View style={tw`flex-row items-center gap-3 flex-1 min-w-0`}>
+                  <View
+                    style={tw`w-16 h-16 rounded-3xl bg-[#0FF1CF]/12 items-center justify-center border border-[#0FF1CF]/20`}
+                  >
+                    <Ionicons name={rideIconName} size={34} color="#0FF1CF" />
+                  </View>
+
+                  <View style={tw`flex-1 min-w-0`}>
+                    <Text style={tw`text-[#0FF1CF] text-xs`} numberOfLines={1}>
+                      {rideLabel} ride vibe
+                    </Text>
+                    <Text
+                      style={tw`text-white text-xl font-semibold mt-1`}
+                      numberOfLines={2}
+                    >
+                      {carpool.event?.title ?? "Carpool"}
+                    </Text>
+                  </View>
+                </View>
+
+                {owner ? (
+                  <TouchableOpacity
+                    activeOpacity={0.84}
+                    onPress={() => editRideRef.current?.open()}
+                    style={tw`px-3 py-2 rounded-full bg-[#0FF1CF]/10 border border-[#0FF1CF]/20`}
+                  >
+                    <Text style={tw`text-xs font-semibold text-[#0FF1CF]`}>
+                      Edit
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
-              <View style={tw`w-4 h-6 flex-row justify-center items-center`}>
-                <VerticalDashedLine />
-              </View>
+              <Text style={tw`text-[#A8BAE4] text-sm leading-5`}>
+                {rideCopy}
+              </Text>
 
-              <View style={tw`flex-row items-center gap-5`}>
-                <View style={tw`w-4 h-4 rounded-full bg-[#31C6F6]`} />
-                <Text style={tw`text-white`}>
-                  {carpool.event.location ?? "Destination not set"}
+              <View style={tw`flex-row flex-wrap gap-3`}>
+                <RidePill
+                  iconName="time-outline"
+                  label="Departure"
+                  value={departureTimeLabel}
+                />
+                <RidePill
+                  iconName="people-outline"
+                  label="Crew"
+                  value={`${crewCount} rider${crewCount === 1 ? "" : "s"}`}
+                />
+                <RidePill
+                  iconName="ticket-outline"
+                  label="Seats"
+                  value={seatLabel}
+                />
+                <RidePill
+                  iconName="cash-outline"
+                  label="Fare"
+                  value={priceLabel}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View
+            style={tw`rounded-[24px] bg-[#101C45] border border-[#1B2A50] p-5 gap-4`}
+          >
+            <View style={tw`flex-row items-center justify-between`}>
+              <Text style={tw`text-white text-base font-semibold`}>Route</Text>
+              <View style={tw`px-3 py-1 rounded-full bg-[#31C6F6]/10`}>
+                <Text style={tw`text-[#31C6F6] text-xs`}>
+                  {formatRideStatus(carpool.status)}
                 </Text>
               </View>
-            </CustomView>
+            </View>
 
-            <Text style={tw`text-white`}>
-              {carpool.pricePerSeat > 0 ? `$${carpool.pricePerSeat}` : "Free"}
-            </Text>
-          </CustomView>
-        </CustomView>
+            <View>
+              <RouteStop
+                accent="#0FF1CF"
+                label="Pickup"
+                value={carpool.origin || "Pickup point pending"}
+              />
+              <View style={tw`ml-1.5 h-7 w-px bg-[#1B2A50]`} />
+              <RouteStop
+                accent="#31C6F6"
+                label="Destination"
+                value={destinationLabel}
+              />
+            </View>
+          </View>
 
-        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-        <View style={tw`px-10 py-5 flex-row justify-between items-center`}>
-          <AvatarGroup
-            avatars={carpool.passengers}
-            onAdd={() => onAvaterClick()}
-          />
-          <TouchableOpacity
-            onPress={() => router.replace(`/chat/${carpoolId}`)}
+          <View
+            onLayout={handleChatAnchorLayout}
+            style={tw`rounded-[24px] bg-[#07143B] border border-[#1B2A50] p-4 flex-row justify-between items-center`}
           >
-            <MessagesSquareIcon color="white" />
-          </TouchableOpacity>
-        </View>
+            <View style={tw`gap-2`}>
+              <Text style={tw`text-[#8FA5E2] text-xs`}>Ride crew</Text>
+              <AvatarGroup
+                avatars={carpool.passengers}
+                owner={owner}
+                onAdd={() => onAvaterClick()}
+              />
+            </View>
 
-        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+            <TouchableOpacity
+              activeOpacity={0.84}
+              accessibilityRole="button"
+              accessibilityLabel="Open carpool chat"
+              onPress={openChat}
+              style={tw`h-12 px-4 rounded-2xl bg-[#0FF1CF] flex-row items-center gap-2`}
+            >
+              <MessagesSquareIcon color="#01082E" size={18} />
+              <Text style={tw`text-[#01082E] text-sm font-semibold`}>Chat</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View
+            style={tw`rounded-[24px] bg-[#101C45] border border-[#1B2A50] p-5 gap-4`}
+          >
+            <View style={tw`flex-row items-start justify-between gap-3`}>
+              <View style={tw`flex-row items-center gap-3 flex-1 min-w-0`}>
+                <View
+                  style={tw`w-11 h-11 rounded-2xl bg-[#F8D05C]/10 items-center justify-center`}
+                >
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={22}
+                    color="#F8D05C"
+                  />
+                </View>
+                <View style={tw`flex-1 min-w-0`}>
+                  <Text style={tw`text-white text-base font-semibold`}>
+                    Ride safety tips
+                  </Text>
+                  <Text style={tw`text-[#A8BAE4] text-xs mt-1`}>
+                    Keep the pickup calm, visible, and easy to verify before
+                    anyone gets moving.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={tw`gap-4 pt-3 border-t border-[#1B2A50]`}>
+              {safetyTips.map((tip) => (
+                <SafetyTipRow key={tip.title} tip={tip} />
+              ))}
+            </View>
+          </View>
+        </View>
 
         <PoolingWithA
           description={data.data.description}
@@ -356,14 +632,25 @@ const CarpoolPage = () => {
           openSheet={() => flexrideRef.current?.open()}
         />
 
-        <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-        <CustomView style={tw`mx-5 gap-5`}>
-          <Text style={tw`text-lg text-white`}>Pooler&apos;s note</Text>
-          <Text style={tw`text-white mr-5`}>
-            {carpool.note ?? "No notes provided"}
-          </Text>
-        </CustomView>
+        <View style={tw`px-4`}>
+          <View
+            style={tw`rounded-[24px] bg-[#07143B] border border-[#1B2A50] p-5 gap-3`}
+          >
+            <View style={tw`flex-row items-center gap-2`}>
+              <Ionicons
+                name="chatbox-ellipses-outline"
+                size={18}
+                color="#F8D05C"
+              />
+              <Text style={tw`text-white text-base font-semibold`}>
+                Pooler&apos;s note
+              </Text>
+            </View>
+            <Text style={tw`text-[#DDE6FF] text-sm leading-5`}>
+              {carpool.note ?? "No notes provided"}
+            </Text>
+          </View>
+        </View>
       </ScrollView>
       {/* Bottom bar */}
       <CustomView style={tw`px-5 pt-6 flex-row justify-between items-center`}>
@@ -406,6 +693,20 @@ const CarpoolPage = () => {
           />
         )}
       </CustomView>
+      {showFloatingChat ? (
+        <TouchableOpacity
+          activeOpacity={0.86}
+          accessibilityRole="button"
+          accessibilityLabel="Open carpool chat"
+          onPress={openChat}
+          style={[
+            tw`absolute right-5 w-14 h-14 rounded-full bg-[#0FF1CF] border border-white/20 items-center justify-center shadow-lg`,
+            { bottom: 188 },
+          ]}
+        >
+          <MessagesSquareIcon color="#01082E" size={24} />
+        </TouchableOpacity>
+      ) : null}
       <CancelCarpoolModal
         visible={showCancelModal}
         onClose={handleKeepCarpool}
@@ -445,7 +746,7 @@ const CarpoolPage = () => {
           });
         }}
       />
-      <ShareRideLinkBS ref={shareRideLinkRef} />
+      <ShareRideLinkBS ref={shareRideLinkRef} carpoolId={carpoolId} />
     </View>
   );
 };

@@ -25,6 +25,7 @@ import {
 import {
   DonationResponse,
   EventDetailsResponse,
+  EventImpactReport,
   OwnedRegistrationsResponse,
   OwnedTicketsResponse,
   GetTicketsResponse,
@@ -34,21 +35,32 @@ import {
   PaginatedSeachResponse,
   RegistrationCheckoutPayload,
   TicketCheckoutPayload,
+  UpsertEventImpactReportPayload,
 } from "@/types/event";
 import { HomeAdCardsResponse } from "@/types/home";
 import {
+  ImpactSuggestionPayload,
+  ImpactSuggestionResponse,
+} from "@/types/impact";
+import {
+  ConfirmWalletPayoutProfileResponse,
   NotifyOnKycResolutionResponse,
   NotifyOnKycResolutionPayload,
+  ResolveWalletPayoutAccountPayload,
   StartBusinessKycPayload,
   StartBusinessRepresentativeKycPayload,
   StartPersonalKycPayload,
+  SubmitWalletKycPayload,
   SubmitWalletLivenessPayload,
   UpsertWalletPayoutProfilePayload,
   WalletBanksResponse,
   WalletKycResponse,
   WalletOnboardingResponse,
   WalletOverviewResponse,
+  WalletPayoutAccountResolutionResponse,
   WalletPayoutProfileResponse,
+  WalletSettlementsResponse,
+  WalletTransactionsResponse,
 } from "@/types/wallet";
 import { QueryFunctionContext } from "@tanstack/react-query";
 
@@ -68,6 +80,7 @@ import {
   DASHBOARD_URL,
   DONATION_URL,
   EVENT_URL,
+  IMPACT_URL,
   NOTIFICATION_URL,
   REGISTRATION_URL,
   SCANNER_URL,
@@ -197,12 +210,59 @@ export const getWalletBanksFn = async (): Promise<WalletBanksResponse> => {
   return response.data;
 };
 
+export const resolveWalletPayoutAccountFn = async (
+  payload: ResolveWalletPayoutAccountPayload
+): Promise<WalletPayoutAccountResolutionResponse> => {
+  const response = await client.get<WalletPayoutAccountResolutionResponse>(
+    WALLET_URL.resolvePayoutAccount,
+    {
+      params: payload,
+    }
+  );
+  return response.data;
+};
+
+export const getWalletTransactionsFn = async (
+  ctx: QueryFunctionContext
+): Promise<WalletTransactionsResponse> => {
+  const [, pageSize = 20] = ctx.queryKey as [unknown, number?];
+  const page = Number(ctx.pageParam || 1);
+  const response = await client.get<WalletTransactionsResponse>(
+    WALLET_URL.transactions,
+    {
+      params: { page, pageSize },
+    }
+  );
+  return response.data;
+};
+
+export const getWalletSettlementsFn = async (
+  ctx: QueryFunctionContext
+): Promise<WalletSettlementsResponse> => {
+  const [, pageSize = 20] = ctx.queryKey as [unknown, number?];
+  const page = Number(ctx.pageParam || 1);
+  const response = await client.get<WalletSettlementsResponse>(
+    WALLET_URL.settlements,
+    {
+      params: { page, pageSize },
+    }
+  );
+  return response.data;
+};
+
 export const upsertWalletPayoutProfileFn = async (
   payload: UpsertWalletPayoutProfilePayload
 ): Promise<WalletPayoutProfileResponse> => {
   const response = await client.post<WalletPayoutProfileResponse>(
     WALLET_URL.payoutProfile,
     payload
+  );
+  return response.data;
+};
+
+export const confirmWalletPayoutProfileFn = async (): Promise<ConfirmWalletPayoutProfileResponse> => {
+  const response = await client.post<ConfirmWalletPayoutProfileResponse>(
+    WALLET_URL.confirmPayoutProfile
   );
   return response.data;
 };
@@ -257,10 +317,12 @@ export const notifyOnKycResolutionFn = async (
   return response.data;
 };
 
-export const submitWalletKycFn = async (): Promise<WalletKycResponse> => {
+export const submitWalletKycFn = async (
+  payload: SubmitWalletKycPayload = { targetTier: "BASIC" }
+): Promise<WalletKycResponse> => {
   const response = await client.post<WalletKycResponse>(
     WALLET_URL.submitKyc,
-    { confirm: true }
+    { confirm: true, ...payload }
   );
   return response.data;
 };
@@ -350,6 +412,16 @@ export const createEvent = async (
   // Use fetch client instead of axios
   const data = await uploadClient.upload(EVENT_URL.createEvent, formData);
   return data;
+};
+
+export const getImpactSuggestions = async (
+  payload: ImpactSuggestionPayload
+): Promise<ImpactSuggestionResponse> => {
+  const response = await client.post<ImpactSuggestionResponse>(
+    IMPACT_URL.suggestions,
+    payload
+  );
+  return response.data;
 };
 
 // export const updateEvent = async (
@@ -457,10 +529,19 @@ export const registerForEvent = async (
         provider: payload.provider,
         deviceId: payload.deviceId,
         platform: payload.platform,
-        beneficiaryType: payload.beneficiaryType,
-        sponsorshipNote: payload.sponsorshipNote,
       },
     }
+  );
+  return response.data;
+};
+
+export const upsertEventImpactReport = async (
+  eventId: string,
+  payload: UpsertEventImpactReportPayload
+): Promise<EventImpactReport> => {
+  const response = await client.post<EventImpactReport>(
+    EVENT_URL.impactReport(eventId),
+    payload
   );
   return response.data;
 };
@@ -817,7 +898,7 @@ export const scanFn = async (payload: {
 };
 
 export const bulkScanFn = async (payload: {
-  scans: Array<{ qrCode: string; markAsUsed?: boolean }>;
+  scans: { qrCode: string; markAsUsed?: boolean }[];
 }): Promise<BulkScanResponse> => {
   const response = await client.post<BulkScanResponse>(
     SCANNER_URL.bulkScan,

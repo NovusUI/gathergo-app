@@ -1,7 +1,7 @@
 import ConversationView from "@/components/ConversationView";
 import { useSocket } from "@/context/SocketContext";
 import { useLockedRouter } from "@/utils/navigation";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { MessageCircle, UserRound } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
@@ -73,6 +73,7 @@ const Conversations = () => {
               <ConversationView
                 key={conversation.carpool?.id}
                 title={conversation.event?.title}
+                carpoolId={conversation.carpool?.id}
                 onClick={() => router.push(`/chat/${conversation.carpool?.id}`)}
                 lastMessage={{
                   text: conversation.lastMessage,
@@ -80,6 +81,13 @@ const Conversations = () => {
                   imgUrl: conversation.sender?.profilePicUrl,
                 }}
                 unreadCount={conversation.unreadCount}
+                vehicleIcon={
+                  conversation.carpool?.vehicleIcon ||
+                  conversation.carpool?.vehicle_icon ||
+                  conversation.carpool?.rideVibe ||
+                  conversation.carpool?.ride_vibe ||
+                  conversation.carpool?.vibe
+                }
               />
             ))
           )}

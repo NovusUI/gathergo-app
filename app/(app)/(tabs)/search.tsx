@@ -1,7 +1,8 @@
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
-import { layoutSpacing, spacing } from "@/constants/spacing";
 import EventCard from "@/components/ui/EventCard";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useGetSearchResult } from "@/services/queries";
 import { useLockedRouter } from "@/utils/navigation";
 import { useRouter } from "expo-router";
@@ -40,9 +41,12 @@ const SearchScreen = () => {
   const renderContent = () => {
     if (isPending) {
       return (
-        <View style={tw`flex-1 justify-center items-center`}>
-          <ActivityIndicator tone="accent" size="large" />
-        </View>
+        <ImpactPageLoader
+          compact
+          title="Mapping matches"
+          message="Finding events with the right place, purpose, and timing."
+          style={tw`flex-1`}
+        />
       );
     }
 
@@ -64,6 +68,7 @@ const SearchScreen = () => {
           <EventCard
             id={item.id}
             title={item.title}
+            description={item.description}
             location={item.location}
             imageUrl={item.imageUrl}
             registrationType={item.registrationType}
@@ -73,7 +78,12 @@ const SearchScreen = () => {
             onPress={() => router.push(`/event/${item.id}`)}
             startDate={item.startDate}
             impactTitle={item.impactTitle}
-            impactPercentage={item.impactPercentage}
+            impactDescription={item.impactDescription}
+            impactSdgGoals={item.impactSdgGoals}
+            impactPaths={item.impactPaths}
+            impactCommitments={item.impactCommitments}
+            impactMapSource={item.impactMapSource}
+            tags={item.tags}
           />
         )}
         contentContainerStyle={styles.listContent}

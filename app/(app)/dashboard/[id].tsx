@@ -2,6 +2,7 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
 import DonationEventOverview from "@/components/ui/DonationEventOverview";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import Payments from "@/components/ui/Payments";
 import RegistrationEventOverview from "@/components/ui/RegistrationEventOverview";
 import TicketEventOverview from "@/components/ui/TicketEventOverview";
@@ -139,37 +140,10 @@ const EventDashboard = () => {
             onClickBack={() => safeGoBack(router, "/dashboard")}
           />
         </CustomView>
-        <ScrollView>
-          <View
-            style={tw`bg-gray-700 h-60 w-full flex items-center justify-center`}
-          >
-            <View style={tw`w-12 h-12 rounded-full bg-gray-600 mb-2`} />
-            <View style={tw`bg-gray-600 h-4 w-32 rounded`} />
-            <View style={tw`bg-gray-600 h-3 w-24 rounded mt-1`} />
-          </View>
-          <View style={tw`bg-gray-700 h-60 w-full`} />
-          <View style={tw`py-2 px-5`}>
-            <View style={tw`bg-gray-700 h-6 w-3/4 mb-4 rounded`} />
-            <View style={tw`bg-gray-700 h-4 w-full mb-2 rounded`} />
-            <View style={tw`bg-gray-700 h-4 w-5/6 rounded`} />
-          </View>
-          <View style={tw`bg-[#1B2A50]/40 h-2 my-3`} />
-          <View style={tw`py-2 px-5`}>
-            <View style={tw`bg-gray-700 h-5 w-1/2 mb-4 rounded`} />
-            {[1, 2, 3, 4].map((_, i) => (
-              <View key={i} style={tw`flex-row items-center mb-4`}>
-                <View style={tw`bg-gray-700 h-8 w-8 rounded-full`} />
-                <View style={tw`ml-3`}>
-                  <View style={tw`bg-gray-700 h-4 w-32 mb-2 rounded`} />
-                  <View style={tw`bg-gray-700 h-3 w-24 rounded`} />
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-        <View style={tw`py-5 px-5`}>
-          <View style={tw`bg-gray-700 h-12 w-full rounded`} />
-        </View>
+        <ImpactPageLoader
+          title="Mapping event activity"
+          message="Loading your event performance, payments, and impact trail."
+        />
       </View>
     );
   }

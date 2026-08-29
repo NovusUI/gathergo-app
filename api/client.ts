@@ -1,11 +1,11 @@
 // src/api/client.ts
 
+import { REFRESH_TOKEN_URL } from "@/constants/network";
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
-import { API_BASE_URL, REFRESH_TOKEN_URL } from "@/constants/network";
 import { useAuthStore } from "../store/auth";
 
 const client = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: "http://10.228.2.134:4000/api/v1", //API_BASE_URL,
   timeout: 100000,
 });
 
@@ -83,10 +83,9 @@ client.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const refreshResponse = await axios.post(
-          REFRESH_TOKEN_URL,
-          { refreshToken }
-        );
+        const refreshResponse = await axios.post(REFRESH_TOKEN_URL, {
+          refreshToken,
+        });
 
         const newAccessToken = refreshResponse.data.data.accessToken;
 

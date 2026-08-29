@@ -20,6 +20,7 @@ interface CarpoolCardProps {
   availableSeats?: number;
   pricePerSeat?: number;
   vehicleIcon?: string | null;
+  poolerUsername?: string | null;
 }
 
 export default function CarpoolCard({
@@ -31,6 +32,7 @@ export default function CarpoolCard({
   availableSeats,
   pricePerSeat,
   vehicleIcon,
+  poolerUsername,
   onPress,
 }: CarpoolCardProps) {
   const selectedVehicle =
@@ -59,6 +61,15 @@ export default function CarpoolCard({
         <Text style={tw`text-white font-semibold text-base`} numberOfLines={2}>
           {pickupLocation} - {title}
         </Text>
+
+        {poolerUsername ? (
+          <View style={tw`mt-2 flex-row items-center gap-1.5`}>
+            <Ionicons name="person-circle-outline" size={14} color="#8FA5E2" />
+            <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+              Pooler @{poolerUsername}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={tw`mt-3 flex-row justify-between items-center`}>
           <View style={tw`flex-row gap-2`}>

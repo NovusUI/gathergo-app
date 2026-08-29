@@ -174,7 +174,7 @@ const PricingCard = ({
                 quantity ? "bg-[#0FF1CF]" : "bg-[#ffff]"
               } h-8 w-8 rounded-full flex-row justify-center items-center`}
             >
-              <Text style={tw`text-black text-lg`}>+</Text>
+              <Text style={tw`text-[#01082E] text-lg`}>+</Text>
             </TouchableOpacity>
           </View>
         )}

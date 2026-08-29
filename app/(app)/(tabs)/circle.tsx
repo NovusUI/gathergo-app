@@ -2,7 +2,7 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
 import { useLockedRouter } from "@/utils/navigation";
-import { Sparkles, Users } from "lucide-react-native";
+import { Users } from "lucide-react-native";
 import { Text, View } from "react-native";
 import tw from "twrnc";
 
@@ -31,7 +31,7 @@ export default function CircleScreen() {
           </Text>
 
           <View style={tw`flex-row items-center mt-4`}>
-            <Sparkles size={14} color="#8FA5E2" />
+            <Users size={14} color="#8FA5E2" />
             <Text style={tw`text-[#8FA5E2] text-xs ml-2`}>
               Early preview will appear here soon.
             </Text>

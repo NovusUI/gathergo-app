@@ -1,9 +1,10 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useAuth } from "@/context/AuthContext";
 import {
-  useNotifyOnKycResolution,
+  useResolveWalletPayoutAccount,
   useStartBusinessKyc,
   useStartBusinessRepresentativeKyc,
   useStartPersonalKyc,
@@ -16,37 +17,39 @@ import {
   useWalletKyc,
   useWalletOnboarding,
   useWalletOverview,
+  useWalletSettlements,
+  useWalletTransactions,
 } from "@/services/queries";
 import {
   AccountOwnershipType,
   KycVerificationMode,
-  NotifyOnKycResolutionTarget,
   WalletBank,
-  WalletKycData,
+  WalletKycStep,
   WalletOnboardingData,
+  WalletPayoutAccountResolution,
+  WalletSettlement,
+  WalletTransaction,
 } from "@/types/wallet";
 import {
   showGlobalError,
   showGlobalSuccess,
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
-import { useLockedRouter } from "@/utils/navigation";
-import { safeGoBack } from "@/utils/navigation";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { Picker } from "@react-native-picker/picker";
+import DropDownPicker from "react-native-dropdown-picker";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
 import {
-  ArrowRight,
-  BadgeAlert,
-  Camera,
   CheckCircle2,
+  ChevronRight,
   CircleDollarSign,
   Clock3,
   Loader,
   ShieldCheck,
   Wallet as WalletIcon,
+  X,
 } from "lucide-react-native";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -60,10 +63,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+import tw, { style as twStyle } from "twrnc";
 
-const EMPTY_BANKS: WalletBank[] = [];
-const FAST_BANK_PREVIEW_LIMIT = 20;
+const WALLET_PREVIEW_LIMIT = 5;
+const WALLET_HISTORY_PAGE_SIZE = 20;
+
+type WalletHistoryView = "transactions" | "settlements" | null;
 
 const formatMoney = (amount?: number | null) => {
   const value = Number(amount || 0);
@@ -92,43 +97,16 @@ const toTitleCase = (value?: string | null) => {
     .join(" ");
 };
 
-const getStatusTone = (status?: string | null) => {
-  switch (status) {
-    case "ACTIVE":
-    case "VERIFIED":
-    case "MATCHED":
-    case "SUCCESS":
-      return {
-        bg: "#0F3A32",
-        text: "#65F5C7",
-      };
-    case "PENDING_KYC":
-    case "IN_PROGRESS":
-    case "PENDING_PROVIDER":
-    case "SUBMITTED":
-    case "PENDING_REVIEW":
-    case "PROCESSING":
-    case "READY":
-    case "HELD_KYC":
-      return {
-        bg: "#3A300F",
-        text: "#FFD76A",
-      };
-    case "REJECTED":
-    case "FAILED":
-    case "MISMATCH":
-    case "RESTRICTED":
-    case "HELD_RISK":
-      return {
-        bg: "#3E1822",
-        text: "#FF8FA9",
-      };
-    default:
-      return {
-        bg: "#1E2A4C",
-        text: "#C9D4FF",
-      };
-  }
+const hasWalletItemId = <T extends { id?: string | null }>(
+  item: T | null | undefined
+): item is T & { id: string } => Boolean(item?.id);
+
+const getHistoryPageItems = <T extends { id?: string | null }>(
+  payload: T[] | { data?: T[] } | null | undefined
+) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
 };
 
 const getWalletFriendlyErrorMessage = (error: any, fallback: string) => {
@@ -142,53 +120,11 @@ const getWalletFriendlyErrorMessage = (error: any, fallback: string) => {
     return fallback;
   }
 
-  if (/qoreid|access token|credentials are not configured|bad gateway/i.test(rawMessage)) {
+  if (/dikript|qoreid|access token|credentials are not configured|bad gateway/i.test(rawMessage)) {
     return fallback;
   }
 
   return rawMessage || fallback;
-};
-
-const getTaskCopy = (onboarding?: WalletOnboardingData | null) => {
-  if (onboarding?.kycStatus === "PENDING_PROVIDER") {
-    return {
-      title: "Verification in progress",
-      subtitle:
-        "We’ve sent your details to our verification partner and we’re waiting for their response. No action is needed right now.",
-      action: "View status",
-    };
-  }
-
-  switch (onboarding?.nextAction) {
-    case "ADD_SETTLEMENT_ACCOUNT":
-      return {
-        title: "Add your payout account",
-        subtitle:
-          "Your events can keep collecting payments, but settlements stay on hold until we know where to pay you.",
-        action: "Add account",
-      };
-    case "COMPLETE_KYC":
-      return {
-        title: "Complete identity verification",
-        subtitle:
-          "We need to verify that your payout account belongs to you before we can release earnings.",
-        action: "Continue KYC",
-      };
-    case "ALAT_ACTIVATION":
-      return {
-        title: "ALAT transfer is pending activation",
-        subtitle:
-          "Your payout setup is in progress. We’ll enable ALAT transfer after internal review is complete.",
-        action: "View status",
-      };
-    default:
-      return {
-        title: "Your wallet is in good shape",
-        subtitle:
-          "You can track earnings, payout readiness, and recent settlement activity here.",
-        action: "View details",
-      };
-  }
 };
 
 const splitFullName = (value?: string | null) => {
@@ -211,15 +147,34 @@ const splitFullName = (value?: string | null) => {
   };
 };
 
+const normalizePayoutAccountNumber = (value?: string | null) =>
+  (value || "").replace(/\s+/g, "").trim();
+
+const buildPayoutResolutionKey = (
+  bankCode?: string | null,
+  accountNumber?: string | null
+) => `${bankCode || ""}:${normalizePayoutAccountNumber(accountNumber)}`;
+
+const BUSINESS_ACCOUNT_NAME_PATTERN = /\b(?:ltd|limited)\b/i;
+
+const getOwnershipTypeFromResolvedAccountName = (
+  accountName: string | null | undefined,
+  selectedOwnershipType: AccountOwnershipType
+): AccountOwnershipType =>
+  BUSINESS_ACCOUNT_NAME_PATTERN.test(accountName || "")
+    ? "BUSINESS"
+    : selectedOwnershipType;
 
 const normalizePersonalVerificationMode = (
   mode?: KycVerificationMode | null
 ): KycVerificationMode => {
   switch (mode) {
-    case "PERSONAL_VNIN":
-    case "PERSONAL_PASSPORT":
+    case "PERSONAL_BVN":
+    case "PERSONAL_PHONE":
     case "PERSONAL_NIN":
       return mode;
+    case "PERSONAL_PHONE_NIN":
+      return "PERSONAL_PHONE";
     default:
       return "PERSONAL_NIN";
   }
@@ -229,27 +184,101 @@ const normalizeBusinessVerificationMode = (
   mode?: KycVerificationMode | null
 ): KycVerificationMode => {
   switch (mode) {
-    case "BUSINESS_CAC_REP_VNIN":
-    case "BUSINESS_CAC_REP_PASSPORT":
+    case "BUSINESS_CAC_REP_BVN":
+    case "BUSINESS_CAC_REP_PHONE":
     case "BUSINESS_CAC_REP_NIN":
       return mode;
+    case "BUSINESS_CAC_REP_PHONE_NIN":
+      return "BUSINESS_CAC_REP_PHONE";
     default:
       return "BUSINESS_CAC_REP_NIN";
   }
 };
 
-const getPendingResolutionTarget = (
-  key?: string | null
-): NotifyOnKycResolutionTarget | null => {
-  switch (key) {
-    case "business":
-      return "BUSINESS";
-    case "identity":
-      return "IDENTITY";
-    case "liveness":
-      return "LIVENESS";
+const getStatusTone = (status?: string | null) => {
+  switch (status) {
+    case "ACTIVE":
+    case "COMPLETED":
+    case "VERIFIED":
+    case "MATCHED":
+    case "SUCCESS":
+    case "CLEAR":
+      return {
+        bg: "#0F3A32",
+        text: "#65F5C7",
+      };
+    case "PENDING_KYC":
+    case "IN_PROGRESS":
+    case "PENDING_PROVIDER":
+    case "SUBMITTED":
+    case "PENDING_REVIEW":
+    case "PROCESSING":
+    case "READY":
+    case "HELD_KYC":
+    case "REVIEW":
+      return {
+        bg: "#3A300F",
+        text: "#FFD76A",
+      };
+    case "REJECTED":
+    case "FAILED":
+    case "MISMATCH":
+    case "RESTRICTED":
+    case "HELD_RISK":
+    case "HOLD":
+    case "BLOCKED":
+    case "CANCELLED":
+      return {
+        bg: "#3E1822",
+        text: "#FF8FA9",
+      };
     default:
-      return null;
+      return {
+        bg: "#1E2A4C",
+        text: "#C9D4FF",
+      };
+  }
+};
+
+const getTaskCopy = (onboarding?: WalletOnboardingData | null) => {
+  if (onboarding?.kycStatus === "PENDING_PROVIDER") {
+    return {
+      title: "Verification in progress",
+      subtitle:
+        "Your details are being checked. People can still pay for your events while settlement waits for verification.",
+      action: "View setup",
+    };
+  }
+
+  switch (onboarding?.nextAction) {
+    case "ADD_SETTLEMENT_ACCOUNT":
+      return {
+        title: "Payout account needed",
+        subtitle:
+          "Your events can keep collecting payments. Settlements stay on hold until a payout account is ready.",
+        action: "Add account",
+      };
+    case "COMPLETE_KYC":
+      return {
+        title: "Identity verification needed",
+        subtitle:
+          "We need to verify the creator behind the wallet before releasing available earnings.",
+        action: "Continue KYC",
+      };
+    case "ALAT_ACTIVATION":
+      return {
+        title: "Wallet setup under review",
+        subtitle:
+          "Collections can continue while the team reviews this wallet for settlement and transfer options.",
+        action: "View setup",
+      };
+    default:
+      return {
+        title: "Your wallet is in good shape",
+        subtitle:
+          "Track earnings, payout readiness, recent transactions, and settlement history here.",
+        action: "Manage setup",
+      };
   }
 };
 
@@ -267,9 +296,7 @@ const SectionCard = ({
   children: ReactNode;
 }) => (
   <CustomView
-    style={tw.style(
-      "rounded-3xl border border-[#24345A] bg-[#08143B] p-4",
-    )}
+    style={twStyle("rounded-3xl border border-[#24345A] bg-[#08143B] p-4")}
   >
     <View style={tw`flex-row items-start justify-between gap-3`}>
       <View style={tw`flex-1`}>
@@ -283,9 +310,12 @@ const SectionCard = ({
       {actionText && onPressAction ? (
         <TouchableOpacity
           onPress={onPressAction}
-          style={tw`rounded-full bg-[#0FF1CF] px-4 py-2`}
+          style={tw`flex-row items-center rounded-full bg-[#0FF1CF] px-3 py-2`}
         >
-          <Text style={tw`text-xs font-semibold text-[#03122F]`}>{actionText}</Text>
+          <Text style={tw`text-xs font-semibold text-[#01082E]`}>
+            {actionText}
+          </Text>
+          <ChevronRight size={14} color="#01082E" />
         </TouchableOpacity>
       ) : null}
     </View>
@@ -298,118 +328,548 @@ const StatusPill = ({ label }: { label?: string | null }) => {
 
   return (
     <View
-      style={tw.style("self-start rounded-full px-3 py-1", {
+      style={twStyle("self-start rounded-full px-3 py-1", {
         backgroundColor: tone.bg,
       })}
     >
-      <Text style={tw.style("text-xs font-semibold", { color: tone.text })}>
+      <Text style={twStyle("text-xs font-semibold", { color: tone.text })}>
         {toTitleCase(label)}
       </Text>
     </View>
   );
 };
 
-const CompletedStepBadge = () => (
-  <View style={tw`rounded-full bg-[#123F32] px-3 py-1`}>
-    <Text style={tw`text-[11px] font-semibold uppercase tracking-wide text-[#8AF0C4]`}>
-      Completed
-    </Text>
+const FieldLabel = ({ children }: { children: ReactNode }) => (
+  <Text style={tw`mb-2 text-xs font-semibold text-[#9FB0D8]`}>{children}</Text>
+);
+
+const SetupTextInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = "default",
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?: "default" | "number-pad" | "phone-pad";
+}) => (
+  <View style={tw`mb-4`}>
+    <FieldLabel>{label}</FieldLabel>
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="#62749F"
+      keyboardType={keyboardType}
+      style={tw`rounded-2xl border border-[#24345A] bg-[#081335] px-4 py-3 text-white`}
+    />
   </View>
 );
 
-const StepCard = ({
-  stepLabel,
+const SetupButton = ({
+  label,
+  onPress,
+  disabled = false,
+  tone = "primary",
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  tone?: "primary" | "secondary";
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    disabled={disabled}
+    style={[
+      tw`mt-2 flex-row items-center justify-center rounded-full px-4 py-3`,
+      tone === "primary"
+        ? tw`bg-[#0FF1CF]`
+        : tw`border border-[#24345A] bg-[#0A173F]`,
+      disabled ? tw`opacity-50` : null,
+    ]}
+  >
+    <Text
+      style={
+        tone === "primary"
+          ? tw`text-sm font-semibold text-[#01082E]`
+          : tw`text-sm font-semibold text-white`
+      }
+    >
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
+
+const SetupPanel = ({
   title,
-  description,
-  collapsed = false,
-  summary,
+  subtitle,
   children,
 }: {
-  stepLabel: string;
   title: string;
-  description: string;
-  collapsed?: boolean;
-  summary?: string;
-  children?: ReactNode;
-}) => {
-  if (collapsed) {
-    return (
-      <View style={tw`mt-5 rounded-2xl border border-[#24345A] bg-[#08153C] p-4`}>
-        <View style={tw`flex-row items-center justify-between gap-3`}>
-          <View style={tw`flex-1`}>
-            <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-              {stepLabel}
-            </Text>
-            <Text style={tw`mt-2 text-sm font-semibold text-white`}>{title}</Text>
-            <View style={tw`mt-2 flex-row items-start gap-2`}>
-              <CheckCircle2 size={16} color="#8AF0C4" style={tw`mt-0.5`} />
-              <Text style={tw`flex-1 text-sm leading-5 text-[#9FD8C4]`}>
-                {summary || "This step is complete."}
-              </Text>
-            </View>
-          </View>
-          <CompletedStepBadge />
-        </View>
-      </View>
-    );
+  subtitle?: string;
+  children: ReactNode;
+}) => (
+  <View style={tw`mb-4 rounded-3xl border border-[#24345A] bg-[#08143B] p-4`}>
+    <Text style={tw`text-base font-semibold text-white`}>{title}</Text>
+    {subtitle ? (
+      <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>{subtitle}</Text>
+    ) : null}
+    <View style={tw`mt-4`}>{children}</View>
+  </View>
+);
+
+type CompactSetupStepStatus =
+  | "ACTIVE"
+  | "COMPLETED"
+  | "FAILED"
+  | "LOCKED"
+  | "PENDING"
+  | "REVIEW";
+
+type CompactSetupStep = {
+  code: string;
+  title: string;
+  subtitle: string;
+  status: CompactSetupStepStatus;
+  active: boolean;
+};
+
+const ACCOUNT_SETUP_STEP_CODES = ["PAYOUT_ACCOUNT"];
+const IDENTITY_SETUP_STEP_CODES = [
+  "PERSONAL_IDENTITY",
+  "BUSINESS_IDENTITY",
+  "BUSINESS_NAME_MATCH",
+  "REPRESENTATIVE_IDENTITY",
+  "NAME_MATCH",
+];
+const REVIEW_SETUP_STEP_CODES = ["BASIC_SUBMIT", "LIVENESS", "FULL_SUBMIT"];
+
+const getCompactSetupStepStatus = (
+  steps: WalletKycStep[]
+): CompactSetupStepStatus => {
+  if (!steps.length) {
+    return "LOCKED";
   }
 
+  if (steps.some((step) => step.active || step.status === "ACTIVE")) {
+    return "ACTIVE";
+  }
+
+  if (steps.some((step) => step.status === "FAILED")) {
+    return "FAILED";
+  }
+
+  if (steps.some((step) => step.status === "REVIEW")) {
+    return "REVIEW";
+  }
+
+  if (steps.every((step) => step.status === "COMPLETED")) {
+    return "COMPLETED";
+  }
+
+  if (steps.some((step) => step.status === "PENDING")) {
+    return "PENDING";
+  }
+
+  return "LOCKED";
+};
+
+const buildCompactSetupSteps = (
+  steps: WalletKycStep[],
+  livenessRequired?: boolean | null,
+  kycTier?: string | null,
+  accountOwnershipType?: AccountOwnershipType | null
+): CompactSetupStep[] => {
+  const hasBusinessFlow = steps.some((step) => step.code === "BUSINESS_IDENTITY");
+  const getStepsByCode = (codes: string[]) =>
+    steps.filter((step) => codes.includes(step.code));
+  const identityStepCodes =
+    accountOwnershipType === "BUSINESS" &&
+    kycTier === "BASIC" &&
+    !livenessRequired
+      ? ["BUSINESS_IDENTITY", "BUSINESS_NAME_MATCH"]
+      : IDENTITY_SETUP_STEP_CODES;
+  const businessIdentitySubtitle =
+    accountOwnershipType === "BUSINESS" &&
+    kycTier === "BASIC" &&
+    !livenessRequired
+      ? "CAC details"
+      : "CAC and representative details";
+  const reviewStepCodes =
+    kycTier === "BASIC" && !livenessRequired
+      ? ["BASIC_SUBMIT"]
+      : REVIEW_SETUP_STEP_CODES;
+  const makeStep = (
+    code: string,
+    title: string,
+    subtitle: string,
+    stepCodes: string[]
+  ): CompactSetupStep => {
+    const groupedSteps = getStepsByCode(stepCodes);
+    const status = getCompactSetupStepStatus(groupedSteps);
+
+    return {
+      code,
+      title,
+      subtitle,
+      status,
+      active: groupedSteps.some(
+        (step) => step.active || step.status === "ACTIVE"
+      ),
+    };
+  };
+
+  return [
+    makeStep(
+      "PAYOUT_ACCOUNT",
+      "Payout account",
+      "Bank account and name confirmation",
+      ACCOUNT_SETUP_STEP_CODES
+    ),
+    makeStep(
+      "IDENTITY_DETAILS",
+      hasBusinessFlow ? "Business details" : "Identity details",
+      hasBusinessFlow ? businessIdentitySubtitle : "NIN, BVN, or phone details",
+      identityStepCodes
+    ),
+    makeStep(
+      "PAYOUT_REVIEW",
+      kycTier === "FULL"
+        ? "Full payout access"
+        : livenessRequired
+          ? "Increase payout limit"
+          : "Review and payout access",
+      livenessRequired
+        ? "Face verification unlocks higher payouts"
+        : "Basic KYC active up to your payout limit",
+      reviewStepCodes
+    ),
+  ];
+};
+
+const SetupStepList = ({
+  steps,
+  livenessRequired,
+  kycTier,
+  accountOwnershipType,
+}: {
+  steps: WalletKycStep[];
+  livenessRequired?: boolean | null;
+  kycTier?: string | null;
+  accountOwnershipType?: AccountOwnershipType | null;
+}) => {
+  if (!steps.length) {
+    return null;
+  }
+
+  const compactSteps = buildCompactSetupSteps(
+    steps,
+    livenessRequired,
+    kycTier,
+    accountOwnershipType
+  );
+
   return (
-    <View style={tw`mt-5 rounded-2xl border border-[#24345A] bg-[#08153C] p-4`}>
-      <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-        {stepLabel}
-      </Text>
-      <Text style={tw`mt-2 text-sm font-semibold text-white`}>{title}</Text>
-      <Text style={tw`mt-2 text-sm leading-5 text-[#9FB0D8]`}>{description}</Text>
-      {children}
+    <View style={tw`mb-4 rounded-3xl border border-[#24345A] bg-[#08143B] p-4`}>
+      <Text style={tw`text-base font-semibold text-white`}>Setup steps</Text>
+      <View style={tw`mt-4 gap-2`}>
+        {compactSteps.map((step, index) => (
+          <View
+            key={step.code}
+            style={[
+              tw`flex-row items-center gap-3 rounded-2xl border px-3 py-3`,
+              step.active
+                ? tw`border-[#0FF1CF] bg-[#0FF1CF]/10`
+                : tw`border-[#21315A] bg-[#081335]`,
+            ]}
+          >
+            <View
+              style={[
+                tw`h-7 w-7 items-center justify-center rounded-full`,
+                step.status === "COMPLETED"
+                  ? tw`bg-[#0F3A32]`
+                  : step.active
+                    ? tw`bg-[#0FF1CF]`
+                    : tw`bg-[#1E2A4C]`,
+              ]}
+            >
+              <Text
+                style={[
+                  tw`text-xs font-bold`,
+                  step.active ? tw`text-[#01082E]` : tw`text-white`,
+                ]}
+              >
+                {index + 1}
+              </Text>
+            </View>
+            <View style={tw`flex-1`}>
+              <Text style={tw`text-sm font-semibold text-white`}>
+                {step.title}
+              </Text>
+              <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                {step.subtitle}
+              </Text>
+            </View>
+            <StatusPill label={step.active ? "ACTIVE" : step.status} />
+          </View>
+        ))}
+      </View>
     </View>
   );
 };
 
+const OwnershipButton = ({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[
+      tw`flex-1 rounded-2xl border px-3 py-3`,
+      active
+        ? tw`border-[#0FF1CF] bg-[#0FF1CF]/15`
+        : tw`border-[#24345A] bg-[#081335]`,
+    ]}
+  >
+    <Text
+      style={active ? tw`text-center font-semibold text-[#0FF1CF]` : tw`text-center font-semibold text-[#9FB0D8]`}
+    >
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
+
+const EmptyState = ({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) => (
+  <View style={tw`items-center justify-center rounded-3xl bg-[#08143B] p-6`}>
+    <View style={tw`rounded-2xl bg-[#0FF1CF]/15 p-3`}>
+      <WalletIcon size={22} color="#0FF1CF" />
+    </View>
+    <Text style={tw`mt-4 text-center text-base font-semibold text-white`}>
+      {title}
+    </Text>
+    <Text style={tw`mt-2 text-center text-sm leading-5 text-[#9FB0D8]`}>
+      {subtitle}
+    </Text>
+  </View>
+);
+
+const TransactionCard = ({
+  transaction,
+}: {
+  transaction: WalletTransaction;
+}) => (
+  <View style={tw`rounded-2xl border border-[#21315A] bg-[#0A173F] p-4`}>
+    <View style={tw`flex-row items-start justify-between gap-3`}>
+      <View style={tw`flex-1`}>
+        <Text style={tw`text-sm font-semibold text-white`}>
+          {transaction.eventTitle || toTitleCase(transaction.paymentType)}
+        </Text>
+        <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+          {toTitleCase(transaction.paymentType)} via{" "}
+          {toTitleCase(transaction.paymentProvider)}
+        </Text>
+      </View>
+      <StatusPill label={transaction.settlementStatus} />
+    </View>
+
+    <View style={tw`mt-4 flex-row gap-3`}>
+      <View style={tw`flex-1 rounded-2xl bg-[#081335] p-3`}>
+        <Text style={tw`text-xs text-[#6F86B4]`}>Gross</Text>
+        <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+          {formatMoney(transaction.grossAmount)}
+        </Text>
+      </View>
+      <View style={tw`flex-1 rounded-2xl bg-[#081335] p-3`}>
+        <Text style={tw`text-xs text-[#6F86B4]`}>Creator share</Text>
+        <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+          {formatMoney(transaction.creatorPayable)}
+        </Text>
+      </View>
+    </View>
+
+    <Text style={tw`mt-3 text-xs text-[#8FA1CB]`}>
+      Buyer: {transaction.buyerUsername || "Unknown"} -{" "}
+      {formatDate(transaction.createdAt)}
+    </Text>
+  </View>
+);
+
+const SettlementCard = ({ settlement }: { settlement: WalletSettlement }) => (
+  <View style={tw`rounded-2xl border border-[#21315A] bg-[#0A173F] p-4`}>
+    <View style={tw`flex-row items-start justify-between gap-3`}>
+      <View style={tw`flex-1`}>
+        <Text style={tw`text-sm font-semibold text-white`}>
+          {formatMoney(settlement.amount)}
+        </Text>
+        <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+          {settlement.reference} - {settlement.transactionCount} transactions
+        </Text>
+      </View>
+      <StatusPill label={settlement.status} />
+    </View>
+
+    <Text style={tw`mt-3 text-sm text-[#9FB0D8]`}>
+      {settlement.destinationBankName || "Bank"} -{" "}
+      {settlement.destinationAccountNumber || "-"}
+    </Text>
+    <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+      Created {formatDate(settlement.createdAt)}
+    </Text>
+  </View>
+);
+
+const HistoryFooter = ({
+  hasNextPage,
+  isFetchingNextPage,
+}: {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+}) => {
+  if (isFetchingNextPage) {
+    return (
+      <View style={tw`py-6`}>
+        <ActivityIndicator tone="accent" size="small" />
+      </View>
+    );
+  }
+
+  if (!hasNextPage) {
+    return (
+      <Text style={tw`py-6 text-center text-xs text-[#6F86B4]`}>
+        You are all caught up.
+      </Text>
+    );
+  }
+
+  return <View style={tw`h-8`} />;
+};
+
+const HistoryLoading = ({ label }: { label: string }) => (
+  <View style={tw`items-center justify-center py-20`}>
+    <ActivityIndicator tone="accent" size="large" />
+    <Text style={tw`mt-4 text-center text-sm text-[#B7C5E9]`}>{label}</Text>
+  </View>
+);
+
+const HistoryShell = ({
+  title,
+  onBack,
+  children,
+}: {
+  title: string;
+  onBack: () => void;
+  children: ReactNode;
+}) => (
+  <View style={tw`flex-1 bg-[#01082E] px-5 pt-10 pb-4`}>
+    <CustomeTopBarNav title={title} onClickBack={onBack} />
+    {children}
+  </View>
+);
+
 const WalletScreen = () => {
   const router = useLockedRouter();
   const { user } = useAuth();
-
   const overviewQuery = useWalletOverview();
   const onboardingQuery = useWalletOnboarding();
-  const kycQuery = useWalletKyc();
-  const banksQuery = useWalletBanks();
+  const [refreshing, setRefreshing] = useState(false);
+  const [historyView, setHistoryView] = useState<WalletHistoryView>(null);
+  const [setupVisible, setSetupVisible] = useState(false);
+  const [setupStepOverride, setSetupStepOverride] = useState<string | null>(null);
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
 
-  const payoutProfile = overviewQuery.data?.data?.payoutProfile || null;
-  const alatProfile = overviewQuery.data?.data?.alatProfile || null;
+  const kycQuery = useWalletKyc({ enabled: setupVisible });
+  const banksQuery = useWalletBanks({ enabled: setupVisible });
+
+  const transactionsHistoryQuery = useWalletTransactions(
+    WALLET_HISTORY_PAGE_SIZE,
+    {
+      enabled: historyView === "transactions",
+    }
+  );
+  const settlementsHistoryQuery = useWalletSettlements(
+    WALLET_HISTORY_PAGE_SIZE,
+    {
+      enabled: historyView === "settlements",
+    }
+  );
+
   const balance = overviewQuery.data?.data?.balance;
+  const payoutProfile = overviewQuery.data?.data?.payoutProfile || null;
   const transactions = overviewQuery.data?.data?.recentTransactions || [];
   const settlements = overviewQuery.data?.data?.recentSettlements || [];
   const onboarding = onboardingQuery.data?.data;
   const kyc = kycQuery.data?.data;
-  const banks = banksQuery.data?.data ?? EMPTY_BANKS;
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [payoutModalVisible, setPayoutModalVisible] = useState(false);
-  const [kycModalVisible, setKycModalVisible] = useState(false);
-  const [bankSearchModalVisible, setBankSearchModalVisible] = useState(false);
-  const [bankSearchQuery, setBankSearchQuery] = useState("");
-
-  const [ownershipType, setOwnershipType] = useState<AccountOwnershipType>(
-    "PERSONAL"
+  const banks = useMemo(
+    () => banksQuery.data?.data || [],
+    [banksQuery.data?.data]
   );
-  const [legalName, setLegalName] = useState("");
-  const [businessName, setBusinessName] = useState("");
+  const bankPickerItems = useMemo(
+    () => {
+      const seenBankCodes = new Set<string>();
+
+      return banks.reduce<{ label: string; value: string }[]>((items, bank) => {
+        const bankCode = bank.code || "";
+
+        if (!bankCode || seenBankCodes.has(bankCode)) {
+          return items;
+        }
+
+        seenBankCodes.add(bankCode);
+        items.push({
+          label: bank.name || bankCode,
+          value: bankCode,
+        });
+
+        return items;
+      }, []);
+    },
+    [banks]
+  );
+  const onboardingCopy = getTaskCopy(onboarding);
+  const transactionsPreview = transactions.slice(0, WALLET_PREVIEW_LIMIT);
+  const settlementsPreview = settlements.slice(0, WALLET_PREVIEW_LIMIT);
+  const fullTransactions =
+    transactionsHistoryQuery.data?.pages
+      .flatMap((page) =>
+        getHistoryPageItems<WalletTransaction>(
+          page.data as WalletTransaction[] | { data?: WalletTransaction[] }
+        )
+      )
+      .filter(hasWalletItemId) || [];
+
+  const [ownershipType, setOwnershipType] =
+    useState<AccountOwnershipType>("PERSONAL");
   const [selectedBankCode, setSelectedBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
-  const [bvnLast4, setBvnLast4] = useState("");
-
+  const [resolvedPayoutAccount, setResolvedPayoutAccount] =
+    useState<WalletPayoutAccountResolution | null>(null);
+  const [resolvedPayoutAccountKey, setResolvedPayoutAccountKey] =
+    useState("");
+  const [payoutResolutionError, setPayoutResolutionError] = useState("");
+  const payoutResolutionKeyRef = useRef("");
+  const lastPayoutResolutionAttemptKeyRef = useRef("");
   const [personalVerificationMode, setPersonalVerificationMode] =
     useState<KycVerificationMode>("PERSONAL_NIN");
   const [personalPhoneNumber, setPersonalPhoneNumber] = useState("");
   const [personalNin, setPersonalNin] = useState("");
-  const [personalVnin, setPersonalVnin] = useState("");
-  const [personalPassportNumber, setPersonalPassportNumber] = useState("");
+  const [personalBvn, setPersonalBvn] = useState("");
   const [personalFirstName, setPersonalFirstName] = useState("");
   const [personalLastName, setPersonalLastName] = useState("");
   const [personalDob, setPersonalDob] = useState("");
-
   const [businessRegNumber, setBusinessRegNumber] = useState("");
   const [businessDisplayName, setBusinessDisplayName] = useState("");
   const [representativeVerificationMode, setRepresentativeVerificationMode] =
@@ -419,33 +879,124 @@ const WalletScreen = () => {
   const [representativeDob, setRepresentativeDob] = useState("");
   const [representativePhone, setRepresentativePhone] = useState("");
   const [representativeNin, setRepresentativeNin] = useState("");
-  const [representativeVnin, setRepresentativeVnin] = useState("");
-  const [representativePassportNumber, setRepresentativePassportNumber] = useState("");
-
+  const [representativeBvn, setRepresentativeBvn] = useState("");
   const [selectedSelfie, setSelectedSelfie] = useState<{
     uri: string;
     base64?: string | null;
   } | null>(null);
 
+  const selectedBank =
+    banks.find((bank: WalletBank) => bank.code === selectedBankCode) || null;
+  const normalizedAccountNumber =
+    normalizePayoutAccountNumber(accountNumber);
+  const payoutResolutionKey = buildPayoutResolutionKey(
+    selectedBankCode,
+    normalizedAccountNumber
+  );
+  payoutResolutionKeyRef.current = payoutResolutionKey;
+  const canResolvePayoutAccount = Boolean(
+    selectedBankCode &&
+      selectedBank?.name &&
+      /^\d{10}$/.test(normalizedAccountNumber)
+  );
+  const hasResolvedPayoutAccount = Boolean(
+    resolvedPayoutAccount && resolvedPayoutAccountKey === payoutResolutionKey
+  );
+  const canSavePayoutAccount = Boolean(
+    hasResolvedPayoutAccount && selectedBank?.name
+  );
+  const kycSteps = kyc?.steps || [];
+  const rawCurrentKycStep =
+    kyc?.currentStep || kycSteps.find((step) => step.active)?.code || null;
+  const businessFullKycIsOptional =
+    kyc?.accountOwnershipType === "BUSINESS" &&
+    kyc?.kycTier === "BASIC" &&
+    !kyc?.livenessRequired;
+  const shouldShowWalletStatus =
+    kyc?.status === "SUBMITTED" ||
+    kyc?.kycTier === "FULL" ||
+    (kyc?.kycTier === "BASIC" && !kyc?.livenessRequired);
+  const currentKycStep =
+    ((rawCurrentKycStep === "LIVENESS" &&
+      kyc?.kycTier === "BASIC" &&
+      !kyc?.livenessRequired) ||
+      (rawCurrentKycStep === "REPRESENTATIVE_IDENTITY" &&
+        businessFullKycIsOptional))
+      ? "WALLET_STATUS"
+      : rawCurrentKycStep || (shouldShowWalletStatus ? "WALLET_STATUS" : null);
+  const activeSetupStep =
+    setupStepOverride || currentKycStep || "PAYOUT_ACCOUNT";
+  const currentPersonalVerificationMode =
+    normalizePersonalVerificationMode(personalVerificationMode);
+  const currentBusinessVerificationMode =
+    normalizeBusinessVerificationMode(representativeVerificationMode);
+  const currentOwnershipType = ownershipType;
+  const personalIdentityNumber =
+    currentPersonalVerificationMode === "PERSONAL_BVN"
+      ? personalBvn.trim()
+      : currentPersonalVerificationMode === "PERSONAL_PHONE"
+        ? personalPhoneNumber.trim()
+        : personalNin.trim();
+  const representativeIdentityNumber =
+    currentBusinessVerificationMode === "BUSINESS_CAC_REP_BVN"
+      ? representativeBvn.trim()
+      : currentBusinessVerificationMode === "BUSINESS_CAC_REP_PHONE"
+        ? representativePhone.trim()
+        : representativeNin.trim();
+  const isBusinessVerificationVerified = kyc?.businessStatus === "VERIFIED";
+  const isIdentityVerified = kyc?.identityStatus === "VERIFIED";
+  const isIdentityReviewable = kyc?.identityStatus === "SUBMITTED";
+  const isIdentityPending = kyc?.identityStatus === "PENDING_PROVIDER";
+  const isLivenessVerified = kyc?.livenessStatus === "VERIFIED";
+  const canStartBusinessRepresentative =
+    activeSetupStep === "REPRESENTATIVE_IDENTITY" &&
+    currentOwnershipType === "BUSINESS" &&
+    isBusinessVerificationVerified;
+  const canSubmitLiveness =
+    activeSetupStep === "LIVENESS" &&
+    (currentOwnershipType === "BUSINESS"
+      ? isBusinessVerificationVerified &&
+        (isIdentityVerified || isIdentityReviewable)
+      : isIdentityVerified);
+  const canSubmitBasicKyc =
+    activeSetupStep === "BASIC_SUBMIT" && Boolean(kyc?.canSubmitBasicKyc);
+  const canSubmitFullKyc =
+    activeSetupStep === "FULL_SUBMIT" &&
+    Boolean(kyc?.canSubmitFullKyc || isLivenessVerified);
+  const isKycSubmitted =
+    kyc?.status === "SUBMITTED" || kyc?.status === "VERIFIED";
+  const fullSettlements =
+    settlementsHistoryQuery.data?.pages
+      .flatMap((page) =>
+        getHistoryPageItems<WalletSettlement>(
+          page.data as WalletSettlement[] | { data?: WalletSettlement[] }
+        )
+      )
+      .filter(hasWalletItemId) || [];
+
+  const resolvePayoutAccountMutation = useResolveWalletPayoutAccount();
+
   const payoutMutation = useUpsertWalletPayoutProfile({
-    onSuccess: () => {
-      showGlobalSuccess("Payout account saved. Continue KYC to unlock settlements.");
-      setPayoutModalVisible(false);
-      setKycModalVisible(true);
+    onSuccess: async () => {
+      showGlobalSuccess("Payout account saved.");
+      setSetupStepOverride(null);
+      await refreshWalletSetup();
     },
     onError: (error: any) => {
       showGlobalError(
         getWalletFriendlyErrorMessage(
           error,
-          "We couldn't verify this payout account right now. Please try again later."
+          "We couldn't save this payout account right now. Please try again later."
         )
       );
     },
   });
 
   const startPersonalKycMutation = useStartPersonalKyc({
-    onSuccess: () => {
+    onSuccess: async () => {
       showGlobalSuccess("Personal identity check started.");
+      setSetupStepOverride(null);
+      await refreshWalletSetup();
     },
     onError: (error: any) => {
       showGlobalError(
@@ -458,8 +1009,10 @@ const WalletScreen = () => {
   });
 
   const startBusinessKycMutation = useStartBusinessKyc({
-    onSuccess: () => {
-      showGlobalSuccess("Business verification started. Once CAC is confirmed, you can continue with the representative.");
+    onSuccess: async () => {
+      showGlobalSuccess("Business verification started.");
+      setSetupStepOverride(null);
+      await refreshWalletSetup();
     },
     onError: (error: any) => {
       showGlobalError(
@@ -471,23 +1024,29 @@ const WalletScreen = () => {
     },
   });
 
-  const startBusinessRepresentativeKycMutation = useStartBusinessRepresentativeKyc({
-    onSuccess: () => {
-      showGlobalSuccess("Representative identity check started.");
-    },
-    onError: (error: any) => {
-      showGlobalError(
-        getWalletFriendlyErrorMessage(
-          error,
-          "We couldn't start representative verification right now. Please try again later."
-        )
-      );
-    },
-  });
+  const startBusinessRepresentativeKycMutation =
+    useStartBusinessRepresentativeKyc({
+      onSuccess: async () => {
+        showGlobalSuccess("Representative identity check started.");
+        setSetupStepOverride(null);
+        await refreshWalletSetup();
+      },
+      onError: (error: any) => {
+        showGlobalError(
+          getWalletFriendlyErrorMessage(
+            error,
+            "We couldn't start representative verification right now. Please try again later."
+          )
+        );
+      },
+    });
 
   const submitLivenessMutation = useSubmitWalletLiveness({
-    onSuccess: () => {
-      showGlobalSuccess("Selfie submitted. You can now send your KYC for review.");
+    onSuccess: async () => {
+      showGlobalSuccess("Selfie submitted.");
+      setSetupStepOverride(null);
+      setSelectedSelfie(null);
+      await refreshWalletSetup();
     },
     onError: (error: any) => {
       showGlobalError(
@@ -500,9 +1059,10 @@ const WalletScreen = () => {
   });
 
   const submitKycMutation = useSubmitWalletKyc({
-    onSuccess: () => {
+    onSuccess: async () => {
       showGlobalSuccess("KYC submitted for review.");
-      setKycModalVisible(false);
+      setSetupStepOverride(null);
+      await refreshWalletSetup();
     },
     onError: (error: any) => {
       showGlobalError(
@@ -514,24 +1074,31 @@ const WalletScreen = () => {
     },
   });
 
-  const notifyOnKycResolutionMutation = useNotifyOnKycResolution();
+  const busy =
+    resolvePayoutAccountMutation.isPending ||
+    payoutMutation.isPending ||
+    startPersonalKycMutation.isPending ||
+    startBusinessKycMutation.isPending ||
+    startBusinessRepresentativeKycMutation.isPending ||
+    submitLivenessMutation.isPending ||
+    submitKycMutation.isPending;
 
-  useEffect(() => {
+  async function refreshWalletSetup() {
+    await Promise.all([
+      overviewQuery.refetch(),
+      onboardingQuery.refetch(),
+      kycQuery.refetch(),
+    ]);
+  }
+
+  const openSetupModal = () => {
     const profileOwnership =
-      payoutProfile?.accountOwnershipType && payoutProfile.accountOwnershipType !== "UNKNOWN"
+      payoutProfile?.accountOwnershipType &&
+      payoutProfile.accountOwnershipType !== "UNKNOWN"
         ? payoutProfile.accountOwnershipType
         : "PERSONAL";
-
-    setOwnershipType(profileOwnership);
-    setLegalName(payoutProfile?.legalName || user?.name || "");
-    setBusinessName(payoutProfile?.businessName || "");
-    setSelectedBankCode(payoutProfile?.bankCode || "");
-    setAccountNumber(payoutProfile?.accountNumber || "");
-    setAccountName(payoutProfile?.accountName || "");
-    setBvnLast4(payoutProfile?.bvnLast4 || "");
-  }, [payoutProfile, user?.name]);
-
-  useEffect(() => {
+    const profileBankCode = payoutProfile?.bankCode || selectedBankCode;
+    const profileAccountNumber = payoutProfile?.accountNumber || "";
     const personalNameParts = splitFullName(
       payoutProfile?.legalName || kyc?.verifiedFullName || user?.name || ""
     );
@@ -539,13 +1106,33 @@ const WalletScreen = () => {
       kyc?.verifiedFullName || payoutProfile?.legalName || user?.name || ""
     );
 
-    setPersonalFirstName(personalNameParts.firstName);
-    setPersonalLastName(personalNameParts.lastName);
-    setPersonalPhoneNumber(user?.phoneNumber || "");
+    setOwnershipType(
+      getOwnershipTypeFromResolvedAccountName(
+        payoutProfile?.accountName,
+        profileOwnership
+      )
+    );
+    setSelectedBankCode(profileBankCode);
+    setAccountNumber(profileAccountNumber);
+    setResolvedPayoutAccount(
+      payoutProfile?.accountName && profileAccountNumber
+        ? {
+            accountNumber: normalizePayoutAccountNumber(profileAccountNumber),
+            accountName: payoutProfile.accountName,
+          }
+        : null
+    );
+    setResolvedPayoutAccountKey(
+      payoutProfile?.accountName && profileAccountNumber
+        ? buildPayoutResolutionKey(profileBankCode, profileAccountNumber)
+        : ""
+    );
     setPersonalVerificationMode(
       normalizePersonalVerificationMode(kyc?.verificationMode)
     );
-
+    setPersonalPhoneNumber(user?.phoneNumber || "");
+    setPersonalFirstName(personalNameParts.firstName);
+    setPersonalLastName(personalNameParts.lastName);
     setBusinessDisplayName(payoutProfile?.businessName || "");
     setRepresentativeVerificationMode(
       normalizeBusinessVerificationMode(kyc?.verificationMode)
@@ -553,257 +1140,98 @@ const WalletScreen = () => {
     setRepresentativeFirstName(representativeNameParts.firstName);
     setRepresentativeLastName(representativeNameParts.lastName);
     setRepresentativePhone(user?.phoneNumber || "");
+    setSetupStepOverride(null);
+    setSetupVisible(true);
+  };
+
+  const clearResolvedPayoutAccount = () => {
+    setResolvedPayoutAccount(null);
+    setResolvedPayoutAccountKey("");
+    setPayoutResolutionError("");
+    lastPayoutResolutionAttemptKeyRef.current = "";
+  };
+
+  const handleBankCodeChange = (value: string) => {
+    setSelectedBankCode(value);
+    setBankPickerOpen(false);
+    clearResolvedPayoutAccount();
+  };
+
+  const handleAccountNumberChange = (value: string) => {
+    setAccountNumber(value);
+    clearResolvedPayoutAccount();
+  };
+
+  useEffect(() => {
+    if (
+      !setupVisible ||
+      activeSetupStep !== "PAYOUT_ACCOUNT" ||
+      !canResolvePayoutAccount ||
+      hasResolvedPayoutAccount ||
+      resolvePayoutAccountMutation.isPending ||
+      lastPayoutResolutionAttemptKeyRef.current === payoutResolutionKey
+    ) {
+      return;
+    }
+
+    const resolutionKey = payoutResolutionKey;
+    const bankCode = selectedBankCode;
+    const accountNumberToResolve = normalizedAccountNumber;
+
+    const resolveTimer = setTimeout(() => {
+      lastPayoutResolutionAttemptKeyRef.current = resolutionKey;
+      setPayoutResolutionError("");
+
+      resolvePayoutAccountMutation
+        .mutateAsync({
+          bankCode,
+          accountNumber: accountNumberToResolve,
+        })
+        .then((response) => {
+          if (payoutResolutionKeyRef.current !== resolutionKey) {
+            return;
+          }
+
+          const resolvedAccount = response.data;
+
+          setResolvedPayoutAccount(resolvedAccount);
+          setResolvedPayoutAccountKey(resolutionKey);
+          setOwnershipType((currentType) =>
+            getOwnershipTypeFromResolvedAccountName(
+              resolvedAccount.accountName,
+              currentType
+            )
+          );
+        })
+        .catch((error: any) => {
+          if (payoutResolutionKeyRef.current !== resolutionKey) {
+            return;
+          }
+
+          setResolvedPayoutAccount(null);
+          setResolvedPayoutAccountKey("");
+          setPayoutResolutionError(
+            getWalletFriendlyErrorMessage(
+              error,
+              "We couldn't resolve this account. Check the bank and account number."
+            )
+          );
+        });
+    }, 650);
+
+    return () => {
+      clearTimeout(resolveTimer);
+    };
   }, [
-    payoutProfile?.legalName,
-    payoutProfile?.businessName,
-    kyc?.verifiedFullName,
-    kyc?.verificationMode,
-    user?.name,
-    user?.phoneNumber,
+    activeSetupStep,
+    canResolvePayoutAccount,
+    hasResolvedPayoutAccount,
+    normalizedAccountNumber,
+    payoutResolutionKey,
+    resolvePayoutAccountMutation,
+    selectedBankCode,
+    setupVisible,
   ]);
-
-  useEffect(() => {
-    if (!selectedBankCode && banks.length > 0) {
-      const firstBank = banks.find((bank) => bank.code) || banks[0];
-      if (firstBank?.code) {
-        setSelectedBankCode(firstBank.code);
-      }
-    }
-  }, [banks, selectedBankCode]);
-
-  const selectedBank = useMemo(() => {
-    return banks.find((bank) => bank.code === selectedBankCode) || null;
-  }, [banks, selectedBankCode]);
-
-  const filteredBanks = useMemo(() => {
-    const query = bankSearchQuery.trim().toLowerCase();
-
-    if (!query) {
-      return banks;
-    }
-
-    return banks.filter((bank) => {
-      const name = bank.name?.toLowerCase() || "";
-      const code = bank.code?.toLowerCase() || "";
-      const longcode = bank.longcode?.toLowerCase() || "";
-
-      return (
-        name.includes(query) ||
-        code.includes(query) ||
-        longcode.includes(query)
-      );
-    });
-  }, [bankSearchQuery, banks]);
-
-  const visibleBanks = useMemo(() => {
-    if (bankSearchQuery.trim()) {
-      return filteredBanks;
-    }
-
-    const prioritizedBanks: WalletBank[] = [];
-
-    if (selectedBank?.code) {
-      prioritizedBanks.push(selectedBank);
-    }
-
-    for (const bank of banks) {
-      if (prioritizedBanks.some((entry) => entry.code === bank.code)) {
-        continue;
-      }
-
-      prioritizedBanks.push(bank);
-
-      if (prioritizedBanks.length >= FAST_BANK_PREVIEW_LIMIT) {
-        break;
-      }
-    }
-
-    return prioritizedBanks;
-  }, [bankSearchQuery, filteredBanks, banks, selectedBank]);
-
-  const onboardingCopy = getTaskCopy(onboarding);
-  const currentOwnershipType = ownershipType;
-
-
-  const currentPersonalVerificationMode =
-    normalizePersonalVerificationMode(personalVerificationMode);
-  const currentBusinessVerificationMode =
-    normalizeBusinessVerificationMode(representativeVerificationMode);
-
-  const personalIdentityNumber =
-    currentPersonalVerificationMode === "PERSONAL_VNIN"
-      ? personalVnin.trim()
-      : currentPersonalVerificationMode === "PERSONAL_PASSPORT"
-        ? personalPassportNumber.trim()
-        : personalNin.trim();
-
-  const representativeIdentityNumber =
-    currentBusinessVerificationMode === "BUSINESS_CAC_REP_VNIN"
-      ? representativeVnin.trim()
-      : currentBusinessVerificationMode === "BUSINESS_CAC_REP_PASSPORT"
-        ? representativePassportNumber.trim()
-        : representativeNin.trim();
-
-  const isBusinessVerificationVerified = kyc?.businessStatus === "VERIFIED";
-  const isBusinessVerificationPending = kyc?.businessStatus === "PENDING_PROVIDER";
-  const isBusinessVerificationRejected = kyc?.businessStatus === "REJECTED";
-  const isIdentityVerified = kyc?.identityStatus === "VERIFIED";
-  const isIdentityPending = kyc?.identityStatus === "PENDING_PROVIDER";
-  const isIdentityRejected = kyc?.identityStatus === "REJECTED";
-  const isLivenessVerified = kyc?.livenessStatus === "VERIFIED";
-  const isKycSubmitted =
-    kyc?.status === "SUBMITTED" || kyc?.status === "VERIFIED";
-  const canStartBusinessRepresentative =
-    currentOwnershipType === "BUSINESS" && isBusinessVerificationVerified;
-  const canSubmitLiveness =
-    currentOwnershipType === "BUSINESS"
-      ? isBusinessVerificationVerified && isIdentityVerified
-      : isIdentityVerified;
-  const canSubmitKyc =
-    currentOwnershipType === "BUSINESS"
-      ? isBusinessVerificationVerified && isIdentityVerified && isLivenessVerified
-      : isIdentityVerified && isLivenessVerified;
-
-  const pendingProviderState = useMemo(() => {
-    if (currentOwnershipType === "BUSINESS" && kyc?.businessStatus === "PENDING_PROVIDER") {
-      return {
-        key: "business",
-        title: "Business verification in progress",
-        description:
-          "We’ve submitted your CAC details and we’re waiting for our verification partner to respond.",
-      };
-    }
-
-    if (kyc?.identityStatus === "PENDING_PROVIDER") {
-      return {
-        key: "identity",
-        title:
-          currentOwnershipType === "BUSINESS"
-            ? "Representative verification in progress"
-            : "Identity verification in progress",
-        description:
-          currentOwnershipType === "BUSINESS"
-            ? "We’ve submitted the representative details and we’re waiting for our verification partner to respond."
-            : "We’ve submitted your identity details and we’re waiting for our verification partner to respond.",
-      };
-    }
-
-    if (kyc?.livenessStatus === "PENDING_PROVIDER") {
-      return {
-        key: "liveness",
-        title: "Face match in progress",
-        description:
-          "Your selfie has been sent for face match. We’re waiting for our verification partner to finish processing it.",
-      };
-    }
-
-    return null;
-  }, [
-    currentOwnershipType,
-    kyc?.businessStatus,
-    kyc?.identityStatus,
-    kyc?.livenessStatus,
-  ]);
-  const [pendingProviderCountdown, setPendingProviderCountdown] = useState(45);
-  const pendingProviderTimedOut = pendingProviderCountdown === 0;
-
-  const busy =
-    payoutMutation.isPending ||
-    startPersonalKycMutation.isPending ||
-    startBusinessKycMutation.isPending ||
-    startBusinessRepresentativeKycMutation.isPending ||
-    submitLivenessMutation.isPending ||
-    submitKycMutation.isPending ||
-    notifyOnKycResolutionMutation.isPending;
-
-  const isInitialLoading =
-    overviewQuery.isLoading || onboardingQuery.isLoading || kycQuery.isLoading;
-
-  const syncPendingProviderStatus = useCallback(async () => {
-    await Promise.all([
-      overviewQuery.refetch(),
-      onboardingQuery.refetch(),
-      kycQuery.refetch(),
-    ]);
-  }, [overviewQuery, onboardingQuery, kycQuery]);
-
-  useEffect(() => {
-    if (!kycModalVisible || !pendingProviderState?.key) {
-      setPendingProviderCountdown(45);
-      return;
-    }
-
-    setPendingProviderCountdown(45);
-  }, [kycModalVisible, pendingProviderState?.key]);
-
-  useEffect(() => {
-    if (!kycModalVisible || !pendingProviderState?.key || pendingProviderTimedOut) {
-      return;
-    }
-
-    const countdownTimer = setInterval(() => {
-      setPendingProviderCountdown((current) => Math.max(current - 1, 0));
-    }, 1000);
-
-    return () => clearInterval(countdownTimer);
-  }, [kycModalVisible, pendingProviderState?.key, pendingProviderTimedOut]);
-
-  useEffect(() => {
-    if (!kycModalVisible || !pendingProviderState?.key) {
-      return;
-    }
-
-    const pollTimer = setInterval(() => {
-      void syncPendingProviderStatus();
-    }, 5000);
-
-    return () => clearInterval(pollTimer);
-  }, [kycModalVisible, pendingProviderState?.key, syncPendingProviderStatus]);
-
-  const refetchAll = async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        syncPendingProviderStatus(),
-        banksQuery.refetch(),
-      ]);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const openPayoutModal = () => {
-    setPayoutModalVisible(true);
-  };
-
-  const openBankSearchModal = () => {
-    setBankSearchQuery("");
-    setBankSearchModalVisible(true);
-  };
-
-  const closeBankSearchModal = () => {
-    setBankSearchModalVisible(false);
-    setBankSearchQuery("");
-  };
-
-  const handleSelectBank = (bank: WalletBank) => {
-    if (!bank.code) {
-      return;
-    }
-
-    setSelectedBankCode(bank.code);
-    closeBankSearchModal();
-  };
-
-  const openKycModal = () => {
-    if (!payoutProfile?.bankName || !payoutProfile?.accountNumberMasked) {
-      showGlobalWarning("Add your settlement account first.");
-      setPayoutModalVisible(true);
-      return;
-    }
-
-    setKycModalVisible(true);
-  };
 
   const handleSavePayoutProfile = async () => {
     if (!selectedBankCode || !selectedBank?.name) {
@@ -811,70 +1239,55 @@ const WalletScreen = () => {
       return;
     }
 
-    if (!accountNumber.trim()) {
+    if (!/^\d{10}$/.test(normalizedAccountNumber)) {
       showGlobalWarning("Enter the settlement account number.");
       return;
     }
 
-    if (currentOwnershipType === "PERSONAL" && !legalName.trim()) {
-      showGlobalWarning("Enter the legal name tied to the account.");
+    if (!hasResolvedPayoutAccount) {
+      showGlobalWarning("Resolve the account name before saving.");
       return;
     }
 
-    if (currentOwnershipType === "BUSINESS") {
-      if (!businessName.trim()) {
-        showGlobalWarning("Enter the registered business name.");
-        return;
-      }
-
-    }
+    const accountOwnershipType = getOwnershipTypeFromResolvedAccountName(
+      resolvedPayoutAccount?.accountName,
+      currentOwnershipType
+    );
 
     await payoutMutation.mutateAsync({
-      accountOwnershipType: currentOwnershipType,
-      legalName: currentOwnershipType === "PERSONAL" ? legalName.trim() : undefined,
-      businessName:
-        currentOwnershipType === "BUSINESS" ? businessName.trim() : undefined,
+      accountOwnershipType,
       bankCode: selectedBankCode,
       bankName: selectedBank.name,
-      accountNumber: accountNumber.trim(),
-      accountName:
-        currentOwnershipType === "BUSINESS" ? accountName.trim() : undefined,
-      bvnLast4: bvnLast4.trim() || undefined,
+      accountNumber: normalizedAccountNumber,
     });
   };
 
   const handleStartPersonalKyc = async () => {
+    if (!payoutProfile?.bankName && !selectedBank?.name) {
+      showGlobalWarning("Add your settlement account first.");
+      return;
+    }
+
     if (!personalFirstName.trim() || !personalLastName.trim()) {
-      showGlobalWarning("Enter your first and last name for the identity check.");
+      showGlobalWarning("Enter your first and last name.");
       return;
     }
 
-    if (currentPersonalVerificationMode === "PERSONAL_NIN" && !personalNin.trim()) {
-      showGlobalWarning("Enter your NIN to continue.");
-      return;
-    }
-
-    if (currentPersonalVerificationMode === "PERSONAL_VNIN" && !personalVnin.trim()) {
-      showGlobalWarning("Enter your vNIN to continue.");
-      return;
-    }
-
-    if (
-      currentPersonalVerificationMode === "PERSONAL_PASSPORT" &&
-      !personalPassportNumber.trim()
-    ) {
-      showGlobalWarning("Enter your passport number to continue.");
+    if (!personalIdentityNumber) {
+      showGlobalWarning("Enter the identity number for the selected method.");
       return;
     }
 
     await startPersonalKycMutation.mutateAsync({
       verificationMode: currentPersonalVerificationMode,
       phoneNumber: personalPhoneNumber.trim() || undefined,
-      nin: currentPersonalVerificationMode === "PERSONAL_NIN" ? personalNin.trim() || undefined : undefined,
-      vnin: currentPersonalVerificationMode === "PERSONAL_VNIN" ? personalVnin.trim() || undefined : undefined,
-      passportNumber:
-        currentPersonalVerificationMode === "PERSONAL_PASSPORT"
-          ? personalPassportNumber.trim() || undefined
+      bvn:
+        currentPersonalVerificationMode === "PERSONAL_BVN"
+          ? personalBvn.trim()
+          : undefined,
+      nin:
+        currentPersonalVerificationMode === "PERSONAL_NIN"
+          ? personalNin.trim()
           : undefined,
       firstName: personalFirstName.trim(),
       lastName: personalLastName.trim(),
@@ -884,23 +1297,20 @@ const WalletScreen = () => {
 
   const handleStartBusinessKyc = async () => {
     if (!businessRegNumber.trim()) {
-      showGlobalWarning("Enter the CAC registration number for the business account.");
+      showGlobalWarning("Enter the CAC registration number.");
       return;
     }
 
     await startBusinessKycMutation.mutateAsync({
       regNumber: businessRegNumber.trim(),
-      businessName: businessDisplayName.trim() || undefined,
+      businessName:
+        businessDisplayName.trim() || payoutProfile?.businessName || undefined,
     });
   };
 
   const handleStartBusinessRepresentativeKyc = async () => {
     if (!canStartBusinessRepresentative) {
-      showGlobalWarning(
-        isBusinessVerificationPending
-          ? "Business verification is still waiting on provider response."
-          : "Verify the CAC record before continuing with the representative."
-      );
+      showGlobalWarning("Verify the CAC record before continuing.");
       return;
     }
 
@@ -909,27 +1319,8 @@ const WalletScreen = () => {
       return;
     }
 
-    if (
-      currentBusinessVerificationMode === "BUSINESS_CAC_REP_NIN" &&
-      !representativeNin.trim()
-    ) {
-      showGlobalWarning("Enter the representative's NIN to continue.");
-      return;
-    }
-
-    if (
-      currentBusinessVerificationMode === "BUSINESS_CAC_REP_VNIN" &&
-      !representativeVnin.trim()
-    ) {
-      showGlobalWarning("Enter the representative's vNIN to continue.");
-      return;
-    }
-
-    if (
-      currentBusinessVerificationMode === "BUSINESS_CAC_REP_PASSPORT" &&
-      !representativePassportNumber.trim()
-    ) {
-      showGlobalWarning("Enter the representative's passport number to continue.");
+    if (!representativeIdentityNumber) {
+      showGlobalWarning("Enter the representative's identity number.");
       return;
     }
 
@@ -941,15 +1332,11 @@ const WalletScreen = () => {
       representativeDateOfBirth: representativeDob.trim() || undefined,
       representativeNin:
         currentBusinessVerificationMode === "BUSINESS_CAC_REP_NIN"
-          ? representativeNin.trim() || undefined
+          ? representativeNin.trim()
           : undefined,
-      representativeVnin:
-        currentBusinessVerificationMode === "BUSINESS_CAC_REP_VNIN"
-          ? representativeVnin.trim() || undefined
-          : undefined,
-      representativePassportNumber:
-        currentBusinessVerificationMode === "BUSINESS_CAC_REP_PASSPORT"
-          ? representativePassportNumber.trim() || undefined
+      representativeBvn:
+        currentBusinessVerificationMode === "BUSINESS_CAC_REP_BVN"
+          ? representativeBvn.trim()
           : undefined,
     });
   };
@@ -981,153 +1368,730 @@ const WalletScreen = () => {
 
   const handleSubmitLiveness = async () => {
     if (!canSubmitLiveness) {
-      if (currentOwnershipType === "BUSINESS") {
-        if (isBusinessVerificationPending) {
-          showGlobalWarning("Business verification is still waiting on provider response.");
-          return;
-        }
-
-        if (!isBusinessVerificationVerified) {
-          showGlobalWarning("Verify the CAC record before submitting face match.");
-          return;
-        }
-
-        if (isIdentityPending) {
-          showGlobalWarning(
-            "Representative identity verification is still waiting on provider response."
-          );
-          return;
-        }
-
-        showGlobalWarning(
-          "Representative identity must be verified before face match can start."
-        );
-        return;
-      }
-
       showGlobalWarning(
         isIdentityPending
-          ? "Identity verification is still waiting on provider response."
-          : "Verify your identity before submitting face match."
+          ? "Identity verification is still in progress."
+          : "Complete the previous verification step before submitting face verification."
       );
       return;
     }
 
     if (!selectedSelfie?.base64) {
-      showGlobalWarning("Choose a selfie image before submitting face match.");
-      return;
-    }
-
-    const identityNumber =
-      currentOwnershipType === "BUSINESS"
-        ? representativeIdentityNumber
-        : personalIdentityNumber;
-
-    if (!identityNumber) {
-      showGlobalWarning(
-        currentOwnershipType === "BUSINESS"
-          ? "Enter the representative's identity number before submitting face match."
-          : "Enter your identity number before submitting face match."
-      );
+      showGlobalWarning("Choose a selfie image first.");
       return;
     }
 
     await submitLivenessMutation.mutateAsync({
-      identityNumber,
       photoBase64: selectedSelfie.base64,
     });
   };
 
-  const handleSubmitKyc = () => {
+  const handleSubmitKyc = (targetTier: "BASIC" | "FULL" = "BASIC") => {
+    const canSubmit =
+      targetTier === "FULL" ? canSubmitFullKyc : canSubmitBasicKyc;
+
+    if (!canSubmit) {
+      showGlobalWarning(
+        targetTier === "FULL"
+          ? "Complete face verification before submitting Full KYC."
+          : "Complete the unlocked verification steps before submitting Basic KYC."
+      );
+      return;
+    }
+
     Alert.alert(
-      "Submit KYC",
-      "We’ll send your verification details for review. You can still collect payments while payouts stay on hold.",
+      targetTier === "FULL" ? "Submit Full KYC" : "Submit Basic KYC",
+      targetTier === "FULL"
+        ? "We will submit your face verification upgrade for review."
+        : `Basic KYC lets you receive up to ${formatMoney(kyc?.basicKycSettlementCap)} before face verification is required.`,
       [
         { text: "Not yet", style: "cancel" },
         {
           text: "Submit",
-          onPress: async () => {
-            await submitKycMutation.mutateAsync();
+          onPress: () => {
+            void submitKycMutation.mutateAsync({ targetTier });
           },
         },
       ]
     );
   };
 
-  const handleCloseKycModal = useCallback(async () => {
-    if (!pendingProviderState?.key) {
-      setKycModalVisible(false);
-      return;
-    }
+  const renderNameMatchPanel = () => {
+    const verifiedName =
+      currentOwnershipType === "BUSINESS"
+        ? kyc?.verifiedBusinessName
+        : kyc?.verifiedFullName;
+    const retryStep =
+      currentOwnershipType === "BUSINESS" ? "BUSINESS_IDENTITY" : "PERSONAL_IDENTITY";
 
-    const target = getPendingResolutionTarget(pendingProviderState.key);
-
-    if (!target) {
-      setKycModalVisible(false);
-      return;
-    }
-
-    try {
-      const response = await notifyOnKycResolutionMutation.mutateAsync({ target });
-      setKycModalVisible(false);
-      void syncPendingProviderStatus();
-
-      if (response.data?.sent) {
-        showGlobalSuccess(
-          "This verification step has already resolved. We’ve sent an update to your notifications."
-        );
-        return;
-      }
-
-      showGlobalSuccess(
-        "We’ll notify you once this verification step resolves. You can continue later and come back anytime."
-      );
-    } catch (error: any) {
-      showGlobalError(
-        error?.response?.data?.message ||
-          "We couldn’t save the notification preference for this verification step."
-      );
-    }
-  }, [
-    notifyOnKycResolutionMutation,
-    pendingProviderState?.key,
-    syncPendingProviderStatus,
-  ]);
-
-  const handleContinueLater = () => {
-    void handleCloseKycModal();
-  };
-
-  const renderKycSteps = (data?: WalletKycData | null) => {
-    if (!data?.steps?.length) {
-      return (
-        <Text style={tw`text-sm text-[#9FB0D8]`}>
-          Once you start verification, each step will show up here.
-        </Text>
-      );
-    }
-
-    return data.steps.map((step) => (
-      <View
-        key={step.code}
-        style={tw`mb-2 flex-row items-center justify-between rounded-2xl bg-[#0A173F] px-3 py-3`}
+    return (
+      <SetupPanel
+        title="Name match"
+        subtitle="Review the mismatch before continuing."
       >
-        <Text style={tw`flex-1 text-sm font-medium text-white`}>
-          {toTitleCase(step.code)}
-        </Text>
-        <StatusPill label={step.status} />
-      </View>
-    ));
+        <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+          <StatusPill label={kyc?.nameMatchStatus || "NOT_CHECKED"} />
+        </View>
+        <View style={tw`mb-4 rounded-2xl bg-[#081335] p-4`}>
+          <Text style={tw`text-xs text-[#8FA1CB]`}>Payout account name</Text>
+          <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+            {payoutProfile?.accountName || "Not available"}
+          </Text>
+          <Text style={tw`mt-4 text-xs text-[#8FA1CB]`}>
+            Verified {currentOwnershipType === "BUSINESS" ? "business" : "identity"} name
+          </Text>
+          <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+            {verifiedName || "Not available"}
+          </Text>
+          {kyc?.nameMatchReason ? (
+            <Text style={tw`mt-4 text-sm leading-5 text-[#FFD76A]`}>
+              {kyc.nameMatchReason}
+            </Text>
+          ) : null}
+        </View>
+        <SetupButton
+          label="Edit payout account"
+          onPress={() => setSetupStepOverride("PAYOUT_ACCOUNT")}
+          disabled={busy}
+          tone="secondary"
+        />
+        <SetupButton
+          label={
+            currentOwnershipType === "BUSINESS"
+              ? "Retry CAC details"
+              : "Retry identity details"
+          }
+          onPress={() => setSetupStepOverride(retryStep)}
+          disabled={busy}
+        />
+      </SetupPanel>
+    );
   };
+
+  const renderSetupStep = () => {
+    if (kycQuery.isLoading) {
+      return (
+        <SetupPanel title="Loading setup">
+          <View style={tw`py-6`}>
+            <ActivityIndicator tone="accent" size="small" />
+          </View>
+        </SetupPanel>
+      );
+    }
+
+    switch (activeSetupStep) {
+      case "PAYOUT_ACCOUNT":
+        return (
+          <SetupPanel
+            title="Payout account"
+            subtitle="Resolve the bank account name before saving the payout account."
+          >
+            <View style={tw`mb-4 flex-row gap-3`}>
+              <OwnershipButton
+                label="Personal"
+                active={currentOwnershipType === "PERSONAL"}
+                onPress={() => setOwnershipType("PERSONAL")}
+              />
+              <OwnershipButton
+                label="Business"
+                active={currentOwnershipType === "BUSINESS"}
+                onPress={() => setOwnershipType("BUSINESS")}
+              />
+            </View>
+
+            <View style={tw`mb-4`}>
+              <FieldLabel>Bank</FieldLabel>
+              <DropDownPicker
+                open={bankPickerOpen}
+                value={selectedBankCode || null}
+                items={bankPickerItems}
+                setOpen={setBankPickerOpen}
+                setValue={(callback) => {
+                  const nextValue =
+                    typeof callback === "function"
+                      ? callback(selectedBankCode || null)
+                      : callback;
+
+                  handleBankCodeChange(String(nextValue || ""));
+                }}
+                searchable
+                listMode="MODAL"
+                modalTitle="Select bank"
+                modalAnimationType="slide"
+                searchPlaceholder="Search bank"
+                searchPlaceholderTextColor="#62749F"
+                placeholder={
+                  banksQuery.isLoading ? "Loading banks..." : "Select bank"
+                }
+                disabled={banksQuery.isLoading}
+                style={tw`rounded-2xl border border-[#24345A] bg-[#081335]`}
+                textStyle={tw`text-white`}
+                placeholderStyle={tw`text-[#62749F]`}
+                dropDownContainerStyle={tw`border border-[#24345A] bg-[#081335]`}
+                modalContentContainerStyle={tw`bg-[#01082E] px-5 pt-10 pb-5`}
+                modalTitleStyle={tw`text-lg font-semibold text-white`}
+                searchContainerStyle={tw`border-b border-[#24345A] px-0 pb-4`}
+                searchTextInputStyle={tw`rounded-2xl border border-[#24345A] bg-[#081335] px-4 py-3 text-white`}
+                listItemContainerStyle={tw`border-b border-[#182857] py-3`}
+                listItemLabelStyle={tw`text-white`}
+                selectedItemContainerStyle={tw`bg-[#0FF1CF]/10`}
+                selectedItemLabelStyle={tw`font-semibold text-[#0FF1CF]`}
+                listMessageTextStyle={tw`text-center text-sm text-[#9FB0D8]`}
+                ListEmptyComponent={() => (
+                  <Text style={tw`py-8 text-center text-sm text-[#9FB0D8]`}>
+                    No banks match your search.
+                  </Text>
+                )}
+              />
+              {banksQuery.isError ? (
+                <Text style={tw`mt-2 text-xs text-[#FFD76A]`}>
+                  Could not load banks right now.
+                </Text>
+              ) : null}
+            </View>
+
+            <SetupTextInput
+              label="Account number"
+              value={accountNumber}
+              onChangeText={handleAccountNumberChange}
+              placeholder="10 digit account number"
+              keyboardType="number-pad"
+            />
+
+            {resolvePayoutAccountMutation.isPending ? (
+              <Text style={tw`mb-3 text-xs text-[#8FA1CB]`}>
+                Checking account name...
+              </Text>
+            ) : hasResolvedPayoutAccount ? (
+              <View style={tw`mb-3 mt-4`}>
+                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                  Resolved account name
+                </Text>
+                <Text style={tw`mt-1 text-base font-semibold text-white`}>
+                  {resolvedPayoutAccount?.accountName}
+                </Text>
+                <Text style={tw`mt-1 text-xs text-[#9FB0D8]`}>
+                  {selectedBank?.name || "Bank"} - {normalizedAccountNumber}
+                </Text>
+              </View>
+            ) : payoutResolutionError ? (
+              <Text style={tw`mb-3 text-xs text-[#FFD76A]`}>
+                {payoutResolutionError}
+              </Text>
+            ) : null}
+
+            <SetupButton
+              label={payoutMutation.isPending ? "Saving..." : "Save account"}
+              onPress={() => {
+                void handleSavePayoutProfile();
+              }}
+              disabled={busy || !canSavePayoutAccount}
+            />
+          </SetupPanel>
+        );
+
+      case "PERSONAL_IDENTITY":
+        return (
+          <SetupPanel
+            title="Personal identity"
+            subtitle="This unlocks after your payout account is confirmed."
+          >
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.identityStatus || "NOT_STARTED"} />
+            </View>
+            <View style={tw`mb-4`}>
+              <FieldLabel>Verification method</FieldLabel>
+              <View
+                style={tw`overflow-hidden rounded-2xl border border-[#24345A] bg-[#081335]`}
+              >
+                <Picker
+                  selectedValue={personalVerificationMode}
+                  onValueChange={(value) =>
+                    setPersonalVerificationMode(value as KycVerificationMode)
+                  }
+                  dropdownIconColor="#FFFFFF"
+                  style={tw`text-white`}
+                >
+                  <Picker.Item label="NIN" value="PERSONAL_NIN" />
+                  <Picker.Item label="BVN" value="PERSONAL_BVN" />
+                  <Picker.Item label="Phone" value="PERSONAL_PHONE" />
+                </Picker>
+              </View>
+            </View>
+            <View style={tw`flex-row gap-3`}>
+              <View style={tw`flex-1`}>
+                <SetupTextInput
+                  label="First name"
+                  value={personalFirstName}
+                  onChangeText={setPersonalFirstName}
+                />
+              </View>
+              <View style={tw`flex-1`}>
+                <SetupTextInput
+                  label="Last name"
+                  value={personalLastName}
+                  onChangeText={setPersonalLastName}
+                />
+              </View>
+            </View>
+            <SetupTextInput
+              label="Phone number"
+              value={personalPhoneNumber}
+              onChangeText={setPersonalPhoneNumber}
+              keyboardType="phone-pad"
+            />
+            {currentPersonalVerificationMode === "PERSONAL_BVN" ? (
+              <SetupTextInput
+                label="BVN"
+                value={personalBvn}
+                onChangeText={setPersonalBvn}
+                keyboardType="number-pad"
+              />
+            ) : currentPersonalVerificationMode === "PERSONAL_PHONE" ? null : (
+              <SetupTextInput
+                label="NIN"
+                value={personalNin}
+                onChangeText={setPersonalNin}
+                keyboardType="number-pad"
+              />
+            )}
+            <SetupTextInput
+              label="Date of birth"
+              value={personalDob}
+              onChangeText={setPersonalDob}
+              placeholder="YYYY-MM-DD"
+            />
+            <SetupButton
+              label={
+                startPersonalKycMutation.isPending
+                  ? "Starting..."
+                  : "Start identity check"
+              }
+              onPress={() => {
+                void handleStartPersonalKyc();
+              }}
+              disabled={busy || isIdentityVerified || isIdentityPending}
+            />
+          </SetupPanel>
+        );
+
+      case "BUSINESS_IDENTITY":
+        return (
+          <SetupPanel
+            title="Business verification"
+            subtitle="Verify the CAC record before representative details unlock."
+          >
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.businessStatus || "NOT_STARTED"} />
+            </View>
+            <SetupTextInput
+              label="CAC registration number"
+              value={businessRegNumber}
+              onChangeText={setBusinessRegNumber}
+            />
+            <SetupTextInput
+              label="Business display name"
+              value={businessDisplayName}
+              onChangeText={setBusinessDisplayName}
+            />
+            <SetupButton
+              label={
+                startBusinessKycMutation.isPending
+                  ? "Starting..."
+                  : "Start CAC verification"
+              }
+              onPress={() => {
+                void handleStartBusinessKyc();
+              }}
+              disabled={
+                busy ||
+                isBusinessVerificationVerified ||
+                kyc?.businessStatus === "PENDING_PROVIDER"
+              }
+            />
+          </SetupPanel>
+        );
+
+      case "NAME_MATCH":
+      case "BUSINESS_NAME_MATCH":
+        return renderNameMatchPanel();
+
+      case "REPRESENTATIVE_IDENTITY":
+        return (
+          <SetupPanel
+            title="Representative identity"
+            subtitle="This step is separate from CAC, so a representative retry does not restart the business check."
+          >
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.identityStatus || "NOT_STARTED"} />
+            </View>
+            <View style={tw`mb-4`}>
+              <FieldLabel>Representative method</FieldLabel>
+              <View
+                style={tw`overflow-hidden rounded-2xl border border-[#24345A] bg-[#081335]`}
+              >
+                <Picker
+                  selectedValue={representativeVerificationMode}
+                  onValueChange={(value) =>
+                    setRepresentativeVerificationMode(value as KycVerificationMode)
+                  }
+                  dropdownIconColor="#FFFFFF"
+                  style={tw`text-white`}
+                >
+                  <Picker.Item label="NIN" value="BUSINESS_CAC_REP_NIN" />
+                  <Picker.Item label="BVN" value="BUSINESS_CAC_REP_BVN" />
+                  <Picker.Item label="Phone" value="BUSINESS_CAC_REP_PHONE" />
+                </Picker>
+              </View>
+            </View>
+            <View style={tw`flex-row gap-3`}>
+              <View style={tw`flex-1`}>
+                <SetupTextInput
+                  label="First name"
+                  value={representativeFirstName}
+                  onChangeText={setRepresentativeFirstName}
+                />
+              </View>
+              <View style={tw`flex-1`}>
+                <SetupTextInput
+                  label="Last name"
+                  value={representativeLastName}
+                  onChangeText={setRepresentativeLastName}
+                />
+              </View>
+            </View>
+            <SetupTextInput
+              label="Phone number"
+              value={representativePhone}
+              onChangeText={setRepresentativePhone}
+              keyboardType="phone-pad"
+            />
+            {currentBusinessVerificationMode === "BUSINESS_CAC_REP_BVN" ? (
+              <SetupTextInput
+                label="BVN"
+                value={representativeBvn}
+                onChangeText={setRepresentativeBvn}
+                keyboardType="number-pad"
+              />
+            ) : currentBusinessVerificationMode === "BUSINESS_CAC_REP_PHONE" ? null : (
+              <SetupTextInput
+                label="NIN"
+                value={representativeNin}
+                onChangeText={setRepresentativeNin}
+                keyboardType="number-pad"
+              />
+            )}
+            <SetupTextInput
+              label="Date of birth"
+              value={representativeDob}
+              onChangeText={setRepresentativeDob}
+              placeholder="YYYY-MM-DD"
+            />
+            <SetupButton
+              label={
+                startBusinessRepresentativeKycMutation.isPending
+                  ? "Starting..."
+                  : "Start representative check"
+              }
+              onPress={() => {
+                void handleStartBusinessRepresentativeKyc();
+              }}
+              disabled={busy || !canStartBusinessRepresentative}
+            />
+          </SetupPanel>
+        );
+
+      case "BASIC_SUBMIT":
+        return (
+          <SetupPanel
+            title="Submit Basic KYC"
+            subtitle="Face verification is not required for this tier."
+          >
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.status || onboarding?.kycStatus} />
+              <StatusPill label={kyc?.nameMatchStatus || "NOT_CHECKED"} />
+            </View>
+            <View style={tw`mb-4 rounded-2xl bg-[#081335] p-4`}>
+              <Text style={tw`text-xs text-[#8FA1CB]`}>Basic payout cap</Text>
+              <Text style={tw`mt-1 text-base font-semibold text-white`}>
+                {formatMoney(kyc?.basicKycSettlementCap)}
+              </Text>
+              <Text style={tw`mt-2 text-sm leading-5 text-[#9FB0D8]`}>
+                Complete face verification later to remove this cap.
+              </Text>
+            </View>
+            <SetupButton
+              label={
+                submitKycMutation.isPending
+                  ? "Submitting..."
+                  : isKycSubmitted
+                    ? "Submitted"
+                    : "Submit Basic KYC"
+              }
+              onPress={() => handleSubmitKyc("BASIC")}
+              disabled={busy || !canSubmitBasicKyc || isKycSubmitted}
+            />
+          </SetupPanel>
+        );
+
+      case "LIVENESS":
+        return (
+          <SetupPanel
+            title={
+              kyc?.livenessRequired
+                ? "Face verification required"
+                : "Upgrade to Full KYC"
+            }
+            subtitle="This becomes necessary when your Basic payout limit needs to increase."
+          >
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.kycTier || "BASIC"} />
+              <StatusPill label={kyc?.livenessStatus || "NOT_STARTED"} />
+            </View>
+            <View style={tw`mb-4 rounded-2xl bg-[#081335] p-4`}>
+              <Text style={tw`text-xs text-[#8FA1CB]`}>Basic usage</Text>
+              <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+                {formatMoney(kyc?.basicKycSettlementUsage)} of{" "}
+                {formatMoney(kyc?.basicKycSettlementCap)}
+              </Text>
+              <Text style={tw`mt-2 text-sm leading-5 text-[#9FB0D8]`}>
+                Remaining under Basic:{" "}
+                {formatMoney(kyc?.basicKycSettlementRemaining)}
+              </Text>
+            </View>
+            <SetupButton
+              label={selectedSelfie ? "Selfie selected" : "Choose selfie"}
+              onPress={() => {
+                void pickSelfie();
+              }}
+              disabled={busy || !canSubmitLiveness}
+              tone="secondary"
+            />
+            <SetupButton
+              label={
+                submitLivenessMutation.isPending
+                  ? "Submitting..."
+                  : "Submit face verification"
+              }
+              onPress={() => {
+                void handleSubmitLiveness();
+              }}
+              disabled={busy || !canSubmitLiveness || !selectedSelfie?.base64}
+            />
+          </SetupPanel>
+        );
+
+      case "FULL_SUBMIT":
+        return (
+          <SetupPanel title="Submit Full KYC">
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.livenessStatus || "NOT_STARTED"} />
+              <StatusPill label={kyc?.kycTier || "BASIC"} />
+            </View>
+            <SetupButton
+              label={
+                submitKycMutation.isPending
+                  ? "Submitting..."
+                  : "Submit Full KYC"
+              }
+              onPress={() => handleSubmitKyc("FULL")}
+              disabled={busy || !canSubmitFullKyc}
+            />
+          </SetupPanel>
+        );
+
+      default:
+        return (
+          <SetupPanel
+            title={
+              kyc?.status === "SUBMITTED"
+                ? "KYC under review"
+                : kyc?.kycTier === "FULL"
+                  ? "Full KYC complete"
+                  : kyc?.kycTier === "BASIC"
+                    ? "Basic KYC active"
+                    : "Wallet setup"
+            }
+            subtitle={
+              kyc?.status === "SUBMITTED"
+                ? "The team will review the submitted details. No extra checks are needed right now."
+                : kyc?.kycTier === "BASIC" && !kyc?.livenessRequired
+                  ? `You can receive up to ${formatMoney(kyc.basicKycSettlementCap)} before face verification is required.`
+                : "Your current wallet status is shown below."
+            }
+          >
+            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
+              <StatusPill label={kyc?.status || onboarding?.kycStatus} />
+              <StatusPill label={kyc?.kycTier || "NONE"} />
+              <StatusPill label={kyc?.nameMatchStatus || "NOT_CHECKED"} />
+            </View>
+            {kyc?.rejectionReason ? (
+              <Text style={tw`text-sm leading-5 text-[#FFD76A]`}>
+                {kyc.rejectionReason}
+              </Text>
+            ) : null}
+            {kyc?.kycTier === "BASIC" && !kyc?.livenessRequired ? (
+              <SetupButton
+                label="Increase payout limit"
+                onPress={() =>
+                  setSetupStepOverride(
+                    kyc.accountOwnershipType === "BUSINESS" &&
+                      !isIdentityVerified &&
+                      !isIdentityReviewable
+                      ? "REPRESENTATIVE_IDENTITY"
+                      : "LIVENESS"
+                  )
+                }
+                disabled={busy || kyc.livenessStatus === "PENDING_PROVIDER"}
+                tone="secondary"
+              />
+            ) : null}
+          </SetupPanel>
+        );
+    }
+  };
+
+  const refetchAll = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        overviewQuery.refetch(),
+        onboardingQuery.refetch(),
+        setupVisible ? kycQuery.refetch() : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const isInitialLoading = overviewQuery.isLoading || onboardingQuery.isLoading;
+
+  if (historyView === "transactions") {
+    return (
+      <HistoryShell
+        title="Transactions"
+        onBack={() => setHistoryView(null)}
+      >
+        <FlatList
+          data={fullTransactions}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <TransactionCard transaction={item} />}
+          ItemSeparatorComponent={() => <View style={tw`h-3`} />}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={twStyle(
+            "pb-8 pt-4",
+            fullTransactions.length === 0 && "flex-grow justify-center"
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={
+                transactionsHistoryQuery.isRefetching &&
+                !transactionsHistoryQuery.isFetchingNextPage
+              }
+              onRefresh={() => {
+                void transactionsHistoryQuery.refetch();
+              }}
+              tintColor="#0FF1CF"
+            />
+          }
+          onEndReachedThreshold={0.35}
+          onEndReached={() => {
+            if (
+              transactionsHistoryQuery.hasNextPage &&
+              !transactionsHistoryQuery.isFetchingNextPage
+            ) {
+              void transactionsHistoryQuery.fetchNextPage();
+            }
+          }}
+          ListEmptyComponent={
+            transactionsHistoryQuery.isLoading ? (
+              <HistoryLoading label="Loading transaction history..." />
+            ) : (
+              <EmptyState
+                title="No transactions yet"
+                subtitle="Once buyers pay for your events, every collection will appear here."
+              />
+            )
+          }
+          ListFooterComponent={
+            fullTransactions.length ? (
+              <HistoryFooter
+                hasNextPage={Boolean(transactionsHistoryQuery.hasNextPage)}
+                isFetchingNextPage={transactionsHistoryQuery.isFetchingNextPage}
+              />
+            ) : null
+          }
+        />
+      </HistoryShell>
+    );
+  }
+
+  if (historyView === "settlements") {
+    return (
+      <HistoryShell
+        title="Settlement History"
+        onBack={() => setHistoryView(null)}
+      >
+        <FlatList
+          data={fullSettlements}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <SettlementCard settlement={item} />}
+          ItemSeparatorComponent={() => <View style={tw`h-3`} />}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={twStyle(
+            "pb-8 pt-4",
+            fullSettlements.length === 0 && "flex-grow justify-center"
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={
+                settlementsHistoryQuery.isRefetching &&
+                !settlementsHistoryQuery.isFetchingNextPage
+              }
+              onRefresh={() => {
+                void settlementsHistoryQuery.refetch();
+              }}
+              tintColor="#0FF1CF"
+            />
+          }
+          onEndReachedThreshold={0.35}
+          onEndReached={() => {
+            if (
+              settlementsHistoryQuery.hasNextPage &&
+              !settlementsHistoryQuery.isFetchingNextPage
+            ) {
+              void settlementsHistoryQuery.fetchNextPage();
+            }
+          }}
+          ListEmptyComponent={
+            settlementsHistoryQuery.isLoading ? (
+              <HistoryLoading label="Loading settlement history..." />
+            ) : (
+              <EmptyState
+                title="No settlements yet"
+                subtitle="Payout batches will show here when available earnings are settled."
+              />
+            )
+          }
+          ListFooterComponent={
+            fullSettlements.length ? (
+              <HistoryFooter
+                hasNextPage={Boolean(settlementsHistoryQuery.hasNextPage)}
+                isFetchingNextPage={settlementsHistoryQuery.isFetchingNextPage}
+              />
+            ) : null
+          }
+        />
+      </HistoryShell>
+    );
+  }
 
   if (isInitialLoading) {
     return (
-      <View style={tw`flex-1 items-center justify-center bg-[#01082E] px-6`}>
-        <ActivityIndicator tone="accent" size="large" />
-        <Text style={tw`mt-4 text-center text-sm text-[#B7C5E9]`}>
-          Loading your wallet and payout setup...
-        </Text>
-      </View>
+      <ImpactPageLoader
+        title="Mapping your wallet"
+        message="Loading balances, payouts, and the impact money trail."
+      />
     );
   }
 
@@ -1150,7 +2114,7 @@ const WalletScreen = () => {
         contentContainerStyle={tw`pb-12 pt-4`}
       >
         <CustomView
-          style={tw.style(
+          style={twStyle(
             "rounded-[28px] border border-[#1D335E] bg-[#091538] p-5",
             {
               shadowColor: "#0FF1CF",
@@ -1162,7 +2126,7 @@ const WalletScreen = () => {
           <View style={tw`flex-row items-start justify-between gap-3`}>
             <View style={tw`flex-1`}>
               <Text style={tw`text-2xl font-bold text-white`}>
-                {balance ? formatMoney(balance.totalCollected) : formatMoney(0)}
+                {formatMoney(balance?.totalCollected)}
               </Text>
               <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
                 Total collected across your paid events.
@@ -1200,7 +2164,9 @@ const WalletScreen = () => {
                         {task.title}
                       </Text>
                       <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                        {task.blocking ? "Required for settlement" : "Optional for more payment options"}
+                        {task.blocking
+                          ? "Required before payout"
+                          : "Helpful for wallet readiness"}
                       </Text>
                     </View>
                     <StatusPill label={task.status} />
@@ -1210,32 +2176,13 @@ const WalletScreen = () => {
             )}
 
             <TouchableOpacity
-              onPress={() => {
-                if (onboarding?.nextAction === "ADD_SETTLEMENT_ACCOUNT") {
-                  openPayoutModal();
-                  return;
-                }
-
-                if (onboarding?.nextAction === "COMPLETE_KYC") {
-                  openKycModal();
-                  return;
-                }
-
-                if (onboarding?.nextAction === "ALAT_ACTIVATION") {
-                  showGlobalWarning(
-                    "ALAT transfer is waiting for internal activation. Paystack can still be used for collections."
-                  );
-                  return;
-                }
-
-                openKycModal();
-              }}
+              onPress={openSetupModal}
               style={tw`mt-4 flex-row items-center justify-center rounded-full bg-[#0FF1CF] px-4 py-3`}
             >
-              <Text style={tw`text-sm font-semibold text-[#03122F]`}>
+              <Text style={tw`text-sm font-semibold text-[#01082E]`}>
                 {onboardingCopy.action}
               </Text>
-              <ArrowRight size={16} color="#03122F" />
+              <ChevronRight size={16} color="#01082E" />
             </TouchableOpacity>
           </View>
         </CustomView>
@@ -1271,14 +2218,12 @@ const WalletScreen = () => {
             return (
               <View
                 key={item.label}
-                style={tw.style(
+                style={twStyle(
                   "min-w-[48%] flex-1 rounded-3xl border border-[#1E3157] bg-[#08143B] p-4"
                 )}
               >
                 <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-                    {item.label}
-                  </Text>
+                  <Text style={tw`text-xs text-[#8FA1CB]`}>{item.label}</Text>
                   <Icon size={18} color={item.color} />
                 </View>
                 <Text style={tw`mt-3 text-lg font-bold text-white`}>
@@ -1290,963 +2235,88 @@ const WalletScreen = () => {
         </CustomView>
 
         <SectionCard
-          title="Payout setup"
-          subtitle="Add the bank account we should settle to. If you change it later, we’ll pause payouts until the new details are reviewed again."
-          actionText={payoutProfile ? "Update" : "Set up"}
-          onPressAction={openPayoutModal}
-        >
-          {payoutProfile ? (
-            <View style={tw`gap-3`}>
-              <View style={tw`flex-row flex-wrap gap-2`}>
-                <StatusPill label={payoutProfile.status} />
-                <StatusPill label={payoutProfile.kycStatus} />
-                <StatusPill label={payoutProfile.nameMatchStatus} />
-              </View>
-
-              <View style={tw`rounded-2xl bg-[#0A173F] p-4`}>
-                <Text style={tw`text-sm font-semibold text-white`}>
-                  {payoutProfile.accountOwnershipType === "BUSINESS"
-                    ? payoutProfile.businessName || "Business account"
-                    : payoutProfile.legalName || "Personal account"}
-                </Text>
-                <Text style={tw`mt-2 text-sm text-[#B7C5E9]`}>
-                  {payoutProfile.bankName || "-"} • {payoutProfile.accountNumberMasked || "-"}
-                </Text>
-                <Text style={tw`mt-1 text-sm text-[#8FA1CB]`}>
-                  Account name: {payoutProfile.accountName || "Awaiting verification"}
-                </Text>
-                <Text style={tw`mt-1 text-sm text-[#8FA1CB]`}>
-                  Verified: {formatDate(payoutProfile.accountVerifiedAt)}
-                </Text>
-                {payoutProfile.rejectionReason ? (
-                  <Text style={tw`mt-3 text-sm text-[#FF9DB3]`}>
-                    {payoutProfile.rejectionReason}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          ) : (
-            <Text style={tw`text-sm leading-6 text-[#9FB0D8]`}>
-              Your first paid event created the wallet profile. Add a settlement account here so we know where to pay you when verification is complete.
-            </Text>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="Verification"
-          subtitle="We verify the person or business behind the settlement account before we release earnings."
-          actionText={payoutProfile?.bankName ? "Continue" : undefined}
-          onPressAction={payoutProfile?.bankName ? openKycModal : undefined}
-        >
-          <View style={tw`flex-row flex-wrap gap-2`}>
-            <StatusPill label={kyc?.status || onboarding?.kycStatus} />
-            {currentOwnershipType === "BUSINESS" ? (
-              <StatusPill label={kyc?.businessStatus} />
-            ) : null}
-            <StatusPill label={kyc?.identityStatus} />
-            <StatusPill label={kyc?.livenessStatus} />
-            <StatusPill label={kyc?.nameMatchStatus} />
-          </View>
-
-          <View style={tw`mt-4`}>{renderKycSteps(kyc)}</View>
-
-          <View style={tw`mt-4 rounded-2xl bg-[#0A173F] p-4`}>
-            <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-              Verified identity
-            </Text>
-            <Text style={tw`mt-2 text-sm font-semibold text-white`}>
-              {kyc?.verifiedFullName || kyc?.verifiedBusinessName || "Not verified yet"}
-            </Text>
-            <Text style={tw`mt-2 text-sm text-[#9FB0D8]`}>
-              {currentOwnershipType === "BUSINESS"
-                ? "For business accounts, the submitted business name must match the bank account name before settlement is enabled."
-                : "For personal accounts, the bank account name must match the verified identity before settlement is enabled."}
-            </Text>
-          </View>
-        </SectionCard>
-
-        <SectionCard
-          title="ALAT transfer"
-          subtitle="ALAT bank transfer becomes available to buyers only after your payout setup is active and our team activates your ALAT profile."
-        >
-          <View style={tw`flex-row items-start justify-between gap-3 rounded-2xl bg-[#0A173F] p-4`}>
-            <View style={tw`flex-1`}>
-              <Text style={tw`text-sm font-semibold text-white`}>
-                {alatProfile?.displayName || "Awaiting ALAT activation"}
-              </Text>
-              <Text style={tw`mt-2 text-sm text-[#9FB0D8]`}>
-                {alatProfile?.notes ||
-                  "Once active, buyers will see your creator-branded ALAT transfer details during checkout."}
-              </Text>
-            </View>
-            <StatusPill label={alatProfile?.status || onboarding?.alatProfileStatus} />
-          </View>
-        </SectionCard>
-
-        <SectionCard
           title="Recent transactions"
-          subtitle="These are the latest successful collections tied to your events."
+          subtitle="A quick look at the latest successful collections tied to your events."
+          actionText={transactions.length ? "View more" : undefined}
+          onPressAction={() => setHistoryView("transactions")}
         >
-          {transactions.length ? (
+          {transactionsPreview.length ? (
             <View style={tw`gap-3`}>
-              {transactions.map((transaction) => (
-                <View
+              {transactionsPreview.map((transaction) => (
+                <TransactionCard
                   key={transaction.id}
-                  style={tw`rounded-2xl border border-[#21315A] bg-[#0A173F] p-4`}
-                >
-                  <View style={tw`flex-row items-start justify-between gap-3`}>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-sm font-semibold text-white`}>
-                        {transaction.eventTitle || toTitleCase(transaction.paymentType)}
-                      </Text>
-                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                        {toTitleCase(transaction.paymentType)} via {toTitleCase(transaction.paymentProvider)}
-                      </Text>
-                    </View>
-                    <StatusPill label={transaction.settlementStatus} />
-                  </View>
-
-                  <View style={tw`mt-4 flex-row justify-between`}>
-                    <View>
-                      <Text style={tw`text-xs uppercase text-[#6F86B4]`}>Gross</Text>
-                      <Text style={tw`mt-1 text-sm font-semibold text-white`}>
-                        {formatMoney(transaction.grossAmount)}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={tw`text-xs uppercase text-[#6F86B4]`}>Creator share</Text>
-                      <Text style={tw`mt-1 text-sm font-semibold text-white`}>
-                        {formatMoney(transaction.creatorPayable)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={tw`mt-3 text-xs text-[#8FA1CB]`}>
-                    Buyer: {transaction.buyerUsername || "Unknown"} • {formatDate(transaction.createdAt)}
-                  </Text>
-                </View>
+                  transaction={transaction}
+                />
               ))}
             </View>
           ) : (
-            <Text style={tw`text-sm text-[#9FB0D8]`}>
-              No transactions yet. Once buyers pay for your events, they’ll show up here.
+            <Text style={tw`text-sm leading-5 text-[#9FB0D8]`}>
+              No transactions yet. Once buyers pay for your events, they will
+              show up here.
             </Text>
           )}
         </SectionCard>
 
         <SectionCard
           title="Settlement history"
-          subtitle="Completed and pending payout batches will appear here."
+          subtitle="A short preview of payout batches across your wallet."
+          actionText={settlements.length ? "View more" : undefined}
+          onPressAction={() => setHistoryView("settlements")}
         >
-          {settlements.length ? (
+          {settlementsPreview.length ? (
             <View style={tw`gap-3`}>
-              {settlements.map((settlement) => (
-                <View
-                  key={settlement.id}
-                  style={tw`rounded-2xl border border-[#21315A] bg-[#0A173F] p-4`}
-                >
-                  <View style={tw`flex-row items-start justify-between gap-3`}>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-sm font-semibold text-white`}>
-                        {formatMoney(settlement.amount)}
-                      </Text>
-                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                        {settlement.reference} • {settlement.transactionCount} transactions
-                      </Text>
-                    </View>
-                    <StatusPill label={settlement.status} />
-                  </View>
-
-                  <Text style={tw`mt-3 text-sm text-[#9FB0D8]`}>
-                    {settlement.destinationBankName || "Bank"} • {settlement.destinationAccountNumber || "-"}
-                  </Text>
-                  <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                    Created {formatDate(settlement.createdAt)}
-                  </Text>
-                </View>
+              {settlementsPreview.map((settlement) => (
+                <SettlementCard key={settlement.id} settlement={settlement} />
               ))}
             </View>
           ) : (
-            <Text style={tw`text-sm text-[#9FB0D8]`}>
-              No settlements yet. Verified creators will see payout batches here once funds are released.
+            <Text style={tw`text-sm leading-5 text-[#9FB0D8]`}>
+              No settlements yet. Payout batches will appear here when
+              available earnings are settled.
             </Text>
           )}
         </SectionCard>
       </ScrollView>
 
-      <Modal visible={payoutModalVisible} animationType="slide" transparent>
+      <Modal
+        visible={setupVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSetupVisible(false)}
+      >
         <KeyboardAvoidingView
-          style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={tw`flex-1 bg-[#01082E]`}
         >
-          <View style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}>
-            <View style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`} />
+          <View style={tw`flex-1 px-5 pt-10 pb-4`}>
             <View style={tw`flex-row items-center justify-between`}>
-              <Text style={tw`text-xl font-semibold text-white`}>Settlement account</Text>
-              <TouchableOpacity onPress={() => setPayoutModalVisible(false)}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>Close</Text>
+              <View>
+                <Text style={tw`text-xl font-bold text-white`}>
+                  Wallet setup
+                </Text>
+                <Text style={tw`mt-1 text-sm text-[#9FB0D8]`}>
+                  Account, identity, and review
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSetupVisible(false)}
+                style={tw`rounded-full bg-[#102052] p-3`}
+              >
+                <X size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pt-4 pb-6`}>
-              <Text style={tw`text-sm leading-5 text-[#9FB0D8]`}>
-                The account name here must match the identity or business documents you use for verification.
-              </Text>
 
-              <View style={tw`mt-5 rounded-2xl bg-[#0A173F] px-3 py-1`}>
-                <Picker
-                  selectedValue={currentOwnershipType}
-                  onValueChange={(value) => setOwnershipType(value)}
-                  dropdownIconColor="#FFFFFF"
-                  style={{ color: "white" }}
-                >
-                  <Picker.Item label="Personal account" value="PERSONAL" />
-                  <Picker.Item label="Business account" value="BUSINESS" />
-                </Picker>
-              </View>
-
-              {currentOwnershipType === "PERSONAL" ? (
-                <>
-                  <TextInput
-                    value={legalName}
-                    onChangeText={setLegalName}
-                    placeholder="Legal name"
-                    placeholderTextColor="#6F86B4"
-                    style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white`}
-                  />
-                  <TextInput
-                    value={bvnLast4}
-                    onChangeText={setBvnLast4}
-                    placeholder="BVN last 4 digits (optional)"
-                    placeholderTextColor="#6F86B4"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white`}
-                  />
-                </>
-              ) : (
-                <>
-                  <TextInput
-                    value={businessName}
-                    onChangeText={setBusinessName}
-                    placeholder="Registered business name"
-                    placeholderTextColor="#6F86B4"
-                    style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white`}
-                  />
-                  <TextInput
-                    value={accountName}
-                    onChangeText={setAccountName}
-                    placeholder="Business account name (optional)"
-                    placeholderTextColor="#6F86B4"
-                    style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white`}
-                  />
-                </>
-              )}
-
-              <TouchableOpacity
-                onPress={openBankSearchModal}
-                style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4`}
-              >
-                <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-                  Settlement bank
-                </Text>
-                <Text style={tw`mt-2 text-base font-semibold text-white`}>
-                  {selectedBank?.name || "Search and select a bank"}
-                </Text>
-                <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                  {selectedBank?.code
-                    ? `Code ${selectedBank.code}`
-                    : "Tap to search by bank name or code"}
-                </Text>
-              </TouchableOpacity>
-
-              <TextInput
-                value={accountNumber}
-                onChangeText={setAccountNumber}
-                placeholder="Account number"
-                placeholderTextColor="#6F86B4"
-                keyboardType="number-pad"
-                style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white`}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={tw`pb-10 pt-5`}
+            >
+              <SetupStepList
+                steps={kycSteps}
+                livenessRequired={kyc?.livenessRequired}
+                kycTier={kyc?.kycTier}
+                accountOwnershipType={kyc?.accountOwnershipType}
               />
-
-              <View style={tw`mt-4 rounded-2xl border border-[#24345A] bg-[#08153C] p-4`}>
-                <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-                  What happens next
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
-                  {currentOwnershipType === "BUSINESS"
-                    ? "We’ll save the account for business review, then compare it against your CAC verification details."
-                    : "We’ll verify the account name against the bank response, then use that during your personal KYC review."}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={handleSavePayoutProfile}
-                disabled={busy}
-                style={tw.style(
-                  "mt-6 flex-row items-center justify-center rounded-full bg-[#0FF1CF] px-4 py-4",
-                  busy && "opacity-60"
-                )}
-              >
-                {payoutMutation.isPending ? (
-                  <ActivityIndicator color="#03122F" />
-                ) : (
-                  <Text style={tw`text-sm font-semibold text-[#03122F]`}>
-                    Save settlement account
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <Modal visible={bankSearchModalVisible} animationType="fade" transparent>
-        <View style={tw`flex-1 justify-center bg-black/65 px-5`}>
-          <View style={tw`max-h-[75%] rounded-[28px] border border-[#24345A] bg-[#041130] p-5`}>
-            <View style={tw`flex-row items-center justify-between`}>
-              <Text style={tw`text-lg font-semibold text-white`}>Choose bank</Text>
-              <TouchableOpacity onPress={closeBankSearchModal}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              value={bankSearchQuery}
-              onChangeText={setBankSearchQuery}
-              placeholder="Search bank name or code"
-              placeholderTextColor="#6F86B4"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white`}
-            />
-
-            <Text style={tw`mt-3 text-xs text-[#8FA1CB]`}>
-              {bankSearchQuery.trim()
-                ? `${filteredBanks.length} bank${filteredBanks.length === 1 ? "" : "s"} found`
-                : selectedBank?.name
-                  ? `Current selection: ${selectedBank.name}. Start typing to search the full list.`
-                  : "Showing a short bank list for speed. Start typing to search the full list."}
-            </Text>
-
-            {banksQuery.isLoading ? (
-              <View style={tw`items-center justify-center py-10`}>
-                <ActivityIndicator tone="accent" />
-                <Text style={tw`mt-3 text-sm text-[#9FB0D8]`}>
-                  Loading banks...
-                </Text>
-              </View>
-            ) : visibleBanks.length ? (
-              <FlatList
-                data={visibleBanks}
-                keyExtractor={(bank) => `${bank.code || bank.name}`}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={12}
-                maxToRenderPerBatch={16}
-                windowSize={8}
-                contentContainerStyle={tw`pt-4 pb-2`}
-                renderItem={({ item: bank }) => {
-                  const isSelected = bank.code === selectedBankCode;
-
-                  return (
-                    <TouchableOpacity
-                      onPress={() => handleSelectBank(bank)}
-                      style={tw.style(
-                        "mb-3 rounded-2xl border px-4 py-4",
-                        isSelected
-                          ? "border-[#0FF1CF] bg-[#0A1D43]"
-                          : "border-[#21315A] bg-[#0A173F]"
-                      )}
-                    >
-                      <Text style={tw`text-sm font-semibold text-white`}>
-                        {bank.name || "Unknown bank"}
-                      </Text>
-                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                        {bank.code
-                          ? `Code ${bank.code}${bank.longcode ? ` • ${bank.longcode}` : ""}`
-                          : "Bank code unavailable"}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            ) : (
-              <View style={tw`items-center justify-center py-10`}>
-                <Text style={tw`text-sm text-[#9FB0D8]`}>
-                  No bank matches “{bankSearchQuery.trim()}”.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={kycModalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={tw`flex-1 justify-end bg-black/55`}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View style={tw`max-h-[90%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}>
-            <View style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`} />
-            <View style={tw`flex-row items-center justify-between`}>
-              <Text style={tw`text-xl font-semibold text-white`}>Verification</Text>
-              <TouchableOpacity
-                onPress={() => void handleCloseKycModal()}
-                disabled={notifyOnKycResolutionMutation.isPending}
-              >
-                <Text
-                  style={tw.style(
-                    "text-sm font-semibold text-[#9FB0D8]",
-                    notifyOnKycResolutionMutation.isPending && "opacity-60"
-                  )}
-                >
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`pt-4 pb-6`}>
-              <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
-                <StatusPill label={kyc?.status || onboarding?.kycStatus} />
-                {currentOwnershipType === "BUSINESS" ? (
-                  <StatusPill label={kyc?.businessStatus} />
-                ) : null}
-                <StatusPill label={kyc?.identityStatus} />
-                <StatusPill label={kyc?.livenessStatus} />
-                <StatusPill label={kyc?.nameMatchStatus} />
-              </View>
-
-              <View style={tw`rounded-2xl border border-[#24345A] bg-[#08153C] p-4`}>
-                <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-                  Verification path
-                </Text>
-                <Text style={tw`mt-2 text-base font-semibold text-white`}>
-                  {currentOwnershipType === "BUSINESS" ? "Business KYC" : "Personal KYC"}
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
-                  {currentOwnershipType === "BUSINESS"
-                    ? "We’ll verify the CAC record, verify the representative behind the business, run face match, then compare the verified business name to the settlement account you added."
-                    : "Choose the identity document you want to use, verify it, run face match, then compare the verified identity to the payout account name."}
-                </Text>
-              </View>
-
-              {pendingProviderState ? (
-                <View style={tw`mt-4 rounded-2xl border border-[#67511A] bg-[#2A2209] p-4`}>
-                  <Text style={tw`text-xs uppercase tracking-wide text-[#FFD76A]`}>
-                    Verification in progress
-                  </Text>
-                  <Text style={tw`mt-2 text-base font-semibold text-white`}>
-                    {pendingProviderState.title}
-                  </Text>
-                  <Text style={tw`mt-2 text-sm leading-5 text-[#F4E7B0]`}>
-                    {pendingProviderState.description}
-                  </Text>
-                  {!pendingProviderTimedOut ? (
-                    <Text style={tw`mt-3 text-sm text-[#F4E7B0]`}>
-                      We’ll keep checking automatically for the next {pendingProviderCountdown}s.
-                    </Text>
-                  ) : (
-                    <Text style={tw`mt-3 text-sm text-[#F4E7B0]`}>
-                      We’re still waiting on the provider. You can keep waiting here or continue later without losing your request.
-                    </Text>
-                  )}
-                  <View style={tw`mt-4 flex-row gap-3`}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setPendingProviderCountdown(45);
-                        void syncPendingProviderStatus();
-                      }}
-                      disabled={notifyOnKycResolutionMutation.isPending}
-                      style={tw`flex-1 rounded-full border border-[#D2B04C] px-4 py-3`}
-                    >
-                      <Text style={tw`text-center text-sm font-semibold text-[#FFF3C6]`}>
-                        {pendingProviderTimedOut ? "Keep waiting" : "Refresh now"}
-                      </Text>
-                    </TouchableOpacity>
-                    {pendingProviderTimedOut ? (
-                      <TouchableOpacity
-                        onPress={handleContinueLater}
-                        disabled={notifyOnKycResolutionMutation.isPending}
-                        style={tw.style(
-                          "flex-1 rounded-full bg-[#FFF3C6] px-4 py-3",
-                          notifyOnKycResolutionMutation.isPending && "opacity-60"
-                        )}
-                      >
-                        {notifyOnKycResolutionMutation.isPending ? (
-                          <ActivityIndicator color="#2A2209" />
-                        ) : (
-                          <Text style={tw`text-center text-sm font-semibold text-[#2A2209]`}>
-                            Continue later
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-              ) : null}
-
-              {currentOwnershipType === "BUSINESS" ? (
-                <>
-                  <StepCard
-                    stepLabel="Step 1"
-                    title="Verify the business record"
-                    description="Start with the CAC record. Once that passes, we’ll unlock the representative step."
-                    collapsed={isBusinessVerificationVerified}
-                    summary="CAC verification is complete. You can continue with the representative step."
-                  >
-                    <TextInput
-                      value={businessRegNumber}
-                      onChangeText={setBusinessRegNumber}
-                      editable={!isBusinessVerificationVerified}
-                      placeholder="CAC registration number"
-                      placeholderTextColor="#6F86B4"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isBusinessVerificationVerified && "opacity-60"
-                      )}
-                    />
-                    <TextInput
-                      value={businessDisplayName}
-                      onChangeText={setBusinessDisplayName}
-                      editable={!isBusinessVerificationVerified}
-                      placeholder="Business name (optional)"
-                      placeholderTextColor="#6F86B4"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isBusinessVerificationVerified && "opacity-60"
-                      )}
-                    />
-                    <Text style={tw`mt-3 text-xs text-[#8FA1CB]`}>
-                      {kyc?.businessStatus === "PENDING_PROVIDER"
-                        ? "We’ve sent the CAC request to QoreID and we’re waiting for the provider to respond."
-                        : kyc?.businessStatus === "VERIFIED"
-                          ? "CAC verification is complete. This step is locked while you continue with the representative."
-                          : isBusinessVerificationRejected
-                            ? "The CAC step needs attention before you can continue."
-                          : "This step must complete before representative verification can start."}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={handleStartBusinessKyc}
-                      disabled={busy || isBusinessVerificationVerified}
-                      style={tw.style(
-                        "mt-5 rounded-full bg-[#0FF1CF] px-4 py-4",
-                        (busy || isBusinessVerificationVerified) && "opacity-60"
-                      )}
-                    >
-                      {startBusinessKycMutation.isPending ? (
-                        <ActivityIndicator color="#03122F" />
-                      ) : (
-                        <Text style={tw`text-center text-sm font-semibold text-[#03122F]`}>
-                          {isBusinessVerificationVerified ? "CAC record verified" : "Verify CAC record"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </StepCard>
-
-                  <StepCard
-                    stepLabel="Step 2"
-                    title="Verify the representative"
-                    description={
-                      canStartBusinessRepresentative
-                        ? "Now verify the person behind the business."
-                        : isBusinessVerificationPending
-                          ? "No action is needed here yet. We’ll unlock this as soon as the CAC provider responds."
-                          : "Finish the CAC step first, then come back here for the representative."
-                    }
-                    collapsed={isIdentityVerified}
-                    summary="Representative verification is complete. Face match is ready next."
-                  >
-                    <View
-                      style={tw.style(
-                        !canStartBusinessRepresentative && "opacity-70"
-                      )}
-                    >
-                    <View style={tw`mt-4 rounded-2xl bg-[#0A173F] px-3 py-1`}>
-                      <Picker
-                        selectedValue={currentBusinessVerificationMode}
-                        enabled={!isIdentityVerified}
-                        onValueChange={(value) =>
-                          setRepresentativeVerificationMode(
-                            normalizeBusinessVerificationMode(value as KycVerificationMode)
-                          )
-                        }
-                        dropdownIconColor="#FFFFFF"
-                        style={{ color: "white" }}
-                      >
-                        <Picker.Item label="Representative NIN" value="BUSINESS_CAC_REP_NIN" />
-                        <Picker.Item label="Representative vNIN" value="BUSINESS_CAC_REP_VNIN" />
-                        <Picker.Item label="Representative passport" value="BUSINESS_CAC_REP_PASSPORT" />
-                      </Picker>
-                    </View>
-                    <TextInput
-                      value={representativeFirstName}
-                      onChangeText={setRepresentativeFirstName}
-                      editable={!isIdentityVerified}
-                      placeholder="Representative first name"
-                      placeholderTextColor="#6F86B4"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                    <TextInput
-                      value={representativeLastName}
-                      onChangeText={setRepresentativeLastName}
-                      editable={!isIdentityVerified}
-                      placeholder="Representative last name"
-                      placeholderTextColor="#6F86B4"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                    <TextInput
-                      value={representativePhone}
-                      onChangeText={setRepresentativePhone}
-                      editable={!isIdentityVerified}
-                      placeholder="Representative phone number"
-                      placeholderTextColor="#6F86B4"
-                      keyboardType="phone-pad"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                    <TextInput
-                      value={representativeDob}
-                      onChangeText={setRepresentativeDob}
-                      editable={!isIdentityVerified}
-                      placeholder="Representative date of birth (YYYY-MM-DD)"
-                      placeholderTextColor="#6F86B4"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                    {currentBusinessVerificationMode === "BUSINESS_CAC_REP_NIN" ? (
-                      <TextInput
-                        value={representativeNin}
-                        onChangeText={setRepresentativeNin}
-                        editable={!isIdentityVerified}
-                        placeholder="Representative NIN"
-                        placeholderTextColor="#6F86B4"
-                        keyboardType="number-pad"
-                        style={tw.style(
-                          "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                          isIdentityVerified && "opacity-60"
-                        )}
-                      />
-                    ) : null}
-                    {currentBusinessVerificationMode === "BUSINESS_CAC_REP_VNIN" ? (
-                      <TextInput
-                        value={representativeVnin}
-                        onChangeText={setRepresentativeVnin}
-                        editable={!isIdentityVerified}
-                        placeholder="Representative vNIN"
-                        placeholderTextColor="#6F86B4"
-                        style={tw.style(
-                          "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                          isIdentityVerified && "opacity-60"
-                        )}
-                      />
-                    ) : null}
-                    {currentBusinessVerificationMode === "BUSINESS_CAC_REP_PASSPORT" ? (
-                      <TextInput
-                        value={representativePassportNumber}
-                        onChangeText={setRepresentativePassportNumber}
-                        editable={!isIdentityVerified}
-                        placeholder="Representative passport number"
-                        placeholderTextColor="#6F86B4"
-                        autoCapitalize="characters"
-                        style={tw.style(
-                          "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                          isIdentityVerified && "opacity-60"
-                        )}
-                      />
-                    ) : null}
-                    <Text style={tw`mt-3 text-xs text-[#8FA1CB]`}>
-                      {kyc?.identityStatus === "PENDING_PROVIDER"
-                        ? "Representative verification is in progress with QoreID."
-                        : isIdentityVerified
-                          ? "Representative verification is complete. This step is locked while you continue to face match."
-                          : isIdentityRejected
-                            ? "Representative verification needs attention before face match can continue."
-                            : "This step unlocks face match."}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={handleStartBusinessRepresentativeKyc}
-                      disabled={busy || !canStartBusinessRepresentative || isIdentityVerified}
-                      style={tw.style(
-                        "mt-5 rounded-full bg-[#0FF1CF] px-4 py-4",
-                        (busy || !canStartBusinessRepresentative || isIdentityVerified) && "opacity-60"
-                      )}
-                    >
-                      {startBusinessRepresentativeKycMutation.isPending ? (
-                        <ActivityIndicator color="#03122F" />
-                      ) : (
-                        <Text style={tw`text-center text-sm font-semibold text-[#03122F]`}>
-                          {isIdentityVerified
-                            ? "Representative verified"
-                            : "Verify representative identity"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                    </View>
-                  </StepCard>
-                </>
-              ) : (
-                <StepCard
-                  stepLabel="Step 1"
-                  title="Verify your identity"
-                  description={
-                    isIdentityRejected
-                      ? "This step needs attention before you can continue."
-                      : "Choose your document, submit the matching details, and we’ll verify it before unlocking face match."
-                  }
-                  collapsed={isIdentityVerified}
-                  summary="Identity verified. Face match is ready next."
-                >
-                  <View style={tw`mt-4 rounded-2xl bg-[#0A173F] px-3 py-1`}>
-                    <Picker
-                      selectedValue={currentPersonalVerificationMode}
-                      enabled={!isIdentityVerified}
-                      onValueChange={(value) =>
-                        setPersonalVerificationMode(
-                          normalizePersonalVerificationMode(value as KycVerificationMode)
-                        )
-                      }
-                      dropdownIconColor="#FFFFFF"
-                      style={{ color: "white" }}
-                    >
-                      <Picker.Item label="NIN" value="PERSONAL_NIN" />
-                      <Picker.Item label="vNIN" value="PERSONAL_VNIN" />
-                      <Picker.Item label="Passport" value="PERSONAL_PASSPORT" />
-                    </Picker>
-                  </View>
-                  <TextInput
-                    value={personalFirstName}
-                    onChangeText={setPersonalFirstName}
-                    editable={!isIdentityVerified}
-                    placeholder="First name"
-                    placeholderTextColor="#6F86B4"
-                    style={tw.style(
-                      "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                      isIdentityVerified && "opacity-60"
-                    )}
-                  />
-                  <TextInput
-                    value={personalLastName}
-                    onChangeText={setPersonalLastName}
-                    editable={!isIdentityVerified}
-                    placeholder="Last name"
-                    placeholderTextColor="#6F86B4"
-                    style={tw.style(
-                      "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                      isIdentityVerified && "opacity-60"
-                    )}
-                  />
-                  <TextInput
-                    value={personalPhoneNumber}
-                    onChangeText={setPersonalPhoneNumber}
-                    editable={!isIdentityVerified}
-                    placeholder="Phone number"
-                    placeholderTextColor="#6F86B4"
-                    keyboardType="phone-pad"
-                    style={tw.style(
-                      "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                      isIdentityVerified && "opacity-60"
-                    )}
-                  />
-                  {currentPersonalVerificationMode === "PERSONAL_NIN" ? (
-                    <TextInput
-                      value={personalNin}
-                      onChangeText={setPersonalNin}
-                      editable={!isIdentityVerified}
-                      placeholder="NIN"
-                      placeholderTextColor="#6F86B4"
-                      keyboardType="number-pad"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                  ) : null}
-                  {currentPersonalVerificationMode === "PERSONAL_VNIN" ? (
-                    <TextInput
-                      value={personalVnin}
-                      onChangeText={setPersonalVnin}
-                      editable={!isIdentityVerified}
-                      placeholder="vNIN"
-                      placeholderTextColor="#6F86B4"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                  ) : null}
-                  {currentPersonalVerificationMode === "PERSONAL_PASSPORT" ? (
-                    <TextInput
-                      value={personalPassportNumber}
-                      onChangeText={setPersonalPassportNumber}
-                      editable={!isIdentityVerified}
-                      placeholder="Passport number"
-                      placeholderTextColor="#6F86B4"
-                      autoCapitalize="characters"
-                      style={tw.style(
-                        "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                        isIdentityVerified && "opacity-60"
-                      )}
-                    />
-                  ) : null}
-                  <TextInput
-                    value={personalDob}
-                    onChangeText={setPersonalDob}
-                    editable={!isIdentityVerified}
-                    placeholder="Date of birth (YYYY-MM-DD)"
-                    placeholderTextColor="#6F86B4"
-                    style={tw.style(
-                      "mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 text-white",
-                      isIdentityVerified && "opacity-60"
-                    )}
-                  />
-                  <TouchableOpacity
-                    onPress={handleStartPersonalKyc}
-                    disabled={busy || isIdentityVerified}
-                    style={tw.style(
-                      "mt-5 rounded-full bg-[#0FF1CF] px-4 py-4",
-                      (busy || isIdentityVerified) && "opacity-60"
-                    )}
-                  >
-                    {startPersonalKycMutation.isPending ? (
-                      <ActivityIndicator color="#03122F" />
-                    ) : (
-                      <Text style={tw`text-center text-sm font-semibold text-[#03122F]`}>
-                        {isIdentityVerified ? "Identity verified" : "Verify personal identity"}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                </StepCard>
-              )}
-
-              <StepCard
-                stepLabel={currentOwnershipType === "BUSINESS" ? "Step 3" : "Step 2"}
-                title="Selfie submission"
-                description={
-                  canSubmitLiveness
-                    ? "Pick a clear selfie image. We send it to QoreID for face match against the identity document you selected earlier."
-                    : currentOwnershipType === "BUSINESS"
-                      ? "Face match unlocks after CAC and representative identity verification are complete."
-                      : "Face match unlocks after your identity verification is complete."
-                }
-                collapsed={isLivenessVerified}
-                summary="Face match is complete. Your profile is ready for final review."
-              >
-                <View style={tw`mt-3 flex-row items-start gap-3`}>
-                  <View style={tw`rounded-2xl bg-[#12234D] p-3`}>
-                    <Camera size={18} color="#FFD76A" />
-                  </View>
-                  <View style={tw`flex-1`}>
-                    <Text style={tw`text-sm font-semibold text-white`}>Face match</Text>
-                    <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                      We compare your selfie with the identity details you already verified.
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={pickSelfie}
-                  disabled={isLivenessVerified}
-                  style={tw.style(
-                    "mt-4 rounded-full border border-[#30446F] px-4 py-3",
-                    isLivenessVerified && "opacity-50"
-                  )}
-                >
-                  <Text style={tw`text-center text-sm font-semibold text-white`}>
-                    {isLivenessVerified
-                      ? "Face match completed"
-                      : selectedSelfie
-                        ? "Replace selfie image"
-                        : "Choose selfie image"}
-                  </Text>
-                </TouchableOpacity>
-
-                {selectedSelfie ? (
-                  <Text style={tw`mt-3 text-xs text-[#8FA1CB]`} numberOfLines={1}>
-                    Selected: {selectedSelfie.uri}
-                  </Text>
-                ) : null}
-
-                <View style={tw`mt-3 rounded-2xl border border-[#24345A] bg-[#071236] p-3`}>
-                  <Text style={tw`text-xs uppercase tracking-wide text-[#8FA1CB]`}>
-                    Identity number for face match
-                  </Text>
-                  <Text style={tw`mt-2 text-sm text-white`}>
-                    {currentOwnershipType === "BUSINESS"
-                      ? representativeIdentityNumber || "Add the representative's identity number above first."
-                      : personalIdentityNumber || "Add your identity number above first."}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleSubmitLiveness}
-                  disabled={busy || !selectedSelfie || !canSubmitLiveness || isLivenessVerified}
-                  style={tw.style(
-                    "mt-4 rounded-full bg-[#FFD76A] px-4 py-3",
-                    (busy || !selectedSelfie || !canSubmitLiveness || isLivenessVerified) && "opacity-50"
-                  )}
-                >
-                  {submitLivenessMutation.isPending ? (
-                    <ActivityIndicator color="#03122F" />
-                  ) : (
-                    <Text style={tw`text-center text-sm font-semibold text-[#03122F]`}>
-                      {isLivenessVerified ? "Face match verified" : "Submit face match"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </StepCard>
-
-              <StepCard
-                stepLabel={currentOwnershipType === "BUSINESS" ? "Step 4" : "Step 3"}
-                title="Ready for review?"
-                description="Once your identity check and selfie are in, you can send everything for review. We’ll keep collections running while settlement remains on hold."
-                collapsed={isKycSubmitted}
-                summary={
-                  kyc?.status === "VERIFIED"
-                    ? "KYC is verified. Your payout profile is fully approved."
-                    : "KYC has been submitted. We’ll review it and update your payout status."
-                }
-              >
-
-                <TouchableOpacity
-                  onPress={handleSubmitKyc}
-                  disabled={busy || !canSubmitKyc || isKycSubmitted}
-                  style={tw.style(
-                    "mt-4 rounded-full bg-white px-4 py-3",
-                    (busy || !canSubmitKyc || isKycSubmitted) && "opacity-50"
-                  )}
-                >
-                  {submitKycMutation.isPending ? (
-                    <ActivityIndicator color="#03122F" />
-                  ) : (
-                    <Text style={tw`text-center text-sm font-semibold text-[#03122F]`}>
-                      {kyc?.status === "VERIFIED"
-                        ? "KYC verified"
-                        : isKycSubmitted
-                          ? "KYC submitted"
-                          : "Submit KYC for review"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </StepCard>
-
-              {kyc?.rejectionReason ? (
-                <View style={tw`mt-4 flex-row items-start gap-3 rounded-2xl bg-[#32101D] p-4`}>
-                  <BadgeAlert size={18} color="#FF9DB3" />
-                  <Text style={tw`flex-1 text-sm leading-5 text-[#FFB9C9]`}>
-                    {kyc.rejectionReason}
-                  </Text>
-                </View>
-              ) : null}
+              {renderSetupStep()}
             </ScrollView>
           </View>
         </KeyboardAvoidingView>

@@ -33,7 +33,8 @@ const ALL_REGISTRATION_TYPES = [
 const registrationTypeContent = {
   donation: {
     label: "Donation",
-    helper: "Set a fundraising goal. The impact stays locked to 100%.",
+    helper:
+      "Set a fundraising goal. Donations stay as the financial impact layer.",
   },
   ticket: {
     label: "Ticket",
@@ -78,7 +79,8 @@ const Pricing = ({
   } = useForm<EventPricing>({
     resolver: zodResolver(eventPricingSchema) as Resolver<EventPricing>,
     defaultValues: initialData || {
-      registrationType: undefined as unknown as EventPricing["registrationType"],
+      registrationType:
+        undefined as unknown as EventPricing["registrationType"],
       paid: false,
       registrationFee: undefined,
       donationTarget: undefined,
@@ -205,7 +207,9 @@ const Pricing = ({
                     <Text
                       style={twStyle(
                         "text-center text-sm",
-                        registrationType === type ? "text-black" : "text-white"
+                        registrationType === type
+                          ? "text-[#01082E]"
+                          : "text-white"
                       )}
                     >
                       {registrationTypeContent[type].label}
@@ -216,21 +220,7 @@ const Pricing = ({
             )}
           />
         ) : (
-          <View style={tw`mt-3 rounded-2xl bg-[#08143B] p-4`}>
-            <Text style={tw`text-sm font-semibold text-white`}>
-              {
-                registrationTypeContent[normalizedAllowedRegistrationTypes[0]]
-                  .label
-              }{" "}
-              setup
-            </Text>
-            <Text style={tw`mt-2 text-sm leading-5 text-[#A9B8DD]`}>
-              {
-                registrationTypeContent[normalizedAllowedRegistrationTypes[0]]
-                  .helper
-              }
-            </Text>
-          </View>
+          <></>
         )}
 
         {isPricingTypeLocked && (
@@ -264,12 +254,12 @@ const Pricing = ({
                 <PricingCard
                   updatedPrice={ticket.updatedPrice}
                   isVisible={ticket.isVisible}
-                  isNew={ticket.isNew}
+                  isNew={editMode ? false : ticket.isNew}
                   title={ticket.type}
                   description={ticket.description}
                   price={ticket?.price || "Free"}
                   isEdit
-                  onDelete={() => onDelete(ticket.id)}
+                  onDelete={editMode ? undefined : () => onDelete(ticket.id)}
                   onEdit={() => (onEdit ? onEdit(ticket) : null)}
                 />
               </CustomView>
@@ -370,13 +360,6 @@ const Pricing = ({
         {registrationType === "donation" && (
           <CustomView>
             <CustomView>
-              <Text style={tw`text-white text-lg mb-3 font-semibold`}>
-                Set Donation Target
-              </Text>
-              <Text style={tw`text-gray-400 mb-4 text-sm`}>
-                Minimum donation target: ₦500,000
-              </Text>
-
               <Controller
                 name="donationTarget"
                 control={control}
@@ -391,9 +374,6 @@ const Pricing = ({
                       placeholder="₦500,000 minimum"
                     />
                     <ErrorText message={errors.donationTarget?.message} />
-                    <Text style={tw`text-gray-400 mt-2 text-xs`}>
-                      This is the fundraising goal for your event
-                    </Text>
                   </>
                 )}
               />

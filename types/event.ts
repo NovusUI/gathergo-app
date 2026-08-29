@@ -1,4 +1,9 @@
-import { DashboardEventResponse, EventData, StandardResponse } from "./auth";
+import {
+  DashboardEventResponse,
+  EventData,
+  Registration,
+  StandardResponse,
+} from "./auth";
 
 export enum searchTypes {
   EVENTS = "events",
@@ -93,6 +98,34 @@ export interface PaymentInstructions {
   expiresAt?: string | null;
 }
 
+export interface EventImpactReportOutcome {
+  id?: string;
+  type: string;
+  label: string;
+  value: number;
+  unit: string;
+  note?: string;
+}
+
+export interface EventImpactReport {
+  id: string;
+  eventId: string;
+  creatorId: string;
+  summary: string;
+  outcomes: EventImpactReportOutcome[];
+  evidenceLinks: string[];
+  status: "DRAFT" | "PUBLISHED";
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertEventImpactReportPayload {
+  summary: string;
+  outcomes: EventImpactReportOutcome[];
+  evidenceLinks?: string[];
+}
+
 export interface PaginatedEventResponse extends paginatedResponse {
   data: Event[];
 }
@@ -108,8 +141,7 @@ export interface PaginatedSeachResponse extends paginatedResponse {
 export interface EventDetails extends EventData {
   eventTickets?: EventTicket[];
   paymentOptions?: EventPaymentOptions;
-  sponsoredRegistrationsCount?: number;
-  sponsoredRegistrationsAvailable?: number;
+  impactReport?: EventImpactReport | null;
 }
 
 export interface EventDetailsResponse extends StandardResponse {
@@ -182,8 +214,6 @@ export interface RegistrationCheckoutPayload {
   provider?: PaymentProvider;
   deviceId?: string;
   platform?: string;
-  beneficiaryType?: "SELF" | "SPONSORED";
-  sponsorshipNote?: string;
 }
 
 export interface GetTicketsResponse extends StandardResponse {
