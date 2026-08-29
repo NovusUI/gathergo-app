@@ -1,4 +1,5 @@
-import { HandHeart, Leaf, MapPin, Users } from "lucide-react-native";
+import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import { HandHeart, MapPin, Users } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import {
   Animated,
@@ -7,7 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
-  ViewStyle,
+  ViewStyle
 } from "react-native";
 import tw from "twrnc";
 
@@ -24,45 +25,48 @@ const impactNodes = [
     label: "Cause",
     Icon: HandHeart,
     color: "#FF6B6B",
-    position: { top: 8, left: 58 },
+    position: { top: 8, left: 58 }
   },
   {
     key: "people",
     label: "People",
     Icon: Users,
     color: "#31C6F6",
-    position: { bottom: 12, left: 14 },
+    position: { bottom: 12, left: 14 }
   },
   {
     key: "place",
     label: "Place",
     Icon: MapPin,
     color: "#F8D05C",
-    position: { bottom: 12, right: 14 },
-  },
+    position: { bottom: 12, right: 14 }
+  }
 ] as const;
 
 const AnimatedView = Animated.createAnimatedComponent(View);
+const loadingDots = ["first", "second", "third"] as const;
 
 export default function ImpactPageLoader({
   title = "Mapping impact",
   message = "Gathering the people, place, and purpose.",
   compact = false,
-  style,
+  style
 }: ImpactPageLoaderProps) {
   const orbit = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
+  const bounce = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     orbit.setValue(0);
     pulse.setValue(0);
+    bounce.setValue(0);
 
     const orbitLoop = Animated.loop(
       Animated.timing(orbit, {
         toValue: 1,
         duration: 5200,
         easing: Easing.linear,
-        useNativeDriver: true,
+        useNativeDriver: true
       })
     );
     const pulseLoop = Animated.loop(
@@ -71,47 +75,74 @@ export default function ImpactPageLoader({
           toValue: 1,
           duration: 900,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: true
         }),
         Animated.timing(pulse, {
           toValue: 0,
           duration: 900,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: true
+        })
+      ])
+    );
+    const bounceLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounce, {
+          toValue: 1,
+          duration: 1150,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true
         }),
+        Animated.timing(bounce, {
+          toValue: 0,
+          duration: 1150,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true
+        })
       ])
     );
 
     orbitLoop.start();
     pulseLoop.start();
+    bounceLoop.start();
 
     return () => {
       orbitLoop.stop();
       pulseLoop.stop();
+      bounceLoop.stop();
       orbit.stopAnimation();
       pulse.stopAnimation();
+      bounce.stopAnimation();
     };
-  }, [orbit, pulse]);
+  }, [bounce, orbit, pulse]);
 
   const rotate = orbit.interpolate({
     inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
+    outputRange: ["0deg", "360deg"]
   });
   const reverseRotate = orbit.interpolate({
     inputRange: [0, 1],
-    outputRange: ["0deg", "-360deg"],
+    outputRange: ["0deg", "-360deg"]
   });
   const centerScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.96, 1.06],
+    outputRange: [0.96, 1.06]
   });
   const glowOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.18, 0.36],
+    outputRange: [0.18, 0.36]
   });
   const railTranslate = orbit.interpolate({
     inputRange: [0, 1],
-    outputRange: [-72, 188],
+    outputRange: [-72, 188]
+  });
+  const mascotTranslateY = bounce.interpolate({
+    inputRange: [0, 1],
+    outputRange: [3, -5]
+  });
+  const mascotRotate = bounce.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["-2deg", "2deg"]
   });
 
   return (
@@ -122,7 +153,7 @@ export default function ImpactPageLoader({
       style={[
         styles.container,
         compact ? styles.compactContainer : styles.fullContainer,
-        style,
+        style
       ]}
     >
       <View style={styles.artwork}>
@@ -131,16 +162,16 @@ export default function ImpactPageLoader({
             styles.outerGlow,
             {
               opacity: glowOpacity,
-              transform: [{ scale: centerScale }],
-            },
+              transform: [{ scale: centerScale }]
+            }
           ]}
         />
         <AnimatedView
           style={[
             styles.orbitRing,
             {
-              transform: [{ rotate }],
-            },
+              transform: [{ rotate }]
+            }
           ]}
         />
 
@@ -155,17 +186,17 @@ export default function ImpactPageLoader({
                 backgroundColor: `${color}20`,
                 opacity: pulse.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [index === 1 ? 0.82 : 0.72, 1],
+                  outputRange: [index === 1 ? 0.82 : 0.72, 1]
                 }),
                 transform: [
                   {
                     translateY: pulse.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [index === 0 ? 2 : -2, index === 0 ? -2 : 2],
-                    }),
-                  },
-                ],
-              },
+                      outputRange: [index === 0 ? 2 : -2, index === 0 ? -2 : 2]
+                    })
+                  }
+                ]
+              }
             ]}
           >
             <Icon color={color} size={18} strokeWidth={2.4} />
@@ -174,21 +205,61 @@ export default function ImpactPageLoader({
 
         <AnimatedView
           style={[
-            styles.centerMark,
+            styles.mascotStage,
             {
-              transform: [{ scale: centerScale }],
-            },
+              transform: [
+                { translateY: mascotTranslateY },
+                { rotate: mascotRotate },
+                { scale: centerScale }
+              ]
+            }
           ]}
         >
-          <Leaf color="#01082E" size={30} strokeWidth={2.6} />
+          <GatherGoMascot
+            variant="pending"
+            size={compact ? 86 : 102}
+            showBadge={false}
+          />
         </AnimatedView>
+
+        <View style={styles.loadingDots}>
+          {loadingDots.map((key, index) => (
+            <AnimatedView
+              key={key}
+              style={[
+                styles.loadingDot,
+                {
+                  opacity: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [index === 1 ? 0.42 : 0.22, 1]
+                  }),
+                  transform: [
+                    {
+                      translateY: pulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [
+                          index === 1 ? 2 : 4,
+                          index === 1 ? -5 : -2
+                        ]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            />
+          ))}
+        </View>
 
         <AnimatedView
           style={[
             styles.orbitDot,
             {
-              transform: [{ rotate }, { translateY: -66 }, { rotate: reverseRotate }],
-            },
+              transform: [
+                { rotate },
+                { translateY: -66 },
+                { rotate: reverseRotate }
+              ]
+            }
           ]}
         />
       </View>
@@ -207,8 +278,8 @@ export default function ImpactPageLoader({
           style={[
             styles.railFill,
             {
-              transform: [{ translateX: railTranslate }],
-            },
+              transform: [{ translateX: railTranslate }]
+            }
           ]}
         />
       </View>
@@ -220,7 +291,7 @@ export default function ImpactPageLoader({
               key={key}
               style={[
                 tw`rounded-full border px-3 py-1.5`,
-                { borderColor: `${color}55`, backgroundColor: `${color}18` },
+                { borderColor: `${color}55`, backgroundColor: `${color}18` }
               ]}
             >
               <Text style={[tw`text-[11px] font-semibold`, { color }]}>
@@ -239,19 +310,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#01082E",
-    paddingHorizontal: 28,
+    paddingHorizontal: 28
   },
   fullContainer: {
-    flex: 1,
+    flex: 1
   },
   compactContainer: {
-    paddingVertical: 34,
+    paddingVertical: 34
   },
   artwork: {
     height: 156,
     width: 156,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "center"
   },
   outerGlow: {
     position: "absolute",
@@ -260,7 +331,7 @@ const styles = StyleSheet.create({
     height: 116,
     width: 116,
     borderRadius: 58,
-    backgroundColor: "#0FF1CF",
+    backgroundColor: "#0FF1CF"
   },
   orbitRing: {
     position: "absolute",
@@ -272,7 +343,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(15, 241, 207, 0.14)",
     borderTopColor: "#0FF1CF",
-    borderRightColor: "#31C6F6",
+    borderRightColor: "#31C6F6"
   },
   orbitDot: {
     position: "absolute",
@@ -284,17 +355,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#0FF1CF",
     shadowColor: "#0FF1CF",
     shadowOpacity: 0.5,
-    shadowRadius: 12,
+    shadowRadius: 12
   },
-  centerMark: {
-    height: 66,
-    width: 66,
+  mascotStage: {
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 24,
-    backgroundColor: "#0FF1CF",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.45)",
+    justifyContent: "center"
+  },
+  loadingDots: {
+    position: "absolute",
+    bottom: 8,
+    flexDirection: "row",
+    gap: 6
+  },
+  loadingDot: {
+    height: 6,
+    width: 6,
+    borderRadius: 3,
+    backgroundColor: "#0FF1CF"
   },
   node: {
     position: "absolute",
@@ -303,7 +380,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 1
   },
   rail: {
     marginTop: 24,
@@ -311,12 +388,12 @@ const styles = StyleSheet.create({
     width: 188,
     overflow: "hidden",
     borderRadius: 999,
-    backgroundColor: "#162655",
+    backgroundColor: "#162655"
   },
   railFill: {
     height: 4,
     width: 72,
     borderRadius: 999,
-    backgroundColor: "#0FF1CF",
-  },
+    backgroundColor: "#0FF1CF"
+  }
 });

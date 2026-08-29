@@ -8,13 +8,14 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import PricingCard from "@/components/eventInfo/TicketCard";
 import FlameFeedButton from "@/components/feed/FlameFeedButton";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import AppToast from "@/components/ui/AppToast";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { getEventLinkMeta, normalizeEventLink } from "@/constants/eventLinks";
 import {
   buildImpactDescription,
   formatImpactSummary,
-  normalizePersistedImpactMap,
+  normalizePersistedImpactMap
 } from "@/constants/impact";
 import { spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
@@ -25,7 +26,7 @@ import {
   useGetTickets,
   useInitiateDonation,
   useRegisterEvent,
-  useUpsertEventImpactReport,
+  useUpsertEventImpactReport
 } from "@/services/mutations";
 import { useEventDetails, useWalletOnboarding } from "@/services/queries";
 import { QUERY_KEYS } from "@/services/queryKeys";
@@ -37,13 +38,13 @@ import {
   GetTickets,
   PaymentInstructions,
   PaymentProvider,
-  UpsertEventImpactReportPayload,
+  UpsertEventImpactReportPayload
 } from "@/types/event";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import {
   showGlobalError,
   showGlobalSuccess,
-  showGlobalWarning,
+  showGlobalWarning
 } from "@/utils/globalErrorHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { buildEventShareLink } from "@/utils/shareLinks";
@@ -53,7 +54,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
-  BottomSheetTextInput,
+  BottomSheetTextInput
 } from "@gorhom/bottom-sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
@@ -65,7 +66,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentProps,
+  type ComponentProps
 } from "react";
 import {
   Linking,
@@ -75,7 +76,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import tw from "twrnc";
 import DontationProgress from "./DontationProgress";
@@ -109,31 +110,31 @@ const createEmptyImpactOutcome = (): ImpactReportOutcomeDraft => ({
   label: "",
   value: "",
   unit: "",
-  note: "",
+  note: ""
 });
 
 const EVENT_TONES: Record<string, EventTone> = {
   ticket: {
     label: "Ticketed",
     accent: "#0FF1CF",
-    iconName: "ticket-outline",
+    iconName: "ticket-outline"
   },
   registration: {
     label: "Registration",
     accent: "#F8D05C",
-    iconName: "create-outline",
+    iconName: "create-outline"
   },
   donation: {
     label: "Donation",
     accent: "#FF6B6B",
-    iconName: "heart-outline",
-  },
+    iconName: "heart-outline"
+  }
 };
 
 const DEFAULT_EVENT_TONE: EventTone = {
   label: "GatherGo",
   accent: "#31C6F6",
-  iconName: "radio-outline",
+  iconName: "radio-outline"
 };
 
 const getEventTone = (registrationType?: string | null) =>
@@ -143,13 +144,13 @@ const getEventTone = (registrationType?: string | null) =>
 
 const PROVIDER_LABELS: Record<PaymentProvider, string> = {
   PAYSTACK: "Paystack",
-  ALAT_TRANSFER: "ALAT Transfer",
+  ALAT_TRANSFER: "ALAT Transfer"
 };
 
 const formatCheckoutAmount = (value: number) =>
   `₦${value.toLocaleString("en-NG", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 2
   })}`;
 
 const formatCountdown = (seconds: number) => {
@@ -186,7 +187,7 @@ const formatImpactReportDate = (value?: string | null) => {
   return parsed.toLocaleDateString("en-NG", {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    year: "numeric"
   });
 };
 
@@ -231,7 +232,7 @@ const formatParticipationSummary = ({
   registrationType,
   eventTickets,
   registrationFee,
-  donationTarget,
+  donationTarget
 }: {
   registrationType?: string | null;
   eventTickets?: EventTicket[] | null;
@@ -260,7 +261,7 @@ const formatParticipationSummary = ({
 const EventHeroChip = ({
   iconName,
   label,
-  accent = "#0FF1CF",
+  accent = "#0FF1CF"
 }: {
   iconName: IoniconName;
   label: string;
@@ -269,7 +270,7 @@ const EventHeroChip = ({
   <View
     style={[
       tw`max-w-full flex-row items-center rounded-full border px-3 py-2`,
-      { backgroundColor: `${accent}18`, borderColor: `${accent}33` },
+      { backgroundColor: `${accent}18`, borderColor: `${accent}33` }
     ]}
   >
     <Ionicons name={iconName} size={14} color={accent} />
@@ -288,7 +289,7 @@ const EventInfoTile = ({
   subtitle,
   accent = "#0FF1CF",
   wide = false,
-  onPress,
+  onPress
 }: {
   iconName: IoniconName;
   title: string;
@@ -300,7 +301,7 @@ const EventInfoTile = ({
   const tileStyle = [
     tw`rounded-2xl border px-4 py-4`,
     wide ? tw`w-full` : tw`flex-1 min-w-[145px]`,
-    { backgroundColor: "#0A173F", borderColor: `${accent}26` },
+    { backgroundColor: "#0A173F", borderColor: `${accent}26` }
   ];
 
   const content = (
@@ -308,7 +309,7 @@ const EventInfoTile = ({
       <View
         style={[
           tw`h-9 w-9 items-center justify-center rounded-2xl`,
-          { backgroundColor: `${accent}18` },
+          { backgroundColor: `${accent}18` }
         ]}
       >
         <Ionicons name={iconName} size={18} color={accent} />
@@ -391,7 +392,7 @@ const buildCheckoutPreview = (
       grossAmountNaira: grossAmountKobo / 100,
       buyerPlatformFeeNaira: 0,
       buyerProviderFeeNaira: 0,
-      chargeAmountNaira: grossAmountKobo / 100,
+      chargeAmountNaira: grossAmountKobo / 100
     };
   }
 
@@ -429,7 +430,7 @@ const buildCheckoutPreview = (
     grossAmountNaira: grossAmountKobo / 100,
     buyerPlatformFeeNaira: buyerPlatformFeeKobo / 100,
     buyerProviderFeeNaira: buyerProviderFeeKobo / 100,
-    chargeAmountNaira: chargeAmountKobo / 100,
+    chargeAmountNaira: chargeAmountKobo / 100
   };
 };
 
@@ -514,7 +515,7 @@ const EventPage = () => {
     refresh,
     markAllAsSeen,
     setFeedVisibility,
-    getFeedStats, // Get stats for animation
+    getFeedStats // Get stats for animation
   } = useEventFeedConnection(resolvedEventId, true); // autoJoin = true
 
   const feedStats = getFeedStats();
@@ -678,7 +679,7 @@ const EventPage = () => {
     isOwner,
     onboarding?.showPersistentAlert,
     paymentOptions?.requiresPayment,
-    shouldOpenPayoutSetup,
+    shouldOpenPayoutSetup
   ]);
 
   useEffect(() => {
@@ -748,7 +749,7 @@ const EventPage = () => {
             baseAmountNaira,
             provider,
             paymentOptions.pricingConfig
-          ),
+          )
         })
       );
       const selectedPreview = buildCheckoutPreview(
@@ -831,8 +832,8 @@ const EventPage = () => {
               ...oldData.data,
               imageUrl: imageStatusData.data.imageUrl,
               thumbnailUrl: imageStatusData.data.thumbnailUrl,
-              isImageProcessing: false,
-            },
+              isImageProcessing: false
+            }
           };
         }
       );
@@ -860,7 +861,7 @@ const EventPage = () => {
     onError: (error) => {
       console.log(error);
       showGlobalError("Error initiating transaction");
-    },
+    }
   });
 
   const { mutateAsync: registerEvent, isPending: registeringEvent } =
@@ -872,7 +873,7 @@ const EventPage = () => {
       onError: (error) => {
         console.log(error);
         showGlobalError("Error initiating transaction");
-      },
+      }
     });
 
   const { mutateAsync: initiateDonation, isPending: initiatingDonation } =
@@ -885,7 +886,7 @@ const EventPage = () => {
         console.error("Donation initiation failed:", error);
 
         showGlobalError("Failed to initiate donation");
-      },
+      }
     });
 
   const { mutateAsync: upsertImpactReport, isPending: submittingImpactReport } =
@@ -897,7 +898,7 @@ const EventPage = () => {
       onError: (error) => {
         console.error("Impact report submission failed:", error);
         showGlobalError("Failed to publish impact report");
-      },
+      }
     });
 
   const handleTransaction = useCallback(
@@ -911,7 +912,7 @@ const EventPage = () => {
         await registerEvent({
           eventId: resolvedEventId,
           provider: selectedProvider,
-          platform: "mobile",
+          platform: "mobile"
         });
         return;
       }
@@ -920,8 +921,8 @@ const EventPage = () => {
         items: selectedTickets,
         provider: selectedProvider,
         clientContext: {
-          platform: "mobile",
-        },
+          platform: "mobile"
+        }
       });
     },
     [
@@ -931,7 +932,7 @@ const EventPage = () => {
       registerEvent,
       resolvedEventId,
       selectedProvider,
-      selectedTickets,
+      selectedTickets
     ]
   );
 
@@ -952,7 +953,7 @@ const EventPage = () => {
     handleTransaction,
     hasEventEnded,
     paymentOptions?.requiresPayment,
-    registrationFeeAmount,
+    registrationFeeAmount
   ]);
 
   const handleDonation = async () => {
@@ -989,8 +990,8 @@ const EventPage = () => {
         isAnonymous,
         provider: selectedProvider,
         clientContext: {
-          platform: "mobile",
-        },
+          platform: "mobile"
+        }
       });
     } catch (error) {
       console.error("Donation error:", error);
@@ -1002,7 +1003,7 @@ const EventPage = () => {
       await Share.share({
         message: `Gather with me on GatherGo 👉 ${buildEventShareLink(
           resolvedEventId
-        )}`,
+        )}`
       });
     } catch (err) {
       console.error("Error sharing:", err);
@@ -1062,7 +1063,7 @@ const EventPage = () => {
         setShowFeed(false);
         router.push({
           pathname: "/new-carpool",
-          params: { eventId: resolvedEventId, autoOpenEventPicker: "1" },
+          params: { eventId: resolvedEventId, autoOpenEventPicker: "1" }
         });
       }
     },
@@ -1075,31 +1076,31 @@ const EventPage = () => {
       openDonationSheet,
       openSheet,
       resolvedEventId,
-      router,
+      router
     ]
   );
 
   const { mutateAsync: followPooler, isPending: isFollowing } = useFollowUser({
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.eventDetails, data?.data.id],
+        queryKey: [QUERY_KEYS.eventDetails, data?.data.id]
       });
       showGlobalSuccess("User followed");
     },
-    onError: () => {},
+    onError: () => {}
   });
 
   const owner = isOwner;
   const followStatus = data?.data.isFollowingCreator
     ? "Following"
     : data?.data.isFollowedByCreator
-    ? "Follow back"
-    : "Follow";
+      ? "Follow back"
+      : "Follow";
 
   const onFollow = () => {
     if (["Follow back", "Follow"].includes(followStatus)) {
       followPooler({
-        followingId: creator.id,
+        followingId: creator.id
       });
     } else {
     }
@@ -1162,7 +1163,7 @@ const EventPage = () => {
     eventTickets,
     creator,
     registrationFee,
-    registrationType,
+    registrationType
   } = data?.data;
 
   const eventDateTime = formatEventDateTime(startDate, endDate);
@@ -1172,7 +1173,7 @@ const EventPage = () => {
     impactTitle,
     impactDescription,
     registrationType,
-    tags,
+    tags
   });
   const impactNote = buildImpactDescription(impactTitle, impactDescription);
   const persistedImpactMap = normalizePersistedImpactMap(
@@ -1180,13 +1181,13 @@ const EventPage = () => {
       impactSdgGoals,
       impactPaths,
       impactCommitments,
-      impactMapSource,
+      impactMapSource
     },
     {
       title,
       description,
       impactDescription,
-      registrationType,
+      registrationType
     }
   );
   const inferredSdgGoals = persistedImpactMap.sdgGoals;
@@ -1204,7 +1205,7 @@ const EventPage = () => {
     registrationType,
     eventTickets,
     registrationFee,
-    donationTarget: data.data.donationTarget,
+    donationTarget: data.data.donationTarget
   });
   const heroImpactGoal = inferredSdgGoals[0];
   const heroImpactLabel =
@@ -1229,18 +1230,18 @@ const EventPage = () => {
             label: outcome.label,
             value: String(outcome.value),
             unit: outcome.unit,
-            note: outcome.note || "",
+            note: outcome.note || ""
           }))
         : inferredCommitments.length
-        ? inferredCommitments.map((commitment) => ({
-            id: commitment.id,
-            type: commitment.type,
-            label: commitment.label,
-            value: String(commitment.value),
-            unit: commitment.unit,
-            note: "",
-          }))
-        : [createEmptyImpactOutcome()]
+          ? inferredCommitments.map((commitment) => ({
+              id: commitment.id,
+              type: commitment.type,
+              label: commitment.label,
+              value: String(commitment.value),
+              unit: commitment.unit,
+              note: ""
+            }))
+          : [createEmptyImpactOutcome()]
     );
     setImpactReportEvidenceText(reportedEvidenceLinks.join("\n"));
     setShowImpactReportModal(true);
@@ -1268,7 +1269,7 @@ const EventPage = () => {
   const addImpactReportOutcome = () => {
     setImpactReportOutcomes((current) => [
       ...current,
-      createEmptyImpactOutcome(),
+      createEmptyImpactOutcome()
     ]);
   };
 
@@ -1289,7 +1290,7 @@ const EventPage = () => {
             label,
             value,
             unit,
-            ...(note ? { note } : {}),
+            ...(note ? { note } : {})
           };
         })
         .filter(
@@ -1313,7 +1314,7 @@ const EventPage = () => {
       return {
         summary,
         outcomes,
-        evidenceLinks: parseEvidenceLinks(impactReportEvidenceText),
+        evidenceLinks: parseEvidenceLinks(impactReportEvidenceText)
       };
     };
 
@@ -1339,7 +1340,7 @@ const EventPage = () => {
     <View
       style={[
         tw`flex-1 pb-5 bg-[#01082E] items-center w-full`,
-        { paddingTop: spacing.xxl },
+        { paddingTop: spacing.xxl }
       ]}
     >
       <CustomView style={tw`flex-1`}>
@@ -1350,21 +1351,6 @@ const EventPage = () => {
           />
         </CustomView>
 
-        {/* Animated Fire Button */}
-        <View
-          style={[
-            tw`absolute right-5 top-10`,
-            showFeed ? tw`z-0 opacity-0` : tw`z-20`,
-          ]}
-        >
-          <FlameFeedButton
-            unreadCount={feedStats.totalCount}
-            onPress={() => setShowFeed(true)}
-            disabled={showFeed}
-            showCarpoolSignal={isPhysicalEvent !== false}
-          />
-        </View>
-
         <ScrollView
           style={tw`w-full`}
           contentContainerStyle={tw`max-w-[500px] pb-4`}
@@ -1373,7 +1359,7 @@ const EventPage = () => {
             <View
               style={[
                 tw`overflow-hidden rounded-[32px] border bg-[#07143B]`,
-                { borderColor: `${eventTone.accent}33` },
+                { borderColor: `${eventTone.accent}33` }
               ]}
             >
               <View style={tw`relative`}>
@@ -1383,9 +1369,7 @@ const EventPage = () => {
                   height={285}
                   registrationType={registrationType}
                 />
-                <View
-                  style={tw`absolute left-4 right-20 top-4 flex-row`}
-                >
+                <View style={tw`absolute left-4 right-20 top-4 flex-row`}>
                   <EventHeroChip
                     iconName={eventTone.iconName}
                     label={eventTone.label}
@@ -1510,7 +1494,7 @@ const EventPage = () => {
                   <View
                     style={[
                       tw`h-11 w-11 items-center justify-center rounded-full`,
-                      { backgroundColor: inferredSdgGoals[0].color },
+                      { backgroundColor: inferredSdgGoals[0].color }
                     ]}
                   >
                     <SdgGoalIcon
@@ -1540,7 +1524,7 @@ const EventPage = () => {
                       <View
                         style={[
                           tw`h-7 w-7 items-center justify-center rounded-full`,
-                          { backgroundColor: goal.color },
+                          { backgroundColor: goal.color }
                         ]}
                       >
                         <SdgGoalIcon
@@ -1765,7 +1749,7 @@ const EventPage = () => {
                           <View
                             style={[
                               tw`h-12 w-12 items-center justify-center rounded-2xl`,
-                              { backgroundColor: linkMeta.backgroundColor },
+                              { backgroundColor: linkMeta.backgroundColor }
                             ]}
                           >
                             <Ionicons
@@ -1813,8 +1797,8 @@ const EventPage = () => {
                     {onboarding.nextAction === "ADD_SETTLEMENT_ACCOUNT"
                       ? "Add your settlement account so we know where to pay your earnings."
                       : onboarding.nextAction === "COMPLETE_KYC"
-                      ? "Complete identity verification so your earnings can be released."
-                      : "We are still preparing ALAT transfer for this creator account."}
+                        ? "Complete identity verification so your earnings can be released."
+                        : "We are still preparing ALAT transfer for this creator account."}
                   </Text>
                   <TouchableOpacity
                     onPress={() => setShowCreatorSetupModal(true)}
@@ -1906,6 +1890,19 @@ const EventPage = () => {
         ) : null}
       </CustomView>
 
+      {/* Companion feed button */}
+      <View
+        pointerEvents={showFeed ? "none" : "box-none"}
+        style={[tw`absolute inset-0`, showFeed ? tw`z-0 opacity-0` : tw`z-20`]}
+      >
+        <FlameFeedButton
+          unreadCount={feedStats.totalCount}
+          onPress={() => setShowFeed(true)}
+          disabled={showFeed}
+          showCarpoolSignal={isPhysicalEvent !== false}
+        />
+      </View>
+
       {/* BottomSheet for Tickets */}
       <BottomSheetModal
         ref={bottomSheetRef}
@@ -1968,10 +1965,10 @@ const EventPage = () => {
               hasEventEnded
                 ? "Event ended"
                 : gettingTickets
-                ? "Initiating..."
-                : ticketTotal > 0
-                ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
-                : "Claim tickets"
+                  ? "Initiating..."
+                  : ticketTotal > 0
+                    ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
+                    : "Claim tickets"
             }
             buttonClassName="bg-[#0FF1CF] w-full border-0"
             textClassName="!text-black"
@@ -2037,15 +2034,16 @@ const EventPage = () => {
                   hasEventEnded
                     ? "Event ended"
                     : registeringEvent
-                    ? "Registering"
-                    : `Register for ${formatCheckoutAmount(
-                        registrationPreview.chargeAmountNaira
-                      )}`
+                      ? "Registering"
+                      : `Register for ${formatCheckoutAmount(
+                          registrationPreview.chargeAmountNaira
+                        )}`
                 }
               />
             </View>
           </View>
         </View>
+        <AppToast />
       </Modal>
 
       {/* BottomSheet for Donation */}
@@ -2246,10 +2244,10 @@ const EventPage = () => {
               hasEventEnded
                 ? "Event ended"
                 : initiatingDonation
-                ? "Processing..."
-                : `Donate ${formatCheckoutAmount(
-                    donationPreview.chargeAmountNaira
-                  )}`
+                  ? "Processing..."
+                  : `Donate ${formatCheckoutAmount(
+                      donationPreview.chargeAmountNaira
+                    )}`
             }
           />
         </View>
@@ -2271,7 +2269,7 @@ const EventPage = () => {
           error,
           hideFeed,
           loadMore: loadMore, // This is the loadMore function
-          refresh,
+          refresh
         }}
       />
 
@@ -2420,6 +2418,7 @@ const EventPage = () => {
             </TouchableOpacity>
           </View>
         </View>
+        <AppToast />
       </Modal>
 
       <Modal visible={showCreatorSetupModal} transparent animationType="fade">
@@ -2434,8 +2433,8 @@ const EventPage = () => {
               {onboarding?.nextAction === "ADD_SETTLEMENT_ACCOUNT"
                 ? "Your paid event is live. Add the settlement account next so we know where to pay your earnings."
                 : onboarding?.nextAction === "COMPLETE_KYC"
-                ? "Your event can keep collecting payments, but payouts will stay on hold until identity verification is complete."
-                : "Your monetized event is ready. The next step is finishing the remaining wallet setup so all payout options are available."}
+                  ? "Your event can keep collecting payments, but payouts will stay on hold until identity verification is complete."
+                  : "Your monetized event is ready. The next step is finishing the remaining wallet setup so all payout options are available."}
             </Text>
 
             <View style={tw`mt-5 rounded-2xl bg-[#0A173F] p-4`}>
@@ -2473,6 +2472,7 @@ const EventPage = () => {
             </TouchableOpacity>
           </View>
         </View>
+        <AppToast />
       </Modal>
 
       <Modal visible={showImpactReportModal} transparent animationType="slide">
@@ -2640,6 +2640,7 @@ const EventPage = () => {
             </ScrollView>
           </View>
         </View>
+        <AppToast />
       </Modal>
 
       <PaystackWebViewWrapper

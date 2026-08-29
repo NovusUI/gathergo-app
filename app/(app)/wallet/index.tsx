@@ -1,6 +1,7 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
+import AppToast from "@/components/ui/AppToast";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -8,9 +9,8 @@ import {
   useStartBusinessKyc,
   useStartBusinessRepresentativeKyc,
   useStartPersonalKyc,
-  useSubmitWalletKyc,
   useSubmitWalletLiveness,
-  useUpsertWalletPayoutProfile,
+  useUpsertWalletPayoutProfile
 } from "@/services/mutations";
 import {
   useWalletBanks,
@@ -18,26 +18,27 @@ import {
   useWalletOnboarding,
   useWalletOverview,
   useWalletSettlements,
-  useWalletTransactions,
+  useWalletTransactions
 } from "@/services/queries";
 import {
   AccountOwnershipType,
   KycVerificationMode,
   WalletBank,
+  WalletKycData,
   WalletKycStep,
   WalletOnboardingData,
   WalletPayoutAccountResolution,
+  WalletKycResponse,
   WalletSettlement,
-  WalletTransaction,
+  WalletTransaction
 } from "@/types/wallet";
 import {
   showGlobalError,
   showGlobalSuccess,
-  showGlobalWarning,
+  showGlobalWarning
 } from "@/utils/globalErrorHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { Picker } from "@react-native-picker/picker";
-import DropDownPicker from "react-native-dropdown-picker";
 import * as ImagePicker from "expo-image-picker";
 import {
   CheckCircle2,
@@ -47,11 +48,10 @@ import {
   Loader,
   ShieldCheck,
   Wallet as WalletIcon,
-  X,
+  X
 } from "lucide-react-native";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -61,8 +61,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 import tw, { style as twStyle } from "twrnc";
 
 const WALLET_PREVIEW_LIMIT = 5;
@@ -74,8 +75,34 @@ const formatMoney = (amount?: number | null) => {
   const value = Number(amount || 0);
   return `₦${value.toLocaleString("en-NG", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 2
   })}`;
+};
+
+const getKycProgressMessage = (kyc: WalletKycData, defaultMessage: string) => {
+  if (
+    kyc.status === "REJECTED" ||
+    kyc.businessStatus === "REJECTED" ||
+    kyc.identityStatus === "REJECTED" ||
+    kyc.livenessStatus === "REJECTED" ||
+    kyc.nameMatchStatus === "MISMATCH"
+  ) {
+    return "KYC needs review. Check the details below.";
+  }
+
+  if (kyc.status === "SUBMITTED" || kyc.nameMatchStatus === "REVIEW_REQUIRED") {
+    return "KYC sent for review.";
+  }
+
+  if (kyc.status === "VERIFIED" && kyc.kycTier === "FULL") {
+    return "Full KYC active.";
+  }
+
+  if (kyc.status === "VERIFIED" && kyc.kycTier === "BASIC") {
+    return "Basic KYC active.";
+  }
+
+  return defaultMessage;
 };
 
 const formatDate = (value?: string | null) => {
@@ -84,7 +111,7 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString("en-NG", {
     day: "numeric",
     month: "short",
-    year: "numeric",
+    year: "numeric"
   });
 };
 
@@ -120,7 +147,11 @@ const getWalletFriendlyErrorMessage = (error: any, fallback: string) => {
     return fallback;
   }
 
-  if (/dikript|qoreid|access token|credentials are not configured|bad gateway/i.test(rawMessage)) {
+  if (
+    /dikript|qoreid|access token|credentials are not configured|bad gateway/i.test(
+      rawMessage
+    )
+  ) {
     return fallback;
   }
 
@@ -128,10 +159,7 @@ const getWalletFriendlyErrorMessage = (error: any, fallback: string) => {
 };
 
 const splitFullName = (value?: string | null) => {
-  const parts = (value || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = (value || "").trim().split(/\s+/).filter(Boolean);
 
   if (parts.length === 0) {
     return { firstName: "", lastName: "" };
@@ -143,7 +171,7 @@ const splitFullName = (value?: string | null) => {
 
   return {
     firstName: parts[0],
-    lastName: parts.slice(1).join(" "),
+    lastName: parts.slice(1).join(" ")
   };
 };
 
@@ -205,7 +233,7 @@ const getStatusTone = (status?: string | null) => {
     case "CLEAR":
       return {
         bg: "#0F3A32",
-        text: "#65F5C7",
+        text: "#65F5C7"
       };
     case "PENDING_KYC":
     case "IN_PROGRESS":
@@ -218,7 +246,7 @@ const getStatusTone = (status?: string | null) => {
     case "REVIEW":
       return {
         bg: "#3A300F",
-        text: "#FFD76A",
+        text: "#FFD76A"
       };
     case "REJECTED":
     case "FAILED":
@@ -230,12 +258,12 @@ const getStatusTone = (status?: string | null) => {
     case "CANCELLED":
       return {
         bg: "#3E1822",
-        text: "#FF8FA9",
+        text: "#FF8FA9"
       };
     default:
       return {
         bg: "#1E2A4C",
-        text: "#C9D4FF",
+        text: "#C9D4FF"
       };
   }
 };
@@ -246,7 +274,7 @@ const getTaskCopy = (onboarding?: WalletOnboardingData | null) => {
       title: "Verification in progress",
       subtitle:
         "Your details are being checked. People can still pay for your events while settlement waits for verification.",
-      action: "View setup",
+      action: "View setup"
     };
   }
 
@@ -256,28 +284,28 @@ const getTaskCopy = (onboarding?: WalletOnboardingData | null) => {
         title: "Payout account needed",
         subtitle:
           "Your events can keep collecting payments. Settlements stay on hold until a payout account is ready.",
-        action: "Add account",
+        action: "Add account"
       };
     case "COMPLETE_KYC":
       return {
         title: "Identity verification needed",
         subtitle:
           "We need to verify the creator behind the wallet before releasing available earnings.",
-        action: "Continue KYC",
+        action: "Continue KYC"
       };
     case "ALAT_ACTIVATION":
       return {
         title: "Wallet setup under review",
         subtitle:
           "Collections can continue while the team reviews this wallet for settlement and transfer options.",
-        action: "View setup",
+        action: "View setup"
       };
     default:
       return {
         title: "Your wallet is in good shape",
         subtitle:
           "Track earnings, payout readiness, recent transactions, and settlement history here.",
-        action: "Manage setup",
+        action: "Manage setup"
       };
   }
 };
@@ -287,7 +315,7 @@ const SectionCard = ({
   subtitle,
   actionText,
   onPressAction,
-  children,
+  children
 }: {
   title: string;
   subtitle?: string;
@@ -329,7 +357,7 @@ const StatusPill = ({ label }: { label?: string | null }) => {
   return (
     <View
       style={twStyle("self-start rounded-full px-3 py-1", {
-        backgroundColor: tone.bg,
+        backgroundColor: tone.bg
       })}
     >
       <Text style={twStyle("text-xs font-semibold", { color: tone.text })}>
@@ -348,7 +376,7 @@ const SetupTextInput = ({
   value,
   onChangeText,
   placeholder,
-  keyboardType = "default",
+  keyboardType = "default"
 }: {
   label: string;
   value: string;
@@ -373,7 +401,7 @@ const SetupButton = ({
   label,
   onPress,
   disabled = false,
-  tone = "primary",
+  tone = "primary"
 }: {
   label: string;
   onPress: () => void;
@@ -388,7 +416,7 @@ const SetupButton = ({
       tone === "primary"
         ? tw`bg-[#0FF1CF]`
         : tw`border border-[#24345A] bg-[#0A173F]`,
-      disabled ? tw`opacity-50` : null,
+      disabled ? tw`opacity-50` : null
     ]}
   >
     <Text
@@ -406,7 +434,7 @@ const SetupButton = ({
 const SetupPanel = ({
   title,
   subtitle,
-  children,
+  children
 }: {
   title: string;
   subtitle?: string;
@@ -443,9 +471,9 @@ const IDENTITY_SETUP_STEP_CODES = [
   "BUSINESS_IDENTITY",
   "BUSINESS_NAME_MATCH",
   "REPRESENTATIVE_IDENTITY",
-  "NAME_MATCH",
+  "NAME_MATCH"
 ];
-const REVIEW_SETUP_STEP_CODES = ["BASIC_SUBMIT", "LIVENESS", "FULL_SUBMIT"];
+const LIMIT_UPGRADE_STEP_CODES = ["LIVENESS"];
 
 const getCompactSetupStepStatus = (
   steps: WalletKycStep[]
@@ -483,7 +511,9 @@ const buildCompactSetupSteps = (
   kycTier?: string | null,
   accountOwnershipType?: AccountOwnershipType | null
 ): CompactSetupStep[] => {
-  const hasBusinessFlow = steps.some((step) => step.code === "BUSINESS_IDENTITY");
+  const hasBusinessFlow = steps.some(
+    (step) => step.code === "BUSINESS_IDENTITY"
+  );
   const getStepsByCode = (codes: string[]) =>
     steps.filter((step) => codes.includes(step.code));
   const identityStepCodes =
@@ -498,10 +528,6 @@ const buildCompactSetupSteps = (
     !livenessRequired
       ? "CAC details"
       : "CAC and representative details";
-  const reviewStepCodes =
-    kycTier === "BASIC" && !livenessRequired
-      ? ["BASIC_SUBMIT"]
-      : REVIEW_SETUP_STEP_CODES;
   const makeStep = (
     code: string,
     title: string,
@@ -518,7 +544,7 @@ const buildCompactSetupSteps = (
       status,
       active: groupedSteps.some(
         (step) => step.active || step.status === "ACTIVE"
-      ),
+      )
     };
   };
 
@@ -536,17 +562,15 @@ const buildCompactSetupSteps = (
       identityStepCodes
     ),
     makeStep(
-      "PAYOUT_REVIEW",
+      "LIMIT_UPGRADE",
+      kycTier === "FULL" ? "Full payout access" : "Increase payout limit",
       kycTier === "FULL"
-        ? "Full payout access"
+        ? "Higher payout limits active"
         : livenessRequired
-          ? "Increase payout limit"
-          : "Review and payout access",
-      livenessRequired
-        ? "Face verification unlocks higher payouts"
-        : "Basic KYC active up to your payout limit",
-      reviewStepCodes
-    ),
+          ? "Face verification unlocks higher payouts"
+          : "Optional face verification for higher payouts",
+      LIMIT_UPGRADE_STEP_CODES
+    )
   ];
 };
 
@@ -554,7 +578,7 @@ const SetupStepList = ({
   steps,
   livenessRequired,
   kycTier,
-  accountOwnershipType,
+  accountOwnershipType
 }: {
   steps: WalletKycStep[];
   livenessRequired?: boolean | null;
@@ -583,7 +607,7 @@ const SetupStepList = ({
               tw`flex-row items-center gap-3 rounded-2xl border px-3 py-3`,
               step.active
                 ? tw`border-[#0FF1CF] bg-[#0FF1CF]/10`
-                : tw`border-[#21315A] bg-[#081335]`,
+                : tw`border-[#21315A] bg-[#081335]`
             ]}
           >
             <View
@@ -593,13 +617,13 @@ const SetupStepList = ({
                   ? tw`bg-[#0F3A32]`
                   : step.active
                     ? tw`bg-[#0FF1CF]`
-                    : tw`bg-[#1E2A4C]`,
+                    : tw`bg-[#1E2A4C]`
               ]}
             >
               <Text
                 style={[
                   tw`text-xs font-bold`,
-                  step.active ? tw`text-[#01082E]` : tw`text-white`,
+                  step.active ? tw`text-[#01082E]` : tw`text-white`
                 ]}
               >
                 {index + 1}
@@ -624,7 +648,7 @@ const SetupStepList = ({
 const OwnershipButton = ({
   label,
   active,
-  onPress,
+  onPress
 }: {
   label: string;
   active: boolean;
@@ -636,11 +660,15 @@ const OwnershipButton = ({
       tw`flex-1 rounded-2xl border px-3 py-3`,
       active
         ? tw`border-[#0FF1CF] bg-[#0FF1CF]/15`
-        : tw`border-[#24345A] bg-[#081335]`,
+        : tw`border-[#24345A] bg-[#081335]`
     ]}
   >
     <Text
-      style={active ? tw`text-center font-semibold text-[#0FF1CF]` : tw`text-center font-semibold text-[#9FB0D8]`}
+      style={
+        active
+          ? tw`text-center font-semibold text-[#0FF1CF]`
+          : tw`text-center font-semibold text-[#9FB0D8]`
+      }
     >
       {label}
     </Text>
@@ -649,7 +677,7 @@ const OwnershipButton = ({
 
 const EmptyState = ({
   title,
-  subtitle,
+  subtitle
 }: {
   title: string;
   subtitle: string;
@@ -668,7 +696,7 @@ const EmptyState = ({
 );
 
 const TransactionCard = ({
-  transaction,
+  transaction
 }: {
   transaction: WalletTransaction;
 }) => (
@@ -734,7 +762,7 @@ const SettlementCard = ({ settlement }: { settlement: WalletSettlement }) => (
 
 const HistoryFooter = ({
   hasNextPage,
-  isFetchingNextPage,
+  isFetchingNextPage
 }: {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
@@ -768,7 +796,7 @@ const HistoryLoading = ({ label }: { label: string }) => (
 const HistoryShell = ({
   title,
   onBack,
-  children,
+  children
 }: {
   title: string;
   onBack: () => void;
@@ -788,7 +816,9 @@ const WalletScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [historyView, setHistoryView] = useState<WalletHistoryView>(null);
   const [setupVisible, setSetupVisible] = useState(false);
-  const [setupStepOverride, setSetupStepOverride] = useState<string | null>(null);
+  const [setupStepOverride, setSetupStepOverride] = useState<string | null>(
+    null
+  );
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
 
   const kycQuery = useWalletKyc({ enabled: setupVisible });
@@ -797,13 +827,13 @@ const WalletScreen = () => {
   const transactionsHistoryQuery = useWalletTransactions(
     WALLET_HISTORY_PAGE_SIZE,
     {
-      enabled: historyView === "transactions",
+      enabled: historyView === "transactions"
     }
   );
   const settlementsHistoryQuery = useWalletSettlements(
     WALLET_HISTORY_PAGE_SIZE,
     {
-      enabled: historyView === "settlements",
+      enabled: historyView === "settlements"
     }
   );
 
@@ -817,28 +847,25 @@ const WalletScreen = () => {
     () => banksQuery.data?.data || [],
     [banksQuery.data?.data]
   );
-  const bankPickerItems = useMemo(
-    () => {
-      const seenBankCodes = new Set<string>();
+  const bankPickerItems = useMemo(() => {
+    const seenBankCodes = new Set<string>();
 
-      return banks.reduce<{ label: string; value: string }[]>((items, bank) => {
-        const bankCode = bank.code || "";
+    return banks.reduce<{ label: string; value: string }[]>((items, bank) => {
+      const bankCode = bank.code || "";
 
-        if (!bankCode || seenBankCodes.has(bankCode)) {
-          return items;
-        }
-
-        seenBankCodes.add(bankCode);
-        items.push({
-          label: bank.name || bankCode,
-          value: bankCode,
-        });
-
+      if (!bankCode || seenBankCodes.has(bankCode)) {
         return items;
-      }, []);
-    },
-    [banks]
-  );
+      }
+
+      seenBankCodes.add(bankCode);
+      items.push({
+        label: bank.name || bankCode,
+        value: bankCode
+      });
+
+      return items;
+    }, []);
+  }, [banks]);
   const onboardingCopy = getTaskCopy(onboarding);
   const transactionsPreview = transactions.slice(0, WALLET_PREVIEW_LIMIT);
   const settlementsPreview = settlements.slice(0, WALLET_PREVIEW_LIMIT);
@@ -857,8 +884,7 @@ const WalletScreen = () => {
   const [accountNumber, setAccountNumber] = useState("");
   const [resolvedPayoutAccount, setResolvedPayoutAccount] =
     useState<WalletPayoutAccountResolution | null>(null);
-  const [resolvedPayoutAccountKey, setResolvedPayoutAccountKey] =
-    useState("");
+  const [resolvedPayoutAccountKey, setResolvedPayoutAccountKey] = useState("");
   const [payoutResolutionError, setPayoutResolutionError] = useState("");
   const payoutResolutionKeyRef = useRef("");
   const lastPayoutResolutionAttemptKeyRef = useRef("");
@@ -887,8 +913,7 @@ const WalletScreen = () => {
 
   const selectedBank =
     banks.find((bank: WalletBank) => bank.code === selectedBankCode) || null;
-  const normalizedAccountNumber =
-    normalizePayoutAccountNumber(accountNumber);
+  const normalizedAccountNumber = normalizePayoutAccountNumber(accountNumber);
   const payoutResolutionKey = buildPayoutResolutionKey(
     selectedBankCode,
     normalizedAccountNumber
@@ -917,19 +942,21 @@ const WalletScreen = () => {
     kyc?.kycTier === "FULL" ||
     (kyc?.kycTier === "BASIC" && !kyc?.livenessRequired);
   const currentKycStep =
-    ((rawCurrentKycStep === "LIVENESS" &&
+    (rawCurrentKycStep === "LIVENESS" &&
       kyc?.kycTier === "BASIC" &&
       !kyc?.livenessRequired) ||
-      (rawCurrentKycStep === "REPRESENTATIVE_IDENTITY" &&
-        businessFullKycIsOptional))
+    (rawCurrentKycStep === "REPRESENTATIVE_IDENTITY" &&
+      businessFullKycIsOptional)
       ? "WALLET_STATUS"
       : rawCurrentKycStep || (shouldShowWalletStatus ? "WALLET_STATUS" : null);
   const activeSetupStep =
     setupStepOverride || currentKycStep || "PAYOUT_ACCOUNT";
-  const currentPersonalVerificationMode =
-    normalizePersonalVerificationMode(personalVerificationMode);
-  const currentBusinessVerificationMode =
-    normalizeBusinessVerificationMode(representativeVerificationMode);
+  const currentPersonalVerificationMode = normalizePersonalVerificationMode(
+    personalVerificationMode
+  );
+  const currentBusinessVerificationMode = normalizeBusinessVerificationMode(
+    representativeVerificationMode
+  );
   const currentOwnershipType = ownershipType;
   const personalIdentityNumber =
     currentPersonalVerificationMode === "PERSONAL_BVN"
@@ -947,7 +974,6 @@ const WalletScreen = () => {
   const isIdentityVerified = kyc?.identityStatus === "VERIFIED";
   const isIdentityReviewable = kyc?.identityStatus === "SUBMITTED";
   const isIdentityPending = kyc?.identityStatus === "PENDING_PROVIDER";
-  const isLivenessVerified = kyc?.livenessStatus === "VERIFIED";
   const canStartBusinessRepresentative =
     activeSetupStep === "REPRESENTATIVE_IDENTITY" &&
     currentOwnershipType === "BUSINESS" &&
@@ -958,13 +984,6 @@ const WalletScreen = () => {
       ? isBusinessVerificationVerified &&
         (isIdentityVerified || isIdentityReviewable)
       : isIdentityVerified);
-  const canSubmitBasicKyc =
-    activeSetupStep === "BASIC_SUBMIT" && Boolean(kyc?.canSubmitBasicKyc);
-  const canSubmitFullKyc =
-    activeSetupStep === "FULL_SUBMIT" &&
-    Boolean(kyc?.canSubmitFullKyc || isLivenessVerified);
-  const isKycSubmitted =
-    kyc?.status === "SUBMITTED" || kyc?.status === "VERIFIED";
   const fullSettlements =
     settlementsHistoryQuery.data?.pages
       .flatMap((page) =>
@@ -989,12 +1008,14 @@ const WalletScreen = () => {
           "We couldn't save this payout account right now. Please try again later."
         )
       );
-    },
+    }
   });
 
   const startPersonalKycMutation = useStartPersonalKyc({
-    onSuccess: async () => {
-      showGlobalSuccess("Personal identity check started.");
+    onSuccess: async (response: WalletKycResponse) => {
+      showGlobalSuccess(
+        getKycProgressMessage(response.data, "Personal identity check started.")
+      );
       setSetupStepOverride(null);
       await refreshWalletSetup();
     },
@@ -1005,12 +1026,14 @@ const WalletScreen = () => {
           "We couldn't start identity verification right now. Please try again later."
         )
       );
-    },
+    }
   });
 
   const startBusinessKycMutation = useStartBusinessKyc({
-    onSuccess: async () => {
-      showGlobalSuccess("Business verification started.");
+    onSuccess: async (response: WalletKycResponse) => {
+      showGlobalSuccess(
+        getKycProgressMessage(response.data, "Business verification started.")
+      );
       setSetupStepOverride(null);
       await refreshWalletSetup();
     },
@@ -1021,13 +1044,18 @@ const WalletScreen = () => {
           "We couldn't start business verification right now. Please try again later."
         )
       );
-    },
+    }
   });
 
   const startBusinessRepresentativeKycMutation =
     useStartBusinessRepresentativeKyc({
-      onSuccess: async () => {
-        showGlobalSuccess("Representative identity check started.");
+      onSuccess: async (response: WalletKycResponse) => {
+        showGlobalSuccess(
+          getKycProgressMessage(
+            response.data,
+            "Representative identity check started."
+          )
+        );
         setSetupStepOverride(null);
         await refreshWalletSetup();
       },
@@ -1038,12 +1066,14 @@ const WalletScreen = () => {
             "We couldn't start representative verification right now. Please try again later."
           )
         );
-      },
+      }
     });
 
   const submitLivenessMutation = useSubmitWalletLiveness({
-    onSuccess: async () => {
-      showGlobalSuccess("Selfie submitted.");
+    onSuccess: async (response: WalletKycResponse) => {
+      showGlobalSuccess(
+        getKycProgressMessage(response.data, "Selfie submitted.")
+      );
       setSetupStepOverride(null);
       setSelectedSelfie(null);
       await refreshWalletSetup();
@@ -1055,23 +1085,7 @@ const WalletScreen = () => {
           "We couldn't submit face verification right now. Please try again later."
         )
       );
-    },
-  });
-
-  const submitKycMutation = useSubmitWalletKyc({
-    onSuccess: async () => {
-      showGlobalSuccess("KYC submitted for review.");
-      setSetupStepOverride(null);
-      await refreshWalletSetup();
-    },
-    onError: (error: any) => {
-      showGlobalError(
-        getWalletFriendlyErrorMessage(
-          error,
-          "We couldn't submit your verification right now. Please try again later."
-        )
-      );
-    },
+    }
   });
 
   const busy =
@@ -1080,14 +1094,13 @@ const WalletScreen = () => {
     startPersonalKycMutation.isPending ||
     startBusinessKycMutation.isPending ||
     startBusinessRepresentativeKycMutation.isPending ||
-    submitLivenessMutation.isPending ||
-    submitKycMutation.isPending;
+    submitLivenessMutation.isPending;
 
   async function refreshWalletSetup() {
     await Promise.all([
       overviewQuery.refetch(),
       onboardingQuery.refetch(),
-      kycQuery.refetch(),
+      kycQuery.refetch()
     ]);
   }
 
@@ -1118,7 +1131,7 @@ const WalletScreen = () => {
       payoutProfile?.accountName && profileAccountNumber
         ? {
             accountNumber: normalizePayoutAccountNumber(profileAccountNumber),
-            accountName: payoutProfile.accountName,
+            accountName: payoutProfile.accountName
           }
         : null
     );
@@ -1185,7 +1198,7 @@ const WalletScreen = () => {
       resolvePayoutAccountMutation
         .mutateAsync({
           bankCode,
-          accountNumber: accountNumberToResolve,
+          accountNumber: accountNumberToResolve
         })
         .then((response) => {
           if (payoutResolutionKeyRef.current !== resolutionKey) {
@@ -1230,12 +1243,14 @@ const WalletScreen = () => {
     payoutResolutionKey,
     resolvePayoutAccountMutation,
     selectedBankCode,
-    setupVisible,
+    setupVisible
   ]);
 
   const handleSavePayoutProfile = async () => {
     if (!selectedBankCode || !selectedBank?.name) {
-      showGlobalWarning("Choose the bank that matches your settlement account.");
+      showGlobalWarning(
+        "Choose the bank that matches your settlement account."
+      );
       return;
     }
 
@@ -1258,7 +1273,7 @@ const WalletScreen = () => {
       accountOwnershipType,
       bankCode: selectedBankCode,
       bankName: selectedBank.name,
-      accountNumber: normalizedAccountNumber,
+      accountNumber: normalizedAccountNumber
     });
   };
 
@@ -1291,7 +1306,7 @@ const WalletScreen = () => {
           : undefined,
       firstName: personalFirstName.trim(),
       lastName: personalLastName.trim(),
-      dateOfBirth: personalDob.trim() || undefined,
+      dateOfBirth: personalDob.trim() || undefined
     });
   };
 
@@ -1304,7 +1319,7 @@ const WalletScreen = () => {
     await startBusinessKycMutation.mutateAsync({
       regNumber: businessRegNumber.trim(),
       businessName:
-        businessDisplayName.trim() || payoutProfile?.businessName || undefined,
+        businessDisplayName.trim() || payoutProfile?.businessName || undefined
     });
   };
 
@@ -1337,7 +1352,7 @@ const WalletScreen = () => {
       representativeBvn:
         currentBusinessVerificationMode === "BUSINESS_CAC_REP_BVN"
           ? representativeBvn.trim()
-          : undefined,
+          : undefined
     });
   };
 
@@ -1345,7 +1360,9 @@ const WalletScreen = () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      showGlobalWarning("Photo library access is needed to submit your selfie.");
+      showGlobalWarning(
+        "Photo library access is needed to submit your selfie."
+      );
       return;
     }
 
@@ -1354,14 +1371,14 @@ const WalletScreen = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-      base64: true,
+      base64: true
     });
 
     if (!result.canceled) {
       const asset = result.assets[0];
       setSelectedSelfie({
         uri: asset?.uri || "",
-        base64: asset?.base64 || null,
+        base64: asset?.base64 || null
       });
     }
   };
@@ -1382,38 +1399,8 @@ const WalletScreen = () => {
     }
 
     await submitLivenessMutation.mutateAsync({
-      photoBase64: selectedSelfie.base64,
+      photoBase64: selectedSelfie.base64
     });
-  };
-
-  const handleSubmitKyc = (targetTier: "BASIC" | "FULL" = "BASIC") => {
-    const canSubmit =
-      targetTier === "FULL" ? canSubmitFullKyc : canSubmitBasicKyc;
-
-    if (!canSubmit) {
-      showGlobalWarning(
-        targetTier === "FULL"
-          ? "Complete face verification before submitting Full KYC."
-          : "Complete the unlocked verification steps before submitting Basic KYC."
-      );
-      return;
-    }
-
-    Alert.alert(
-      targetTier === "FULL" ? "Submit Full KYC" : "Submit Basic KYC",
-      targetTier === "FULL"
-        ? "We will submit your face verification upgrade for review."
-        : `Basic KYC lets you receive up to ${formatMoney(kyc?.basicKycSettlementCap)} before face verification is required.`,
-      [
-        { text: "Not yet", style: "cancel" },
-        {
-          text: "Submit",
-          onPress: () => {
-            void submitKycMutation.mutateAsync({ targetTier });
-          },
-        },
-      ]
-    );
   };
 
   const renderNameMatchPanel = () => {
@@ -1422,7 +1409,9 @@ const WalletScreen = () => {
         ? kyc?.verifiedBusinessName
         : kyc?.verifiedFullName;
     const retryStep =
-      currentOwnershipType === "BUSINESS" ? "BUSINESS_IDENTITY" : "PERSONAL_IDENTITY";
+      currentOwnershipType === "BUSINESS"
+        ? "BUSINESS_IDENTITY"
+        : "PERSONAL_IDENTITY";
 
     return (
       <SetupPanel
@@ -1438,7 +1427,8 @@ const WalletScreen = () => {
             {payoutProfile?.accountName || "Not available"}
           </Text>
           <Text style={tw`mt-4 text-xs text-[#8FA1CB]`}>
-            Verified {currentOwnershipType === "BUSINESS" ? "business" : "identity"} name
+            Verified{" "}
+            {currentOwnershipType === "BUSINESS" ? "business" : "identity"} name
           </Text>
           <Text style={tw`mt-1 text-sm font-semibold text-white`}>
             {verifiedName || "Not available"}
@@ -1677,10 +1667,7 @@ const WalletScreen = () => {
 
       case "BUSINESS_IDENTITY":
         return (
-          <SetupPanel
-            title="Business verification"
-            subtitle="Verify the CAC record before representative details unlock."
-          >
+          <SetupPanel title="Business verification">
             <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
               <StatusPill label={kyc?.businessStatus || "NOT_STARTED"} />
             </View>
@@ -1733,7 +1720,9 @@ const WalletScreen = () => {
                 <Picker
                   selectedValue={representativeVerificationMode}
                   onValueChange={(value) =>
-                    setRepresentativeVerificationMode(value as KycVerificationMode)
+                    setRepresentativeVerificationMode(
+                      value as KycVerificationMode
+                    )
                   }
                   dropdownIconColor="#FFFFFF"
                   style={tw`text-white`}
@@ -1773,7 +1762,8 @@ const WalletScreen = () => {
                 onChangeText={setRepresentativeBvn}
                 keyboardType="number-pad"
               />
-            ) : currentBusinessVerificationMode === "BUSINESS_CAC_REP_PHONE" ? null : (
+            ) : currentBusinessVerificationMode ===
+              "BUSINESS_CAC_REP_PHONE" ? null : (
               <SetupTextInput
                 label="NIN"
                 value={representativeNin}
@@ -1797,39 +1787,6 @@ const WalletScreen = () => {
                 void handleStartBusinessRepresentativeKyc();
               }}
               disabled={busy || !canStartBusinessRepresentative}
-            />
-          </SetupPanel>
-        );
-
-      case "BASIC_SUBMIT":
-        return (
-          <SetupPanel
-            title="Submit Basic KYC"
-            subtitle="Face verification is not required for this tier."
-          >
-            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
-              <StatusPill label={kyc?.status || onboarding?.kycStatus} />
-              <StatusPill label={kyc?.nameMatchStatus || "NOT_CHECKED"} />
-            </View>
-            <View style={tw`mb-4 rounded-2xl bg-[#081335] p-4`}>
-              <Text style={tw`text-xs text-[#8FA1CB]`}>Basic payout cap</Text>
-              <Text style={tw`mt-1 text-base font-semibold text-white`}>
-                {formatMoney(kyc?.basicKycSettlementCap)}
-              </Text>
-              <Text style={tw`mt-2 text-sm leading-5 text-[#9FB0D8]`}>
-                Complete face verification later to remove this cap.
-              </Text>
-            </View>
-            <SetupButton
-              label={
-                submitKycMutation.isPending
-                  ? "Submitting..."
-                  : isKycSubmitted
-                    ? "Submitted"
-                    : "Submit Basic KYC"
-              }
-              onPress={() => handleSubmitKyc("BASIC")}
-              disabled={busy || !canSubmitBasicKyc || isKycSubmitted}
             />
           </SetupPanel>
         );
@@ -1881,25 +1838,6 @@ const WalletScreen = () => {
           </SetupPanel>
         );
 
-      case "FULL_SUBMIT":
-        return (
-          <SetupPanel title="Submit Full KYC">
-            <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
-              <StatusPill label={kyc?.livenessStatus || "NOT_STARTED"} />
-              <StatusPill label={kyc?.kycTier || "BASIC"} />
-            </View>
-            <SetupButton
-              label={
-                submitKycMutation.isPending
-                  ? "Submitting..."
-                  : "Submit Full KYC"
-              }
-              onPress={() => handleSubmitKyc("FULL")}
-              disabled={busy || !canSubmitFullKyc}
-            />
-          </SetupPanel>
-        );
-
       default:
         return (
           <SetupPanel
@@ -1916,8 +1854,10 @@ const WalletScreen = () => {
               kyc?.status === "SUBMITTED"
                 ? "The team will review the submitted details. No extra checks are needed right now."
                 : kyc?.kycTier === "BASIC" && !kyc?.livenessRequired
-                  ? `You can receive up to ${formatMoney(kyc.basicKycSettlementCap)} before face verification is required.`
-                : "Your current wallet status is shown below."
+                  ? `You can receive up to ${formatMoney(
+                      kyc.basicKycSettlementCap
+                    )} before face verification is required.`
+                  : "Your current wallet status is shown below."
             }
           >
             <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
@@ -1957,7 +1897,7 @@ const WalletScreen = () => {
       await Promise.all([
         overviewQuery.refetch(),
         onboardingQuery.refetch(),
-        setupVisible ? kycQuery.refetch() : Promise.resolve(),
+        setupVisible ? kycQuery.refetch() : Promise.resolve()
       ]);
     } finally {
       setRefreshing(false);
@@ -1968,10 +1908,7 @@ const WalletScreen = () => {
 
   if (historyView === "transactions") {
     return (
-      <HistoryShell
-        title="Transactions"
-        onBack={() => setHistoryView(null)}
-      >
+      <HistoryShell title="Transactions" onBack={() => setHistoryView(null)}>
         <FlatList
           data={fullTransactions}
           keyExtractor={(item) => item.id}
@@ -2119,7 +2056,7 @@ const WalletScreen = () => {
             {
               shadowColor: "#0FF1CF",
               shadowOpacity: 0.12,
-              shadowRadius: 18,
+              shadowRadius: 18
             }
           )}
         >
@@ -2193,26 +2130,26 @@ const WalletScreen = () => {
               label: "Available",
               value: formatMoney(balance?.availableBalance),
               icon: CircleDollarSign,
-              color: "#0FF1CF",
+              color: "#0FF1CF"
             },
             {
               label: "Held",
               value: formatMoney(balance?.heldBalance),
               icon: Clock3,
-              color: "#FFD76A",
+              color: "#FFD76A"
             },
             {
               label: "Processing",
               value: formatMoney(balance?.processingBalance),
               icon: Loader,
-              color: "#9FB0D8",
+              color: "#9FB0D8"
             },
             {
               label: "Settled",
               value: formatMoney(balance?.settledBalance),
               icon: CheckCircle2,
-              color: "#7CFFB2",
-            },
+              color: "#7CFFB2"
+            }
           ].map((item) => {
             const Icon = item.icon;
             return (
@@ -2271,8 +2208,8 @@ const WalletScreen = () => {
             </View>
           ) : (
             <Text style={tw`text-sm leading-5 text-[#9FB0D8]`}>
-              No settlements yet. Payout batches will appear here when
-              available earnings are settled.
+              No settlements yet. Payout batches will appear here when available
+              earnings are settled.
             </Text>
           )}
         </SectionCard>
@@ -2295,7 +2232,7 @@ const WalletScreen = () => {
                   Wallet setup
                 </Text>
                 <Text style={tw`mt-1 text-sm text-[#9FB0D8]`}>
-                  Account, identity, and review
+                  Account and identity
                 </Text>
               </View>
               <TouchableOpacity
@@ -2319,6 +2256,7 @@ const WalletScreen = () => {
               {renderSetupStep()}
             </ScrollView>
           </View>
+          <AppToast />
         </KeyboardAvoidingView>
       </Modal>
     </View>

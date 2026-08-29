@@ -1,4 +1,5 @@
 // Create a new file: components/PaystackWebViewWrapper.tsx
+import AppToast from "@/components/ui/AppToast";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
@@ -22,7 +23,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
   onSuccess,
   onCancel,
   onError,
-  type,
+  type
 }) => {
   const webViewRef = useRef<WebView>(null);
   const hasNavigatedRef = useRef(false);
@@ -116,6 +117,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
           }}
         />
       </View>
+      <AppToast />
     </Modal>
   );
 };
