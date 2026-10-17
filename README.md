@@ -48,3 +48,18 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Events and impact
+
+Every event has its own description and interests. Organisers can optionally add
+an impact story and choose individual map suggestions; only saved selections
+appear publicly. Removing the story also clears its map. Existing event records
+are preserved until their organiser edits them.
+
+Impact suggestions come from the backend's DeepSeek integration after typing
+pauses for one second. The app does not use keyword suggestions or a local
+fallback. If AI suggestions fail, organisers can retry, keep their selections,
+or continue without a map. Configure `DEEPSEEK_API_KEY` on the backend only.
+
+Run the event creation and map regression checks with `npm run test:event-first`.
+Run AI suggestion and selection checks with `npm run test:impact-suggestions`.

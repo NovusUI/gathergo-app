@@ -1,33 +1,32 @@
+import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
+import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
+import { clearCheckoutIntent } from "@/utils/checkout";
+import { cancelCheckout } from "@/services/serviceFn";
+import { PaystackWebViewWrapper } from "@/components/PaystackWebViewWrapper";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import QRCodeGenerator from "@/components/QRCodeGen";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { EventDetails } from "@/components/ui/EventDetails";
+import { MascotMoment } from "@/components/ui/MascotMoment";
+import { TRANSACTION_MASCOT_MOMENTS } from "@/constants/mascot";
 import { useAuth } from "@/context/AuthContext";
 import {
   useEventDetails,
   useTicketOrRegByTransactionRef,
-  useTransactionRef,
+  useTransactionRef
 } from "@/services/queries";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import { showGlobalError } from "@/utils/globalErrorHandler";
-import { useLockedRouter } from "@/utils/navigation";
-import { safeGoBack } from "@/utils/navigation";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { numberWithCommas } from "@/utils/utils";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetScrollView,
+  BottomSheetScrollView
 } from "@gorhom/bottom-sheet";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Calendar,
-  CarFront,
-  CircleCheckIcon,
-  CircleXIcon,
-  Flame,
-  LoaderIcon,
-} from "lucide-react-native";
+import { useLocalSearchParams } from "expo-router";
+import { Calendar, CarFront, Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line } from "react-native-svg";
@@ -68,47 +67,55 @@ const TransactionRef = () => {
     bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
-  const { data, isPending, isError } = useTransactionRef(resolvedTransactionId, {
-    enabled: !!transactionId, // prevent running when no ID
-    refetchInterval: (query: any) => {
-      const status = String(query.state.data?.data?.status || "").toUpperCase();
-      if (status === "AWAITING_TRANSFER") {
-        return 5000;
+  const [showPayment, setShowPayment] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const { data, isPending, isError, refetch } = useTransactionRef(
+    resolvedTransactionId,
+    {
+      enabled: !!transactionId, // prevent running when no ID
+      refetchInterval: (query: any) => {
+        const status = String(
+          query.state.data?.data?.status || ""
+        ).toUpperCase();
+        if (status === "AWAITING_TRANSFER") {
+          return 5000;
+        }
+        if (["EXPIRED", "REFUND_REQUIRED"].includes(status)) return 30000;
+        return ["PENDING", "PROCESSING"].includes(status) ? 5000 : false;
       }
-      return status === "PENDING" || status === "PROCESSING" ? 3000 : false;
-    },
-  });
+    }
+  );
 
   const transactionStatus = String(data?.data?.status || "").toUpperCase();
-  const paymentProvider = String(data?.data?.paymentProvider || "").toUpperCase();
+  const paymentProvider = String(
+    data?.data?.paymentProvider || ""
+  ).toUpperCase();
   const transactionType = (
     data?.data?.metadata?.type ||
     routeTransactionType ||
     "TICKET"
   ).toUpperCase();
   const isStatusSuccess = data?.data.status === "SUCCESS";
-  const sponsorshipInfo = data?.data?.metadata?.sponsorship;
-  const isSponsoredRegistration =
-    isStatusSuccess &&
-    transactionType === "REGISTRATION" &&
-    sponsorshipInfo?.beneficiaryType === "SPONSORED";
   const isAwaitingTransfer = transactionStatus === "AWAITING_TRANSFER";
+  const isExpired = transactionStatus === "EXPIRED";
+  const isRefundRequired = transactionStatus === "REFUND_REQUIRED";
+  const isRefunded = transactionStatus === "REFUNDED";
   const isFailedStatus = transactionStatus === "FAILED";
-  const isProcessingStatus =
-    isPending || transactionStatus === "PENDING" || transactionStatus === "PROCESSING";
-  const isWaitingStatus = isAwaitingTransfer || isProcessingStatus;
+  const deadlineMs: number | null = data?.data?.checkoutDeadlineMs ?? null;
+  const remaining = useCheckoutCountdown(deadlineMs);
+  const canPay =
+    ["PENDING", "AWAITING_TRANSFER"].includes(transactionStatus) &&
+    remaining !== 0;
+
   const isAlatTransfer = paymentProvider === "ALAT_TRANSFER";
   const hasTickets =
-    !isSponsoredRegistration &&
-    (transactionType === "TICKET" || transactionType === "REGISTRATION");
+    transactionType === "TICKET" || transactionType === "REGISTRATION";
 
-  const {
-    data: TicketsOrReg,
-  } = useTicketOrRegByTransactionRef(
+  const { data: TicketsOrReg } = useTicketOrRegByTransactionRef(
     resolvedTransactionId,
     transactionType === "REGISTRATION" ? "REGISTRATION" : "TICKET",
     {
-      enabled: !!transactionId && isStatusSuccess && hasTickets,
+      enabled: !!transactionId && isStatusSuccess && hasTickets
     }
   );
 
@@ -117,55 +124,63 @@ const TransactionRef = () => {
   const [livePulseOn, setLivePulseOn] = useState(true);
   const tickets = TicketsOrReg?.data || [];
   const primaryTicket = tickets[currentIndex];
-  const eventIdForCta = data?.data?.metadata?.eventId || primaryTicket?.event?.id;
+  const eventIdForCta = data?.data.metadata.eventId;
   const { data: eventDetails } = useEventDetails(eventIdForCta || "", {
-    enabled: isStatusSuccess && Boolean(eventIdForCta),
+    enabled: isStatusSuccess && Boolean(eventIdForCta)
   });
   const isPhysicalEventForCta = eventDetails?.data?.isPhysicalEvent !== false;
   const eventTitleForCta =
     eventDetails?.data?.title || primaryTicket?.event?.title || "your event";
   const providerInstructions = data?.data?.metadata?.providerInstructions;
-  const waitingRefreshCopy = isAwaitingTransfer
-    ? "We’re checking your transfer automatically every 5 seconds."
-    : "We’re processing your payment now and refreshing this page automatically.";
-  const headlineCopy = isStatusSuccess
+  const headlineCopy = isExpired
+    ? "Your hold has expired"
+    : isRefundRequired
+      ? "Your payment needs a refund"
+      : isRefunded
+        ? "Refund completed"
+        : isStatusSuccess
+          ? transactionType === "DONATION"
+            ? "Donation confirmed"
+            : transactionType === "REGISTRATION"
+              ? "Registration confirmed"
+              : "Ticket purchase confirmed"
+          : isAwaitingTransfer
+            ? "Awaiting transfer confirmation"
+            : isFailedStatus
+              ? "Payment not confirmed"
+              : "Payment in progress";
+  const mascotMoment = isStatusSuccess
     ? transactionType === "DONATION"
-      ? "Donation confirmed"
-      : isSponsoredRegistration
-        ? "Impact spot funded"
+      ? TRANSACTION_MASCOT_MOMENTS.DONATION_SUCCESS
       : transactionType === "REGISTRATION"
-        ? "Registration confirmed"
-        : "Ticket purchase confirmed"
+        ? TRANSACTION_MASCOT_MOMENTS.REGISTRATION_SUCCESS
+        : TRANSACTION_MASCOT_MOMENTS.TICKET_SUCCESS
     : isAwaitingTransfer
-      ? "Awaiting transfer confirmation"
+      ? TRANSACTION_MASCOT_MOMENTS.TRANSFER_PENDING
       : isFailedStatus
-        ? "Payment not confirmed"
-        : "Payment in progress";
-
-  const bodyCopy = isStatusSuccess
-    ? transactionType === "DONATION"
-      ? "Your support just powered this event forward. Thank you for donating."
-      : isSponsoredRegistration
-        ? "Your sponsored registration is paid for. The organizer will decide who receives the spot."
-      : transactionType === "REGISTRATION"
-        ? "You're officially in. Your event registration is complete."
-        : "Your tickets are ready. You can open and scan them anytime."
-    : isAwaitingTransfer
-      ? hasTickets
-        ? "We’re waiting for your bank transfer to be confirmed. Once it lands, this page will update and your pass will appear here."
-        : "We’re waiting for your bank transfer to be confirmed. Once it lands, this page will update automatically."
-      : isFailedStatus
-        ? "We couldn’t confirm this payment. If you already made the transfer, give it a moment and check this page again."
-        : "Your payment is still being processed. We’ll keep checking and update this page automatically.";
-  const displayStatusLabel = isAwaitingTransfer
-    ? "Awaiting transfer"
-    : isFailedStatus
-      ? "Failed"
-      : isStatusSuccess
-        ? "Success"
-        : isProcessingStatus
-          ? "Processing"
-          : transactionStatus || "Pending";
+        ? TRANSACTION_MASCOT_MOMENTS.FAILED
+        : TRANSACTION_MASCOT_MOMENTS.PROCESSING;
+  const canOpenPasses = isStatusSuccess && hasTickets && tickets.length > 0;
+  const recoveryMessage = isExpired
+    ? "These spaces are available to other buyers now. If you already paid, check status: we’ll confirm availability or arrange a refund."
+    : isRefundRequired
+      ? "We received your payment but could not issue your passes. A full refund is queued; it is not completed yet."
+      : isRefunded
+        ? "The provider refund has been confirmed. Your bank may take time to credit your account."
+        : null;
+  const mascotMomentContent = recoveryMessage ? (
+    <View style={tw`p-4 gap-2`}>
+      <Text style={tw`text-white text-lg font-bold`}>{headlineCopy}</Text>
+      <Text style={tw`text-gray-300`}>{recoveryMessage}</Text>
+    </View>
+  ) : (
+    <MascotMoment
+      variant={mascotMoment.variant}
+      title={mascotMoment.title}
+      message={mascotMoment.message}
+      typing={!isPending}
+    />
+  );
 
   const handleNext = () => {
     if (currentIndex < tickets.length - 1) setCurrentIndex(currentIndex + 1);
@@ -199,11 +214,20 @@ const TransactionRef = () => {
 
   const goToEventFeed = useCallback(() => {
     if (eventIdForCta) {
-      router.replace(`/event/${eventIdForCta}?openFeed=1`);
+      router.replace(`/event/${eventIdForCta}?openFeed=1&feedTab=feed`);
       return;
     }
     router.replace("/");
   }, [eventIdForCta, router]);
+
+  const goToEventCarpools = useCallback(() => {
+    if (eventIdForCta && isPhysicalEventForCta) {
+      router.replace(`/event/${eventIdForCta}?openFeed=1&feedTab=carpool`);
+      return;
+    }
+
+    goToEventFeed();
+  }, [eventIdForCta, goToEventFeed, isPhysicalEventForCta, router]);
 
   return (
     <View
@@ -220,72 +244,49 @@ const TransactionRef = () => {
         contentContainerStyle={tw`pb-12`}
       >
         <View style={tw`px-4 py-8 bg-[#010E3A] rounded-lg gap-8`}>
-          <View style={tw`flex-row justify-between gap-4 `}>
-            {isStatusSuccess && !isPending && (
-              <CircleCheckIcon size={70} color="#20C963" />
-            )}
-            {isFailedStatus && !isPending && (
-              <CircleXIcon size={70} color="red" />
-            )}
-            {isWaitingStatus && (
-              <LoaderIcon size={70} color="yellow" />
-            )}
+          {canOpenPasses ? (
             <TouchableOpacity
-              style={tw`gap-1 w-4/5`}
-              onPress={isStatusSuccess && hasTickets ? openSheet : () => null}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={
+                transactionType === "REGISTRATION"
+                  ? "Open registration pass"
+                  : "Open tickets"
+              }
+              onPress={openSheet}
             >
-              <Text style={tw`text-white text-2xl`}>
-                {displayStatusLabel}
-              </Text>
-              <Text style={tw`text-white text-xs mr-16`}>
-                {bodyCopy}
-              </Text>
-              {isWaitingStatus ? (
-                <Text style={tw`text-[#FFD76A] text-xs mr-16`}>
-                  {waitingRefreshCopy}
-                </Text>
-              ) : null}
-              {isStatusSuccess && hasTickets && tickets.length > 0 && (
-                <Text style={tw`text-white text-xs mr-16`}>
-                  TAP TO VIEW YOUR PASSES
-                </Text>
-              )}
-              {isStatusSuccess && isSponsoredRegistration && (
-                <Text style={tw`text-white text-xs mr-16`}>
-                  THIS SPOT IS WAITING FOR CREATOR ASSIGNMENT
-                </Text>
-              )}
+              {mascotMomentContent}
             </TouchableOpacity>
-          </View>
+          ) : (
+            mascotMomentContent
+          )}
           <View
             style={tw`border-[1px] border-white rounded-2xl py-5 px-8 gap-3`}
           >
             <Text style={tw`text-white`}>
               {transactionType === "DONATION"
                 ? "Donation Details"
-                : isSponsoredRegistration
-                ? "Sponsored Registration"
                 : transactionType === "REGISTRATION"
-                ? "Registration Details"
-                : "Ticket Details"}
+                  ? "Registration Details"
+                  : "Ticket Details"}
             </Text>
 
             <View style={tw`flex-row justify-between`}>
               <Text style={tw`text-white`}>
-                {transactionType === "DONATION" ? "Amount Donated:" : "Amount Paid:"}
+                {transactionType === "DONATION"
+                  ? "Amount Donated:"
+                  : "Amount Paid:"}
               </Text>
               <Text style={tw`text-white text-ellipsis`}>
-                {numberWithCommas(data?.data.amount/100, true, null)}
+                {data
+                  ? numberWithCommas(data.data.amount / 100, true, null)
+                  : "Checking…"}
               </Text>
             </View>
             <Text style={tw`text-white`}>{headlineCopy}</Text>
             <Text style={tw`text-white`}>
               {isStatusSuccess
-                ? isSponsoredRegistration
-                  ? "The creator will allocate this spot to someone who needs it."
-                  : "Thank you!"
-                : isSponsoredRegistration
-                  ? "The creator will allocate this spot to someone who needs it."
+                ? "Thank you!"
                 : isAwaitingTransfer
                   ? "We’ll confirm it here as soon as the bank transfer settles."
                   : isFailedStatus
@@ -294,10 +295,97 @@ const TransactionRef = () => {
             </Text>
           </View>
         </View>
-        {isAwaitingTransfer && isAlatTransfer ? (
-          <View style={tw`mt-5 rounded-2xl border border-[#5A4718] bg-[#2A2209] overflow-hidden`}>
+        <CheckoutCountdown deadlineMs={deadlineMs} />
+        {!isStatusSuccess && !isRefunded ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => {
+              void refetch();
+            }}
+            style={tw`mt-3 p-3 rounded-xl bg-[#172853]`}
+          >
+            <Text style={tw`text-white text-center`}>Check payment status</Text>
+          </TouchableOpacity>
+        ) : null}
+        {canPay && data?.data?.paymentUrl ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => setShowPayment(true)}
+            style={tw`mt-3 p-3 rounded-xl bg-[#0FF1CF]`}
+          >
+            <Text style={tw`text-[#01082E] text-center`}>Resume payment</Text>
+          </TouchableOpacity>
+        ) : null}
+        {canPay ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={cancelling}
+            onPress={async () => {
+              setCancelling(true);
+              try {
+                await cancelCheckout(resolvedTransactionId);
+                await refetch();
+              } catch {
+                showGlobalError(
+                  "Could not cancel this checkout. Check payment status."
+                );
+              } finally {
+                setCancelling(false);
+              }
+            }}
+            style={tw`mt-3 p-3`}
+          >
+            <Text style={tw`text-gray-300 text-center`}>
+              {cancelling
+                ? "Cancelling…"
+                : "Cancel checkout and release spaces"}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {(isExpired || isFailedStatus || isStatusSuccess || isRefundRequired || isRefunded) &&
+        user &&
+        data?.data?.metadata?.eventId ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={async () => {
+              await clearCheckoutIntent(user.id, data.data.metadata.eventId);
+              router.replace(`/event/${data.data.metadata.eventId}`);
+            }}
+            style={tw`mt-3 p-3 rounded-xl bg-[#172853]`}
+          >
+            <Text style={tw`text-white text-center`}>Start a new checkout</Text>
+          </TouchableOpacity>
+        ) : null}
+        <PaystackWebViewWrapper
+          visible={showPayment && canPay}
+          onClose={() => setShowPayment(false)}
+          paymentUrl={data?.data?.paymentUrl || ""}
+          checkoutDeadlineMs={deadlineMs}
+          type={
+            transactionType === "REGISTRATION"
+              ? "REGISTRATION"
+              : transactionType === "DONATION"
+                ? "DONATION"
+                : "TICKET"
+          }
+          onSuccess={() => {
+            setShowPayment(false);
+            void refetch();
+          }}
+          onCancel={() => setShowPayment(false)}
+          onError={() => {
+            setShowPayment(false);
+            showGlobalError("Check payment status before trying again.");
+          }}
+        />
+        {canPay && isAlatTransfer ? (
+          <View
+            style={tw`mt-5 rounded-2xl border border-[#5A4718] bg-[#2A2209] overflow-hidden`}
+          >
             <View style={tw`px-4 py-2.5 bg-[#FFD76A]`}>
-              <Text style={tw`text-[#2A2209] text-xs font-bold tracking-widest uppercase`}>
+              <Text
+                style={tw`text-[#2A2209] text-xs font-bold tracking-widest uppercase`}
+              >
                 Transfer Pending
               </Text>
             </View>
@@ -307,17 +395,22 @@ const TransactionRef = () => {
                 Waiting for your bank transfer
               </Text>
               <Text style={tw`text-[#F4E7B0] text-sm leading-6`}>
-                If you’ve already sent the money, stay on this page. We’ll keep checking and update the status automatically.
+                If you’ve already sent the money, stay on this page. We’ll keep
+                checking and update the status automatically.
               </Text>
 
-              <View style={tw`flex-row items-center justify-between rounded-2xl bg-[#14102A] px-4 py-3`}>
+              <View
+                style={tw`flex-row items-center justify-between rounded-2xl bg-[#14102A] px-4 py-3`}
+              >
                 <View style={tw`flex-row items-center gap-2`}>
                   <View
                     style={twStyle("h-2.5 w-2.5 rounded-full", {
-                      backgroundColor: livePulseOn ? "#FFD76A" : "#7A6330",
+                      backgroundColor: livePulseOn ? "#FFD76A" : "#7A6330"
                     })}
                   />
-                  <Text style={tw`text-xs font-semibold uppercase tracking-wider text-[#FFD76A]`}>
+                  <Text
+                    style={tw`text-xs font-semibold uppercase tracking-wider text-[#FFD76A]`}
+                  >
                     Checking status
                   </Text>
                 </View>
@@ -328,9 +421,13 @@ const TransactionRef = () => {
 
               <View style={tw`rounded-2xl bg-[#14102A] p-4 gap-3`}>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>Amount</Text>
+                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>
+                    Amount
+                  </Text>
                   <Text style={tw`text-white font-semibold`}>
-                    {numberWithCommas(data?.data?.amount / 100, true, null)}
+                    {data
+                      ? numberWithCommas(data.data.amount / 100, true, null)
+                      : "Checking…"}
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>
@@ -340,13 +437,17 @@ const TransactionRef = () => {
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>Account name</Text>
+                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>
+                    Account name
+                  </Text>
                   <Text style={tw`flex-1 text-right text-white font-semibold`}>
                     {providerInstructions?.accountName || "GatherGo"}
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>Account number</Text>
+                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>
+                    Account number
+                  </Text>
                   <Text style={tw`text-white text-base font-bold`}>
                     {providerInstructions?.accountNumber || "-"}
                   </Text>
@@ -355,19 +456,28 @@ const TransactionRef = () => {
 
               <View style={tw`rounded-2xl bg-[#14102A] p-4 gap-3`}>
                 <View style={tw`flex-row items-start gap-3`}>
-                  <View style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#FFD76A]`}>
-                    <Text style={tw`text-[11px] font-bold text-[#2A2209]`}>1</Text>
+                  <View
+                    style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#FFD76A]`}
+                  >
+                    <Text style={tw`text-[11px] font-bold text-[#2A2209]`}>
+                      1
+                    </Text>
                   </View>
                   <Text style={tw`flex-1 text-sm leading-5 text-white`}>
                     Transfer the exact amount to the account above.
                   </Text>
                 </View>
                 <View style={tw`flex-row items-start gap-3`}>
-                  <View style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#FFD76A]`}>
-                    <Text style={tw`text-[11px] font-bold text-[#2A2209]`}>2</Text>
+                  <View
+                    style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#FFD76A]`}
+                  >
+                    <Text style={tw`text-[11px] font-bold text-[#2A2209]`}>
+                      2
+                    </Text>
                   </View>
                   <Text style={tw`flex-1 text-sm leading-5 text-white`}>
-                    Keep this screen open or check back here. We refresh every 5 seconds until confirmation comes in.
+                    Keep this screen open or check back here. We refresh every 5
+                    seconds until confirmation comes in.
                   </Text>
                 </View>
               </View>
@@ -376,9 +486,13 @@ const TransactionRef = () => {
         ) : null}
         {isStatusSuccess ? (
           <>
-            <View style={tw`mt-5 rounded-2xl bg-[#07164F] border border-[#1D3AA4] overflow-hidden`}>
+            <View
+              style={tw`mt-5 rounded-2xl bg-[#07164F] border border-[#1D3AA4] overflow-hidden`}
+            >
               <View style={tw`px-4 py-2.5 bg-[#0FF1CF]`}>
-                <Text style={tw`text-[#01082E] text-xs font-bold tracking-widest uppercase`}>
+                <Text
+                  style={tw`text-[#01082E] text-xs font-bold tracking-widest uppercase`}
+                >
                   Next Move
                 </Text>
               </View>
@@ -393,28 +507,42 @@ const TransactionRef = () => {
                     : `${eventTitleForCta} is active. Catch live moments, updates, and community buzz as things unfold.`}
                 </Text>
 
-                <View style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}>
+                <TouchableOpacity
+                  activeOpacity={0.86}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open live feed"
+                  onPress={goToEventFeed}
+                  style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}
+                >
                   <Flame size={18} color="#0FF1CF" />
                   <View style={tw`flex-1`}>
                     <Text style={tw`text-white font-semibold`}>Live Feed</Text>
                     <Text style={tw`text-[#C8D3FF] text-xs mt-0.5`}>
-                      Real-time event updates, reactions, and buzz from attendees.
+                      Real-time event updates, reactions, and buzz from
+                      attendees.
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
 
                 {isPhysicalEventForCta ? (
-                  <View style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}>
+                  <TouchableOpacity
+                    activeOpacity={0.86}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open carpool tab"
+                    onPress={goToEventCarpools}
+                    style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}
+                  >
                     <CarFront size={18} color="#0FF1CF" />
                     <View style={tw`flex-1`}>
                       <Text style={tw`text-white font-semibold`}>
                         Carpool Tab
                       </Text>
                       <Text style={tw`text-[#C8D3FF] text-xs mt-0.5`}>
-                        Find nearby rides or create one and pull your crew together.
+                        Find nearby rides or create one and pull your crew
+                        together.
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             </View>
@@ -454,9 +582,13 @@ const TransactionRef = () => {
         >
           <View style={tw`flex flex-row justify-between items-center p-5`}>
             <Text style={tw`text-white`}>
-              {transactionType === "REGISTRATION" ? "Registration Pass" : "Tickets"}
+              {transactionType === "REGISTRATION"
+                ? "Registration Pass"
+                : "Tickets"}
             </Text>
-            <Text style={tw`text-white text-xs`}>{tickets.length} available</Text>
+            <Text style={tw`text-white text-xs`}>
+              {tickets.length} available
+            </Text>
           </View>
 
           <BottomSheetScrollView style={tw`p-5`}>
@@ -471,7 +603,7 @@ const TransactionRef = () => {
                     <TouchableOpacity
                       style={tw`px-5 py-2 rounded-3xl bg-[#0FF1CF] self-start`}
                     >
-                      <Text style={tw`capitalize`}>
+                      <Text style={tw`capitalize text-[#01082E]`}>
                         {transactionType === "REGISTRATION"
                           ? "Registration"
                           : tickets[currentIndex]?.eventTicketType}
@@ -523,7 +655,7 @@ const TransactionRef = () => {
                     onPress={handleNext}
                     style={tw`px-4 py-2 bg-[#0FF1CF] rounded-lg`}
                   >
-                    <Text style={tw`text-black`}>Next</Text>
+                    <Text style={tw`text-[#01082E]`}>Next</Text>
                   </TouchableOpacity>
                 </View>
               </View>

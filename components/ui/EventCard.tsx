@@ -1,11 +1,17 @@
 import { EventArtworkFallback } from "@/components/ui/ArtworkFallback";
+import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { usePressGuard } from "@/hooks/usePressGuard";
-import { formatImpactSummary } from "@/constants/impact";
+import { normalizePersistedImpactMap } from "@/constants/impact";
+import {
+  SuggestedImpactCommitment,
+  SuggestedImpactPath,
+  SuggestedSdgGoal,
+} from "@/types/impact";
 import { Registration } from "@/types/auth";
 import { formatShortDate } from "@/utils/dateTimeHandler";
 import { numberWithCommas } from "@/utils/utils";
 import { Image } from "expo-image";
-import { HandHeart, PenLine, Sparkles, Ticket } from "lucide-react-native";
+import { HandHeart, PenLine, Ticket } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
@@ -13,6 +19,7 @@ import tw from "twrnc";
 interface EventCardProps {
   id: string;
   title: string;
+  description?: string | null;
   location: string | null;
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
@@ -22,7 +29,12 @@ interface EventCardProps {
   lowestTicketPrice?: number | null;
   startDate: string;
   impactTitle?: string | null;
-  impactPercentage?: number | null;
+  impactDescription?: string | null;
+  impactSdgGoals?: SuggestedSdgGoal[] | null;
+  impactPaths?: SuggestedImpactPath[] | null;
+  impactCommitments?: SuggestedImpactCommitment[] | null;
+  impactMapSource?: string | null;
+  tags?: string[] | null;
   onPress?: () => void;
 }
 
@@ -38,19 +50,21 @@ export default function EventCard({
   lowestTicketPrice,
   startDate,
   impactTitle,
-  impactPercentage,
+  impactSdgGoals,
+  impactPaths,
+  impactCommitments,
   onPress,
 }: EventCardProps) {
   const eventTypeConfig =
     registrationType === "ticket"
       ? { icon: <Ticket size={18} color="#0FF1CF" /> }
       : registrationType === "donation"
-      ? {
-          icon: <HandHeart size={18} color="#0FF1CF" />,
-        }
-      : {
-          icon: <PenLine size={18} color="#0FF1CF" />,
-        };
+        ? {
+            icon: <HandHeart size={18} color="#0FF1CF" />,
+          }
+        : {
+            icon: <PenLine size={18} color="#0FF1CF" />,
+          };
 
   const pricingMeta =
     registrationType === "ticket"
@@ -64,29 +78,41 @@ export default function EventCard({
             value: "Tickets",
           }
       : registrationType === "donation"
-      ? donationTarget && donationTarget > 0
-        ? {
-            label: "Target",
-            value: numberWithCommas(donationTarget, true, null),
-          }
-        : {
-            label: "Support",
-            value: "Donate",
-          }
-      : registrationFee && registrationFee > 0
-      ? {
-          label: "Fee",
-          value: numberWithCommas(registrationFee, true, null),
-        }
-      : {
-          label: "Fee",
-          value: "Free",
-        };
-  const impactSummary = formatImpactSummary({
-    impactTitle,
-    impactPercentage,
-    registrationType,
+        ? donationTarget && donationTarget > 0
+          ? {
+              label: "Target",
+              value: numberWithCommas(donationTarget, true, null),
+            }
+          : {
+              label: "Support",
+              value: "Donate",
+            }
+        : registrationFee && registrationFee > 0
+          ? {
+              label: "Fee",
+              value: numberWithCommas(registrationFee, true, null),
+            }
+          : {
+              label: "Fee",
+              value: "Free",
+            };
+  const persistedImpactMap = normalizePersistedImpactMap({
+    impactSdgGoals,
+    impactPaths,
+    impactCommitments,
   });
+  const [commitment] = persistedImpactMap.commitments;
+  const [goal] = persistedImpactMap.sdgGoals;
+  const [path] = persistedImpactMap.impactPaths;
+  const impactSummary = commitment
+    ? goal
+      ? `${commitment.label} - ${goal.shortTitle}`
+      : commitment.label
+    : path && goal
+      ? `${path.summaryLabel} - ${goal.shortTitle}`
+      : path
+        ? path.summaryLabel
+        : impactTitle?.trim() || null;
   const [showImage, setShowImage] = useState(Boolean(imageUrl));
 
   useEffect(() => {
@@ -150,7 +176,23 @@ export default function EventCard({
             <View
               style={tw`mt-2 flex-row items-center rounded-full bg-[#0FF1CF]/10 px-3 py-1.5 self-start`}
             >
-              <Sparkles size={12} color="#0FF1CF" />
+              {goal ? (
+                <View
+                  style={[
+                    tw`h-5 w-5 items-center justify-center rounded-full`,
+                    { backgroundColor: goal.color || "#0FF1CF" },
+                  ]}
+                >
+                  <SdgGoalIcon
+                    number={goal.number}
+                    color="white"
+                    size={11}
+                    strokeWidth={2.6}
+                  />
+                </View>
+              ) : (
+                <HandHeart size={12} color="#0FF1CF" />
+              )}
               <Text
                 style={tw`ml-2 text-xs font-medium text-[#B7FFF5]`}
                 numberOfLines={1}

@@ -12,6 +12,7 @@ const SVG_ASSETS = {
   vector1: require("../../assets/images/vector1.svg"),
   vector2: require("../../assets/images/vector2.svg"),
   vector3: require("../../assets/images/vector3.svg"),
+  impactIcon: require("../../assets/images/impact.svg"),
 } as const;
 
 export type LocalSvgAssetName = keyof typeof SVG_ASSETS;
@@ -23,12 +24,7 @@ type LocalSvgAssetProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-const LocalSvgAsset = ({
-  name,
-  width,
-  height,
-  style,
-}: LocalSvgAssetProps) => {
+const LocalSvgAsset = ({ name, width, height, style }: LocalSvgAssetProps) => {
   const asset = useMemo(() => Asset.fromModule(SVG_ASSETS[name]), [name]);
   const [uri, setUri] = useState<string | null>(asset.localUri ?? asset.uri);
 

@@ -1,4 +1,5 @@
 import ActivityIndicator from "@/components/ui/AppLoader";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { useDashboardEvents } from "@/hooks/useDashboard";
 import { pushWithLock } from "@/utils/navigation";
@@ -184,7 +185,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
                     style={[
                       tw`capitalize`,
                       filter === filterType
-                        ? tw`text-black font-semibold`
+                        ? tw`text-[#01082E] font-semibold`
                         : tw`text-white`,
                     ]}
                   >
@@ -195,17 +196,12 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
             </View>
 
             {isLoading ? (
-              <View style={tw`flex-1 items-center justify-center px-6`}>
-                <View style={tw`w-full max-w-[420px] rounded-[28px] bg-[#101C45] px-8 py-10 items-center`}>
-                  <ActivityIndicator tone="accent" size="large" />
-                  <Text style={tw`mt-5 text-center text-xl font-semibold text-white`}>
-                    Loading events
-                  </Text>
-                  <Text style={tw`mt-2 text-center text-sm leading-6 text-[#A8BAE4]`}>
-                    Updating your event list for this tab.
-                  </Text>
-                </View>
-              </View>
+              <ImpactPageLoader
+                compact
+                title="Mapping your events"
+                message="Updating this list with the latest activity and impact signals."
+                style={tw`flex-1`}
+              />
             ) : (
               <ScrollView
                 ref={scrollViewRef}

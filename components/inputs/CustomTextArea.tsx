@@ -30,6 +30,7 @@ export default function TextArea({
     <View style={tw`w-full`}>
       <Pressable onPress={() => inputRef.current?.focus()}>
         <InputComponent
+          autoCapitalize="none"
           ref={inputRef}
           style={tw.style(
             `w-full min-h-[120px] rounded-2xl bg-[#1B2A50]/40 text-white p-4 text-base`,

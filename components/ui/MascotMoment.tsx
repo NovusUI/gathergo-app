@@ -1,0 +1,116 @@
+import type { GatherGoMascotVariant } from "@/constants/mascot";
+import { useEffect, useRef } from "react";
+import { Animated, StyleProp, Text, View, ViewStyle } from "react-native";
+import tw from "twrnc";
+import { GatherGoMascot } from "./GatherGoMascot";
+import { MascotMessage } from "./MascotMessage";
+
+type MascotMomentProps = {
+  variant?: GatherGoMascotVariant;
+  title: string;
+  message: string;
+  typing?: boolean;
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+};
+
+const MOMENT_TONES: Record<
+  GatherGoMascotVariant,
+  { border: string; background: string }
+> = {
+  idle: {
+    border: "#24345A",
+    background: "#07143B"
+  },
+  donation: {
+    border: "#3C315F",
+    background: "#11183D"
+  },
+  success: {
+    border: "#1C5C61",
+    background: "#071B3C"
+  },
+  pending: {
+    border: "#5A4718",
+    background: "#171839"
+  },
+  verified: {
+    border: "#1C5C61",
+    background: "#071B3C"
+  },
+  empty: {
+    border: "#1E4770",
+    background: "#07143B"
+  },
+  error: {
+    border: "#5A2435",
+    background: "#1B1236"
+  }
+};
+
+const AnimatedView = Animated.createAnimatedComponent(View);
+
+export function MascotMoment({
+  variant = "idle",
+  title,
+  message,
+  typing = true,
+  compact = false,
+  style
+}: MascotMomentProps) {
+  const tone = MOMENT_TONES[variant];
+  const reveal = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    reveal.setValue(0);
+
+    const animation = Animated.spring(reveal, {
+      toValue: 1,
+      friction: 7,
+      tension: 55,
+      useNativeDriver: true
+    });
+
+    animation.start();
+
+    return () => animation.stop();
+  }, [message, reveal, variant]);
+
+  const translateY = reveal.interpolate({
+    inputRange: [0, 1],
+    outputRange: [12, 0]
+  });
+
+  return (
+    <AnimatedView
+      style={[
+        tw`flex-row items-center gap-3 rounded-2xl border p-3`,
+        {
+          backgroundColor: tone.background,
+          borderColor: tone.border
+        },
+        style,
+        {
+          opacity: reveal,
+          transform: [{ translateY }]
+        }
+      ]}
+    >
+      <GatherGoMascot
+        variant={variant}
+        size={compact ? 58 : 76}
+        style={tw`shrink-0`}
+      />
+      <View style={tw`flex-1`}>
+        <Text
+          style={tw`text-xs font-semibold uppercase tracking-wider text-[#8FA1CB]`}
+        >
+          {title}
+        </Text>
+        <View style={tw`mt-2 rounded-2xl bg-[#0A173F] px-3 py-2`}>
+          <MascotMessage message={message} animate={typing} />
+        </View>
+      </View>
+    </AnimatedView>
+  );
+}

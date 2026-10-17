@@ -7,7 +7,7 @@ import {
   TextInput,
   TextInputContentSizeChangeEventData,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import tw from "twrnc";
 
@@ -16,6 +16,7 @@ interface Props {
   setValue: (text: string) => void;
   sending: boolean;
   onSend: () => void;
+  onFocus?: () => void;
   carpoolId: string;
   disabled: boolean;
 }
@@ -27,6 +28,7 @@ const ChatInput = ({
   setValue,
   sending,
   onSend,
+  onFocus,
   carpoolId,
   disabled,
 }: Props) => {
@@ -37,7 +39,14 @@ const ChatInput = ({
 
   const focusInput = () => {
     if (!disabled) {
+      onFocus?.();
       inputRef.current?.focus();
+    }
+  };
+
+  const handleFocus = () => {
+    if (!disabled) {
+      onFocus?.();
     }
   };
 
@@ -71,11 +80,14 @@ const ChatInput = ({
     <Pressable onPress={focusInput}>
       <View
         style={[
-          tw`w-full flex-row items-end px-2 py-2 rounded-2xl`,
-          disabled ? tw`bg-[#2A3A5A]/30` : tw`bg-[#1B2A50]/60`,
+          tw`w-full flex-row items-end px-2 py-2 rounded-2xl border`,
+          disabled
+            ? tw`bg-[#2A3A5A]/30 border-[#455479]/30`
+            : tw`bg-[#01082E] border-[#1B2A50]`,
         ]}
       >
         <TextInput
+          autoCapitalize="none"
           ref={inputRef}
           style={[
             tw`pl-3 pr-2 flex-1 text-base`,
@@ -93,6 +105,7 @@ const ChatInput = ({
           value={value}
           onChangeText={handleInputChange}
           multiline
+          onFocus={handleFocus}
           onContentSizeChange={handleContentSizeChange}
           editable={!disabled}
           selectTextOnFocus={!disabled}
@@ -103,15 +116,17 @@ const ChatInput = ({
             tw`rounded-full ml-2 w-10 h-10 items-center justify-center self-end`,
             disabled || sending || value.trim().length === 0
               ? tw`bg-[#455479]/30`
-              : tw`bg-[#455479]`,
+              : tw`bg-[#0FF1CF]`,
           ]}
           onPress={handleSend}
           disabled={sending || disabled || value.trim().length === 0}
         >
           {!sending && (
-
-            <Send color={"#ffffff"}/>
-            
+            <Send
+              color={
+                disabled || value.trim().length === 0 ? "#ffffff" : "#01082E"
+              }
+            />
           )}
           {sending && (
             <LoaderCircle color={disabled ? "#6B7280" : "#fff"} size={20} />

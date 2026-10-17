@@ -36,9 +36,13 @@ export const EVENT_URL = {
   getUserEvents: base_url + "/events",
   getEventImageUploadStatus: (eventId: string) =>
     base_url + `/events/${eventId}/image-status`,
+  impactReport: (eventId: string) =>
+    base_url + `/events/${eventId}/impact-report`,
 };
 
 export const TRANSACTION_URL = {
+  cancelCheckout: (id: string) =>
+    base_url + `/transaction-reference/${id}/cancel`,
   getTransactionRef: (id: string) =>
     base_url + `/transaction-reference/status/${id}`,
   getTicketOrRegByTransactionId: (id: string) =>
@@ -55,6 +59,10 @@ export const REGISTRATION_URL = {
 
 export const SEARCH_URL = {
   getSearchResult: base_url + "/search",
+};
+
+export const IMPACT_URL = {
+  suggestions: base_url + "/impact/suggestions",
 };
 
 export const CARPOOL_URL = {
@@ -88,9 +96,13 @@ export const DONATION_URL = {
 export const WALLET_URL = {
   overview: base_url + "/wallet/overview",
   onboarding: base_url + "/wallet/onboarding",
+  transactions: base_url + "/wallet/transactions",
+  settlements: base_url + "/wallet/settlements",
   payoutProfile: base_url + "/wallet/payout-profile",
+  resolvePayoutAccount: base_url + "/wallet/payout-profile/resolve-account",
   banks: base_url + "/wallet/banks",
   kyc: base_url + "/wallet/kyc",
+  confirmPayoutProfile: base_url + "/wallet/payout-profile/confirm",
   personalKycStart: base_url + "/wallet/kyc/personal/start",
   personalKycLiveness: base_url + "/wallet/kyc/personal/liveness",
   businessKycStart: base_url + "/wallet/kyc/business/start",

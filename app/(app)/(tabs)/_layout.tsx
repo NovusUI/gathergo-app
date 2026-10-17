@@ -154,9 +154,11 @@ export default function RootLayout() {
                 >
                   <View style={tw`flex-row items-center justify-between`}>
                     <View style={tw`flex-row items-center gap-3`}>
-                      <View style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}>
+                      <View
+                        style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}
+                      >
                         <Ionicons
-                          name="sparkles-outline"
+                          name="calendar-outline"
                           size={22}
                           color="#0FF1CF"
                         />
@@ -180,7 +182,9 @@ export default function RootLayout() {
                 >
                   <View style={tw`flex-row items-center justify-between`}>
                     <View style={tw`flex-row items-center gap-3`}>
-                      <View style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#03122F]`}>
+                      <View
+                        style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#03122F]`}
+                      >
                         <Ionicons
                           name="car-sport-outline"
                           size={22}
@@ -188,7 +192,9 @@ export default function RootLayout() {
                         />
                       </View>
                       <View>
-                        <Text style={tw`text-base font-semibold text-[#03122F]`}>
+                        <Text
+                          style={tw`text-base font-semibold text-[#01082E]`}
+                        >
                           New Carpool
                         </Text>
                         <Text style={tw`mt-1 text-sm text-[#194949]`}>
@@ -199,7 +205,7 @@ export default function RootLayout() {
                     <Ionicons
                       name="chevron-forward"
                       size={20}
-                      color="#03122F"
+                      color="#01082E"
                     />
                   </View>
                 </TouchableOpacity>
@@ -214,30 +220,13 @@ export default function RootLayout() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={tw`rounded-3xl border border-[#FF6B6B]/30 bg-[#2A1022] p-5`}
-                  onPress={guardedCreateDonationEvent}
-                >
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <View style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#FF6B6B]/15`}>
-                      <Ionicons name="heart-outline" size={22} color="#FF8A8A" />
-                    </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        Donation Event
-                      </Text>
-                      <Text style={tw`mt-1 text-sm leading-5 text-[#F1B3C2]`}>
-                        100% of every donation goes directly to the selected cause.
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
                   style={tw`rounded-3xl border border-[#0FF1CF]/20 bg-[#101C45] p-5`}
                   onPress={guardedCreateGeneralEvent}
                 >
                   <View style={tw`flex-row items-center gap-4`}>
-                    <View style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}>
+                    <View
+                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}
+                    >
                       <Ionicons
                         name="calendar-outline"
                         size={22}
@@ -246,10 +235,37 @@ export default function RootLayout() {
                     </View>
                     <View style={tw`flex-1`}>
                       <Text style={tw`text-base font-semibold text-white`}>
-                        Other Event
+                        Create an event
                       </Text>
                       <Text style={tw`mt-1 text-sm leading-5 text-[#98ABD6]`}>
-                        Tickets or paid registrations with a selectable impact share. Perfect for offering a service with impact in mind
+                        Host a free or paid event, from concerts and workshops
+                        to community gatherings.
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={tw`rounded-3xl border border-[#FF6B6B]/30 bg-[#2A1022] p-5`}
+                  onPress={guardedCreateDonationEvent}
+                >
+                  <View style={tw`flex-row items-center gap-4`}>
+                    <View
+                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#FF6B6B]/15`}
+                    >
+                      <Ionicons
+                        name="heart-outline"
+                        size={22}
+                        color="#FF8A8A"
+                      />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`text-base font-semibold text-white`}>
+                        Create a fundraiser
+                      </Text>
+                      <Text style={tw`mt-1 text-sm leading-5 text-[#F1B3C2]`}>
+                        Raise support around a cause, project, or community
+                        need.
                       </Text>
                     </View>
                   </View>

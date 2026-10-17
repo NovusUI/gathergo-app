@@ -1,3 +1,5 @@
+import type { ProfileFormData } from "@/schemas/profile";
+
 export type User = {
   id: string;
   email: string;
@@ -5,6 +7,8 @@ export type User = {
   isVerified?: boolean;
   isProfileComplete?: boolean;
   name?: string;
+  fullName?: string | null;
+  birthDate?: string | null;
   bio?: string;
   profilePicUrl?: string;
   username?: string;
@@ -52,6 +56,11 @@ export type EventData = {
   impactTitle?: string | null;
   impactDescription?: string | null;
   impactPercentage?: number | null;
+  impactSdgGoals?: import("./impact").SuggestedSdgGoal[] | null;
+  impactPaths?: import("./impact").SuggestedImpactPath[] | null;
+  impactCommitments?: import("./impact").SuggestedImpactCommitment[] | null;
+  impactMapSource?: string | null;
+  impactMapGeneratedAt?: string | null;
   isFollowingCreator: boolean;
   isFollowedByCreator: boolean;
   totalDonations: number;
@@ -83,11 +92,6 @@ export type PasswordResetStateData = {
   email: string;
   requiresPasswordReset: boolean;
 };
-enum gender {
-  MALE = "MALE",
-  FEMALE = "FEMALE",
-  OTHER = "OTHER",
-}
 
 export interface StandardResponse {
   status: string;
@@ -98,6 +102,13 @@ export interface StandardResponse {
 
 export interface authResponse extends StandardResponse {
   data: AuthData;
+}
+
+export interface CurrentUserResponse extends StandardResponse {
+  data: (Omit<User, "username"> &
+    Required<Pick<User, "fullName" | "birthDate">> & {
+      username: string | null;
+    }) | null;
 }
 
 export interface signUpResponse extends StandardResponse {
@@ -187,13 +198,9 @@ export interface checkUserData {
   username: string;
 }
 
-export interface CompleteProfileData {
-  username: string;
-  fullName: string;
-  nationality: string;
-  gender: gender;
+export type CompleteProfileData = Omit<ProfileFormData, "birthDate"> & {
   birthDate: string;
-}
+};
 
 export interface uploadProfilePictureRes extends StandardResponse {
   data: {

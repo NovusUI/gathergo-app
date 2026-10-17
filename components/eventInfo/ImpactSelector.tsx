@@ -1,379 +1,208 @@
-import {
-  buildImpactDescription,
-  clampImpactPercentage,
-  DEFAULT_IMPACT_PERCENTAGE,
-  EventRegistrationType,
-  findImpactCause,
-  IMPACT_CAUSES,
-  resolveImpactPercentage,
-} from "@/constants/impact";
-import {
-  Accessibility,
-  BookOpen,
-  ChevronRight,
-  HandHeart,
-  Handshake,
-  HeartPulse,
-  Home,
-  Leaf,
-  PawPrint,
-  Search,
-  Soup,
-  Sparkles,
-  Venus,
-  X,
-} from "lucide-react-native";
-import { useMemo, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import tw, { style as twStyle } from "twrnc";
+import type { EventRegistrationType } from "@/constants/impact";
+import { useImpactSuggestions } from "@/services/queries";
+import type {
+  ImpactSuggestionData,
+  ImpactSuggestionPayload,
+  SuggestedImpactCommitment,
+} from "@/types/impact";
+import { useDebounce } from "@/utils/useDebounce";
+import { useMemo } from "react";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import tw, { style } from "twrnc";
 import TextArea from "../inputs/CustomTextArea";
 
 interface ImpactSelectorProps {
-  impactTitle?: string;
-  impactDescription?: string;
-  impactPercentage?: number;
-  registrationType?: EventRegistrationType | null;
-  onImpactTitleChange: (value: string) => void;
+  eventTitle: string;
+  eventDescription: string;
+  impactDescription: string;
+  registrationType?: EventRegistrationType;
   onImpactDescriptionChange: (value: string) => void;
-  onImpactPercentageChange: (value: number) => void;
+  selectedMap: ImpactSuggestionData;
+  onImpactMapChange: (value: ImpactSuggestionData) => void;
 }
 
-const iconMap = {
-  education: BookOpen,
-  healthcare: HeartPulse,
-  orphanage: Home,
-  food_relief: Soup,
-  women_empowerment: Venus,
-  youth_development: Sparkles,
-  disability_support: Accessibility,
-  environment: Leaf,
-  animal_welfare: PawPrint,
-  community_building: Handshake,
-} as const;
-
-const IMPACT_SHARE_OPTIONS = [10, 20, 30, 40, 50, 75, 100];
-
-const ImpactSharePicker = ({
-  value,
+function SuggestionGroup<T>({
+  title,
+  suggestions,
+  selected,
+  itemKey,
+  label,
+  limit,
   onChange,
 }: {
-  value: number;
-  onChange: (value: number) => void;
-}) => (
-  <View>
-    <View style={tw`mt-4 h-3 overflow-hidden rounded-full bg-[#08143B]`}>
-      <View
-        style={[tw`h-full rounded-full bg-[#0FF1CF]`, { width: `${value}%` }]}
-      />
+  title: string;
+  suggestions: T[];
+  selected: T[];
+  itemKey: (item: T) => string;
+  label: (item: T) => string;
+  limit: number;
+  onChange: (items: T[]) => void;
+}) {
+  const items = Array.from(
+    new Map(
+      [...selected, ...suggestions].map((item) => [itemKey(item), item]),
+    ).values(),
+  );
+  return (
+    <View style={tw`mt-4 gap-2`}>
+      <Text
+        style={tw`text-xs font-semibold uppercase tracking-widest text-[#A7B8DE]`}
+      >
+        {title} (up to {limit})
+      </Text>
+      <View style={tw`flex-row flex-wrap gap-2`}>
+        {items.map((item) => {
+          const key = itemKey(item);
+          const checked = selected.some((value) => itemKey(value) === key);
+          const disabled = !checked && selected.length >= limit;
+          return (
+            <TouchableOpacity
+              key={key}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked, disabled }}
+              disabled={disabled}
+              onPress={() =>
+                onChange(
+                  checked
+                    ? selected.filter((value) => itemKey(value) !== key)
+                    : [...selected, item],
+                )
+              }
+              style={style(
+                "rounded-full border px-3 py-2",
+                checked
+                  ? "border-[#0FF1CF] bg-[#0FF1CF]/10"
+                  : "border-[#1F335E] bg-[#101C45]",
+                disabled && "opacity-40",
+              )}
+            >
+              <Text style={tw`text-xs font-semibold text-white`}>
+                {checked ? "✓ " : "+ "}
+                {label(item)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {items.length === 0 && (
+        <Text style={tw`text-xs text-[#8EA0CA]`}>
+          No suggestions yet. A map is optional.
+        </Text>
+      )}
     </View>
+  );
+}
 
-    <View style={tw`mt-3 flex-row flex-wrap gap-2`}>
-      {IMPACT_SHARE_OPTIONS.map((step) => (
-        <TouchableOpacity
-          key={step}
-          onPress={() => onChange(step)}
-          style={twStyle(
-            "rounded-full border px-3 py-2",
-            value === step
-              ? "border-[#0FF1CF] bg-[#0FF1CF]"
-              : "border-[#1F335E] bg-[#08143B]"
-          )}
-        >
-          <Text
-            style={twStyle(
-              "text-xs font-semibold",
-              value === step ? "text-[#03122F]" : "text-white"
-            )}
-          >
-            {step}%
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  </View>
-);
+const commitmentKey = (item: SuggestedImpactCommitment) =>
+  `${item.type}:${item.value}:${item.unit}`;
 
 export default function ImpactSelector({
-  impactTitle,
+  eventTitle,
+  eventDescription,
   impactDescription,
-  impactPercentage,
   registrationType,
-  onImpactTitleChange,
   onImpactDescriptionChange,
-  onImpactPercentageChange,
+  selectedMap,
+  onImpactMapChange,
 }: ImpactSelectorProps) {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [search, setSearch] = useState("");
-  const isDonation = registrationType === "donation";
-  const selectedCause = findImpactCause(impactTitle);
-  const resolvedPercentage = resolveImpactPercentage(
-    registrationType,
-    impactPercentage
+  const suggestionPayload = useMemo<ImpactSuggestionPayload>(
+    () => ({
+      title: eventTitle.trim(),
+      description: eventDescription.trim(),
+      impactDescription: impactDescription.trim(),
+      registrationType,
+    }),
+    [eventTitle, eventDescription, impactDescription, registrationType],
   );
-  const impactNotePlaceholder = buildImpactDescription(
-    impactTitle,
-    impactDescription
+  const debouncedPayload = useDebounce(suggestionPayload, 1000);
+  const hasStory = impactDescription.trim().length >= 3;
+  const isDraftCurrent = suggestionPayload === debouncedPayload;
+  const { data, isFetching, isError, refetch } = useImpactSuggestions(
+    debouncedPayload,
+    {
+      enabled: hasStory && isDraftCurrent,
+    },
   );
-
-  const filteredCauses = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return IMPACT_CAUSES;
-
-    return IMPACT_CAUSES.filter((cause) => {
-      const haystack = [
-        cause.title,
-        cause.description,
-        ...cause.tags,
-        ...cause.keywords,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(query);
-    });
-  }, [search]);
-
-  const closeModal = () => {
-    setModalVisible(false);
-    setSearch("");
-  };
-
-  const applyCause = (title: string, description?: string) => {
-    const trimmedImpactNote = impactDescription?.trim() || "";
-    const shouldReplaceImpactNote =
-      !trimmedImpactNote ||
-      trimmedImpactNote === selectedCause?.description ||
-      trimmedImpactNote === buildImpactDescription(impactTitle, undefined);
-
-    onImpactTitleChange(title);
-    onImpactDescriptionChange(
-      shouldReplaceImpactNote
-        ? buildImpactDescription(title, description)
-        : trimmedImpactNote
-    );
-
-    if (isDonation) {
-      onImpactPercentageChange(100);
-    } else if (!impactPercentage) {
-      onImpactPercentageChange(DEFAULT_IMPACT_PERCENTAGE);
-    }
-
-    closeModal();
-  };
-
-  const renderCauseIcon = (causeId?: string | null) => {
-    const Icon =
-      iconMap[(causeId as keyof typeof iconMap) || "community_building"] ||
-      HandHeart;
-
-    return <Icon size={18} color="#0FF1CF" />;
-  };
+  const suggestions =
+    hasStory && isDraftCurrent && !isError ? data?.data : undefined;
 
   return (
     <View style={tw`gap-4`}>
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        activeOpacity={0.9}
-        style={tw`rounded-2xl border border-[#1D3774] bg-[#101C45] p-4`}
-      >
-        <View style={tw`flex-row items-start justify-between gap-3`}>
-          <View style={tw`flex-1`}>
-            <Text style={tw`text-xs uppercase tracking-widest text-[#7E93C7]`}>
-              Impact cause
-            </Text>
-            <Text style={tw`mt-2 text-xs font-semibold uppercase tracking-widest text-[#0FF1CF]`}>
-              {impactTitle?.trim() ? "Tap to change cause" : "Tap to choose cause"}
-            </Text>
-            <Text style={tw`mt-3 text-base font-semibold text-white`}>
-              {impactTitle?.trim() || "Choose the cause this event supports"}
-            </Text>
-            <Text style={tw`mt-2 text-sm leading-5 text-[#B5C4E6]`}>
-              {selectedCause?.description ||
-                "Pick from common causes or create your own impact category."}
-            </Text>
-          </View>
-
-          <View style={tw`items-end gap-3`}>
-            <View style={tw`h-10 w-10 items-center justify-center rounded-full bg-[#0FF1CF]/10`}>
-              {renderCauseIcon(selectedCause?.id)}
-            </View>
-            <View style={tw`flex-row items-center rounded-full bg-[#0FF1CF]/10 px-3 py-1.5`}>
-              <Text style={tw`text-xs font-semibold text-[#0FF1CF]`}>
-                {impactTitle?.trim() ? "Change" : "Select"}
-              </Text>
-              <ChevronRight size={14} color="#0FF1CF" />
-            </View>
-          </View>
+      <TextArea
+        value={impactDescription}
+        onChange={onImpactDescriptionChange}
+        maxLength={180}
+        placeholder="What does this event contribute to people, culture, or your community?"
+        className="!bg-[#101C45]"
+      />
+      <View style={tw`rounded-2xl border border-[#17305D] bg-[#0A173F] p-4`}>
+        <View style={tw`flex-row items-center justify-between gap-3`}>
+          <Text
+            style={tw`flex-1 text-xs uppercase tracking-widest text-[#7E93C7]`}
+          >
+            AI suggested impact map
+          </Text>
+          {hasStory && (isFetching || !isDraftCurrent) && (
+            <ActivityIndicator size="small" color="#0FF1CF" />
+          )}
         </View>
-      </TouchableOpacity>
-
-      <View>
-        <Text style={tw`mb-2 text-xs uppercase tracking-widest text-[#7E93C7]`}>
-          Impact note
+        <Text style={tw`mt-2 text-xs leading-5 text-[#8FA5E2]`}>
+          Choose the suggestions that reflect your intention, or leave the map
+          empty. Only your selections will appear on the event.
         </Text>
-        <TextArea
-          value={impactDescription || ""}
-          onChange={onImpactDescriptionChange}
-          maxLength={180}
-          placeholder={impactNotePlaceholder}
-          className="!bg-[#101C45]"
+        {hasStory && isDraftCurrent && isError && (
+          <View style={tw`mt-2 gap-2`}>
+            <Text style={tw`text-xs leading-5 text-[#8FA5E2]`}>
+              AI suggestions are unavailable right now. You can try again or
+              continue without a map. Your selections are kept.
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              disabled={isFetching}
+              onPress={() => {
+                void refetch();
+              }}
+            >
+              <Text style={tw`text-xs font-semibold text-[#0FF1CF]`}>
+                Try again
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <SuggestionGroup
+          title="Global goals"
+          suggestions={suggestions ? suggestions.sdgGoals : []}
+          selected={selectedMap.sdgGoals}
+          itemKey={(item) => item.id}
+          label={(item) => item.shortTitle}
+          limit={3}
+          onChange={(sdgGoals) =>
+            onImpactMapChange({ ...selectedMap, sdgGoals })
+          }
+        />
+        <SuggestionGroup
+          title="Impact paths"
+          suggestions={suggestions ? suggestions.impactPaths : []}
+          selected={selectedMap.impactPaths}
+          itemKey={(item) => item.id}
+          label={(item) => item.summaryLabel}
+          limit={3}
+          onChange={(impactPaths) =>
+            onImpactMapChange({ ...selectedMap, impactPaths })
+          }
+        />
+        <SuggestionGroup
+          title="Commitments"
+          suggestions={suggestions ? suggestions.commitments : []}
+          selected={selectedMap.commitments}
+          itemKey={commitmentKey}
+          label={(item) => item.label}
+          limit={5}
+          onChange={(commitments) =>
+            onImpactMapChange({ ...selectedMap, commitments })
+          }
         />
       </View>
-
-      {isDonation ? (
-        <View style={tw`rounded-2xl bg-[#101C45] p-4`}>
-          <View style={tw`flex-row items-center justify-between gap-3`}>
-            <View style={tw`flex-1`}>
-              <Text style={tw`text-xs uppercase tracking-widest text-[#7E93C7]`}>
-                Impact share
-              </Text>
-              <Text style={tw`mt-2 text-base font-semibold text-white`}>
-                100% of every donation goes to this cause
-              </Text>
-              <Text style={tw`mt-1 text-sm leading-5 text-[#B5C4E6]`}>
-                Donation events are fully impact-led, so this stays locked at
-                100%.
-              </Text>
-            </View>
-            <View style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}>
-              <Text style={tw`text-sm font-bold text-[#03122F]`}>100%</Text>
-            </View>
-          </View>
-        </View>
-      ) : (
-        <View style={tw`rounded-2xl bg-[#101C45] p-4`}>
-          <View style={tw`flex-row items-center justify-between gap-3`}>
-            <View style={tw`flex-1`}>
-              <Text style={tw`text-xs uppercase tracking-widest text-[#7E93C7]`}>
-                Impact share
-              </Text>
-              <Text style={tw`mt-2 text-base font-semibold text-white`}>
-                {clampImpactPercentage(resolvedPercentage)}% of earnings support
-                this cause
-              </Text>
-              <Text style={tw`mt-1 text-sm leading-5 text-[#B5C4E6]`}>
-                Choose how much of the event earnings are committed to the
-                selected cause.
-              </Text>
-            </View>
-            <View style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}>
-              <Text style={tw`text-sm font-bold text-[#03122F]`}>
-                {clampImpactPercentage(resolvedPercentage)}%
-              </Text>
-            </View>
-          </View>
-
-          <ImpactSharePicker
-            value={clampImpactPercentage(resolvedPercentage)}
-            onChange={onImpactPercentageChange}
-          />
-        </View>
-      )}
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeModal}
-      >
-        <View style={tw`flex-1 justify-end bg-black/70 px-4 py-6`}>
-          <View style={tw`max-h-[88%] rounded-[30px] bg-[#041130] p-5`}>
-            <View style={tw`flex-row items-center justify-between`}>
-              <View style={tw`flex-1 pr-3`}>
-                <Text style={tw`text-xl font-bold text-white`}>
-                  Pick an impact cause
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#A7B8DE]`}>
-                  Search common causes, select one, then tailor the impact note
-                  in your event form.
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={closeModal}
-                style={tw`h-10 w-10 items-center justify-center rounded-full bg-[#0B173B]`}
-              >
-                <X size={18} color="white" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={tw`mt-5 flex-row items-center rounded-2xl bg-[#0B173B] px-4`}>
-              <Search size={18} color="#8EA0CA" />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search education, healthcare, orphanage..."
-                placeholderTextColor="#8EA0CA"
-                style={tw`flex-1 py-4 pl-3 text-white`}
-              />
-            </View>
-
-            <ScrollView style={tw`mt-5`} showsVerticalScrollIndicator={false}>
-              {filteredCauses.map((cause) => (
-                <TouchableOpacity
-                  key={cause.id}
-                  onPress={() => applyCause(cause.title, cause.description)}
-                  style={twStyle(
-                    "mb-3 rounded-2xl border p-4",
-                    impactTitle?.trim().toLowerCase() ===
-                      cause.title.toLowerCase()
-                      ? "border-[#0FF1CF] bg-[#0FF1CF]/10"
-                      : "border-[#17305D] bg-[#0A173F]"
-                  )}
-                >
-                  <View style={tw`flex-row items-start gap-3`}>
-                    <View style={tw`mt-0.5 h-10 w-10 items-center justify-center rounded-full bg-[#0FF1CF]/10`}>
-                      {renderCauseIcon(cause.id)}
-                    </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        {cause.title}
-                      </Text>
-                      <Text style={tw`mt-2 text-sm leading-5 text-[#B5C4E6]`}>
-                        {cause.description}
-                      </Text>
-                      <View style={tw`mt-3 flex-row flex-wrap gap-2`}>
-                        {cause.tags.map((tag) => (
-                          <View
-                            key={tag}
-                            style={tw`rounded-full bg-[#132754] px-3 py-1.5`}
-                          >
-                            <Text style={tw`text-[11px] font-medium text-[#D8E3FF]`}>
-                              {tag}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-
-              {search.trim().length > 1 && (
-                <Pressable
-                  onPress={() => applyCause(search.trim())}
-                  style={tw`mt-2 rounded-2xl border border-dashed border-[#0FF1CF]/60 bg-[#0A173F] p-4`}
-                >
-                  <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
-                    {`Use "${search.trim()}" as a custom cause`}
-                  </Text>
-                  <Text style={tw`mt-2 text-sm leading-5 text-[#A7B8DE]`}>
-                    If the list is not a fit, create your own cause and keep
-                    editing the impact note below.
-                  </Text>
-                </Pressable>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

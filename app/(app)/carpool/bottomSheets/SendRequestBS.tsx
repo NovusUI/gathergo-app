@@ -12,12 +12,7 @@ import {
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -50,7 +45,9 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
     const toggleNearby = async () => {
       const c = await requestLocation(true);
       if (!c) {
-        showGlobalWarning("Enable location in settings to use current location");
+        showGlobalWarning(
+          "Enable location in settings to use current location"
+        );
         setUseCurrentLocation(false);
         return;
       }
@@ -116,7 +113,8 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
       const trimmedLocation = poolLocation.trim();
       const parsed = carpoolSchema.safeParse({
         isToEvent: true,
-        poolLocation: trimmedLocation || (useCurrentLocation ? "Current location" : ""),
+        poolLocation:
+          trimmedLocation || (useCurrentLocation ? "Current location" : ""),
         useCurrentLocation,
         poolDestination: "",
         departureTime: "00:00",
@@ -150,17 +148,17 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
           style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}>
-            <View style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`} />
+          <View
+            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          >
+            <View
+              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+            />
 
             <View style={tw`flex-row items-center justify-between`}>
               <View style={tw`flex-1 pr-4`}>
                 <Text style={tw`text-xl font-semibold text-white`}>
                   Request a ride
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
-                  Share where you will join from and anything the pooler should
-                  know before they approve your seat.
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setIsVisible(false)}>
@@ -176,7 +174,9 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
               contentContainerStyle={tw`pt-4 pb-5`}
             >
               {Boolean(error) && (
-                <View style={tw`rounded-[24px] border border-[#7B2C2C] bg-[#5A1818] px-4 py-4`}>
+                <View
+                  style={tw`rounded-[24px] border border-[#7B2C2C] bg-[#5A1818] px-4 py-4`}
+                >
                   <Text style={tw`text-sm leading-5 text-white`}>{error}</Text>
                   <Text
                     onPress={openSettings}

@@ -19,20 +19,26 @@ import {
 import { CarpoolForm } from "@/types/carpool";
 import {
   DonationResponse,
+  EventImpactReport,
   GetTicketsResponse,
   InitiateDonationPayload,
   RegistrationCheckoutPayload,
   TicketCheckoutPayload,
+  UpsertEventImpactReportPayload,
 } from "@/types/event";
 import {
+  ConfirmWalletPayoutProfileResponse,
   NotifyOnKycResolutionPayload,
   NotifyOnKycResolutionResponse,
+  ResolveWalletPayoutAccountPayload,
   StartBusinessKycPayload,
   StartBusinessRepresentativeKycPayload,
   StartPersonalKycPayload,
+  SubmitWalletKycPayload,
   SubmitWalletLivenessPayload,
   UpsertWalletPayoutProfilePayload,
   WalletKycResponse,
+  WalletPayoutAccountResolutionResponse,
   WalletPayoutProfileResponse,
 } from "@/types/wallet";
 import { saveItem } from "@/utils/storage";
@@ -49,6 +55,7 @@ import {
   canScanFn,
   checkUsernameExists,
   completUserProfile,
+  confirmWalletPayoutProfileFn,
   createCarpool,
   createEvent,
   edtUserBio,
@@ -69,6 +76,7 @@ import {
   startPersonalKycFn,
   submitWalletKycFn,
   submitWalletLivenessFn,
+  resolveWalletPayoutAccountFn,
   upsertWalletPayoutProfileFn,
   registerPushToken,
   removePassenger,
@@ -87,6 +95,7 @@ import {
   updateEvent,
   updatePreference,
   updateScannerPermissionFn,
+  upsertEventImpactReport,
   uploadPicture,
   validateScanFn,
   verifyEmailCodeFn,
@@ -103,11 +112,37 @@ import {
 } from "@/types/scanner";
 
 
+export const useResolveWalletPayoutAccount = (options?: any) => {
+  return useMutation<
+    WalletPayoutAccountResolutionResponse,
+    AxiosError,
+    ResolveWalletPayoutAccountPayload
+  >({
+    mutationFn: resolveWalletPayoutAccountFn,
+    ...options,
+  });
+};
+
 export const useUpsertWalletPayoutProfile = (options?: any) => {
   const queryClient = useQueryClient();
 
   return useMutation<WalletPayoutProfileResponse, AxiosError, UpsertWalletPayoutProfilePayload>({
     mutationFn: upsertWalletPayoutProfileFn,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletKyc });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+};
+
+export const useConfirmWalletPayoutProfile = (options?: any) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<ConfirmWalletPayoutProfileResponse, AxiosError, void>({
+    mutationFn: confirmWalletPayoutProfileFn,
     onSuccess: (...args) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
@@ -181,7 +216,7 @@ export const useStartBusinessRepresentativeKyc = (options?: any) => {
 export const useSubmitWalletKyc = (options?: any) => {
   const queryClient = useQueryClient();
 
-  return useMutation<WalletKycResponse, AxiosError, void>({
+  return useMutation<WalletKycResponse, AxiosError, SubmitWalletKycPayload | void>({
     mutationFn: submitWalletKycFn,
     onSuccess: (...args) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOverview });
@@ -438,6 +473,30 @@ export const useRegisterEvent = (
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: registerForEvent,
     ...options,
+  });
+
+  return { mutate, mutateAsync, isPending, error };
+};
+
+export const useUpsertEventImpactReport = (
+  eventId: string,
+  options?: UseMutationOptions<
+    EventImpactReport,
+    AxiosError,
+    UpsertEventImpactReportPayload
+  >
+) => {
+  const queryClient = useQueryClient();
+  const { mutate, mutateAsync, isPending, error } = useMutation({
+    mutationFn: (payload: UpsertEventImpactReportPayload) =>
+      upsertEventImpactReport(eventId, payload),
+    ...options,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.eventDetails, eventId],
+      });
+      options?.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };

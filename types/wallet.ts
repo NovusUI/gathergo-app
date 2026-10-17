@@ -27,10 +27,14 @@ export type KycVerificationStatus =
 
 export type KycVerificationMode =
   | "PERSONAL_NIN"
+  | "PERSONAL_BVN"
+  | "PERSONAL_PHONE"
   | "PERSONAL_VNIN"
   | "PERSONAL_PASSPORT"
   | "PERSONAL_PHONE_NIN"
   | "BUSINESS_CAC_REP_NIN"
+  | "BUSINESS_CAC_REP_BVN"
+  | "BUSINESS_CAC_REP_PHONE"
   | "BUSINESS_CAC_REP_VNIN"
   | "BUSINESS_CAC_REP_PASSPORT"
   | "BUSINESS_CAC_REP_PHONE_NIN";
@@ -39,6 +43,7 @@ export type NameMatchStatus =
   | "MATCHED"
   | "REVIEW_REQUIRED"
   | "MISMATCH";
+export type KycTier = "NONE" | "BASIC" | "FULL";
 
 export interface WalletBalance {
   heldBalance: number;
@@ -66,6 +71,8 @@ export interface CreatorPayoutProfile {
   rejectionReason?: string | null;
   submittedAt?: string | null;
   approvedAt?: string | null;
+  accountNameConfirmed?: boolean;
+  kycTier?: KycTier;
 }
 
 export interface CreatorAlatProfile {
@@ -122,6 +129,13 @@ export interface WalletOverviewData {
   recentSettlements: WalletSettlement[];
 }
 
+export interface WalletHistoryMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
 export interface WalletOnboardingTask {
   code: string;
   title: string;
@@ -140,11 +154,20 @@ export interface WalletOnboardingData {
   payoutProfileStatus: CreatorPayoutProfileStatus;
   kycStatus: KycVerificationStatus;
   alatProfileStatus: CreatorAlatProfileStatus;
+  kycTier: KycTier;
+  basicKycSettlementCap: number;
+  basicKycSettlementUsage: number;
+  basicKycSettlementRemaining: number;
+  livenessRequired: boolean;
+  livenessRequiredReason?: string | null;
 }
 
 export interface WalletKycStep {
   code: string;
   status: string;
+  title?: string;
+  active?: boolean;
+  requiresPaidProvider?: boolean;
 }
 
 export interface WalletKycData {
@@ -161,6 +184,16 @@ export interface WalletKycData {
   verifiedFullName?: string | null;
   verifiedBusinessName?: string | null;
   rejectionReason?: string | null;
+  nameMatchReason?: string | null;
+  kycTier: KycTier;
+  currentStep?: string | null;
+  basicKycSettlementCap: number;
+  basicKycSettlementUsage: number;
+  basicKycSettlementRemaining: number;
+  livenessRequired: boolean;
+  livenessRequiredReason?: string | null;
+  canSubmitBasicKyc: boolean;
+  canSubmitFullKyc: boolean;
 }
 
 export interface WalletBank {
@@ -185,24 +218,50 @@ export interface WalletBanksResponse extends StandardResponse {
   data: WalletBank[];
 }
 
+export interface WalletPayoutAccountResolution {
+  accountNumber: string;
+  accountName: string;
+}
+
+export interface WalletPayoutAccountResolutionResponse
+  extends StandardResponse {
+  data: WalletPayoutAccountResolution;
+}
+
+export interface WalletTransactionsResponse extends StandardResponse {
+  data: WalletTransaction[];
+  meta: WalletHistoryMeta;
+}
+
+export interface WalletSettlementsResponse extends StandardResponse {
+  data: WalletSettlement[];
+  meta: WalletHistoryMeta;
+}
+
 export interface WalletPayoutProfileResponse extends StandardResponse {
+  data: CreatorPayoutProfile;
+}
+
+export interface ConfirmWalletPayoutProfileResponse extends StandardResponse {
   data: CreatorPayoutProfile;
 }
 
 export interface UpsertWalletPayoutProfilePayload {
   accountOwnershipType: AccountOwnershipType;
-  businessName?: string;
-  legalName?: string;
   bankName: string;
   bankCode?: string;
   accountNumber: string;
-  accountName?: string;
-  bvnLast4?: string;
+}
+
+export interface ResolveWalletPayoutAccountPayload {
+  bankCode: string;
+  accountNumber: string;
 }
 
 export interface StartPersonalKycPayload {
   verificationMode?: KycVerificationMode;
   phoneNumber?: string;
+  bvn?: string;
   nin?: string;
   vnin?: string;
   passportNumber?: string;
@@ -223,6 +282,7 @@ export interface StartBusinessRepresentativeKycPayload {
   representativeLastName?: string;
   representativeDateOfBirth?: string;
   representativeNin?: string;
+  representativeBvn?: string;
   representativeVnin?: string;
   representativePassportNumber?: string;
 }
@@ -231,6 +291,10 @@ export interface SubmitWalletLivenessPayload {
   imageUrl?: string;
   identityNumber?: string;
   photoBase64?: string;
+}
+
+export interface SubmitWalletKycPayload {
+  targetTier?: Extract<KycTier, "BASIC" | "FULL">;
 }
 
 export type NotifyOnKycResolutionTarget =

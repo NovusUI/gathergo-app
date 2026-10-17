@@ -1,6 +1,7 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useLockedRouter } from "@/utils/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import {
@@ -17,26 +18,83 @@ import {
 
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
+import RideVibeChatCard from "@/components/carpool/RideVibeChatCard";
+import VibeCheckMessageCard from "@/components/carpool/VibeCheckMessageCard";
+import VibeCheckModal from "@/components/carpool/VibeCheckModal";
 import ChatInput from "@/components/inputs/ChatInput";
 import { ChatSkeleton } from "@/components/ui/ChatSkeleton";
 import ChatView1 from "@/components/ui/ChatView1";
-import OverlappingImages from "@/components/ui/OverlappingImages";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { TypingIndicator } from "@/components/ui/TypingIndicator";
 import UserChatView from "@/components/ui/UserChatView";
+import {
+  getCarpoolVibeDialogMessages,
+  getCarpoolVibeHandshakeInstruction,
+  getCarpoolVibeMascotStyle,
+  getCarpoolVibeSafetyRoleCopy,
+  getCarpoolVibeSafetySignal,
+  getCarpoolVibeSafetyTips,
+  getCarpoolVehicleOption,
+} from "@/constants/carpool";
 import { useAuth } from "@/context/AuthContext";
 import { useConversation } from "@/context/ConversationContext";
 import { usePushNotification } from "@/context/PushNotificationContext";
 import { useSocket } from "@/context/SocketContext";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useConversations } from "@/hooks/useSocketReactHook";
-import { safeGoBack } from "@/utils/navigation";
+import { useGetCarpoolDetails } from "@/services/queries";
+import {
+  createVibeCheckChatMessage,
+  getVibeCheckMessageDetails,
+  useVibeCheckHandshake,
+  type VibeCheckRole,
+} from "@/hooks/useVibeCheckHandshake";
+import { useVibeCheckPrompt } from "@/hooks/useVibeCheckPrompt";
 import { useMessageQueueStore } from "@/store/messageQueue";
+import { formatTo12Hour } from "@/utils/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { MessageCircle } from "lucide-react-native";
 import tw from "twrnc";
 
 // Import the useCarpoolDetails hook
 import { useCarpoolDetails } from "@/hooks/useCarpoolDetails";
+
+const getPossibleVehicleIcon = (source: any) => {
+  if (!source) return null;
+
+  return (
+    source.vehicleIcon ||
+    source.vehicle_icon ||
+    source.rideVibe ||
+    source.ride_vibe ||
+    source.vibe ||
+    source.vehicle?.icon ||
+    source.vehicle?.key ||
+    source.ride?.vehicleIcon ||
+    null
+  );
+};
+
+const formatRideDepartureTime = (departureTime?: string | null) => {
+  const trimmed = departureTime?.trim();
+  if (!trimmed) return null;
+
+  const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (timeMatch) {
+    return formatTo12Hour(
+      `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`
+    );
+  }
+
+  const parsedDate = new Date(trimmed);
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return parsedDate.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return trimmed;
+};
 
 const ChatPage = () => {
   const router = useLockedRouter();
@@ -55,13 +113,20 @@ const ChatPage = () => {
 
   const { data: conversations = [] } = useConversations();
 
-  const unreadCount =
-    (conversations.find((conv: any) => conv.carpool.id == carpoolId) as any)
-      ?.unreadCount ?? 0;
+  const activeConversation = useMemo(
+    () =>
+      conversations.find(
+        (conv: any) => String(conv.carpool?.id) === String(carpoolId)
+      ) as any,
+    [conversations, carpoolId]
+  );
+
+  const unreadCount = activeConversation?.unreadCount ?? 0;
 
   const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [rideVibeExpanded, setRideVibeExpanded] = useState(false);
   const draftLoadedRef = useRef(false);
 
   const flatListRef = useRef<FlatList>(null);
@@ -77,6 +142,13 @@ const ChatPage = () => {
     error: carpoolError,
     refetch: refetchCarpoolDetails,
   } = useCarpoolDetails(carpoolId);
+  const { data: fullCarpoolDetailsResponse } = useGetCarpoolDetails(
+    carpoolId || "",
+    {
+      enabled: Boolean(carpoolId),
+    }
+  );
+  const fullCarpoolDetails = fullCarpoolDetailsResponse?.data;
 
   // Extract user's role in the carpool
   const getUserRole = () => {
@@ -98,28 +170,6 @@ const ChatPage = () => {
       carpoolDetails.driverId === user.id ||
       carpoolDetails.passengers.some((p) => p.id === user.id)
     );
-  };
-
-  // Extract participant images from carpool details
-  const getParticipantImages = () => {
-    if (!carpoolDetails) return [];
-
-    const images: Array<string | null | undefined> = [];
-
-    // Add driver's avatar if not current user
-    if (carpoolDetails.driver.id !== user?.id) {
-      images.push(carpoolDetails.driver.avatar || null);
-    }
-
-    // Add passengers' avatars (only accepted ones)
-    carpoolDetails.passengers
-      .filter((p) => p.id !== user?.id && p.status === "ACCEPTED")
-      .forEach((p) => {
-        images.push(p.avatar || null);
-      });
-
-    // Limit to 4 images for the OverlappingImages component
-    return images.slice(0, 4);
   };
 
   // Get sender's avatar for chat messages
@@ -288,9 +338,12 @@ const ChatPage = () => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       });
     }
-  }, [messages.length]);
+  }, [messages.length, isAtBottom]);
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (
+    text: string,
+    options: { clearComposer?: boolean } = {}
+  ) => {
     // Prevent sending if user is not eligible
     if (!carpoolDetails?.canChat) {
       Alert.alert(
@@ -336,8 +389,11 @@ const ChatPage = () => {
     });
 
     updateConversationAfterSend(carpoolId, optimistic);
-    setValue("");
-    if (carpoolId) {
+    const shouldClearComposer = options.clearComposer ?? true;
+    if (shouldClearComposer) {
+      setValue("");
+    }
+    if (carpoolId && shouldClearComposer) {
       AsyncStorage.removeItem(getDraftKey(carpoolId)).catch((error) =>
         console.log("failed to clear chat draft", error)
       );
@@ -365,6 +421,12 @@ const ChatPage = () => {
     setSending(false);
   };
 
+  const openCarpoolDetails = () => {
+    if (!carpoolId) return;
+
+    router.push(`/carpool/${carpoolId}`);
+  };
+
   const hasCached = messages.length > 0;
   const showLoader = loadingInitial && !hasCached;
 
@@ -376,18 +438,197 @@ const ChatPage = () => {
   else if (typingCount === 2) typingText = "2 people are typing";
   else if (typingCount > 2) typingText = "Several people are typing";
 
+  const rideVibeSource =
+    getPossibleVehicleIcon(carpoolDetails) ||
+    getPossibleVehicleIcon((carpoolDetails as any)?.carpool) ||
+    getPossibleVehicleIcon(fullCarpoolDetails) ||
+    getPossibleVehicleIcon(fullCarpoolDetails?.carpool) ||
+    getPossibleVehicleIcon(activeConversation?.carpool) ||
+    getPossibleVehicleIcon(activeConversation);
+  const selectedVehicle = getCarpoolVehicleOption(rideVibeSource);
+  const fullCarpool = (fullCarpoolDetails as any)?.carpool;
+  const conversationCarpool = activeConversation?.carpool;
+  const rideIconName = selectedVehicle?.iconName ?? "car-outline";
+  const rideLabel = selectedVehicle?.label ?? "Shared ride";
+  const eventTitle =
+    carpoolDetails?.event?.name ||
+    carpoolDetails?.event?.title ||
+    carpoolDetails?.name ||
+    "Carpool chat";
+  const originLabel =
+    carpoolDetails?.origin ||
+    (fullCarpoolDetails as any)?.origin ||
+    fullCarpool?.origin ||
+    conversationCarpool?.origin ||
+    null;
+  const destinationLabel =
+    carpoolDetails?.event?.location ||
+    (fullCarpoolDetails as any)?.event?.location ||
+    fullCarpool?.event?.location ||
+    conversationCarpool?.event?.location ||
+    carpoolDetails?.event?.name ||
+    (fullCarpoolDetails as any)?.event?.name ||
+    (fullCarpoolDetails as any)?.event?.title ||
+    fullCarpool?.event?.name ||
+    fullCarpool?.event?.title ||
+    conversationCarpool?.event?.name ||
+    conversationCarpool?.event?.title ||
+    "Event destination";
+  const rawDepartureTime =
+    carpoolDetails?.departureTime ||
+      (fullCarpoolDetails as any)?.departureTime ||
+      fullCarpool?.departureTime ||
+      conversationCarpool?.departureTime;
+  const departureTimeLabel = formatRideDepartureTime(rawDepartureTime);
+  const safetyTips = useMemo(
+    () => getCarpoolVibeSafetyTips(rideVibeSource),
+    [rideVibeSource]
+  );
+  const safetySignal = useMemo(
+    () => getCarpoolVibeSafetySignal(rideVibeSource),
+    [rideVibeSource]
+  );
+  const rideVibeMascotStyle = useMemo(
+    () => getCarpoolVibeMascotStyle(rideVibeSource),
+    [rideVibeSource]
+  );
+  const userRole = getUserRole();
+  const roleLabel =
+    userRole === "driver"
+      ? "Pooler"
+      : userRole === "passenger"
+        ? "Rider"
+        : "Member";
+  const vibeCheckRole: VibeCheckRole =
+    userRole === "driver"
+      ? "pooler"
+      : userRole === "passenger"
+        ? "rider"
+        : "member";
+  const handshakeInstruction = useMemo(
+    () => getCarpoolVibeHandshakeInstruction(vibeCheckRole),
+    [vibeCheckRole]
+  );
+  const rideVibeDialogMessages = useMemo(
+    () =>
+      getCarpoolVibeDialogMessages(rideVibeSource, {
+        departureTime: departureTimeLabel,
+        destination: destinationLabel,
+        handshakeInstruction,
+        pickupLocation: originLabel,
+        safetySignal,
+        safetyTips,
+      }),
+    [
+      rideVibeSource,
+      departureTimeLabel,
+      destinationLabel,
+      handshakeInstruction,
+      originLabel,
+      safetySignal,
+      safetyTips,
+    ]
+  );
+  const rideVibeDialogKey = useMemo(
+    () =>
+      rideVibeDialogMessages
+        .map((message) => message.map((part) => part.text).join(""))
+        .join("|"),
+    [rideVibeDialogMessages]
+  );
+  const safetyCopy = useMemo(
+    () => getCarpoolVibeSafetyRoleCopy(safetySignal, roleLabel, rideLabel),
+    [safetySignal, roleLabel, rideLabel]
+  );
+  const vibeCheckPrompt = useVibeCheckPrompt({
+    carpoolId,
+    departureTime: rawDepartureTime,
+    enabled: Boolean(carpoolDetails?.canChat),
+    userId: user?.id,
+  });
+  const vibeCheckHandshake = useVibeCheckHandshake({
+    carpoolId,
+    departureTime: rawDepartureTime,
+    driverId: carpoolDetails?.driverId,
+    enabled: Boolean(carpoolDetails?.canChat),
+    messages,
+    passengers: carpoolDetails?.passengers,
+    role: vibeCheckRole,
+    socket,
+    userId: user?.id,
+  });
+  const completeVibeCheck = (
+    passengerId?: string,
+    passengerLabel?: string | null
+  ) => {
+    const confirmation = vibeCheckHandshake.confirm({
+      passengerId,
+      passengerLabel,
+      signalAction:
+        vibeCheckRole === "pooler"
+          ? safetySignal.driverAction
+          : safetySignal.passengerAction,
+      signalTitle: safetySignal.title,
+    });
+    if (!confirmation) return;
+
+    sendMessage(
+      createVibeCheckChatMessage(vibeCheckRole, safetySignal, {
+        passengerId: confirmation.passengerId,
+        passengerLabel: confirmation.passengerLabel,
+      }),
+      {
+        clearComposer: false,
+      }
+    );
+  };
   const renderMessage = ({ item }: { item: any }) => {
     const isUser = item.senderId === user?.id;
+    const vibeCheckMessageDetails = getVibeCheckMessageDetails(item.content);
+    const messageTime = new Date(item.createdAt).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    if (vibeCheckMessageDetails) {
+      const messagePassengerId =
+        vibeCheckMessageDetails.passengerId ||
+        (item.senderId === carpoolDetails?.driverId ? user?.id : item.senderId);
+      const messageHandshake =
+        vibeCheckHandshake.getPassengerHandshake(messagePassengerId);
+      const needsConfirmation =
+        !isUser &&
+        vibeCheckRole !== "member" &&
+        Boolean(messageHandshake) &&
+        (vibeCheckRole === "pooler"
+          ? vibeCheckMessageDetails.actorLabel === "Rider" &&
+            !messageHandshake?.poolerConfirmed
+          : vibeCheckMessageDetails.actorLabel === "Pooler" &&
+            (!vibeCheckMessageDetails.passengerId ||
+              vibeCheckMessageDetails.passengerId === user?.id) &&
+            !messageHandshake?.riderConfirmed);
+
+      return (
+        <VibeCheckMessageCard
+          actorLabel={vibeCheckMessageDetails.actorLabel}
+          isComplete={Boolean(messageHandshake?.isComplete)}
+          needsConfirmation={needsConfirmation}
+          rideIconName={rideIconName}
+          signalAction={vibeCheckMessageDetails.signalAction}
+          signalTitle={vibeCheckMessageDetails.signalTitle}
+          time={messageTime}
+          onPress={vibeCheckPrompt.open}
+        />
+      );
+    }
 
     if (isUser) {
       return (
         <UserChatView
           message={item.content}
-          time={new Date(item.createdAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          time={messageTime}
           optimistic={item.optimistic}
+          rideIconName={rideIconName}
         />
       );
     }
@@ -398,10 +639,7 @@ const ChatPage = () => {
     return (
       <ChatView1
         message={item.content}
-        time={new Date(item.createdAt).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
+        time={messageTime}
         imageUrl={senderImage}
       />
     );
@@ -410,10 +648,10 @@ const ChatPage = () => {
   // Show loading state while checking eligibility
   if (isLoadingCarpoolDetails) {
     return (
-      <View style={tw`flex-1 pt-10 bg-[#01082E] justify-center items-center`}>
-        <ActivityIndicator tone="accent" size="large" />
-        <Text style={tw`text-white mt-4`}>Loading carpool details...</Text>
-      </View>
+      <ImpactPageLoader
+        title="Opening ride chat"
+        message="Checking the ride vibe, safety flow, and conversation access."
+      />
     );
   }
 
@@ -468,148 +706,215 @@ const ChatPage = () => {
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
-      <CustomView
-        style={tw`px-3 flex-row justify-between items-center relative`}
-      >
-        <CustomeTopBarNav
-          title={carpoolDetails?.event?.name || carpoolDetails?.name || "Chat"}
-          onClickBack={() => safeGoBack(router, "/conversations")}
-        />
-
-        {/* Display carpool participant images */}
-        {isLoadingCarpoolDetails ? (
-          <View
-            style={tw`absolute right-4 w-16 h-8 bg-gray-700 rounded-full animate-pulse`}
-          />
-        ) : (
-          <OverlappingImages
-            images={getParticipantImages()}
-            className={`absolute right-4`}
-          />
-        )}
-      </CustomView>
-
-      <View style={tw`h-px w-full bg-white my-5`} />
-
-      {/* Show carpool info header */}
-      {carpoolDetails && (
-        <View style={tw`px-4 mb-4`}>
-          <Text style={tw`text-white text-lg font-semibold`}>
-            {carpoolDetails.event?.name || carpoolDetails.name}
-          </Text>
-          <Text style={tw`text-gray-400 text-sm`}>
-            {getUserRole() === "driver" ? "Driver" : "Passenger"} •{" "}
-            {carpoolDetails.status.toLowerCase()}
-          </Text>
-          {Boolean(carpoolDetails.expiresAt) && (
-            <Text style={tw`text-yellow-400 text-xs mt-1`}>
-              Chat expires:{" "}
-              {new Date(carpoolDetails.expiresAt).toLocaleDateString()}
-            </Text>
-          )}
-        </View>
-      )}
-
-      {/* Show eligibility status banner if not fully eligible */}
-      {carpoolDetails &&
-        !carpoolDetails.canChat &&
-        Boolean(carpoolDetails.reason) && (
-        <View style={tw`bg-red-500 mx-4 p-3 rounded-lg mb-4`}>
-          <Text style={tw`text-white text-center font-semibold`}>
-            Chat Restricted: {carpoolDetails.reason}
-          </Text>
-        </View>
-      )}
-
-      <View style={tw`w-full max-w-[500px] flex-1`}>
-        {showLoader ? (
-          <ChatSkeleton />
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            inverted
-            keyboardShouldPersistTaps="handled"
-            data={messages}
-            keyExtractor={(item) => `msg-${item.id}`}
-            renderItem={renderMessage}
-            onScroll={handleScroll}
-            onEndReached={() => hasMore && loadMore()}
-            onEndReachedThreshold={0.1}
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-            contentContainerStyle={{
-              paddingHorizontal: 12,
-              paddingBottom: 12,
-              flexGrow: messages.length === 0 ? 1 : undefined,
-            }}
-            ListEmptyComponent={
-              <View style={tw`flex-1 items-center justify-center py-12`}>
-                <MessageCircle size={42} color="#8FA5E2" />
-                <Text style={tw`text-white mt-3 font-semibold`}>
-                  No messages yet
-                </Text>
-                <Text style={tw`text-gray-400 text-sm mt-1 text-center px-8`}>
-                  Start the conversation with a quick message.
-                </Text>
-              </View>
-            }
-            ListFooterComponent={
-              loadingMore ? (
-                <ActivityIndicator tone="accent" style={tw`py-3`} />
-              ) : null
+        <CustomView style={tw`px-3`}>
+          <CustomeTopBarNav
+            title={eventTitle}
+            onClickBack={() => safeGoBack(router, "/conversations")}
+            rightNode={
+              isLoadingCarpoolDetails ? (
+                <View
+                  style={tw`w-11 h-11 rounded-full bg-gray-700 animate-pulse`}
+                />
+              ) : (
+                <TouchableOpacity
+                  accessibilityLabel={
+                    rideVibeExpanded ? "Collapse ride vibe" : "View ride details"
+                  }
+                  accessibilityRole="button"
+                  activeOpacity={0.86}
+                  disabled={!carpoolId && !rideVibeExpanded}
+                  onPress={
+                    rideVibeExpanded
+                      ? () => setRideVibeExpanded(false)
+                      : openCarpoolDetails
+                  }
+                  style={[
+                    tw`w-11 h-11 rounded-full items-center justify-center border`,
+                    rideVibeExpanded
+                      ? tw`bg-[#FF6B6B]/12 border-[#FF6B6B]/25`
+                      : tw`bg-[#0FF1CF]/12 border-[#0FF1CF]/25`,
+                  ]}
+                >
+                  <Ionicons
+                    name={rideVibeExpanded ? "close" : rideIconName}
+                    size={rideVibeExpanded ? 22 : 24}
+                    color={rideVibeExpanded ? "#FF6B6B" : "#0FF1CF"}
+                  />
+                </TouchableOpacity>
+              )
             }
           />
-        )}
-      </View>
+        </CustomView>
 
-      {isTyping && <TypingIndicator text={typingText} />}
-
-      {!isAtBottom && (
-        <TouchableOpacity
-          onPress={() =>
-            flatListRef.current?.scrollToOffset({ offset: 0, animated: true })
-          }
-          style={tw`absolute bottom-32 right-5 bg-blue-500 rounded-full h-10 w-10 flex-row items-center justify-center`}
-        >
-          <Text style={tw`text-white text-lg`}>↓</Text>
-          {unreadCount > 0 && (
-            <View
-              style={tw`absolute top-0 right-0 rounded-full min-w-[16px] h-4 bg-white flex-row items-center justify-center`}
-            >
-              <Text style={tw`text-[#350342] text-xs`}>{unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      )}
-
-      <CustomView
-        style={[
-          tw`min-h-28 p-5`,
-          Platform.OS === "android" && keyboardHeight > 0
-            ? { paddingBottom: keyboardHeight + 12 }
-            : null,
-        ]}
-      >
-        {!showLoader && carpoolDetails?.canChat && (
-          <ChatInput
-            sending={sending}
-            onSend={() => sendMessage(value)}
-            value={value}
-            setValue={setValue}
-            carpoolId={carpoolId}
-            disabled={!carpoolDetails?.canChat}
-          />
-        )}
-
-        {/* Show message if user can't chat */}
-        {carpoolDetails && !carpoolDetails.canChat && (
-          <View style={tw`bg-gray-800 p-4 rounded-lg`}>
-            <Text style={tw`text-white text-center`}>
-              {carpoolDetails.reason ||
-                "Chat is not available for this carpool"}
-            </Text>
+        {carpoolDetails && (
+          <View style={tw`px-4 mt-4 mb-4`}>
+            <RideVibeChatCard
+              dialogKey={rideVibeDialogKey}
+              dialogMessages={rideVibeDialogMessages}
+              expanded={rideVibeExpanded}
+              iconName={rideIconName}
+              label={rideLabel}
+              mascotStyle={rideVibeMascotStyle}
+              onOpenVibeCheck={vibeCheckPrompt.open}
+              onToggle={() => setRideVibeExpanded((current) => !current)}
+              vibeCheckButtonLabel={
+                vibeCheckRole === "pooler" &&
+                vibeCheckHandshake.passengerCount === 0
+                  ? "Waiting for riders"
+                  : vibeCheckHandshake.isComplete
+                  ? `${safetySignal.title} complete`
+                  : vibeCheckHandshake.currentUserConfirmed
+                    ? `Waiting for ${vibeCheckHandshake.waitingForLabel}`
+                    : `Complete ${safetySignal.title}`
+              }
+              roleLabel={roleLabel}
+              safetySignal={safetySignal}
+            />
           </View>
         )}
-      </CustomView>
+
+        {carpoolDetails &&
+          !carpoolDetails.canChat &&
+          Boolean(carpoolDetails.reason) && (
+            <View
+              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-[#4A1320] border border-[#F87171]/30`}
+            >
+              <Text style={tw`text-white text-center font-semibold`}>
+                Chat Restricted: {carpoolDetails.reason}
+              </Text>
+            </View>
+          )}
+
+        <View style={tw`w-full max-w-[500px] flex-1`}>
+          {showLoader ? (
+            <ChatSkeleton />
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              inverted
+              keyboardShouldPersistTaps="handled"
+              data={messages}
+              keyExtractor={(item) => `msg-${item.id}`}
+              renderItem={renderMessage}
+              onScroll={handleScroll}
+              onEndReached={() => hasMore && loadMore()}
+              onEndReachedThreshold={0.1}
+              maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+              contentContainerStyle={{
+                paddingHorizontal: 12,
+                paddingBottom: 12,
+                flexGrow: messages.length === 0 ? 1 : undefined,
+              }}
+              ListEmptyComponent={
+                <View
+                  style={tw`flex-1 items-center justify-center py-12 px-5`}
+                >
+                  <View
+                    style={tw`w-full rounded-[28px] bg-[#07143B] border border-[#1B2A50] p-6 items-center`}
+                  >
+                    <View
+                      style={tw`w-16 h-16 rounded-2xl bg-[#0FF1CF]/12 items-center justify-center border border-[#0FF1CF]/20`}
+                    >
+                      <Ionicons
+                        name={rideIconName}
+                        size={34}
+                        color="#0FF1CF"
+                      />
+                    </View>
+                    <Text style={tw`text-white mt-4 font-semibold text-base`}>
+                      {safetyCopy.emptyChatTitle}
+                    </Text>
+                    <Text
+                      style={tw`text-[#A8BAE4] text-sm mt-2 text-center leading-5`}
+                    >
+                      {safetyCopy.emptyChatBody}
+                    </Text>
+                  </View>
+                </View>
+              }
+              ListFooterComponent={
+                loadingMore ? (
+                  <ActivityIndicator tone="accent" style={tw`py-3`} />
+                ) : null
+              }
+            />
+          )}
+        </View>
+
+        {isTyping && <TypingIndicator text={typingText} />}
+
+        {!isAtBottom && (
+          <TouchableOpacity
+            onPress={() =>
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true })
+            }
+            style={tw`absolute bottom-32 right-5 bg-[#0FF1CF] rounded-full h-11 w-11 flex-row items-center justify-center border border-white/20`}
+          >
+            <Ionicons name="arrow-down" size={18} color="#01082E" />
+            {unreadCount > 0 && (
+              <View
+                style={tw`absolute -top-1 -right-1 rounded-full min-w-[18px] h-[18px] bg-white flex-row items-center justify-center`}
+              >
+                <Text style={tw`text-[#350342] text-xs`}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        <View
+          style={[
+            tw`w-full max-w-[500px] min-h-28 p-5 bg-[#07143B] border-t border-[#1B2A50]`,
+            Platform.OS === "android" && keyboardHeight > 0
+              ? { paddingBottom: keyboardHeight + 12 }
+              : null,
+          ]}
+        >
+          {!showLoader && carpoolDetails?.canChat && (
+            <ChatInput
+              sending={sending}
+              onSend={() => sendMessage(value)}
+              onFocus={() => setRideVibeExpanded(false)}
+              value={value}
+              setValue={setValue}
+              carpoolId={carpoolId}
+              disabled={!carpoolDetails?.canChat}
+            />
+          )}
+
+          {/* Show message if user can't chat */}
+          {carpoolDetails && !carpoolDetails.canChat && (
+            <View
+              style={tw`bg-[#101C45] p-4 rounded-2xl border border-[#1B2A50]`}
+            >
+              <Text style={tw`text-white text-center`}>
+                {carpoolDetails.reason ||
+                  "Chat is not available for this carpool"}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <VibeCheckModal
+          visible={vibeCheckPrompt.visible}
+          iconName={rideIconName}
+          mascotStyle={rideVibeMascotStyle}
+          rideLabel={rideLabel}
+          roleLabel={roleLabel}
+          safetySignal={safetySignal}
+          vibeCheck={{
+            completedCount: vibeCheckHandshake.completedCount,
+            currentUserConfirmed: vibeCheckHandshake.currentUserConfirmed,
+            isComplete: vibeCheckHandshake.isComplete,
+            onConfirm: completeVibeCheck,
+            passengerCount: vibeCheckHandshake.passengerCount,
+            passengerHandshakes: vibeCheckHandshake.passengerHandshakes,
+            poolerConfirmed: vibeCheckHandshake.poolerConfirmed,
+            riderConfirmed: vibeCheckHandshake.riderConfirmed,
+            role: vibeCheckHandshake.role,
+            waitingForLabel: vibeCheckHandshake.waitingForLabel,
+          }}
+          onClose={vibeCheckPrompt.dismiss}
+        />
       </View>
     </KeyboardAvoidingView>
   );

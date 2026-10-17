@@ -243,8 +243,8 @@ export default function RequestCard({
               disabled={reqResPen}
               style={tw`flex-1 flex-row items-center justify-center rounded-[20px] bg-[#0FF1CF] px-4 py-3`}
             >
-              <Ionicons name="checkmark" size={16} color="#041130" />
-              <Text style={tw`ml-2 text-sm font-semibold text-[#041130]`}>
+              <Ionicons name="checkmark" size={16} color="#01082E" />
+              <Text style={tw`ml-2 text-sm font-semibold text-[#01082E]`}>
                 {reqResPen ? "Accepting..." : "Accept"}
               </Text>
             </TouchableOpacity>

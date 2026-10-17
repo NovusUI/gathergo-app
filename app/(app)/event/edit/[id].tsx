@@ -1,25 +1,18 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
-import EventTags from "@/components/EventTags";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
-import ImpactSelector from "@/components/eventInfo/ImpactSelector";
+import EventStoryFields from "@/components/eventInfo/EventStoryFields";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
-import TextArea from "@/components/inputs/CustomTextArea";
 import FormLabel from "@/components/labels/FormLabel";
-import {
-  buildImpactDescription,
-  DEFAULT_IMPACT_CAUSE,
-  DEFAULT_IMPACT_PERCENTAGE,
-  mergeImpactTags,
-  resolveImpactPercentage,
-} from "@/constants/impact";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { normalizeEventLink } from "@/constants/eventLinks";
+import { buildEventImpactFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -30,13 +23,21 @@ import {
 } from "@/schemas/event";
 import { useUpdateEvent } from "@/services/mutations";
 import { useEventDetails } from "@/services/queries";
-import { extractDate } from "@/utils/dateTimeHandler";
-import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import {
+  buildEventDateTimeIso,
+  extractDate,
+  isEventEditableBeforeStartDay,
+} from "@/utils/dateTimeHandler";
+import {
+  showGlobalError,
+  showGlobalSuccess,
+  showGlobalWarning,
+} from "@/utils/globalErrorHandler";
+import { useLockedRouter } from "@/utils/navigation";
 import { objectToFormData } from "@/utils/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useLockedRouter } from "@/utils/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -55,6 +56,17 @@ const normalizeEventLinks = (links?: string[]) =>
     .filter(Boolean)
     .slice(0, 5);
 
+const getUpdateErrorMessage = (error: unknown) => {
+  const data = (error as { data?: { message?: string | string[] } })?.data;
+  const message = data?.message || (error as Error)?.message;
+
+  if (Array.isArray(message)) {
+    return message[0] || "Event update failed";
+  }
+
+  return message || "Event update failed";
+};
+
 const EditEvent = () => {
   const { id } = useLocalSearchParams();
   const eventId = Array.isArray(id) ? id[0] : id;
@@ -64,10 +76,11 @@ const EditEvent = () => {
   const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
-    null
+    null,
   );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
+  const blockedEditRedirectedRef = useRef(false);
 
   const openSheet = useCallback((section: string) => {
     setActiveSection(section);
@@ -91,6 +104,24 @@ const EditEvent = () => {
   const lockedRegistrationType = eventData?.data?.registrationType;
   const isDonationEvent = lockedRegistrationType === "donation";
   const pricingSectionTitle = isDonationEvent ? "Donation setup" : "Pricing";
+  const canEditEvent = isEventEditableBeforeStartDay(
+    eventData?.data?.startDate,
+  );
+
+  useEffect(() => {
+    if (
+      !eventData?.data ||
+      isPending ||
+      canEditEvent ||
+      blockedEditRedirectedRef.current
+    ) {
+      return;
+    }
+
+    blockedEditRedirectedRef.current = true;
+    showGlobalWarning("Events can no longer be edited on the day they start.");
+    router.replace(`/event/${eventId}`);
+  }, [canEditEvent, eventData?.data, eventId, isPending, router]);
 
   const onEdit = (data: EventTicket) => {
     setEditingTicket(data);
@@ -112,9 +143,14 @@ const EditEvent = () => {
       imgUrl: undefined,
       eventName: "",
       description: "",
-      impactTitle: DEFAULT_IMPACT_CAUSE.title,
-      impactDescription: DEFAULT_IMPACT_CAUSE.description,
-      impactPercentage: DEFAULT_IMPACT_PERCENTAGE,
+      impactTitle: "",
+      impactDescription: "",
+      impactPercentage: undefined,
+      impactSdgGoals: [],
+      impactPaths: [],
+      impactCommitments: [],
+      impactMapSource: undefined,
+      impactMapGeneratedAt: undefined,
       startDate: undefined,
       endDate: undefined,
       startTime: undefined,
@@ -142,13 +178,14 @@ const EditEvent = () => {
         imgUrl: undefined,
         eventName: e.title || "",
         description: e.description || "",
-        impactTitle: e.impactTitle || DEFAULT_IMPACT_CAUSE.title,
-        impactDescription:
-          e.impactDescription ||
-          buildImpactDescription(e.impactTitle, e.impactDescription),
-        impactPercentage:
-          e.impactPercentage ||
-          resolveImpactPercentage(e.registrationType, e.impactPercentage),
+        impactTitle: e.impactTitle || "",
+        impactDescription: e.impactDescription || "",
+        impactPercentage: undefined,
+        impactSdgGoals: e.impactSdgGoals || [],
+        impactPaths: e.impactPaths || [],
+        impactCommitments: e.impactCommitments || [],
+        impactMapSource: e.impactMapSource || undefined,
+        impactMapGeneratedAt: e.impactMapGeneratedAt || undefined,
         startDate: e.startDate ? new Date(e.startDate) : undefined,
         endDate: e.endDate ? new Date(e.endDate) : undefined,
         startTime: e.startDate?.split("T")[1]?.slice(0, 5) || "",
@@ -160,9 +197,9 @@ const EditEvent = () => {
         registrationType: e.registrationType || undefined,
         tickets: (e.eventTickets || []).map((ticket) => ({
           ...ticket,
-          limited: ticket.quantity === 1000000 ? true : false,
+          limited: ticket.quantity !== 1000000,
           paid: ticket.price ? true : false,
-          isVisible: ticket.isVisible || true,
+          isVisible: ticket.isVisible ?? true,
           isNew: false,
           updatedPrice: ticket.updatedPrice || undefined,
         })),
@@ -194,9 +231,9 @@ const EditEvent = () => {
             : e.registrationAttendees,
         tickets: (e.eventTickets || []).map((ticket) => ({
           ...ticket,
-          limited: ticket.quantity === 1000000 ? true : false,
+          limited: ticket.quantity !== 1000000,
           paid: ticket.price ? true : false,
-          isVisible: ticket.isVisible || true,
+          isVisible: ticket.isVisible ?? true,
           isNew: false,
           updatedPrice: ticket.updatedPrice || undefined,
         })),
@@ -226,7 +263,7 @@ const EditEvent = () => {
       },
       onError: (e) => {
         console.log(e);
-        showGlobalError("Event update failed");
+        showGlobalError(getUpdateErrorMessage(e));
       },
     });
 
@@ -240,7 +277,7 @@ const EditEvent = () => {
     setValue("isRecurring", data.isRecurring);
     setValue("repeat", data.repeat ?? "NONE");
     setValue("endRepeat", data.endRepeat);
-    clearErrors(["startDate"]);
+    clearErrors(["startDate", "endDate", "startTime", "endTime"]);
     closeSheet();
   };
 
@@ -256,13 +293,10 @@ const EditEvent = () => {
     setValue("registrationFee", nextPricingData.registrationFee);
     setValue("donationTarget", nextPricingData.donationTarget);
     setValue("tickets", nextPricingData.tickets);
-    if (nextPricingData.registrationType === "donation") {
-      setValue("impactPercentage", 100);
-    }
     clearErrors(
       nextPricingData.registrationType === "donation"
         ? ["registrationType", "donationTarget"]
-        : "registrationType"
+        : "registrationType",
     );
     closeSheet();
   };
@@ -326,18 +360,15 @@ const EditEvent = () => {
   const activeSectionTitle =
     activeSection === "Pricing" ? pricingSectionTitle : activeSection;
 
-  const activeSectionDescription =
-    activeSection === "Date and Time"
-      ? "Set the event window clearly so people know exactly when it starts and ends."
-      : activeSection === "Location"
-      ? "Decide whether the event has a physical meetup and where it happens."
-      : activeSection === "Pricing"
-      ? isDonationEvent
-        ? "Set the donation goal and how people support this cause."
-        : "Choose how people join and manage the pricing or ticket tiers."
-      : "";
-
   const onSubmit = async (data: EventFormData) => {
+    if (!isEventEditableBeforeStartDay(eventData?.data?.startDate)) {
+      showGlobalWarning(
+        "Events can no longer be edited on the day they start.",
+      );
+      router.replace(`/event/${eventId}`);
+      return;
+    }
+
     const {
       eventName,
       startDate,
@@ -351,38 +382,27 @@ const EditEvent = () => {
       registrationAttendees,
       donationTarget,
       links,
-      impactTitle,
-      impactDescription,
-      impactPercentage,
+      location,
       tickets,
       imgUrl,
-      isRecurring,
       isPhysicalEvent,
-      ...rest
     } = data;
-    const resolvedRegistrationType =
-      lockedRegistrationType ?? registrationType;
-    const impactAwareTags = mergeImpactTags(rest.tags, impactTitle);
-    const resolvedImpactPercentage = resolveImpactPercentage(
-      resolvedRegistrationType,
-      Number(impactPercentage || DEFAULT_IMPACT_PERCENTAGE)
-    );
-
+    const resolvedRegistrationType = lockedRegistrationType ?? registrationType;
+    const eventDescription = data.description.trim();
     const correctedData = {
-      ...rest,
       links: normalizeEventLinks(links),
-      tags: impactAwareTags,
+      tags: JSON.stringify(data.tags),
+      ...buildEventImpactFormFields(data),
       title: eventName,
-      impactTitle,
-      impactDescription: buildImpactDescription(impactTitle, impactDescription),
-      impactPercentage: resolvedImpactPercentage,
+      description: eventDescription,
       reoccurring: repeat,
       isPhysicalEvent,
-      location: isPhysicalEvent ? rest.location : "",
-      startDate: `${extractDate(startDate)}T${startTime}:00Z`,
-      endDate: `${extractDate(endDate)}T${endTime}:00Z`,
+      location: isPhysicalEvent ? location : "",
+      startDate: buildEventDateTimeIso(startDate, startTime),
+      endDate: buildEventDateTimeIso(endDate, endTime, {
+        endOfMinute: endTime === "23:59",
+      }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
-      registrationType: resolvedRegistrationType,
       ...(resolvedRegistrationType === "registration"
         ? {
             registrationAttendees: registrationAttendees || 100000,
@@ -397,7 +417,7 @@ const EditEvent = () => {
       ...(resolvedRegistrationType === "ticket"
         ? {
             tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify(rest)
+              JSON.stringify(rest),
             ),
           }
         : {}),
@@ -420,13 +440,17 @@ const EditEvent = () => {
   // *********** Loading & Error States ************ //
   if (isPending) {
     return (
-      <View
-        style={[
-          tw`flex-1 bg-[#01082E] items-center justify-center`,
-          { paddingTop: spacing.xxl },
-        ]}
-      >
-        <Text style={tw`text-white`}>Loading event details...</Text>
+      <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+        <CustomView className={`px-3`}>
+          <CustomeTopBarNav
+            title="Edit Event"
+            onClickBack={() => router.replace("/")}
+          />
+        </CustomView>
+        <ImpactPageLoader
+          title="Loading impact canvas"
+          message="Bringing your event story, timing, tickets, and impact map back together."
+        />
       </View>
     );
   }
@@ -452,9 +476,6 @@ const EditEvent = () => {
   const locationWatch = watch("location");
   const registrationTypeWatch = watch("registrationType");
   const donationTargetWatch = watch("donationTarget");
-  const impactTitleWatch = watch("impactTitle");
-  const impactDescriptionWatch = watch("impactDescription");
-  const impactPercentageWatch = watch("impactPercentage");
 
   return (
     <KeyboardAvoidingView
@@ -468,286 +489,217 @@ const EditEvent = () => {
           { paddingTop: spacing.xxl },
         ]}
       >
-      <View style={tw`flex-1 w-full max-w-[500px]`}>
-        <CustomView className="px-5">
-          <CustomeTopBarNav
-            title="Edit Event"
-            onClickBack={() => router.replace(`/event/${eventId}`)}
-          />
-        </CustomView>
-
-        <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
-          {/* Cover Image */}
+        <View style={tw`flex-1 w-full max-w-[500px]`}>
           <CustomView className="px-5">
-            <Controller
-              name="imgUrl"
-              control={control}
-              render={({ field: { value, onChange } }) => (
-                <View>
-                  <CoverImagePicker
-                    value={value || eventData.data.imageUrl}
-                    onChange={onChange}
-                  />
-                  {errors.imgUrl && (
-                    <Text style={tw`text-red-500`}>
-                      {errors.imgUrl.message}
-                    </Text>
+            <CustomeTopBarNav
+              title="Edit Event"
+              onClickBack={() => router.replace(`/event/${eventId}`)}
+            />
+          </CustomView>
+
+          <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
+            {/* Cover Image */}
+            <CustomView className="px-5">
+              <Controller
+                name="imgUrl"
+                control={control}
+                render={({ field: { value, onChange } }) => (
+                  <View>
+                    <CoverImagePicker
+                      value={value || eventData.data.imageUrl}
+                      onChange={onChange}
+                    />
+                    {errors.imgUrl && (
+                      <Text style={tw`text-red-500`}>
+                        {errors.imgUrl.message}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              />
+            </CustomView>
+
+            {/* Event Name */}
+            <CustomView className="px-5">
+              <CustomView className="gap-2">
+                <FormLabel text="event name" />
+                <Controller
+                  name="eventName"
+                  control={control}
+                  render={({ field: { value, onChange } }) => (
+                    <Input
+                      placeholder="Event name"
+                      onChangeText={onChange}
+                      value={value}
+                    />
                   )}
+                />
+                {errors.eventName && (
+                  <Text style={tw`text-red-500`}>
+                    {errors.eventName.message}
+                  </Text>
+                )}
+              </CustomView>
+
+              <EventStoryFields control={control} setValue={setValue} />
+            </CustomView>
+
+            <CustomView className="!bg-[#1B2A50]/40 h-2" />
+
+            {/* Event Info */}
+            <CustomView className="px-5">
+              <FormLabel text="event information" />
+              <TouchableOpacity
+                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                onPress={() => openSheet("Date and Time")}
+              >
+                <Text style={tw`text-white text-base`}>Date and Time</Text>
+                {startDateWatch && <Text style={tw`text-[#0FF1CF]`}>✓</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                onPress={() => openSheet("Location")}
+              >
+                <View style={tw`flex-1 pr-3`}>
+                  <Text style={tw`text-white text-base`}>Location</Text>
+                  <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                    {isPhysicalEventWatch
+                      ? locationWatch || "Add the physical venue"
+                      : "No physical meetup"}
+                  </Text>
                 </View>
-              )}
-            />
-          </CustomView>
-
-          {/* Event Name */}
-          <CustomView className="px-5">
-            <CustomView className="gap-2">
-              <FormLabel text="event name" />
-              <Controller
-                name="eventName"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <Input
-                    placeholder="Event name"
-                    onChangeText={onChange}
-                    value={value}
-                  />
+                {(Boolean(locationWatch) || !isPhysicalEventWatch) && (
+                  <Text style={tw`text-[#0FF1CF]`}>✓</Text>
                 )}
-              />
-              {errors.eventName && (
-                <Text style={tw`text-red-500`}>{errors.eventName.message}</Text>
-              )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                onPress={() => openSheet("Pricing")}
+              >
+                <Text style={tw`text-white text-base`}>
+                  {pricingSectionTitle}
+                </Text>
+                {(isDonationEvent
+                  ? donationTargetWatch
+                  : registrationTypeWatch) && (
+                  <Text style={tw`text-[#0FF1CF]`}>✓</Text>
+                )}
+              </TouchableOpacity>
             </CustomView>
 
-            {/* Event Description */}
-            <CustomView className="gap-2">
-              <FormLabel text="event description" />
-              <Controller
-                name="description"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <TextArea
-                    onChange={onChange}
-                    value={value}
-                    placeholder="Event description"
-                    className="!bg-[#1B2A50]/40"
-                  />
-                )}
-              />
-              {errors.description && (
-                <Text style={tw`text-red-500`}>
-                  {errors.description.message}
-                </Text>
-              )}
-            </CustomView>
+            <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
 
-            <CustomView className="gap-2 mt-2">
-              <FormLabel text="event impact" />
-              <ImpactSelector
-                impactTitle={impactTitleWatch}
-                impactDescription={impactDescriptionWatch}
-                impactPercentage={Number(
-                  impactPercentageWatch || DEFAULT_IMPACT_PERCENTAGE
-                )}
-                registrationType={registrationTypeWatch}
-                onImpactTitleChange={(value) =>
-                  setValue("impactTitle", value, { shouldValidate: true })
-                }
-                onImpactDescriptionChange={(value) =>
-                  setValue("impactDescription", value, { shouldValidate: true })
-                }
-                onImpactPercentageChange={(value) =>
-                  setValue("impactPercentage", value, { shouldValidate: true })
-                }
-              />
-              {errors.impactTitle && (
-                <Text style={tw`text-red-500`}>{errors.impactTitle.message}</Text>
-              )}
-              {errors.impactDescription && (
-                <Text style={tw`text-red-500`}>
-                  {errors.impactDescription.message}
-                </Text>
-              )}
-              {errors.impactPercentage && (
-                <Text style={tw`text-red-500`}>
-                  {errors.impactPercentage.message}
-                </Text>
-              )}
-            </CustomView>
-          </CustomView>
-
-          <CustomView className="!bg-[#1B2A50]/40 h-2" />
-
-          {/* Event Info */}
-          <CustomView className="px-5">
-            <FormLabel text="event information" />
-            <TouchableOpacity
-              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
-              onPress={() => openSheet("Date and Time")}
-            >
-              <Text style={tw`text-white text-base`}>Date and Time</Text>
-              {startDateWatch && <Text style={tw`text-[#0FF1CF]`}>✓</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
-              onPress={() => openSheet("Location")}
-            >
-              <View style={tw`flex-1 pr-3`}>
-                <Text style={tw`text-white text-base`}>Location</Text>
-                <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                  {isPhysicalEventWatch
-                    ? locationWatch || "Add the physical venue"
-                    : "No physical meetup"}
-                </Text>
-              </View>
-              {(Boolean(locationWatch) || !isPhysicalEventWatch) && (
-                <Text style={tw`text-[#0FF1CF]`}>✓</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
-              onPress={() => openSheet("Pricing")}
-            >
-              <Text style={tw`text-white text-base`}>{pricingSectionTitle}</Text>
-              {(isDonationEvent ? donationTargetWatch : registrationTypeWatch) && (
-                <Text style={tw`text-[#0FF1CF]`}>✓</Text>
-              )}
-            </TouchableOpacity>
-          </CustomView>
-
-          <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
-
-          <EventLinks
-            links={watch("links") || []}
-            onChange={(value) =>
-              setValue("links", value, { shouldValidate: true })
-            }
-            error={errors.links?.message}
-          />
-
-          <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
-
-          {/* Tags */}
-          <CustomView className="px-5">
-            <FormLabel text="tag" />
-            <Controller
-              name="tags"
-              control={control}
-              render={({ field: { value, onChange } }) => (
-                <EventTags selectedTags={value} onChange={onChange} />
-              )}
+            <EventLinks
+              links={watch("links") || []}
+              onChange={(value) =>
+                setValue("links", value, { shouldValidate: true })
+              }
+              error={errors.links?.message}
             />
-          </CustomView>
 
-          <CustomView className="flex items-center px-5 mt-5">
-            <CustomButton
-              disabled={isUpdatePending}
-              onPress={handleSubmit(onSubmit)}
-              title={isUpdatePending ? "updating..." : "Update Event"}
-              showArrow={false}
-              buttonClassName="bg-[#0FF1CF] w-full !border-none"
-              textClassName="!text-black"
-            />
-          </CustomView>
-        </ScrollView>
-      </View>
+            <CustomView className="flex items-center px-5 mt-5">
+              <CustomButton
+                disabled={isUpdatePending}
+                onPress={handleSubmit(onSubmit)}
+                title={isUpdatePending ? "updating..." : "Update Event"}
+                showArrow={false}
+                buttonClassName="bg-[#0FF1CF] w-full !border-none"
+                textClassName="!text-black"
+              />
+            </CustomView>
+          </ScrollView>
+        </View>
 
-      {/* Main Bottom Sheet */}
-      <Modal
-        visible={Boolean(activeSection)}
-        animationType="slide"
-        transparent
-        onRequestClose={closeSheet}
-      >
-        <KeyboardAvoidingView
-          style={tw`flex-1 justify-end bg-black/55`}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        {/* Main Bottom Sheet */}
+        <Modal
+          visible={Boolean(activeSection)}
+          animationType="slide"
+          transparent
+          onRequestClose={closeSheet}
         >
-          <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          <KeyboardAvoidingView
+            style={tw`flex-1 justify-end bg-black/55`}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View
-              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
-            />
-
-            <View style={tw`flex-row items-start justify-between gap-4`}>
-              <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-semibold text-white`}>
-                  {activeSectionTitle}
-                </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                  {activeSectionDescription}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={closeSheet}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={tw`pt-4 pb-6`}
-              keyboardShouldPersistTaps="handled"
+              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
             >
-              {renderSheetContent()}
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+              <View
+                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+              />
 
-      <Modal
-        visible={isTicketSheetOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={closeSheetTicket}
-      >
-        <KeyboardAvoidingView
-          style={tw`flex-1 justify-end bg-black/55`}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+              <View style={tw`flex-row items-start justify-between gap-4`}>
+                <View style={tw`flex-1`}>
+                  <Text style={tw`text-xl font-semibold text-white`}>
+                    {activeSectionTitle}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={closeSheet}>
+                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
+                    Close
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={tw`pt-4 pb-6`}
+                keyboardShouldPersistTaps="handled"
+              >
+                {renderSheetContent()}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        <Modal
+          visible={isTicketSheetOpen}
+          animationType="slide"
+          transparent
+          onRequestClose={closeSheetTicket}
         >
-          <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          <KeyboardAvoidingView
+            style={tw`flex-1 justify-end bg-black/55`}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View
-              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
-            />
-
-            <View style={tw`flex-row items-start justify-between gap-4`}>
-              <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-semibold text-white`}>
-                  {editingTicket ? "Edit ticket" : "Create ticket"}
-                </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                  Set the name, perks, quantity, visibility, and price for this
-                  ticket tier.
-                </Text>
-              </View>
-              <TouchableOpacity onPress={closeSheetTicket}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={tw`pt-4 pb-6`}
-              keyboardShouldPersistTaps="handled"
+              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
             >
-              <CreateTicket
-                editingTicket={editingTicket}
-                close={closeSheetTicket}
-                tickets={watch("tickets") || []}
-                setTicket={(updated: EventTicket[]) =>
-                  setValue("tickets", updated)
-                }
-                editMode
+              <View
+                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
               />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+
+              <View style={tw`flex-row items-start justify-between gap-4`}>
+                <View style={tw`flex-1`}>
+                  <Text style={tw`text-xl font-semibold text-white`}>
+                    {editingTicket ? "Edit ticket" : "Create ticket"}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={closeSheetTicket}>
+                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
+                    Close
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={tw`pt-4 pb-6`}
+                keyboardShouldPersistTaps="handled"
+              >
+                <CreateTicket
+                  editingTicket={editingTicket}
+                  close={closeSheetTicket}
+                  tickets={watch("tickets") || []}
+                  setTicket={(updated: EventTicket[]) =>
+                    setValue("tickets", updated)
+                  }
+                  editMode
+                />
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </KeyboardAvoidingView>
   );

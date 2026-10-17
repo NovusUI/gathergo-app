@@ -1,179 +1,161 @@
+import type {
+  ImpactSuggestionData,
+  PersistedImpactMap,
+  SuggestedSdgGoal,
+} from "@/types/impact";
+
 export type EventRegistrationType = "ticket" | "registration" | "donation";
 
-export interface ImpactCauseOption {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  keywords: string[];
-}
+type ImpactSdgGoal = Required<
+  Pick<SuggestedSdgGoal, "id" | "number" | "title" | "shortTitle" | "color">
+>;
 
-export const IMPACT_CAUSES: ImpactCauseOption[] = [
+export const SDG_GOALS: ImpactSdgGoal[] = [
   {
-    id: "education",
-    title: "Education",
-    description: "Support books, school fees, skills training, and safer learning spaces.",
-    tags: ["Education", "Scholarship", "Youth Development"],
-    keywords: ["education", "school", "student", "tuition", "scholarship", "learning"],
+    id: "sdg_1",
+    number: 1,
+    title: "No Poverty",
+    shortTitle: "No Poverty",
+    color: "#E5243B",
   },
   {
-    id: "healthcare",
-    title: "Healthcare",
-    description: "Fund treatment, hospital support, medication access, and community health outreach.",
-    tags: ["Healthcare", "Medical Aid", "Wellness"],
-    keywords: ["health", "care", "hospital", "clinic", "medical", "wellness"],
+    id: "sdg_2",
+    number: 2,
+    title: "Zero Hunger",
+    shortTitle: "Zero Hunger",
+    color: "#DDA63A",
   },
   {
-    id: "orphanage",
-    title: "Orphanage Support",
-    description: "Provide food, shelter, school support, and daily care for children in need.",
-    tags: ["Orphanage", "Children", "Care Giving"],
-    keywords: ["orphan", "children", "care", "shelter", "home"],
+    id: "sdg_3",
+    number: 3,
+    title: "Good Health and Well-being",
+    shortTitle: "Health",
+    color: "#4C9F38",
   },
   {
-    id: "food_relief",
-    title: "Food Relief",
-    description: "Help families access meals, groceries, and emergency food packs.",
-    tags: ["Food Relief", "Hunger", "Community Support"],
-    keywords: ["food", "meal", "hunger", "nutrition", "relief"],
+    id: "sdg_4",
+    number: 4,
+    title: "Quality Education",
+    shortTitle: "Education",
+    color: "#C5192D",
   },
   {
-    id: "women_empowerment",
-    title: "Women Empowerment",
-    description: "Back programs focused on income access, safety, and opportunity for women and girls.",
-    tags: ["Women Empowerment", "Inclusion", "Economic Access"],
-    keywords: ["women", "girls", "empowerment", "inclusion", "support"],
+    id: "sdg_5",
+    number: 5,
+    title: "Gender Equality",
+    shortTitle: "Gender Equality",
+    color: "#FF3A21",
   },
   {
-    id: "youth_development",
-    title: "Youth Development",
-    description: "Create room for mentorship, leadership, sports, arts, and employability programs.",
-    tags: ["Youth Development", "Mentorship", "Leadership"],
-    keywords: ["youth", "mentor", "leadership", "training", "skills"],
+    id: "sdg_6",
+    number: 6,
+    title: "Clean Water and Sanitation",
+    shortTitle: "Water & Sanitation",
+    color: "#26BDE2",
   },
   {
-    id: "disability_support",
-    title: "Disability Support",
-    description: "Increase access to mobility tools, care, assistive technology, and inclusive spaces.",
-    tags: ["Disability Support", "Accessibility", "Inclusion"],
-    keywords: ["disability", "accessibility", "inclusion", "assistive"],
+    id: "sdg_7",
+    number: 7,
+    title: "Affordable and Clean Energy",
+    shortTitle: "Clean Energy",
+    color: "#FCC30B",
   },
   {
-    id: "environment",
-    title: "Environment",
-    description: "Fund cleanup drives, tree planting, waste reduction, and climate action work.",
-    tags: ["Environment", "Climate", "Cleanup"],
-    keywords: ["environment", "climate", "cleanup", "tree", "waste", "green"],
+    id: "sdg_8",
+    number: 8,
+    title: "Decent Work and Economic Growth",
+    shortTitle: "Decent Work",
+    color: "#A21942",
   },
   {
-    id: "animal_welfare",
-    title: "Animal Welfare",
-    description: "Support rescue, shelter care, feeding, and protection for animals.",
-    tags: ["Animal Welfare", "Rescue", "Shelter"],
-    keywords: ["animal", "rescue", "shelter", "pet", "care"],
+    id: "sdg_9",
+    number: 9,
+    title: "Industry, Innovation and Infrastructure",
+    shortTitle: "Innovation",
+    color: "#FD6925",
   },
   {
-    id: "community_building",
-    title: "Community Building",
-    description: "Strengthen neighborhoods through shared resources, outreach, and mutual support.",
-    tags: ["Community Building", "Neighborhood", "Outreach"],
-    keywords: ["community", "neighborhood", "outreach", "mutual aid", "support"],
+    id: "sdg_10",
+    number: 10,
+    title: "Reduced Inequalities",
+    shortTitle: "Inclusion",
+    color: "#DD1367",
+  },
+  {
+    id: "sdg_11",
+    number: 11,
+    title: "Sustainable Cities and Communities",
+    shortTitle: "Communities",
+    color: "#FD9D24",
+  },
+  {
+    id: "sdg_12",
+    number: 12,
+    title: "Responsible Consumption and Production",
+    shortTitle: "Responsible Use",
+    color: "#BF8B2E",
+  },
+  {
+    id: "sdg_13",
+    number: 13,
+    title: "Climate Action",
+    shortTitle: "Climate Action",
+    color: "#3F7E44",
+  },
+  {
+    id: "sdg_14",
+    number: 14,
+    title: "Life Below Water",
+    shortTitle: "Life Below Water",
+    color: "#0A97D9",
+  },
+  {
+    id: "sdg_15",
+    number: 15,
+    title: "Life on Land",
+    shortTitle: "Life on Land",
+    color: "#56C02B",
+  },
+  {
+    id: "sdg_16",
+    number: 16,
+    title: "Peace, Justice and Strong Institutions",
+    shortTitle: "Peace & Justice",
+    color: "#00689D",
+  },
+  {
+    id: "sdg_17",
+    number: 17,
+    title: "Partnerships for the Goals",
+    shortTitle: "Partnerships",
+    color: "#19486A",
   },
 ];
 
-export const DEFAULT_EVENT_TAGS = [
-  "Education",
-  "Healthcare",
-  "Food Relief",
-  "Orphanage",
-  "Women Empowerment",
-  "Youth Development",
-  "Disability Support",
-  "Environment",
-  "Animal Welfare",
-  "Community Building",
-  "Fundraiser",
-  "Volunteer",
-];
-
-export const DEFAULT_IMPACT_CAUSE = IMPACT_CAUSES[0];
-export const DEFAULT_IMPACT_PERCENTAGE = 20;
-
-export const clampImpactPercentage = (value?: number | null) => {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return DEFAULT_IMPACT_PERCENTAGE;
-  }
-
-  return Math.max(1, Math.min(100, Math.round(Number(value))));
-};
-
-export const resolveImpactPercentage = (
-  registrationType?: EventRegistrationType | null,
-  percentage?: number | null,
-) => {
-  if (registrationType === "donation") {
-    return 100;
-  }
-
-  return clampImpactPercentage(percentage);
-};
-
-export const findImpactCause = (impactTitle?: string | null) => {
-  if (!impactTitle) return null;
-  const normalized = impactTitle.trim().toLowerCase();
-
-  return (
-    IMPACT_CAUSES.find(
-      (cause) =>
-        cause.title.toLowerCase() === normalized ||
-        cause.keywords.some((keyword) => keyword.toLowerCase() === normalized),
-    ) || null
-  );
-};
-
-export const buildImpactDescription = (
-  impactTitle?: string | null,
-  impactDescription?: string | null,
-) => {
-  if (impactDescription?.trim()) {
-    return impactDescription.trim();
-  }
-
-  return (
-    findImpactCause(impactTitle)?.description ||
-    "This event gives back directly to a real-world cause."
-  );
-};
-
-export const formatImpactSummary = (input: {
-  impactTitle?: string | null;
-  impactPercentage?: number | null;
-  registrationType?: EventRegistrationType | null;
-}) => {
-  if (!input.impactTitle?.trim()) {
-    return null;
-  }
-
-  const percentage = resolveImpactPercentage(
-    input.registrationType,
-    input.impactPercentage,
+const findSdgByIdOrNumber = (goal: Partial<SuggestedSdgGoal>) =>
+  SDG_GOALS.find(
+    (item) =>
+      item.id === goal.id ||
+      item.number === goal.number ||
+      item.title.toLowerCase() === goal.title?.toLowerCase() ||
+      item.shortTitle.toLowerCase() === goal.shortTitle?.toLowerCase(),
   );
 
-  return `${percentage}% going to ${input.impactTitle.trim()}`;
-};
+export const buildImpactMapFormFields = (impactMap: ImpactSuggestionData) => ({
+  impactSdgGoals: JSON.stringify(impactMap.sdgGoals),
+  impactPaths: JSON.stringify(impactMap.impactPaths),
+  impactCommitments: JSON.stringify(impactMap.commitments),
+  impactMapSource: impactMap.source ?? "manual",
+  impactMapGeneratedAt: new Date().toISOString(),
+});
 
-export const mergeImpactTags = (
-  tags: string[] | undefined,
-  impactTitle?: string | null,
-) => {
-  const unique = new Set<string>((tags || []).filter(Boolean));
-  const selectedCause = findImpactCause(impactTitle);
-
-  if (selectedCause) {
-    selectedCause.tags.forEach((tag) => unique.add(tag));
-  } else if (impactTitle?.trim()) {
-    unique.add(impactTitle.trim());
-  }
-
-  return Array.from(unique);
-};
+export const normalizePersistedImpactMap = (
+  input: PersistedImpactMap,
+): ImpactSuggestionData => ({
+  sdgGoals: (input.impactSdgGoals ?? []).map((goal) => ({
+    ...goal,
+    color: goal.color ?? findSdgByIdOrNumber(goal)?.color,
+  })),
+  impactPaths: input.impactPaths ?? [],
+  commitments: input.impactCommitments ?? [],
+});

@@ -117,7 +117,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
             <View style={tw`rounded-[28px] bg-[#0A173F] p-5`}>
               <View style={tw`h-16 w-16 self-start rounded-full bg-[#0FF1CF]/15 items-center justify-center`}>
                 <Ionicons
-                  name={currentVehicle?.iconName || "sparkles-outline"}
+                  name={currentVehicle?.iconName || "car-outline"}
                   size={34}
                   color="#0FF1CF"
                 />

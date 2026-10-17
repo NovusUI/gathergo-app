@@ -2,12 +2,14 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
 import DonationEventOverview from "@/components/ui/DonationEventOverview";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import Payments from "@/components/ui/Payments";
 import RegistrationEventOverview from "@/components/ui/RegistrationEventOverview";
 import TicketEventOverview from "@/components/ui/TicketEventOverview";
 import { useEventDashboardData, useShortcutEvent } from "@/hooks/useDashboard";
 import { useEventDetails } from "@/services/queries";
 
+import { isEventPastEnd } from "@/utils/dateTimeHandler";
 import { Payment } from "@/utils/mockPayments";
 import { safeGoBack } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
@@ -119,15 +121,10 @@ const EventDashboard = () => {
   const eventDetails = eventDetailsResponse?.data;
 
   const payments = useMemo(() => data?.data.payments || [], [data]);
-  const hasEventEnded = useMemo(() => {
-    const boundary = eventDetails?.endDate;
-    if (!boundary) return false;
-
-    const parsedBoundary = new Date(boundary);
-    if (Number.isNaN(parsedBoundary.getTime())) return false;
-
-    return parsedBoundary.getTime() < Date.now();
-  }, [eventDetails?.endDate]);
+  const hasEventEnded = useMemo(
+    () => isEventPastEnd(eventDetails?.startDate, eventDetails?.endDate),
+    [eventDetails?.endDate, eventDetails?.startDate],
+  );
   const shortcuts = useMemo(() => shortcutData?.data.shortcuts, [shortcutData]);
 
   if (isLoading) {
@@ -139,37 +136,10 @@ const EventDashboard = () => {
             onClickBack={() => safeGoBack(router, "/dashboard")}
           />
         </CustomView>
-        <ScrollView>
-          <View
-            style={tw`bg-gray-700 h-60 w-full flex items-center justify-center`}
-          >
-            <View style={tw`w-12 h-12 rounded-full bg-gray-600 mb-2`} />
-            <View style={tw`bg-gray-600 h-4 w-32 rounded`} />
-            <View style={tw`bg-gray-600 h-3 w-24 rounded mt-1`} />
-          </View>
-          <View style={tw`bg-gray-700 h-60 w-full`} />
-          <View style={tw`py-2 px-5`}>
-            <View style={tw`bg-gray-700 h-6 w-3/4 mb-4 rounded`} />
-            <View style={tw`bg-gray-700 h-4 w-full mb-2 rounded`} />
-            <View style={tw`bg-gray-700 h-4 w-5/6 rounded`} />
-          </View>
-          <View style={tw`bg-[#1B2A50]/40 h-2 my-3`} />
-          <View style={tw`py-2 px-5`}>
-            <View style={tw`bg-gray-700 h-5 w-1/2 mb-4 rounded`} />
-            {[1, 2, 3, 4].map((_, i) => (
-              <View key={i} style={tw`flex-row items-center mb-4`}>
-                <View style={tw`bg-gray-700 h-8 w-8 rounded-full`} />
-                <View style={tw`ml-3`}>
-                  <View style={tw`bg-gray-700 h-4 w-32 mb-2 rounded`} />
-                  <View style={tw`bg-gray-700 h-3 w-24 rounded`} />
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-        <View style={tw`py-5 px-5`}>
-          <View style={tw`bg-gray-700 h-12 w-full rounded`} />
-        </View>
+        <ImpactPageLoader
+          title="Mapping event activity"
+          message="Loading your event performance, attendance, and payments."
+        />
       </View>
     );
   }
@@ -218,7 +188,7 @@ const EventDashboard = () => {
             </Text>
             <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
               {hasEventEnded
-                ? "This event has ended, but the public page still holds the story, impact, and shareable details."
+                ? "This event has ended. Its public page still holds the event details, updates, and any impact stories you shared."
                 : "Preview the event page the same way attendees, donors, and guests see it."}
             </Text>
             <Text style={tw`mt-3 text-sm font-semibold text-[#0FF1CF]`}>

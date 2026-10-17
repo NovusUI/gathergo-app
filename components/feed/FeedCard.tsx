@@ -30,9 +30,91 @@ export interface FeedCardProps {
   };
   onHide?: (feedId: string) => void;
   onAction?: (action: any) => void;
+  eventRegistrationFee?: number | null;
 }
 
-const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
+const getPositiveNumber = (value: unknown) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue > 0
+    ? numericValue
+    : null;
+};
+
+const getFirstPositiveNumber = (metadata: any, keys: string[]) => {
+  for (const key of keys) {
+    const value = getPositiveNumber(metadata?.[key]);
+    if (value !== null) {
+      return value;
+    }
+  }
+
+  return null;
+};
+
+const resolveFeedAmountInNaira = (
+  feed: FeedCardProps["feed"],
+  eventRegistrationFee?: number | null
+) => {
+  if (feed.type.includes("REGISTRATION")) {
+    const trustedNairaAmount = getFirstPositiveNumber(feed.metadata, [
+      "registrationFeeInNaira",
+      "registrationAmountInNaira",
+      "feeInNaira",
+      "priceInNaira",
+      "amountInNaira",
+      "amountNaira",
+      "amountMajor",
+    ]);
+    const legacyRegistrationAmount = getFirstPositiveNumber(feed.metadata, [
+      "registrationFee",
+      "registrationAmount",
+      "fee",
+      "price",
+    ]);
+    const eventFee = getPositiveNumber(eventRegistrationFee);
+    const registrationAmounts = [
+      trustedNairaAmount,
+      eventFee,
+      legacyRegistrationAmount,
+    ].filter((amount): amount is number => amount !== null);
+
+    if (registrationAmounts.length > 0) {
+      return Math.max(...registrationAmounts);
+    }
+  }
+
+  return getFirstPositiveNumber(feed.metadata, [
+    "amountInNaira",
+    "amountNaira",
+    "amountMajor",
+  ]);
+};
+
+const formatFeedAmount = (amount: number) =>
+  amount.toLocaleString("en-NG", {
+    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
+  });
+
+const replaceRegistrationAmountText = (
+  text: string | null | undefined,
+  feed: FeedCardProps["feed"],
+  amountInNaira: number | null
+) => {
+  if (!text || !feed.type.includes("REGISTRATION") || amountInNaira === null) {
+    return text;
+  }
+
+  return text.replace(
+    /(?:₦|NGN\s*)\s*\d+(?:,\d{3})*(?:\.\d+)?/gi,
+    `₦${formatFeedAmount(amountInNaira)}`
+  );
+};
+
+const FeedCard: React.FC<FeedCardProps> = ({
+  feed,
+  onAction,
+  eventRegistrationFee,
+}) => {
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const iconRotateAnim = useRef(new Animated.Value(0)).current;
@@ -71,7 +153,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
-        ]),
+        ])
       );
       rotationLoop.start();
     }
@@ -183,12 +265,29 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
     return Math.max(0, Math.min(converted, 100));
   };
   const normalizedPercentage = getNormalizedPercentage();
+  const displayAmountInNaira = resolveFeedAmountInNaira(
+    feed,
+    eventRegistrationFee
+  );
   const primaryAction = feed.actions?.[0];
   const supportMessage =
     feed.metadata?.supportMessage ||
     feed.metadata?.message ||
     feed.metadata?.donationMessage ||
     null;
+  const displayTitle =
+    replaceRegistrationAmountText(feed.title, feed, displayAmountInNaira) ||
+    feed.title;
+  const displayContent = replaceRegistrationAmountText(
+    feed.content,
+    feed,
+    displayAmountInNaira
+  );
+  const displaySupportMessage = replaceRegistrationAmountText(
+    supportMessage,
+    feed,
+    displayAmountInNaira
+  );
 
   // Keep progress compact since the card background already carries the fill state.
   const renderProgress = () => {
@@ -204,15 +303,14 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
             {isDonation ? "Fundraising" : "Progress"}
           </Text>
           <View style={tw`flex-row items-center`}>
-            {feed.metadata.amountInNaira !== null &&
-              feed.metadata.amountInNaira !== undefined && (
+            {displayAmountInNaira !== null && (
               <Text
                 style={[
                   tw`text-[11px] font-bold mr-2`,
                   { color: theme.accentColor },
                 ]}
               >
-                ₦{feed.metadata.amountInNaira.toLocaleString()}
+                ₦{formatFeedAmount(displayAmountInNaira)}
               </Text>
             )}
             <Text
@@ -229,7 +327,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
           </View>
         </View>
 
-        {feed.metadata.targetInNaira && (
+        {feed.metadata?.targetInNaira && (
           <Text style={tw`mt-1 text-[11px] text-gray-500`}>
             Goal: ₦{feed.metadata.targetInNaira.toLocaleString()}
           </Text>
@@ -248,7 +346,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
     if (percentage >= 100) {
       return (
         <View style={tw`flex-row items-center mt-2`}>
-          <Ionicons name="sparkles" size={14} color="#FFD700" />
+          <Ionicons name="trophy-outline" size={14} color="#FFD700" />
           <Text style={tw`text-xs text-yellow-300 ml-1`}>
             🎉 Target Achieved! 🎉
           </Text>
@@ -341,7 +439,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
     >
       <Animated.View
         style={[
-          tw`mb-2 overflow-hidden rounded-2xl border relative`,
+          tw`mb-2 mx-4   overflow-hidden rounded-2xl border relative`,
           {
             backgroundColor: theme.bgColor,
             borderColor: theme.borderColor,
@@ -408,7 +506,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
                   { color: theme.accentColor },
                 ]}
               >
-                {feed.title}
+                {displayTitle}
               </Text>
               <Text style={tw`text-[11px] text-gray-500`}>
                 {timeAgo(feed.createdAt)}
@@ -435,19 +533,16 @@ const FeedCard: React.FC<FeedCardProps> = ({ feed, onAction }) => {
               </View>
             )}
 
-            {Boolean(feed.content) && (
-              <Text
-                numberOfLines={2}
-                style={tw`text-xs leading-5 text-white`}
-              >
-                {feed.content}
+            {Boolean(displayContent) && (
+              <Text numberOfLines={2} style={tw`text-xs leading-5 text-white`}>
+                {displayContent}
               </Text>
             )}
 
-            {supportMessage && (
+            {displaySupportMessage && (
               <View style={tw`mt-2 rounded-2xl bg-white/6 px-3 py-2`}>
                 <Text style={tw`text-[11px] leading-5 text-[#E5EDFF]`}>
-                  {`"${supportMessage}"`}
+                  {`"${displaySupportMessage}"`}
                 </Text>
               </View>
             )}

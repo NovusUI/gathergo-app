@@ -8,7 +8,10 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:event-first": "node --test tests/event-first.test.cjs",
+    "test:profile-welcome": "node --test tests/profile-welcome.test.cjs",
+    "test:impact-suggestions": "node --test tests/impact-suggestions.test.cjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.5",

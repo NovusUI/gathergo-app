@@ -47,6 +47,7 @@ export default function UserEventsTab({
         <EventCard
           id={item.id}
           title={item.title}
+          description={item.description}
           location={item.location}
           imageUrl={item.imageUrl}
           thumbnailUrl={item.thumbnailUrl}
@@ -56,6 +57,13 @@ export default function UserEventsTab({
           lowestTicketPrice={item.lowestTicketPrice}
           onPress={() => router.push(`/event/${item.id}`)}
           startDate={item.startDate}
+          impactTitle={item.impactTitle}
+          impactDescription={item.impactDescription}
+          impactSdgGoals={item.impactSdgGoals}
+          impactPaths={item.impactPaths}
+          impactCommitments={item.impactCommitments}
+          impactMapSource={item.impactMapSource}
+          tags={item.tags}
         />
       )}
       onEndReached={() => {

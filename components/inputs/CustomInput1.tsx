@@ -120,6 +120,7 @@ const Input = forwardRef<TextInput, InputProps>(
           )}
 
           <InputComponent
+            autoCapitalize="none"
             {...restProps}
             ref={setRefs}
             style={tw.style(

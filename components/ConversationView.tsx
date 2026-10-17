@@ -1,61 +1,117 @@
-import { formatMessageTimestamp } from "@/utils/utils";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  getCarpoolVehicleOption,
+  getRandomCarpoolVehicleIcon,
+} from "@/constants/carpool";
+import { formatBadgeCount, formatMessageTimestamp } from "@/utils/utils";
 import { UserRound } from "lucide-react-native";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 interface ConversationProps {
-  title: string;
+  title?: string;
   lastMessage: {
     imgUrl?: string | null;
-    text: string;
-    date: string;
+    text?: string | null;
+    date?: string | null;
   };
+  carpoolId?: string;
   driverImgUrl?: string;
   passengerImgUrls?: string[];
   onClick: () => void;
   unreadCount?: number;
+  vehicleIcon?: string | null;
 }
 
 const ConversationView = ({
   onClick,
   title,
   lastMessage,
+  carpoolId,
   unreadCount = 0,
+  vehicleIcon,
 }: ConversationProps) => {
+  const selectedVehicle =
+    getCarpoolVehicleOption(vehicleIcon) ||
+    getRandomCarpoolVehicleIcon(`${carpoolId || ""}${title || ""}`);
+  const previewText = lastMessage?.text?.trim() || "No messages yet";
+  const hasUnread = unreadCount > 0;
+
   return (
     <TouchableOpacity
-      style={tw`px-10 py-5 bg-[#031542] rounded-2xl`}
+      style={tw`p-4 bg-[#07143B] rounded-2xl border border-[#1B2A50] overflow-hidden`}
       onPress={onClick}
+      activeOpacity={0.86}
     >
-      <View style={tw`flex-row items-center justify-between mb-3`}>
-        <Text style={tw`text-white`}>{title}</Text>
-        <Text style={tw`text-[#D9D9D9] text-xs`}>
-          {lastMessage.date && formatMessageTimestamp(lastMessage.date)}
-        </Text>
+      <View style={tw`absolute top-0 left-0 right-0 h-1 flex-row`}>
+        <View style={tw`flex-1 bg-[#0FF1CF]`} />
+        <View style={tw`flex-1 bg-[#31C6F6]`} />
+        <View style={tw`flex-1 bg-[#8FA5E2]`} />
       </View>
 
-      <View style={tw`flex-row items-center mb-3`}>
-        {lastMessage?.imgUrl ? (
-          <Image source={{ uri: lastMessage.imgUrl }} style={tw`w-6 h-6 rounded-full mr-3`} />
-        ) : (
-          <View style={tw`w-6 h-6 rounded-full mr-3 bg-[#1B2A50] items-center justify-center`}>
-            <UserRound size={12} color="#8FA5E2" />
-          </View>
-        )}
-
-        <Text
-          style={tw`text-xs text-white flex-1`}
-          numberOfLines={1}
-          ellipsizeMode="tail"
+      <View style={tw`flex-row gap-3`}>
+        <View
+          style={tw`w-14 h-14 rounded-2xl bg-[#0FF1CF]/12 items-center justify-center border border-[#0FF1CF]/20`}
         >
-          {lastMessage?.text}
-        </Text>
-      </View>
+          <Ionicons name={selectedVehicle.iconName} size={28} color="#0FF1CF" />
+        </View>
 
-      <View
-        style={tw`self-end w-24 rounded-2xl flex-row justify-center bg-[#C6C6C6]/20 py-3`}
-      >
-        <Text style={tw`text-white text-xs`}>Carpool</Text>
+        <View style={tw`flex-1 min-w-0`}>
+          <View style={tw`flex-row items-start justify-between gap-3`}>
+            <Text
+              style={tw`text-white font-semibold flex-1`}
+              numberOfLines={1}
+            >
+              {title || "Carpool chat"}
+            </Text>
+            {lastMessage?.date ? (
+              <Text style={tw`text-[#A8BAE4] text-xs`}>
+                {formatMessageTimestamp(lastMessage.date)}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={tw`mt-1 flex-row items-center gap-2`}>
+            <Text style={tw`text-[#0FF1CF] text-xs`} numberOfLines={1}>
+              {selectedVehicle.label}
+            </Text>
+            <View style={tw`w-1 h-1 rounded-full bg-[#8FA5E2]`} />
+            <Text style={tw`text-[#A8BAE4] text-xs`}>Carpool</Text>
+          </View>
+
+          <View style={tw`flex-row items-center mt-3 gap-2`}>
+            {lastMessage?.imgUrl ? (
+              <Image
+                source={{ uri: lastMessage.imgUrl }}
+                style={tw`w-6 h-6 rounded-full bg-white`}
+              />
+            ) : (
+              <View
+                style={tw`w-6 h-6 rounded-full bg-[#1B2A50] items-center justify-center`}
+              >
+                <UserRound size={12} color="#8FA5E2" />
+              </View>
+            )}
+
+            <Text
+              style={tw`text-xs text-[#DDE6FF] flex-1`}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {previewText}
+            </Text>
+
+            {hasUnread && (
+              <View
+                style={tw`min-w-[22px] h-[22px] px-2 rounded-full bg-[#0FF1CF] items-center justify-center`}
+              >
+                <Text style={tw`text-[#01082E] text-xs font-semibold`}>
+                  {formatBadgeCount(unreadCount)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );

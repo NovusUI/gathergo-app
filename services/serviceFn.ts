@@ -1,6 +1,8 @@
+import { checkoutDeadline } from "@/utils/checkout";
 import client from "@/api/client";
 import {
   CompleteProfileData,
+  CurrentUserResponse,
   ForgotPasswordPayload,
   forgotPasswordResponse,
   ResendEmailVerificationPayload,
@@ -25,30 +27,45 @@ import {
 import {
   DonationResponse,
   EventDetailsResponse,
+  EventImpactReport,
   OwnedRegistrationsResponse,
   OwnedTicketsResponse,
   GetTicketsResponse,
+  CheckoutApiResponse,
+  TransactionStatusApiResponse,
+  TransactionStatusResponse,
   InitiateDonationPayload,
   PaginatedDashboardEventsResponse,
   PaginatedEventResponse,
   PaginatedSeachResponse,
   RegistrationCheckoutPayload,
   TicketCheckoutPayload,
+  UpsertEventImpactReportPayload,
 } from "@/types/event";
 import { HomeAdCardsResponse } from "@/types/home";
 import {
+  ImpactSuggestionPayload,
+  ImpactSuggestionResponse,
+} from "@/types/impact";
+import {
+  ConfirmWalletPayoutProfileResponse,
   NotifyOnKycResolutionResponse,
   NotifyOnKycResolutionPayload,
+  ResolveWalletPayoutAccountPayload,
   StartBusinessKycPayload,
   StartBusinessRepresentativeKycPayload,
   StartPersonalKycPayload,
+  SubmitWalletKycPayload,
   SubmitWalletLivenessPayload,
   UpsertWalletPayoutProfilePayload,
   WalletBanksResponse,
   WalletKycResponse,
   WalletOnboardingResponse,
   WalletOverviewResponse,
+  WalletPayoutAccountResolutionResponse,
   WalletPayoutProfileResponse,
+  WalletSettlementsResponse,
+  WalletTransactionsResponse,
 } from "@/types/wallet";
 import { QueryFunctionContext } from "@tanstack/react-query";
 
@@ -68,6 +85,7 @@ import {
   DASHBOARD_URL,
   DONATION_URL,
   EVENT_URL,
+  IMPACT_URL,
   NOTIFICATION_URL,
   REGISTRATION_URL,
   SCANNER_URL,
@@ -81,6 +99,16 @@ import {
 export interface SignUpPayload {
   email: string;
   password: string;
+}
+
+function receiveCheckout(response: CheckoutApiResponse): GetTicketsResponse {
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      checkoutDeadlineMs: checkoutDeadline(response.data.reservationExpiresAt, response.data.serverTime)
+    }
+  };
 }
 
 export const loginFn = async (payload: {
@@ -172,8 +200,8 @@ export const logoutFn = async () => {
   return res.data;
 };
 
-export const getCurrentUserFn = async () => {
-  const res = await client.get(AUTH_URLS.me);
+export const getCurrentUserFn = async (): Promise<CurrentUserResponse> => {
+  const res = await client.get<CurrentUserResponse>(AUTH_URLS.me);
   return res.data;
 };
 
@@ -197,12 +225,59 @@ export const getWalletBanksFn = async (): Promise<WalletBanksResponse> => {
   return response.data;
 };
 
+export const resolveWalletPayoutAccountFn = async (
+  payload: ResolveWalletPayoutAccountPayload
+): Promise<WalletPayoutAccountResolutionResponse> => {
+  const response = await client.get<WalletPayoutAccountResolutionResponse>(
+    WALLET_URL.resolvePayoutAccount,
+    {
+      params: payload,
+    }
+  );
+  return response.data;
+};
+
+export const getWalletTransactionsFn = async (
+  ctx: QueryFunctionContext
+): Promise<WalletTransactionsResponse> => {
+  const [, pageSize = 20] = ctx.queryKey as [unknown, number?];
+  const page = Number(ctx.pageParam || 1);
+  const response = await client.get<WalletTransactionsResponse>(
+    WALLET_URL.transactions,
+    {
+      params: { page, pageSize },
+    }
+  );
+  return response.data;
+};
+
+export const getWalletSettlementsFn = async (
+  ctx: QueryFunctionContext
+): Promise<WalletSettlementsResponse> => {
+  const [, pageSize = 20] = ctx.queryKey as [unknown, number?];
+  const page = Number(ctx.pageParam || 1);
+  const response = await client.get<WalletSettlementsResponse>(
+    WALLET_URL.settlements,
+    {
+      params: { page, pageSize },
+    }
+  );
+  return response.data;
+};
+
 export const upsertWalletPayoutProfileFn = async (
   payload: UpsertWalletPayoutProfilePayload
 ): Promise<WalletPayoutProfileResponse> => {
   const response = await client.post<WalletPayoutProfileResponse>(
     WALLET_URL.payoutProfile,
     payload
+  );
+  return response.data;
+};
+
+export const confirmWalletPayoutProfileFn = async (): Promise<ConfirmWalletPayoutProfileResponse> => {
+  const response = await client.post<ConfirmWalletPayoutProfileResponse>(
+    WALLET_URL.confirmPayoutProfile
   );
   return response.data;
 };
@@ -257,10 +332,12 @@ export const notifyOnKycResolutionFn = async (
   return response.data;
 };
 
-export const submitWalletKycFn = async (): Promise<WalletKycResponse> => {
+export const submitWalletKycFn = async (
+  payload: SubmitWalletKycPayload = { targetTier: "BASIC" }
+): Promise<WalletKycResponse> => {
   const response = await client.post<WalletKycResponse>(
     WALLET_URL.submitKyc,
-    { confirm: true }
+    { confirm: true, ...payload }
   );
   return response.data;
 };
@@ -299,7 +376,6 @@ export const completUserProfile = async (
     USER_URL.completeProfile,
     payload
   );
-  // Assume API returns { exists: true/false }
   return response.data;
 };
 
@@ -352,6 +428,18 @@ export const createEvent = async (
   return data;
 };
 
+export const getImpactSuggestions = async (
+  payload: ImpactSuggestionPayload,
+  signal?: AbortSignal
+): Promise<ImpactSuggestionResponse> => {
+  const response = await client.post<ImpactSuggestionResponse>(
+    IMPACT_URL.suggestions,
+    payload,
+    { signal }
+  );
+  return response.data;
+};
+
 // export const updateEvent = async (
 //   formData: FormData,
 //   eventId: string
@@ -395,15 +483,24 @@ export const getEventDetails = async (
 };
 
 export const getTransactionRef = async (
-  ctx: QueryFunctionContext
-): Promise<StandardResponse> => {
+  ctx: QueryFunctionContext,
+): Promise<TransactionStatusResponse> => {
   const [, tId] = ctx.queryKey as [string, string];
 
-  const response = await client.get<StandardResponse>(
-    TRANSACTION_URL.getTransactionRef(tId)
+  const response = await client.get<TransactionStatusApiResponse>(
+    TRANSACTION_URL.getTransactionRef(tId),
   );
 
-  return response.data;
+  const data = response.data.data;
+  return {
+    ...response.data,
+    data: {
+      ...data,
+      checkoutDeadlineMs: data.paymentType === "DONATION"
+        ? null
+        : checkoutDeadline(data.reservationExpiresAt, data.serverTime)
+    }
+  };
 };
 
 export const getTicketOrRegByTransactionId = async (
@@ -432,35 +529,46 @@ export const getMyRegistrationsFn = async (): Promise<OwnedRegistrationsResponse
 };
 
 export const getTickets = async (
-  payload: TicketCheckoutPayload
+  payload: TicketCheckoutPayload,
 ): Promise<GetTicketsResponse> => {
-  const response = await client.post<GetTicketsResponse>(
+  const response = await client.post<CheckoutApiResponse>(
     EVENT_URL.getTickets,
     {
       items: payload.items,
       provider: payload.provider,
       clientContext: payload.clientContext,
-    }
+    },
+    { headers: { "Idempotency-Key": payload.idempotencyKey } },
   );
-  return response.data;
+  return receiveCheckout(response.data);
 };
 
 export const registerForEvent = async (
-  payload: RegistrationCheckoutPayload
+  payload: RegistrationCheckoutPayload,
 ): Promise<GetTicketsResponse> => {
-  const response = await client.post<GetTicketsResponse>(
+  const response = await client.post<CheckoutApiResponse>(
     EVENT_URL.registerEvent,
     {},
     {
+      headers: { "Idempotency-Key": payload.idempotencyKey },
       params: {
         eventid: payload.eventId,
         provider: payload.provider,
         deviceId: payload.deviceId,
         platform: payload.platform,
-        beneficiaryType: payload.beneficiaryType,
-        sponsorshipNote: payload.sponsorshipNote,
       },
-    }
+    },
+  );
+  return receiveCheckout(response.data);
+};
+
+export const upsertEventImpactReport = async (
+  eventId: string,
+  payload: UpsertEventImpactReportPayload
+): Promise<EventImpactReport> => {
+  const response = await client.post<EventImpactReport>(
+    EVENT_URL.impactReport(eventId),
+    payload
   );
   return response.data;
 };
@@ -817,7 +925,7 @@ export const scanFn = async (payload: {
 };
 
 export const bulkScanFn = async (payload: {
-  scans: Array<{ qrCode: string; markAsUsed?: boolean }>;
+  scans: { qrCode: string; markAsUsed?: boolean }[];
 }): Promise<BulkScanResponse> => {
   const response = await client.post<BulkScanResponse>(
     SCANNER_URL.bulkScan,
@@ -925,4 +1033,13 @@ export const canScanFn = async (
     canMarkAsUsed: boolean;
   }>(SCANNER_URL.canScan(eventId));
   return response.data;
+};
+
+export const cancelCheckout = async (
+  transactionId: string,
+): Promise<GetTicketsResponse> => {
+  const response = await client.post<CheckoutApiResponse>(
+    TRANSACTION_URL.cancelCheckout(transactionId),
+  );
+  return receiveCheckout(response.data);
 };

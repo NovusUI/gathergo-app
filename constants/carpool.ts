@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { GatherGoMascotVariant } from "@/constants/mascot";
 import type { ComponentProps } from "react";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
@@ -92,7 +93,7 @@ export const CARPOOL_VEHICLE_OPTIONS = [
   {
     key: "ghost_tram",
     label: "Ghost tram",
-    iconName: "tram-outline",
+    iconName: "train-outline",
   },
   {
     key: "subway_beast",
@@ -118,11 +119,339 @@ export const CARPOOL_VEHICLE_OPTIONS = [
 export type CarpoolVehicleIconKey =
   (typeof CARPOOL_VEHICLE_OPTIONS)[number]["key"];
 
-export const getCarpoolVehicleOption = (vehicleIcon?: string | null) =>
-  CARPOOL_VEHICLE_OPTIONS.find((option) => option.key === vehicleIcon) ?? null;
+export interface CarpoolVibeSafetyTip {
+  iconName: IoniconName;
+  title: string;
+  body: string;
+}
+
+export interface CarpoolVibeSafetySignal {
+  title: string;
+  passengerAction: string;
+  driverAction: string;
+  description: string;
+}
+
+export interface CarpoolVibeSafetyRoleCopy {
+  description: string;
+  emptyChatBody: string;
+  emptyChatTitle: string;
+  modalInstruction: string;
+  primarySignalLabel: string;
+  primarySignalValue: string;
+  secondarySignalLabel: string;
+  secondarySignalValue: string;
+}
+
+export interface CarpoolVibeMascotStyle {
+  accent: string;
+  badgeBg: string;
+  body: string;
+  cardBackground: string;
+  cardBorder: string;
+  dialogBackground: string;
+  face: string;
+  glow: string;
+  iconColor: string;
+  variant: GatherGoMascotVariant;
+}
+
+export interface CarpoolVibeDialogPart {
+  highlight?: boolean;
+  text: string;
+}
+
+export type CarpoolVibeDialogMessage = CarpoolVibeDialogPart[];
+export type CarpoolVibeHandshakeRole = "pooler" | "rider" | "member";
+
+export const normalizeCarpoolVehicleIconKey = (vehicleIcon?: string | null) => {
+  if (!vehicleIcon) return null;
+
+  const normalized = vehicleIcon
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  const option = CARPOOL_VEHICLE_OPTIONS.find(
+    (item) =>
+      item.key === normalized ||
+      item.label.toLowerCase().replace(/[\s-]+/g, "_") === normalized
+  );
+
+  return option?.key ?? null;
+};
+
+export const getCarpoolVehicleOption = (vehicleIcon?: string | null) => {
+  const normalizedKey = normalizeCarpoolVehicleIconKey(vehicleIcon);
+
+  return (
+    CARPOOL_VEHICLE_OPTIONS.find((option) => option.key === normalizedKey) ??
+    null
+  );
+};
+
+const DEFAULT_CARPOOL_VIBE_MASCOT_STYLE: CarpoolVibeMascotStyle = {
+  accent: "#0FF1CF",
+  badgeBg: "#FFD76A",
+  body: "#0FF1CF",
+  cardBackground: "#07143B",
+  cardBorder: "#1B2A50",
+  dialogBackground: "#0A173F",
+  face: "#06163C",
+  glow: "rgba(15, 241, 207, 0.22)",
+  iconColor: "#06163C",
+  variant: "idle",
+};
+
+const CARPOOL_VIBE_MASCOT_STYLES: Partial<
+  Record<CarpoolVehicleIconKey, CarpoolVibeMascotStyle>
+> = {
+  sport_car: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#FF5C8A",
+    cardBackground: "#11183D",
+    cardBorder: "#49335D",
+    dialogBackground: "#181D45",
+    face: "#06163C",
+    glow: "rgba(255, 92, 138, 0.24)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  city_car: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#31C6F6",
+    badgeBg: "#31C6F6",
+    body: "#0FF1CF",
+    glow: "rgba(49, 198, 246, 0.2)",
+    variant: "idle",
+  },
+  party_bus: {
+    accent: "#FF8AAE",
+    badgeBg: "#FF8AAE",
+    body: "#FFD76A",
+    cardBackground: "#15153F",
+    cardBorder: "#514168",
+    dialogBackground: "#211A47",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.24)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  bus: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#31C6F6",
+    glow: "rgba(101, 245, 199, 0.2)",
+    variant: "verified",
+  },
+  monster_truck: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#FF8A3D",
+    cardBackground: "#171839",
+    cardBorder: "#5A3C28",
+    dialogBackground: "#241B36",
+    face: "#06163C",
+    glow: "rgba(255, 138, 61, 0.22)",
+    iconColor: "#06163C",
+    variant: "pending",
+  },
+  food_truck: {
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#FFD76A",
+    cardBackground: "#121A3C",
+    cardBorder: "#4A4C31",
+    dialogBackground: "#1B213F",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.22)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  mystery_machine: {
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#8FA5E2",
+    cardBackground: "#10183E",
+    cardBorder: "#3A4775",
+    dialogBackground: "#141E4A",
+    face: "#06163C",
+    glow: "rgba(143, 165, 226, 0.22)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  go_kart: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#65F5C7",
+    cardBackground: "#071B3C",
+    cardBorder: "#275C5A",
+    dialogBackground: "#0B213F",
+    face: "#06163C",
+    glow: "rgba(101, 245, 199, 0.22)",
+    iconColor: "#06163C",
+    variant: "success",
+  },
+  moon_buggy: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#B889FF",
+    cardBackground: "#121641",
+    cardBorder: "#4D3B77",
+    dialogBackground: "#191B4D",
+    face: "#06163C",
+    glow: "rgba(184, 137, 255, 0.22)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  bicycle: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#65F5C7",
+    cardBackground: "#071B3C",
+    cardBorder: "#255C50",
+    dialogBackground: "#0A213D",
+    face: "#06163C",
+    glow: "rgba(101, 245, 199, 0.2)",
+    iconColor: "#06163C",
+    variant: "verified",
+  },
+  speed_boat: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#31C6F6",
+    cardBackground: "#07143B",
+    cardBorder: "#1E4770",
+    dialogBackground: "#0A1B45",
+    face: "#06163C",
+    glow: "rgba(49, 198, 246, 0.24)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  boat: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#31C6F6",
+    glow: "rgba(49, 198, 246, 0.2)",
+    variant: "idle",
+  },
+  pirate_ship: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#FF8A3D",
+    cardBackground: "#15153F",
+    cardBorder: "#60412A",
+    dialogBackground: "#201D3F",
+    face: "#06163C",
+    glow: "rgba(255, 138, 61, 0.22)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  hovercraft: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#8FA5E2",
+    badgeBg: "#8FA5E2",
+    body: "#31C6F6",
+    glow: "rgba(143, 165, 226, 0.2)",
+    variant: "empty",
+  },
+  helicopter: {
+    accent: "#31C6F6",
+    badgeBg: "#31C6F6",
+    body: "#FFD76A",
+    cardBackground: "#11183D",
+    cardBorder: "#51471C",
+    dialogBackground: "#1B1D42",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.22)",
+    iconColor: "#06163C",
+    variant: "pending",
+  },
+  stunt_plane: {
+    accent: "#FF8AAE",
+    badgeBg: "#FF8AAE",
+    body: "#FFD76A",
+    cardBackground: "#11183D",
+    cardBorder: "#57415E",
+    dialogBackground: "#1F1A43",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.22)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  midnight_train: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#8FA5E2",
+    cardBackground: "#0A1235",
+    cardBorder: "#384468",
+    dialogBackground: "#10183E",
+    face: "#06163C",
+    glow: "rgba(143, 165, 226, 0.18)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  ghost_tram: {
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#C9D4FF",
+    cardBackground: "#0A1235",
+    cardBorder: "#3B496D",
+    dialogBackground: "#10183E",
+    face: "#06163C",
+    glow: "rgba(201, 212, 255, 0.18)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  subway_beast: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#8FA5E2",
+    cardBackground: "#07143B",
+    cardBorder: "#314B78",
+    dialogBackground: "#0E1A45",
+    face: "#06163C",
+    glow: "rgba(143, 165, 226, 0.2)",
+    iconColor: "#06163C",
+    variant: "pending",
+  },
+  airplane: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#31C6F6",
+    badgeBg: "#31C6F6",
+    body: "#FFD76A",
+    glow: "rgba(255, 215, 106, 0.2)",
+    variant: "pending",
+  },
+  rocket: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#B889FF",
+    cardBackground: "#121641",
+    cardBorder: "#4D3B77",
+    dialogBackground: "#191B4D",
+    face: "#06163C",
+    glow: "rgba(184, 137, 255, 0.24)",
+    iconColor: "#06163C",
+    variant: "success",
+  },
+};
+
+export const getCarpoolVibeMascotStyle = (
+  vehicleIcon?: string | null
+): CarpoolVibeMascotStyle => {
+  const normalizedKey = normalizeCarpoolVehicleIconKey(vehicleIcon);
+
+  return normalizedKey
+    ? CARPOOL_VIBE_MASCOT_STYLES[normalizedKey] ??
+        DEFAULT_CARPOOL_VIBE_MASCOT_STYLE
+    : DEFAULT_CARPOOL_VIBE_MASCOT_STYLE;
+};
 
 export const getCarpoolPassengerMessage = (vehicleIcon?: string | null) => {
-  switch (vehicleIcon) {
+  switch (normalizeCarpoolVehicleIconKey(vehicleIcon)) {
     case "sport_car":
       return "The pooler picked a sport car vibe, so expect a ride that thinks every turn deserves its own soundtrack.";
     case "city_car":
@@ -167,6 +496,706 @@ export const getCarpoolPassengerMessage = (vehicleIcon?: string | null) => {
       return "Spaceship mode means the pooler has absolutely no intention of making an ordinary arrival.";
     default:
       return "The pooler has not picked a ride vibe yet. Once they do, it will show up here.";
+  }
+};
+
+interface CarpoolVibeChatContext {
+  pickupLocation?: string | null;
+  destination?: string | null;
+  departureTime?: string | null;
+}
+
+interface CarpoolVibeDialogContext extends CarpoolVibeChatContext {
+  handshakeInstruction?: string | null;
+  safetySignal?: CarpoolVibeSafetySignal | null;
+  safetyTips?: CarpoolVibeSafetyTip[];
+}
+
+const getRideChatDetail = (
+  value: string | null | undefined,
+  fallback: string
+) => {
+  const trimmed = value?.trim();
+
+  return trimmed || fallback;
+};
+
+export const getCarpoolVibeHandshakeInstruction = (
+  role: CarpoolVibeHandshakeRole
+) => {
+  if (role === "pooler") {
+    return "Riders confirm when they find the ride. You confirm each rider only after matching the person at pickup.";
+  }
+
+  if (role === "rider") {
+    return "Confirm only after the pickup, pooler, and ride details match. The handshake finishes when the pooler confirms you too.";
+  }
+
+  return "The handshake finishes when the rider and pooler both confirm they have found the right ride.";
+};
+
+// Future pin: grow vibe copy into engagement prompts, riddles, fun facts, and small ride games.
+export const getCarpoolVibeChatMessages = (
+  vehicleIcon?: string | null,
+  context: CarpoolVibeChatContext = {}
+) => {
+  const normalizedKey = normalizeCarpoolVehicleIconKey(vehicleIcon);
+  const pickupLocation = getRideChatDetail(
+    context.pickupLocation,
+    "the pickup spot"
+  );
+  const destination = getRideChatDetail(context.destination, "the destination");
+  const departureTime = context.departureTime?.trim();
+  const pickupAtTime = departureTime
+    ? `${pickupLocation} at ${departureTime}`
+    : `${pickupLocation} once timing is set`;
+  const timeLabel = departureTime || "departure time";
+
+  switch (normalizedKey) {
+    case "sport_car":
+      return [
+        `Sport car mode: launch from ${pickupAtTime}. Main-character arrival loading.`,
+        `Fast route toward ${destination}. Drop pickup notes before the engine warms up.`,
+        `Sharp timing, sharper coordination. ${timeLabel} is the moment to beat.`,
+      ];
+    case "city_car":
+      return [
+        `City car energy: ${pickupAtTime}, then a clean cruise to ${destination}.`,
+        `Practical ride, tidy plan. Keep ${pickupLocation} drama-free.`,
+        `Low-drama timing check: ${timeLabel}. Everyone gets there without guesswork.`,
+      ];
+    case "party_bus":
+      return [
+        `Party bus mode: meet at ${pickupAtTime}. The pre-event lobby is mobile.`,
+        `Playlist opinions, pickup timing, and the road to ${destination} all belong here.`,
+        `Big crew energy. Keep the ${pickupLocation} roll call warm.`,
+      ];
+    case "bus":
+      return [
+        `Classic bus mode: roomy, steady, and rolling from ${pickupAtTime}.`,
+        `Drop the ${pickupLocation} pickup plan here so nobody has to play detective.`,
+        `Reliable ride energy to ${destination}. Simple updates work beautifully.`,
+      ];
+    case "monster_truck":
+      return [
+        `Monster truck mode: subtle? no. Meet at ${pickupAtTime} and make it obvious.`,
+        `This pickup has presence. ${pickupLocation} should be just as easy to spot.`,
+        `Big ride, big coordination. ${destination} is waiting.`,
+      ];
+    case "food_truck":
+      return [
+        `Food truck energy: flavorful route from ${pickupAtTime}.`,
+        `This chat accepts pickup notes, snack debates, and the plan for ${destination}.`,
+        `Tell the crew where to meet at ${pickupLocation} before someone starts asking about menus.`,
+      ];
+    case "mystery_machine":
+      return [
+        `Mystery machine mode: the clue says ${pickupAtTime}.`,
+        `No mystery about the destination: ${destination}. Confirm who is already on the way.`,
+        `A little playful, a little iconic, fully coordinated for ${timeLabel}.`,
+      ];
+    case "go_kart":
+      return [
+        `Go-kart mode: quick roll-out from ${pickupAtTime}.`,
+        `Short messages work here. Fast updates, clean arrival at ${destination}.`,
+        `Keep the crew in the loop before ${timeLabel} starts feeling like a lap timer.`,
+      ];
+    case "moon_buggy":
+      return [
+        `Moon buggy mode: lunar launch from ${pickupAtTime}.`,
+        `Destination locked: ${destination}. The vibe is cosmic, the directions should be practical.`,
+        `Unusual energy, clear plan. Tell everyone where to stand at ${pickupLocation}.`,
+      ];
+    case "bicycle":
+      return [
+        `Bicycle mode: light, simple, and rolling from ${pickupAtTime}.`,
+        `Gentle timing updates, clear pickup spot, smooth path to ${destination}.`,
+        `Easy ride energy. Keep the ${pickupLocation} notes breezy.`,
+      ];
+    case "speed_boat":
+      return [
+        `Speed boat mode: no slow entrance from ${pickupAtTime}.`,
+        `Smooth arrival at ${destination} starts with clear chat updates.`,
+        `Fast vibe, steady coordination. Anchor the plan at ${pickupLocation}.`,
+      ];
+    case "boat":
+      return [
+        `Boat mode: calm departure from ${pickupAtTime}.`,
+        `Smooth crossing energy toward ${destination}. Keep everyone floating the same way.`,
+        `This chat likes clear plans, relaxed confirmations, and a known ${timeLabel}.`,
+      ];
+    case "pirate_ship":
+      return [
+        `Pirate ship mode: crew gathers at ${pickupAtTime}.`,
+        `All updates go here before the ride sets sail for ${destination}.`,
+        `Bold ride energy. Keep ${pickupLocation} impossible to miss.`,
+      ];
+    case "hovercraft":
+      return [
+        `Hovercraft mode: float out from ${pickupAtTime}.`,
+        `Regular roads are optional, clear route to ${destination} is not.`,
+        `Floaty vibe, firm pickup details at ${pickupLocation}. Best of both worlds.`,
+      ];
+    case "helicopter":
+      return [
+        `Helicopter mode: landing-zone clarity at ${pickupAtTime}.`,
+        `Premium entrance, precise timing, destination set to ${destination}.`,
+        `High-energy pickup at ${pickupLocation}, clean communication. Perfect.`,
+      ];
+    case "stunt_plane":
+      return [
+        `Stunt plane mode: dramatic takeoff from ${pickupAtTime}.`,
+        `The vibe can loop; the route to ${destination} should not.`,
+        `Showmanship is welcome. Confusing directions at ${pickupLocation} are not.`,
+      ];
+    case "midnight_train":
+      return [
+        `Midnight train mode: all aboard at ${pickupAtTime}.`,
+        `Cinematic ride toward ${destination}, punctual updates only.`,
+        `Quietly iconic, very locked in. Keep ${pickupLocation} posted before ${timeLabel}.`,
+      ];
+    case "ghost_tram":
+      return [
+        `Ghost tram mode: quietly iconic pickup at ${pickupAtTime}.`,
+        `This ride is memorable. Make ${pickupLocation} memorable too.`,
+        `Soft mystery, clear timing, destination set to ${destination}.`,
+      ];
+    case "subway_beast":
+      return [
+        `Subway beast mode: city momentum from ${pickupAtTime}.`,
+        `Fast-moving ride energy toward ${destination}. Keep the chat direct.`,
+        `Station-level clarity: ${pickupLocation}, ${timeLabel}, and who is close.`,
+      ];
+    case "airplane":
+      return [
+        `Airplane mode: boarding starts at ${pickupAtTime}.`,
+        `Gate details go here before takeoff to ${destination}.`,
+        `Boarding energy is real. Keep the crew synced for ${timeLabel}.`,
+      ];
+    case "rocket":
+      return [
+        `Spaceship mode: countdown begins at ${pickupAtTime}.`,
+        `Destination coordinates: ${destination}. Ordinary arrivals have left the chat.`,
+        `Big launch energy, tiny margin for vague ${pickupLocation} directions.`,
+      ];
+    default:
+      return [
+        `Shared ride energy: meet at ${pickupAtTime}.`,
+        `Destination is ${destination}. Timing and pickup notes belong here.`,
+        `Keep the crew synced before ${timeLabel} gets the ride moving.`,
+      ];
+  }
+};
+
+const getHighlightedDialogParts = (
+  message: string,
+  highlights: string[]
+): CarpoolVibeDialogPart[] => {
+  const uniqueHighlights = Array.from(
+    new Set(highlights.map((highlight) => highlight.trim()).filter(Boolean))
+  ).sort((first, second) => second.length - first.length);
+  const parts: CarpoolVibeDialogPart[] = [];
+  let cursor = 0;
+
+  while (cursor < message.length) {
+    let matchIndex = -1;
+    let matchText = "";
+
+    uniqueHighlights.forEach((highlight) => {
+      const index = message.indexOf(highlight, cursor);
+      if (
+        index >= 0 &&
+        (matchIndex < 0 ||
+          index < matchIndex ||
+          (index === matchIndex && highlight.length > matchText.length))
+      ) {
+        matchIndex = index;
+        matchText = highlight;
+      }
+    });
+
+    if (matchIndex < 0) {
+      parts.push({ text: message.slice(cursor) });
+      break;
+    }
+
+    if (matchIndex > cursor) {
+      parts.push({ text: message.slice(cursor, matchIndex) });
+    }
+
+    parts.push({ text: matchText, highlight: true });
+    cursor = matchIndex + matchText.length;
+  }
+
+  return parts;
+};
+
+export const getCarpoolVibeDialogMessages = (
+  vehicleIcon?: string | null,
+  context: CarpoolVibeDialogContext = {}
+): CarpoolVibeDialogMessage[] => {
+  const pickupLocation = getRideChatDetail(
+    context.pickupLocation,
+    "the pickup spot"
+  );
+  const destination = getRideChatDetail(context.destination, "the destination");
+  const departureTime = context.departureTime?.trim();
+  const pickupAtTime = departureTime
+    ? `${pickupLocation} at ${departureTime}`
+    : `${pickupLocation} once timing is set`;
+  const timeLabel = departureTime || "departure time";
+  const highlightedDetails = [
+    pickupAtTime,
+    pickupLocation,
+    destination,
+    timeLabel,
+  ];
+  const vibeMessages = getCarpoolVibeChatMessages(vehicleIcon, {
+    departureTime,
+    destination,
+    pickupLocation,
+  }).map((message) => getHighlightedDialogParts(message, highlightedDetails));
+  const safetyMessages =
+    context.safetyTips?.slice(0, 2).map((tip) => [
+      { text: `${tip.title}: `, highlight: true },
+      { text: tip.body },
+    ]) ?? [];
+  const handshakeMessage = context.handshakeInstruction
+    ? [
+        { text: "Handshake: ", highlight: true },
+        { text: context.handshakeInstruction },
+      ]
+    : null;
+  const messages = safetyMessages.length > 0
+    ? [...vibeMessages, ...safetyMessages]
+    : context.safetySignal
+      ? [
+          ...vibeMessages,
+          [
+            { text: `${context.safetySignal.title}: `, highlight: true },
+            { text: context.safetySignal.description },
+          ],
+        ]
+      : vibeMessages;
+
+  return handshakeMessage ? [...messages, handshakeMessage] : messages;
+};
+
+export const getCarpoolVibeSafetySignal = (
+  vehicleIcon?: string | null
+): CarpoolVibeSafetySignal => {
+  switch (normalizeCarpoolVehicleIconKey(vehicleIcon)) {
+    case "sport_car":
+      return {
+        title: "Pit stop signal",
+        passengerAction: "Pit stop complete",
+        driverAction: "Back on track",
+        description:
+          "Use this once the rider has checked the plate and met the pooler.",
+      };
+    case "city_car":
+      return {
+        title: "City signal",
+        passengerAction: "At the curb",
+        driverAction: "Curb confirmed",
+        description: "A quick curbside signal for a calm, practical pickup.",
+      };
+    case "party_bus":
+      return {
+        title: "Crew signal",
+        passengerAction: "I found the crew",
+        driverAction: "Crew member onboard",
+        description:
+          "A group-friendly signal after the rider verifies the ride.",
+      };
+    case "bus":
+      return {
+        title: "Boarding signal",
+        passengerAction: "Ready to board",
+        driverAction: "Seat saved",
+        description: "A simple shared signal for a steady pickup.",
+      };
+    case "monster_truck":
+      return {
+        title: "Big rig signal",
+        passengerAction: "I see the rig",
+        driverAction: "Rig confirmed",
+        description: "A bold signal for an easy-to-spot pickup.",
+      };
+    case "food_truck":
+      return {
+        title: "Order-up signal",
+        passengerAction: "Order ready",
+        driverAction: "Pickup served",
+        description: "A playful signal once the rider confirms the right ride.",
+      };
+    case "mystery_machine":
+      return {
+        title: "Clue signal",
+        passengerAction: "Clue matched",
+        driverAction: "Case confirmed",
+        description:
+          "Use it only after the plate, pooler, and pickup spot all match.",
+      };
+    case "go_kart":
+      return {
+        title: "Lap signal",
+        passengerAction: "At the line",
+        driverAction: "Green light",
+        description: "A quick signal for a fast, confirmed pickup.",
+      };
+    case "moon_buggy":
+      return {
+        title: "Lunar signal",
+        passengerAction: "Moon boots on",
+        driverAction: "Cabin sealed",
+        description: "A cosmic signal after the rider checks the ride details.",
+      };
+    case "bicycle":
+      return {
+        title: "Roll-out signal",
+        passengerAction: "Ready to roll",
+        driverAction: "Rolling together",
+        description: "A light signal for a simple, safe meet-up.",
+      };
+    case "speed_boat":
+      return {
+        title: "Dock signal",
+        passengerAction: "At the dock",
+        driverAction: "Dock cleared",
+        description: "A fast signal after the rider confirms the pickup.",
+      };
+    case "boat":
+      return {
+        title: "Sail signal",
+        passengerAction: "Ready to sail",
+        driverAction: "Crew aboard",
+        description:
+          "A calm signal once everyone is sure they found the right ride.",
+      };
+    case "pirate_ship":
+      return {
+        title: "Boarding signal",
+        passengerAction: "Permission to board",
+        driverAction: "Welcome aboard",
+        description:
+          "A bold signal after the rider checks the plate and pooler.",
+      };
+    case "hovercraft":
+      return {
+        title: "Hover signal",
+        passengerAction: "Hover point reached",
+        driverAction: "Landing confirmed",
+        description: "A floaty signal for a very clear pickup point.",
+      };
+    case "helicopter":
+      return {
+        title: "Landing signal",
+        passengerAction: "Landing zone clear",
+        driverAction: "Touchdown confirmed",
+        description: "A precise signal after the rider verifies the ride.",
+      };
+    case "stunt_plane":
+      return {
+        title: "Runway signal",
+        passengerAction: "Runway ready",
+        driverAction: "Takeoff cleared",
+        description: "A dramatic signal, still grounded in real safety checks.",
+      };
+    case "midnight_train":
+      return {
+        title: "All-aboard signal",
+        passengerAction: "All aboard",
+        driverAction: "Ticket punched",
+        description:
+          "A cinematic signal once the rider confirms the right pickup.",
+      };
+    case "ghost_tram":
+      return {
+        title: "Quiet signal",
+        passengerAction: "Platform found",
+        driverAction: "Platform confirmed",
+        description: "A quiet little signal for a clearly verified pickup.",
+      };
+    case "subway_beast":
+      return {
+        title: "Station signal",
+        passengerAction: "At the station",
+        driverAction: "Train arriving",
+        description: "A direct signal for city-speed coordination.",
+      };
+    case "airplane":
+      return {
+        title: "Gate signal",
+        passengerAction: "At the gate",
+        driverAction: "Boarding confirmed",
+        description:
+          "A tidy signal after the rider checks the ride and pooler.",
+      };
+    case "rocket":
+      return {
+        title: "Launch signal",
+        passengerAction: "Ready for launch",
+        driverAction: "Launch confirmed",
+        description:
+          "A spacey signal after the rider verifies the plate and pickup.",
+      };
+    default:
+      return {
+        title: "Ride signal",
+        passengerAction: "Ride found",
+        driverAction: "Rider confirmed",
+        description:
+          "A shared signal after the rider confirms the plate, pooler, and pickup point.",
+      };
+  }
+};
+
+export const getCarpoolVibeSafetyRoleCopy = (
+  safetySignal: CarpoolVibeSafetySignal,
+  roleLabel?: string | null,
+  rideLabel = "Ride"
+): CarpoolVibeSafetyRoleCopy => {
+  const isPooler = roleLabel?.toLowerCase() === "pooler";
+
+  if (isPooler) {
+    return {
+      description: `Let each rider say "${safetySignal.passengerAction}" only after they match your ride, plate, and pickup point. Confirm each person with "${safetySignal.driverAction}".`,
+      emptyChatBody:
+        "Share pickup landmarks, vehicle details, and where riders should stand before the vibe-check.",
+      emptyChatTitle: `${rideLabel} crew is waiting`,
+      modalInstruction:
+        "Let each rider say the signal after they verify your ride details. Confirm them one by one.",
+      primarySignalLabel: "Your pooler signal",
+      primarySignalValue: safetySignal.driverAction,
+      secondarySignalLabel: "Rider says",
+      secondarySignalValue: safetySignal.passengerAction,
+    };
+  }
+
+  return {
+    description: `${safetySignal.description} Say "${safetySignal.passengerAction}" only after the plate, pooler, and pickup point match.`,
+    emptyChatBody: "Send the first pickup note and get the ride moving.",
+    emptyChatTitle: `${rideLabel} chat is quiet`,
+    modalInstruction:
+      "Say the signal only after the plate, pooler, and pickup point match.",
+    primarySignalLabel: "Your rider signal",
+    primarySignalValue: safetySignal.passengerAction,
+    secondarySignalLabel: "Pooler replies",
+    secondarySignalValue: safetySignal.driverAction,
+  };
+};
+
+export const getCarpoolVibeSafetyTips = (
+  vehicleIcon?: string | null
+): CarpoolVibeSafetyTip[] => {
+  switch (normalizeCarpoolVehicleIconKey(vehicleIcon)) {
+    case "sport_car":
+      return [
+        {
+          iconName: "speedometer-outline",
+          title: "Fast vibe, slow check",
+          body: "Check the plate number, pooler name, and pickup point before you hop in.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share the route",
+          body: "Open WhatsApp and share live location with someone you trust before the engine warms up.",
+        },
+        {
+          iconName: "chatbubble-ellipses-outline",
+          title: "Leave a trace",
+          body: "Text a friend the car details and keep pickup updates inside this chat.",
+        },
+      ];
+    case "city_car":
+      return [
+        {
+          iconName: "location-outline",
+          title: "Curbside clarity",
+          body: "Meet in a visible spot and confirm the plate before stepping in.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Keep someone posted",
+          body: "Use WhatsApp live location so someone you trust can follow the city route.",
+        },
+        {
+          iconName: "shield-checkmark-outline",
+          title: "Practical check",
+          body: "If the car, pooler, or pickup point feels off, pause and confirm in chat.",
+        },
+      ];
+    case "party_bus":
+      return [
+        {
+          iconName: "people-outline",
+          title: "Crew check",
+          body: "Confirm the pooler and plate before the group energy takes over.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share the party route",
+          body: "Use WhatsApp live location so someone outside the ride can follow along.",
+        },
+        {
+          iconName: "chatbox-ellipses-outline",
+          title: "Keep it in the chat",
+          body: "Use this chat for pickup changes, late arrivals, and who is already onboard.",
+        },
+      ];
+    case "mystery_machine":
+      return [
+        {
+          iconName: "search-outline",
+          title: "Solve the first clue",
+          body: "The plate number, pooler name, and pickup spot should all match before you board.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share the clue trail",
+          body: "Send your WhatsApp live location to someone you trust.",
+        },
+        {
+          iconName: "shield-checkmark-outline",
+          title: "No mystery boarding",
+          body: "If anything feels off, stay visible and confirm details in chat.",
+        },
+      ];
+    case "moon_buggy":
+    case "rocket":
+      return [
+        {
+          iconName: "rocket-outline",
+          title: "Pre-launch check",
+          body: "Confirm the plate, pooler, and pickup point before entering the cabin.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Send mission control",
+          body: "Send mission control your WhatsApp live location before launch.",
+        },
+        {
+          iconName: "chatbubble-ellipses-outline",
+          title: "Keep comms open",
+          body: "Post pickup changes here so the crew stays synced.",
+        },
+      ];
+    case "pirate_ship":
+      return [
+        {
+          iconName: "boat-outline",
+          title: "Permission to board",
+          body: "Check the plate and pooler before you accept the ride as yours.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share the voyage",
+          body: "Share your WhatsApp live location with a trusted person before the ride sets off.",
+        },
+        {
+          iconName: "shield-checkmark-outline",
+          title: "Stay on deck",
+          body: "Wait somewhere visible until the ride details match.",
+        },
+      ];
+    case "boat":
+    case "speed_boat":
+    case "hovercraft":
+      return [
+        {
+          iconName: "boat-outline",
+          title: "Dock check",
+          body: "Confirm the plate, pooler, and pickup point before you set sail.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share your crossing",
+          body: "Let a trusted person follow your WhatsApp live location while the ride is active.",
+        },
+        {
+          iconName: "chatbubble-ellipses-outline",
+          title: "Signal in chat",
+          body: "Use this chat if the meeting point changes or the ride is delayed.",
+        },
+      ];
+    case "midnight_train":
+    case "ghost_tram":
+    case "subway_beast":
+      return [
+        {
+          iconName: "train-outline",
+          title: "Platform check",
+          body: "Confirm the plate and pooler before you go all aboard.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share your line",
+          body: "Send your WhatsApp live location to someone you trust before departure.",
+        },
+        {
+          iconName: "shield-checkmark-outline",
+          title: "Stay visible",
+          body: "Wait in a clear public spot if the ride details do not match yet.",
+        },
+      ];
+    case "airplane":
+    case "helicopter":
+    case "stunt_plane":
+      return [
+        {
+          iconName: "airplane-outline",
+          title: "Gate check",
+          body: "Confirm the plate, pooler, and pickup point before boarding.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share your flight path",
+          body: "Send your WhatsApp live location to a trusted person.",
+        },
+        {
+          iconName: "chatbubble-ellipses-outline",
+          title: "Keep the tower updated",
+          body: "Put pickup changes and timing updates in chat.",
+        },
+      ];
+    case "bicycle":
+    case "go_kart":
+      return [
+        {
+          iconName: "checkmark-circle-outline",
+          title: "Roll-out check",
+          body: "Confirm the pooler, plate, and pickup point before the ride starts.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share your roll",
+          body: "Send your WhatsApp live location to a trusted person during pickup.",
+        },
+        {
+          iconName: "shield-checkmark-outline",
+          title: "Stay visible",
+          body: "Meet somewhere clear and pause if anything feels mismatched.",
+        },
+      ];
+    default:
+      return [
+        {
+          iconName: "car-outline",
+          title: "Match the ride",
+          body: "Confirm the plate number, pooler name, and pickup point before getting in.",
+        },
+        {
+          iconName: "navigate-circle-outline",
+          title: "Share your live location",
+          body: "Send WhatsApp live location to someone you trust.",
+        },
+        {
+          iconName: "chatbubble-ellipses-outline",
+          title: "Keep pickup in chat",
+          body: "Use this chat for timing changes, pickup notes, and quick confirmations.",
+        },
+      ];
   }
 };
 

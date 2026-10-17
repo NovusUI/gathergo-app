@@ -1,5 +1,14 @@
-import { z } from "zod";
 import { isValidEventLink, normalizeEventLink } from "@/constants/eventLinks";
+import type {
+  SuggestedImpactCommitment,
+  SuggestedImpactPath,
+  SuggestedSdgGoal,
+} from "@/types/impact";
+import { z } from "zod";
+
+const impactSdgGoalSchema = z.custom<SuggestedSdgGoal>();
+const impactPathSchema = z.custom<SuggestedImpactPath>();
+const impactCommitmentSchema = z.custom<SuggestedImpactCommitment>();
 
 export const eventTicketSchema = z
   .object({
@@ -47,10 +56,18 @@ export const eventTicketSchema = z
     }
 
     // Price validation
-    if (data.paid && (data.price === undefined || data.price < 0)) {
+    if (data.paid && (data.price === undefined || data.price <= 0)) {
       ctx.addIssue({
         code: "custom",
-        message: "Price must be provided and ≥ 0 when priceType is paid",
+        message: "Price must be provided",
+        path: ["price"],
+      });
+    }
+
+    if (data.paid && (data.price === undefined || data.price <= 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Price cannot be 0",
         path: ["price"],
       });
     }
@@ -67,27 +84,32 @@ export const eventSchema = z
 
     description: z
       .string()
-      .min(1, "Event description is required")
-      .max(100, "Event name must be at most 100 characters"),
+      .trim()
+      .min(1, "Describe your event")
+      .max(300, "Event description must be at most 300 characters"),
 
     impactTitle: z
       .string()
-      .min(1, "Choose an impact cause")
-      .max(80, "Impact cause must be at most 80 characters"),
+      .max(80, "Impact focus must be at most 80 characters")
+      .default(""),
 
     impactDescription: z
       .string()
-      .min(1, "Describe the event's direct impact")
-      .max(180, "Impact note must be at most 180 characters"),
+      .trim()
+      .max(180, "Impact story must be at most 180 characters")
+      .default(""),
 
     impactPercentage: z
       .union([
         z.number().min(1).max(100),
-        z.string().transform((val) => (val === "" ? 20 : Number(val))),
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
       ])
-      .refine((value) => Number(value) >= 1 && Number(value) <= 100, {
-        message: "Impact percentage must be between 1 and 100",
-      }),
+      .optional(),
+    impactSdgGoals: z.array(impactSdgGoalSchema).optional(),
+    impactPaths: z.array(impactPathSchema).optional(),
+    impactCommitments: z.array(impactCommitmentSchema).optional(),
+    impactMapSource: z.string().optional(),
+    impactMapGeneratedAt: z.string().optional(),
 
     repeat: z.enum(["WEEKLY", "DAILY", "NONE"]),
 
@@ -110,7 +132,7 @@ export const eventSchema = z
 
         return value
           .map((item) =>
-            normalizeEventLink(typeof item === "string" ? item : "")
+            normalizeEventLink(typeof item === "string" ? item : ""),
           )
           .filter(Boolean)
           .slice(0, 5);
@@ -119,9 +141,9 @@ export const eventSchema = z
         .array(
           z.string().refine(isValidEventLink, {
             message: "Each link must be a valid URL",
-          })
+          }),
         )
-        .max(5, "You can add up to 5 links")
+        .max(5, "You can add up to 5 links"),
     ),
 
     tags: z.array(z.string()),
@@ -207,7 +229,7 @@ export const dateTimeSchema = z
     // Inclusive day count
     const daysBetween =
       Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
       ) + 1;
 
     // Recurring validations
@@ -320,7 +342,7 @@ export const dateTimeEditSchema = z
     // Inclusive day count
     const daysBetween =
       Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
       ) + 1;
 
     // Recurring validations

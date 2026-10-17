@@ -8,7 +8,6 @@ import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useGetUsersEvents, useUserProfile } from "@/services/queries";
 import { useLockedRouter } from "@/utils/navigation";
-import { useRouter } from "expo-router";
 import { Settings } from "lucide-react-native";
 import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -16,6 +15,11 @@ import tw from "twrnc";
 
 const Profile = () => {
   const tabs = ["About", "Events", "Badges"];
+  const tabsIcons: any[] = [
+    { library: "Ionicons", name: "information-circle-outline" },
+    { library: "Ionicons", name: "calendar-clear-outline" },
+    { library: "FontAwesome5", name: "medal" },
+  ];
   const [activeTab, setActiveTab] = useState(tabs[0]);
   const { user } = useAuth();
   const { data: publicProfile } = useUserProfile(user?.id);
@@ -78,14 +82,24 @@ const Profile = () => {
   };
 
   return (
-    <View style={[tw`flex-1 bg-[#01082E] flex items-center flex-col overflow-hidden`, styles.screen]}>
+    <View
+      style={[
+        tw`flex-1 bg-[#01082E] flex items-center flex-col overflow-hidden`,
+        styles.screen,
+      ]}
+    >
       <CustomeTopBarNav
         title="profile"
         onClickBack={() => router.replace("/")}
       />
 
       {/* Header Info */}
-      <View style={[tw`flex flex-col gap-2 w-full max-w-[500px]`, styles.headerInfo]}>
+      <View
+        style={[
+          tw`flex flex-col gap-2 w-full max-w-[500px]`,
+          styles.headerInfo,
+        ]}
+      >
         <View style={tw`flex flex-row justify-between items-center w-full`}>
           <Text style={tw`text-white text-xl`}>
             {publicProfile?.data.name || "User"}
@@ -106,7 +120,12 @@ const Profile = () => {
       </View>
 
       {/* Profile Image + Stats */}
-      <View style={[tw`flex flex-row justify-between items-center w-full max-w-[500px]`, styles.profileRow]}>
+      <View
+        style={[
+          tw`flex flex-row justify-between items-center w-full max-w-[500px]`,
+          styles.profileRow,
+        ]}
+      >
         <ProfileImageUploader uri={publicProfile?.data.profilePicUrl} />
         <StatsCard
           eventsCount={publicProfile?.data.eventsCount || 0}
@@ -116,14 +135,23 @@ const Profile = () => {
       </View>
 
       {/* Tabs */}
-      <View style={[tw`flex-row justify-between border-b border-gray-800 w-full max-w-[500px]`, styles.tabRow]}>
-        {tabs.map((tab) => (
+      <View
+        style={[
+          tw`flex-row justify-between border-b border-gray-800 w-full max-w-[500px]`,
+          styles.tabRow,
+        ]}
+      >
+        {tabs.map((tab, index) => (
           <Tab
             key={tab}
             title={tab}
             isActive={activeTab === tab}
             style={tw`w-1/4`}
             onPress={() => setActiveTab(tab)}
+            icon={{
+              library: tabsIcons[index].library,
+              name: tabsIcons[index].name,
+            }}
           />
         ))}
       </View>

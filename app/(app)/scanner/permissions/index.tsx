@@ -1,6 +1,6 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import PermissionCard from "@/components/scanner/PermissionCard";
-import ActivityIndicator from "@/components/ui/AppLoader";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useScannerPermissions } from "@/hooks/useScanner";
 import { useLockedRouter } from "@/utils/navigation";
 import { safeGoBack } from "@/utils/navigation";
@@ -107,10 +107,10 @@ const ManagePermissions = () => {
             onClickBack={() => safeGoBack(router, "/scanner")}
           />
         </View>
-        <View style={tw`flex-1 items-center justify-center`}>
-          <ActivityIndicator tone="accent" size="large" />
-          <Text style={tw`text-gray-400 mt-4`}>Loading permissions...</Text>
-        </View>
+        <ImpactPageLoader
+          title="Mapping access"
+          message="Loading scan permissions and trusted event helpers."
+        />
       </View>
     );
   }

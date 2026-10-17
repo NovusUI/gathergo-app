@@ -1,8 +1,8 @@
 import Tab from "@/components/Tab";
-import ActivityIndicator from "@/components/ui/AppLoader";
 import CarpoolCard from "@/components/ui/CarpoolCard";
 import EventCard from "@/components/ui/EventCard";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { HomeAdCard } from "@/types/home";
 
@@ -36,6 +36,41 @@ import tw from "twrnc";
 const { width } = Dimensions.get("window");
 const bannerCardWidth = Math.min(width, 500) - layoutSpacing.pageHorizontal * 2;
 
+const HOME_BANNER_ICON_NAMES = new Set([
+  "calendar-outline",
+  "car-sport-outline",
+  "compass-outline",
+  "flash-outline",
+  "gift-outline",
+  "heart-outline",
+  "leaf-outline",
+  "megaphone-outline",
+  "people-outline",
+  "radio-outline",
+  "ticket-outline",
+  "trophy-outline",
+]);
+
+const getBannerFallbackIconName = (key: string) => {
+  if (key === "ride") return "car-sport-outline";
+  if (key === "impact") return "leaf-outline";
+  if (key === "donation") return "heart-outline";
+  return "flash-outline";
+};
+
+const getBannerIconName = (card: Pick<HomeAdCard, "key" | "icon">) => {
+  const fallbackIconName = getBannerFallbackIconName(card.key);
+
+  if (card.key === "impact" || card.key === "donation") {
+    return fallbackIconName;
+  }
+
+  const requestedIconName = card.icon?.trim();
+  return requestedIconName && HOME_BANNER_ICON_NAMES.has(requestedIconName)
+    ? requestedIconName
+    : fallbackIconName;
+};
+
 export default function HomeScreen() {
   const { requestLocation } = useLocationManager();
   const { data } = useUnreadCounts();
@@ -44,6 +79,11 @@ export default function HomeScreen() {
   }, [requestLocation]);
 
   const tabs = ["For you", "Carpool", "Circle"] as const;
+  const tabsIcons: any[] = [
+    { library: "Ionicons", name: "compass-outline" },
+    { library: "Ionicons", name: "car-sport" },
+    { library: "FontAwesome5", name: "users" },
+  ];
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>(tabs[0]);
   const [bannerIndex, setBannerIndex] = useState(0);
   const { user } = useAuth();
@@ -64,7 +104,7 @@ export default function HomeScreen() {
   const secondEvent = events?.data?.[1];
   const fallbackBannerCards = [
     {
-      key: "impact",
+      key: "event",
       variant: "image" as const,
       imageUrl: featuredEvent?.imageUrl,
       onPress: () =>
@@ -77,10 +117,11 @@ export default function HomeScreen() {
       variant: "copy" as const,
       eyebrow: "Find a ride",
       title: "Shared rides make turnout easier",
-      body:
-        carpoolsForYou?.data?.length
-          ? `You already have ${carpoolsForYou.data.length} ride option${carpoolsForYou.data.length === 1 ? "" : "s"} waiting.`
-          : "Coordinate transport with other attendees and remove friction from showing up.",
+      body: carpoolsForYou?.data?.length
+        ? `You already have ${carpoolsForYou.data.length} ride option${
+            carpoolsForYou.data.length === 1 ? "" : "s"
+          } waiting.`
+        : "Coordinate transport with other attendees and remove friction from showing up.",
       cta: "See rides",
       onPress: () => setActiveTab("Carpool"),
     },
@@ -90,50 +131,48 @@ export default function HomeScreen() {
       eyebrow: "Circle",
       title: secondEvent?.title
         ? `Circle will connect people around moments like ${secondEvent.title}`
-        : "Circle will connect people around causes, updates, and shared momentum",
-      body:
-        "When it lands, your event communities will have a dedicated home for conversations and belonging.",
+        : "Circle will connect people around events and shared interests",
+      body: "When it lands, your event communities will have a dedicated home for conversations and belonging.",
       cta: "Preview Circle",
       onPress: () => router.push("/circle"),
     },
   ];
-  const bannerCards =
-    homeAdCards?.data?.length
-      ? homeAdCards.data.map((card) => ({
-          ...card,
-          onPress: () => {
-            if (card.route) {
-              router.push(card.route as any);
-              return;
-            }
-            if (card.eventId) {
-              router.push(`/event/${card.eventId}`);
-              return;
-            }
-            if (card.key === "ride") {
-              setActiveTab("Carpool");
-              return;
-            }
-            if (card.key === "circle") {
-              router.push("/circle");
-              return;
-            }
-            setActiveTab("For you");
-          },
-        }))
-      : fallbackBannerCards;
+  const bannerCards = homeAdCards?.data?.length
+    ? homeAdCards.data.map((card) => ({
+        ...card,
+        onPress: () => {
+          if (card.route) {
+            router.push(card.route as any);
+            return;
+          }
+          if (card.eventId) {
+            router.push(`/event/${card.eventId}`);
+            return;
+          }
+          if (card.key === "ride") {
+            setActiveTab("Carpool");
+            return;
+          }
+          if (card.key === "circle") {
+            router.push("/circle");
+            return;
+          }
+          setActiveTab("For you");
+        },
+      }))
+    : fallbackBannerCards;
 
   const handleBannerScrollEnd = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
+    event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
     const nextIndex = Math.round(
-      event.nativeEvent.contentOffset.x / bannerCardWidth
+      event.nativeEvent.contentOffset.x / bannerCardWidth,
     );
     setBannerIndex(nextIndex);
   };
 
   const renderBannerAccent = (
-    card: HomeAdCard & { key: string; onPress: () => void }
+    card: HomeAdCard & { key: string; onPress: () => void },
   ) => {
     if (card.key === "circle") {
       return (
@@ -144,16 +183,11 @@ export default function HomeScreen() {
       );
     }
 
-    const fallbackIconName =
-      card.key === "ride"
-        ? "car-sport-outline"
-        : card.key === "impact" || card.key === "donation"
-        ? "sparkles-outline"
-        : "flash-outline";
+    const iconName = getBannerIconName(card);
 
     return (
       <Ionicons
-        name={(card.icon || fallbackIconName) as any}
+        name={iconName as any}
         size={28}
         color={card.accentColor || "#0FF1CF"}
       />
@@ -163,7 +197,12 @@ export default function HomeScreen() {
   return (
     <View style={[tw`flex-1 bg-[#030A31] items-center`, styles.screen]}>
       {/* Header */}
-      <View style={[tw`flex-row justify-between items-center w-full max-w-[500px]`, styles.header]}>
+      <View
+        style={[
+          tw`flex-row justify-between items-center w-full max-w-[500px]`,
+          styles.header,
+        ]}
+      >
         <Text style={tw`text-white`}>{`Hello ${displayName} 😊`}</Text>
         <View style={tw`flex-row items-center justify-between`}>
           <TouchableOpacity
@@ -255,28 +294,37 @@ export default function HomeScreen() {
           ))}
         </View>
       </View>
+      {/* Tabs */}
+      <View
+        style={[tw`flex-row justify-between w-full max-w-[500px]`, styles.tabs]}
+      >
+        {tabs.map((tab, index) => (
+          <Tab
+            key={tab}
+            title={tab}
+            isActive={activeTab === tab}
+            className="w-1/4"
+            onPress={() => setActiveTab(tab)}
+            icon={{
+              library: tabsIcons[index].library,
+              name: tabsIcons[index].name,
+            }}
+          />
+        ))}
+      </View>
 
       <ScrollView
         style={[tw`w-full max-w-[500px]`, styles.scroll]}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.listSection}>
-          {/* Tabs */}
-          <View style={[tw`flex-row justify-between w-full max-w-[500px]`, styles.tabs]}>
-            {tabs.map((tab) => (
-              <Tab
-                key={tab}
-                title={tab}
-                isActive={activeTab === tab}
-                className="w-1/4"
-                onPress={() => setActiveTab(tab)}
-              />
-            ))}
-          </View>
-
           {activeTab === "For you" &&
             (loading ? (
-              <ActivityIndicator tone="accent" size="large" />
+              <ImpactPageLoader
+                compact
+                title="Finding your next event"
+                message="Finding events that match your interests."
+              />
             ) : events?.data?.length ? (
               <View style={styles.listGroup}>
                 {events.data.map((event: any) => (
@@ -284,6 +332,7 @@ export default function HomeScreen() {
                     key={event.id}
                     id={event.id}
                     title={event.title}
+                    description={event.description}
                     location={event.location}
                     thumbnailUrl={event.thumbnailUrl}
                     imageUrl={event.imageUrl}
@@ -294,7 +343,12 @@ export default function HomeScreen() {
                     lowestTicketPrice={event.lowestTicketPrice}
                     startDate={event.startDate}
                     impactTitle={event.impactTitle}
-                    impactPercentage={event.impactPercentage}
+                    impactDescription={event.impactDescription}
+                    impactSdgGoals={event.impactSdgGoals}
+                    impactPaths={event.impactPaths}
+                    impactCommitments={event.impactCommitments}
+                    impactMapSource={event.impactMapSource}
+                    tags={event.tags}
                   />
                 ))}
               </View>
@@ -306,7 +360,11 @@ export default function HomeScreen() {
 
           {activeTab === "Carpool" &&
             (pendingCarpoolData ? (
-              <ActivityIndicator tone="accent" size="large" />
+              <ImpactPageLoader
+                compact
+                title="Mapping nearby rides"
+                message="Finding carpools connected to your event world."
+              />
             ) : carpoolsForYou?.data.length ? (
               <View style={styles.listGroup}>
                 {carpoolsForYou.data.map((carpool: any) => (
@@ -322,6 +380,7 @@ export default function HomeScreen() {
                     availableSeats={carpool.availableSeats}
                     pricePerSeat={carpool.pricePerSeat}
                     vehicleIcon={carpool.vehicleIcon}
+                    poolerUsername={carpool.driver?.username}
                     onPress={() => router.push(`/carpool/${carpool.id}`)}
                   />
                 ))}
@@ -343,7 +402,9 @@ export default function HomeScreen() {
                 height={styles.circleBannerImage.height}
                 style={styles.circleBannerImage}
               />
-              <Text style={tw`text-white text-base font-semibold mt-3 text-center`}>
+              <Text
+                style={tw`text-white text-base font-semibold mt-3 text-center`}
+              >
                 Circle is coming soon
               </Text>
             </TouchableOpacity>
@@ -378,7 +439,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerBadgeText: {
-    color: "#03122F",
+    color: "#01082E",
     fontSize: 10,
     fontWeight: "800",
   },

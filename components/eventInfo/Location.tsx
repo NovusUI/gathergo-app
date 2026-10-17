@@ -23,16 +23,6 @@ const Location = ({
 
   return (
     <View style={tw`w-full`}>
-      <View style={tw`mb-5 gap-2`}>
-        <Text style={tw`text-lg font-semibold text-white`}>
-          Is there a physical meetup?
-        </Text>
-        <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
-          Physical events can unlock carpool. If it&apos;s not happening in a
-          real-world location, we&apos;ll skip carpool and location prompts.
-        </Text>
-      </View>
-
       <View style={tw`mb-5 flex-row gap-3`}>
         <TouchableOpacity
           activeOpacity={0.9}
@@ -101,7 +91,9 @@ const Location = ({
           />
         </CustomView>
       ) : (
-        <View style={tw`mb-10 rounded-2xl border border-[#24345A] bg-[#0A173F] p-4`}>
+        <View
+          style={tw`mb-10 rounded-2xl border border-[#24345A] bg-[#0A173F] p-4`}
+        >
           <Text style={tw`text-sm leading-5 text-[#B7C5E9]`}>
             Since this event isn&apos;t physical, people won&apos;t see location
             or carpool prompts for it.

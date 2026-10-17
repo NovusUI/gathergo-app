@@ -4,17 +4,19 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
+import AppToast from "@/components/ui/AppToast";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
+import { applyUrbanistFontDefaults, URBANIST_FONT_ASSETS } from "@/utils/fonts";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PaystackProvider } from "react-native-paystack-webview";
-import Toast, { BaseToast } from "react-native-toast-message";
 import "../global.css";
 
 // keep splash visible until we manually hide it
@@ -39,23 +41,24 @@ function AppContent() {
     </BottomSheetModalProvider>
   );
 }
-export const toastConfig = {
-  warn: (props: any) => (
-    <BaseToast
-      {...props}
-      style={{ borderLeftColor: "#FFA500" }}
-      text1Style={{ fontSize: 16, fontWeight: "bold" }}
-    />
-  ),
-};
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(URBANIST_FONT_ASSETS);
   const [queryClient] = useState(() => new QueryClient());
   const [persister] = useState(() =>
     createAsyncStoragePersister({
-      storage: AsyncStorage,
+      storage: AsyncStorage
     })
   );
+  const fontsReady = fontsLoaded || Boolean(fontError);
+
+  if (fontsLoaded) {
+    applyUrbanistFontDefaults();
+  }
+
+  if (!fontsReady) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#01082E" }}>
@@ -74,7 +77,7 @@ export default function RootLayout() {
                     defaultChannels={["bank", "bank_transfer", "card", "ussd"]}
                   >
                     <AppContent />
-                    <Toast config={toastConfig} />
+                    <AppToast />
                   </PaystackProvider>
                 </ConversationProvider>
               </NotificationProvider>

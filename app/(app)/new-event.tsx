@@ -1,25 +1,17 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
-import EventTags from "@/components/EventTags";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
-import ImpactSelector from "@/components/eventInfo/ImpactSelector";
+import EventStoryFields from "@/components/eventInfo/EventStoryFields";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
-import TextArea from "@/components/inputs/CustomTextArea";
 import FormLabel from "@/components/labels/FormLabel";
-import {
-  buildImpactDescription,
-  DEFAULT_IMPACT_CAUSE,
-  DEFAULT_IMPACT_PERCENTAGE,
-  mergeImpactTags,
-  resolveImpactPercentage,
-} from "@/constants/impact";
 import { normalizeEventLink } from "@/constants/eventLinks";
+import { buildEventImpactFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -29,14 +21,14 @@ import {
   eventSchema,
 } from "@/schemas/event";
 import { useCreateEvent } from "@/services/mutations";
-import { extractDate } from "@/utils/dateTimeHandler";
+import { buildEventDateTimeIso, extractDate } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { CHACHE_KEYS } from "@/utils/keys";
 import { useLockedRouter } from "@/utils/navigation";
 import { getItem, removeItem, saveItem } from "@/utils/storage";
 import { convertUndefinedToNull, objectToFormData } from "@/utils/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { CheckCheck } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
@@ -70,7 +62,7 @@ const NewEvent = () => {
 
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
-    null
+    null,
   );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
@@ -112,7 +104,7 @@ const NewEvent = () => {
     setValue("repeat", data.repeat ?? "NONE");
     setValue("endRepeat", data.endRepeat);
 
-    clearErrors(["startDate"]);
+    clearErrors(["startDate", "endDate", "startTime", "endTime"]);
 
     closeSheet();
   };
@@ -124,12 +116,11 @@ const NewEvent = () => {
     setValue("registrationFee", data.registrationFee);
     setValue("donationTarget", data.donationTarget);
     setValue("tickets", data.tickets || []);
-    if (data.registrationType === "donation") {
-      setValue("impactPercentage", 100);
-    }
     closeSheet();
     clearErrors(
-      isDonationEvent ? ["registrationType", "donationTarget"] : "registrationType"
+      isDonationEvent
+        ? ["registrationType", "donationTarget"]
+        : "registrationType",
     );
   };
 
@@ -191,17 +182,6 @@ const NewEvent = () => {
   const activeSectionTitle =
     activeSection === "Pricing" ? pricingSectionTitle : activeSection;
 
-  const activeSectionDescription =
-    activeSection === "Date and Time"
-      ? "Set the event window clearly so people know exactly when it starts and ends."
-      : activeSection === "Location"
-      ? "Decide whether the event has a physical meetup and where it happens."
-      : activeSection === "Pricing"
-      ? isDonationEvent
-        ? "Set the donation goal and how people support this cause."
-        : "Choose how people join and manage the pricing or ticket tiers."
-      : "";
-
   //*********************************** react form hook ***********************************//
 
   //*********************************** event form ***********************************//
@@ -220,9 +200,14 @@ const NewEvent = () => {
     defaultValues: {
       imgUrl: undefined,
       eventName: "",
-      impactTitle: DEFAULT_IMPACT_CAUSE.title,
-      impactDescription: DEFAULT_IMPACT_CAUSE.description,
-      impactPercentage: isDonationEvent ? 100 : DEFAULT_IMPACT_PERCENTAGE,
+      impactTitle: "",
+      impactDescription: "",
+      impactPercentage: undefined,
+      impactSdgGoals: [],
+      impactPaths: [],
+      impactCommitments: [],
+      impactMapSource: undefined,
+      impactMapGeneratedAt: undefined,
       repeat: "NONE",
       startDate: undefined,
       endDate: undefined, // +1 hour
@@ -246,9 +231,6 @@ const NewEvent = () => {
   const location = watch("location");
   const registrationType = watch("registrationType");
   const donationTarget = watch("donationTarget");
-  const impactTitle = watch("impactTitle");
-  const impactDescription = watch("impactDescription");
-  const impactPercentage = watch("impactPercentage");
 
   const buildPricingState = useCallback(
     (values: Partial<EventFormData>): EventPricing | null => {
@@ -278,7 +260,7 @@ const NewEvent = () => {
           nextRegistrationType === "registration"
             ? Boolean(
                 values.registrationAttendees &&
-                  Number(values.registrationAttendees) !== 100000
+                  Number(values.registrationAttendees) !== 100000,
               )
             : false,
         registrationAttendees:
@@ -288,7 +270,7 @@ const NewEvent = () => {
         tickets: nextRegistrationType === "ticket" ? values.tickets || [] : [],
       };
     },
-    [isDonationEvent]
+    [isDonationEvent],
   );
 
   useEffect(() => {
@@ -324,7 +306,6 @@ const NewEvent = () => {
     }
 
     setValue("registrationType", "donation");
-    setValue("impactPercentage", 100);
     setPricingData(buildPricingState(getValues()));
   }, [buildPricingState, getValues, isDonationEvent, setValue]);
 
@@ -354,7 +335,7 @@ const NewEvent = () => {
 
   const onError = (errors: any) => {
     const firstErrorMessage = Object.values(errors || {}).find(
-      (value: any) => value?.message
+      (value: any) => value?.message,
     ) as { message?: string } | undefined;
 
     showGlobalError(firstErrorMessage?.message || "Error in form");
@@ -364,22 +345,29 @@ const NewEvent = () => {
   const { mutateAsync, isPending } = useCreateEvent({
     onSuccess: async (data) => {
       const createdEventType = watch("registrationType");
-      const hasPaidRegistration = createdEventType === "registration" && Number(watch("registrationFee") || 0) > 0;
+      const hasPaidRegistration =
+        createdEventType === "registration" &&
+        Number(watch("registrationFee") || 0) > 0;
       const hasDonationFlow = createdEventType === "donation";
-      const hasPaidTickets = createdEventType === "ticket" && (watch("tickets") || []).some((ticket: any) => Number(ticket?.price || 0) > 0);
-      const shouldPromptWallet = hasPaidRegistration || hasDonationFlow || hasPaidTickets;
+      const hasPaidTickets =
+        createdEventType === "ticket" &&
+        (watch("tickets") || []).some(
+          (ticket: any) => Number(ticket?.price || 0) > 0,
+        );
+      const shouldPromptWallet =
+        hasPaidRegistration || hasDonationFlow || hasPaidTickets;
 
       showGlobalSuccess(
         data.data.isImageProcessing
           ? "Event created! Image uploading in background..."
-          : "Event created successfully!"
+          : "Event created successfully!",
       );
       await removeItem(eventFormCacheKey);
       await removeItem(CHACHE_KEYS.eventFormKey);
       router.replace(
         shouldPromptWallet
           ? `/event/${data.data.id}?openPayoutSetup=1`
-          : `/event/${data.data.id}`
+          : `/event/${data.data.id}`,
       );
     },
     onError: (e) => {
@@ -405,13 +393,9 @@ const NewEvent = () => {
       eventName,
       startTime,
       endTime,
-      isRecurring,
       registrationType,
       registrationFee,
       registrationAttendees,
-      impactTitle,
-      impactDescription,
-      impactPercentage,
       startDate,
       endDate,
       endRepeat,
@@ -419,30 +403,22 @@ const NewEvent = () => {
       donationTarget,
       links,
       isPhysicalEvent,
-      ...rest
+      location,
     } = data;
 
-    tickets?.map(({ paid, limited, isNew, ...rest }) => ({ rest }));
     const finalRegistrationType = isDonationEvent
       ? "donation"
       : registrationType;
-    const impactAwareTags = mergeImpactTags(rest.tags, impactTitle);
-    const resolvedImpactPercentage = resolveImpactPercentage(
-      finalRegistrationType,
-      Number(impactPercentage || DEFAULT_IMPACT_PERCENTAGE)
-    );
-
+    const eventDescription = data.description.trim();
     const correctedData = {
-      ...rest,
       title: eventName,
+      description: eventDescription,
       links: normalizeEventLinks(links),
-      tags: impactAwareTags,
-      impactTitle,
-      impactDescription: buildImpactDescription(impactTitle, impactDescription),
-      impactPercentage: resolvedImpactPercentage,
+      tags: JSON.stringify(data.tags),
+      ...buildEventImpactFormFields(data),
       reoccurring: repeat,
       isPhysicalEvent,
-      location: isPhysicalEvent ? rest.location : "",
+      location: isPhysicalEvent ? location : "",
       ...(finalRegistrationType === "registration"
         ? finalRegistrationType === "registration" && !registrationAttendees
           ? { registrationAttendees: 100000 }
@@ -457,13 +433,15 @@ const NewEvent = () => {
         ? { donationTarget }
         : {}),
       registrationType: finalRegistrationType,
-      startDate: `${extractDate(startDate)}T${startTime}:00Z`,
-      endDate: `${extractDate(endDate)}T${endTime}:00Z`,
+      startDate: buildEventDateTimeIso(startDate, startTime),
+      endDate: buildEventDateTimeIso(endDate, endTime, {
+        endOfMinute: endTime === "23:59",
+      }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
       ...(finalRegistrationType === "ticket"
         ? {
             tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify({ ...rest })
+              JSON.stringify({ ...rest }),
             ),
           }
         : {}),
@@ -508,321 +486,246 @@ const NewEvent = () => {
         ]}
       >
         <View style={tw`flex-1 w-full max-w-[500px]`}>
-        <CustomView style={tw`px-5`}>
-          <CustomeTopBarNav
-            title={isDonationEvent ? "New Donation Event" : "New Event"}
-            onClickBack={() => router.replace("/")}
-          />
-        </CustomView>
-        <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
           <CustomView style={tw`px-5`}>
-            <Controller
-              name="imgUrl"
-              control={control}
-              render={({ field: { value, onChange } }) => (
+            <CustomeTopBarNav
+              title={isDonationEvent ? "New Fundraiser" : "New Event"}
+              onClickBack={() => router.replace("/")}
+            />
+          </CustomView>
+          <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
+            <CustomView style={tw`px-5`}>
+              <Controller
+                name="imgUrl"
+                control={control}
+                render={({ field: { value, onChange } }) => (
+                  <View>
+                    <CoverImagePicker
+                      value={value || null}
+                      onChange={onChange}
+                    />
+                    {errors.imgUrl && (
+                      <Text style={tw`text-red-500`}>
+                        {errors.imgUrl.message}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              />
+            </CustomView>
+
+            <CustomView style={tw`px-5`}>
+              <CustomView style={tw`gap-2`}>
+                <FormLabel text="event name" />
+                <Controller
+                  name="eventName"
+                  control={control}
+                  render={({ field: { value, onChange } }) => (
+                    <View>
+                      <Input
+                        placeholder="Event name"
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                      {errors.eventName && (
+                        <Text style={tw`text-red-500`}>
+                          {errors.eventName.message}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                />
+              </CustomView>
+
+              <EventStoryFields control={control} setValue={setValue} />
+            </CustomView>
+
+            <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
+
+            {/* Event Information */}
+            <CustomView style={tw`px-5`}>
+              <CustomView>
+                <FormLabel text="event information" />
+              </CustomView>
+
+              <TouchableOpacity
+                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                onPress={() => openSheet("Date and Time")}
+              >
                 <View>
-                  <CoverImagePicker value={value || null} onChange={onChange} />
-                  {errors.imgUrl && (
+                  <Text style={tw`text-white text-base`}>Date and Time</Text>
+                  {errors.startDate && (
                     <Text style={tw`text-red-500`}>
-                      {errors.imgUrl.message}
+                      {errors.startDate.message}
                     </Text>
                   )}
                 </View>
-              )}
-            />
-          </CustomView>
-
-          <CustomView style={tw`px-5`}>
-            <CustomView style={tw`gap-2`}>
-              <FormLabel text="event name" />
-              <Controller
-                name="eventName"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <View>
-                    <Input
-                      placeholder="Event name"
-                      onChangeText={onChange}
-                      value={value}
-                    />
-                    {errors.eventName && (
-                      <Text style={tw`text-red-500`}>
-                        {errors.eventName.message}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              />
-            </CustomView>
-
-            <CustomView style={tw`gap-2`}>
-              <FormLabel text="event description" />
-              <Controller
-                name="description"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <View>
-                    <TextArea
-                      onChange={onChange}
-                      value={value}
-                      placeholder="Event description"
-                      className="!bg-[#1B2A50]/40"
-                    />
-                    {errors.description && (
-                      <Text style={tw`text-red-500`}>
-                        {errors.description.message}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              />
-            </CustomView>
-
-            <CustomView style={tw`gap-2 mt-2`}>
-              <FormLabel text="event impact" />
-              <ImpactSelector
-                impactTitle={impactTitle}
-                impactDescription={impactDescription}
-                impactPercentage={Number(impactPercentage || DEFAULT_IMPACT_PERCENTAGE)}
-                registrationType={registrationType}
-                onImpactTitleChange={(value) =>
-                  setValue("impactTitle", value, { shouldValidate: true })
-                }
-                onImpactDescriptionChange={(value) =>
-                  setValue("impactDescription", value, { shouldValidate: true })
-                }
-                onImpactPercentageChange={(value) =>
-                  setValue("impactPercentage", value, { shouldValidate: true })
-                }
-              />
-              {errors.impactTitle && (
-                <Text style={tw`text-red-500`}>{errors.impactTitle.message}</Text>
-              )}
-              {errors.impactDescription && (
-                <Text style={tw`text-red-500`}>
-                  {errors.impactDescription.message}
-                </Text>
-              )}
-              {errors.impactPercentage && (
-                <Text style={tw`text-red-500`}>
-                  {errors.impactPercentage.message}
-                </Text>
-              )}
-            </CustomView>
-          </CustomView>
-
-          <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
-
-          {/* Event Information */}
-          <CustomView style={tw`px-5`}>
-            <CustomView>
-              <FormLabel text="event information" />
-            </CustomView>
-
-            <TouchableOpacity
-              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-              onPress={() => openSheet("Date and Time")}
-            >
-              <View>
-                <Text style={tw`text-white text-base`}>Date and Time</Text>
-                {errors.startDate && (
-                  <Text style={tw`text-red-500`}>
-                    {errors.startDate.message}
-                  </Text>
-                )}
-              </View>
-              {!errors.startDate && startDate && <CheckCheck color="#0FF1CF" />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-              onPress={() => openSheet("Location")}
-            >
-              <View style={tw`flex-1 pr-3`}>
-                <Text style={tw`text-white text-base`}>Location</Text>
-                {errors.location ? (
-                  <Text style={tw`text-red-500`}>
-                    {errors.location.message}
-                  </Text>
-                ) : (
-                  <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                    {isPhysicalEvent
-                      ? location || "Add the physical venue"
-                      : "No physical meetup"}
-                  </Text>
-                )}
-              </View>
-              {!errors.location && (Boolean(location) || !isPhysicalEvent) && (
-                <CheckCheck color="#0FF1CF" />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-              onPress={() => openSheet("Pricing")}
-            >
-              <View>
-                <Text style={tw`text-white text-base`}>
-                  {pricingSectionTitle}
-                </Text>
-                {(isDonationEvent
-                  ? errors.donationTarget
-                  : errors.registrationType) && (
-                  <Text style={tw`text-red-500`}>
-                    {isDonationEvent
-                      ? errors.donationTarget?.message
-                      : errors.registrationType?.message}
-                  </Text>
-                )}
-              </View>
-              {!errors.registrationType &&
-                !errors.donationTarget &&
-                (isDonationEvent ? donationTarget : registrationType) && (
+                {!errors.startDate && startDate && (
                   <CheckCheck color="#0FF1CF" />
                 )}
-            </TouchableOpacity>
-          </CustomView>
+              </TouchableOpacity>
 
-          <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-          <EventLinks
-            links={watch("links") || []}
-            onChange={(value) =>
-              setValue("links", value, { shouldValidate: true })
-            }
-            error={errors.links?.message}
-          />
-
-          <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-          {/* Tags */}
-          <CustomView style={tw`px-5`}>
-            <CustomView>
-              <FormLabel text="tag" />
-            </CustomView>
-            <Controller
-              name="tags"
-              control={control}
-              render={({ field: { value, onChange } }) => (
-                <View>
-                  <EventTags selectedTags={value} onChange={onChange} />
-                  {errors.tags && (
-                    <Text style={tw`text-red-500`}>{errors.tags.message}</Text>
+              <TouchableOpacity
+                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                onPress={() => openSheet("Location")}
+              >
+                <View style={tw`flex-1 pr-3`}>
+                  <Text style={tw`text-white text-base`}>Location</Text>
+                  {errors.location ? (
+                    <Text style={tw`text-red-500`}>
+                      {errors.location.message}
+                    </Text>
+                  ) : (
+                    <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                      {isPhysicalEvent
+                        ? location || "Add the physical venue"
+                        : "No physical meetup"}
+                    </Text>
                   )}
                 </View>
-              )}
-            />
-          </CustomView>
+                {!errors.location &&
+                  (Boolean(location) || !isPhysicalEvent) && (
+                    <CheckCheck color="#0FF1CF" />
+                  )}
+              </TouchableOpacity>
 
-          <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+              <TouchableOpacity
+                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                onPress={() => openSheet("Pricing")}
+              >
+                <View>
+                  <Text style={tw`text-white text-base`}>
+                    {pricingSectionTitle}
+                  </Text>
+                  {(isDonationEvent
+                    ? errors.donationTarget
+                    : errors.registrationType) && (
+                    <Text style={tw`text-red-500`}>
+                      {isDonationEvent
+                        ? errors.donationTarget?.message
+                        : errors.registrationType?.message}
+                    </Text>
+                  )}
+                </View>
+                {!errors.registrationType &&
+                  !errors.donationTarget &&
+                  (isDonationEvent ? donationTarget : registrationType) && (
+                    <CheckCheck color="#0FF1CF" />
+                  )}
+              </TouchableOpacity>
+            </CustomView>
 
-          <CustomView style={tw`items-center px-5`}>
-            <CustomButton
-              disabled={isPending}
-              onPress={handleSubmit(onSubmit, onError)}
-              title={isPending ? "publishing.." : "publish event"}
-              showArrow={false}
-              buttonClassName="bg-[#0FF1CF] w-full !border-none"
-              textClassName="!text-black"
+            <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+
+            <EventLinks
+              links={watch("links") || []}
+              onChange={(value) =>
+                setValue("links", value, { shouldValidate: true })
+              }
+              error={errors.links?.message}
             />
-          </CustomView>
-        </ScrollView>
-        <Modal
-          visible={Boolean(activeSection)}
-          animationType="slide"
-          transparent
-          onRequestClose={closeSheet}
-        >
-          <KeyboardAvoidingView
-            style={tw`flex-1 justify-end bg-black/55`}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+
+            <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+
+            <CustomView style={tw`items-center px-5`}>
+              <CustomButton
+                disabled={isPending}
+                onPress={handleSubmit(onSubmit, onError)}
+                title={isPending ? "publishing.." : "publish event"}
+                showArrow={false}
+                buttonClassName="bg-[#0FF1CF] w-full !border-none"
+                textClassName="!text-black"
+              />
+            </CustomView>
+          </ScrollView>
+          <Modal
+            visible={Boolean(activeSection)}
+            animationType="slide"
+            transparent
+            onRequestClose={closeSheet}
           >
-            <View
-              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+            <KeyboardAvoidingView
+              style={tw`flex-1 justify-end bg-black/55`}
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
               <View
-                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
-              />
-
-              <View style={tw`flex-row items-start justify-between gap-4`}>
-                <View style={tw`flex-1`}>
-                  <Text style={tw`text-xl font-semibold text-white`}>
-                    {activeSectionTitle}
-                  </Text>
-                  <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                    {activeSectionDescription}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={closeSheet}>
-                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                    Close
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={tw`pt-4 pb-6`}
-                keyboardShouldPersistTaps="handled"
+                style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
               >
-                {renderSheetContent()}
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-
-        <Modal
-          visible={isTicketSheetOpen}
-          animationType="slide"
-          transparent
-          onRequestClose={closeSheetTicket}
-        >
-          <KeyboardAvoidingView
-            style={tw`flex-1 justify-end bg-black/55`}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
-            <View
-              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
-            >
-              <View
-                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
-              />
-
-              <View style={tw`flex-row items-start justify-between gap-4`}>
-                <View style={tw`flex-1`}>
-                  <Text style={tw`text-xl font-semibold text-white`}>
-                    {editingTicket ? "Edit ticket" : "Create ticket"}
-                  </Text>
-                  <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                    Set the name, perks, quantity, visibility, and price for
-                    this ticket tier.
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={closeSheetTicket}>
-                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                    Close
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={tw`pt-4 pb-6`}
-                keyboardShouldPersistTaps="handled"
-              >
-                <CreateTicket
-                  editingTicket={editingTicket}
-                  close={closeSheetTicket}
-                  tickets={watch("tickets") || []}
-                  setTicket={(updated: EventTicket[]) =>
-                    setValue("tickets", updated)
-                  }
+                <View
+                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
                 />
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      </View>
+
+                <View style={tw`flex-row items-start justify-between gap-4`}>
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`text-xl font-semibold text-white`}>
+                      {activeSectionTitle}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={closeSheet}>
+                    <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={tw`pt-4 pb-6`}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {renderSheetContent()}
+                </ScrollView>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+
+          <Modal
+            visible={isTicketSheetOpen}
+            animationType="slide"
+            transparent
+            onRequestClose={closeSheetTicket}
+          >
+            <KeyboardAvoidingView
+              style={tw`flex-1 justify-end bg-black/55`}
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+            >
+              <View
+                style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              >
+                <View
+                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                />
+
+                <View style={tw`flex-row items-start justify-between gap-4`}>
+                  <View style={tw`flex-1`}>
+                    <Text style={tw`text-xl font-semibold text-white`}>
+                      {editingTicket ? "Edit ticket" : "Create ticket"}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={closeSheetTicket}>
+                    <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={tw`pt-4 pb-6`}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <CreateTicket
+                    editingTicket={editingTicket}
+                    close={closeSheetTicket}
+                    tickets={watch("tickets") || []}
+                    setTicket={(updated: EventTicket[]) =>
+                      setValue("tickets", updated)
+                    }
+                  />
+                </ScrollView>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );

@@ -116,7 +116,7 @@ our carpool feature.
                     <Image className="w-20 h-20 rounded-md bg-white"/>
                     <View className="py-2 w-2/3">
                         <TouchableOpacity className="px-5 py-2 rounded-3xl bg-[#0FF1CF] self-start">
-                            <Text className="capitalize">Concert</Text>
+                            <Text className="capitalize text-[#01082E]">Concert</Text>
                         </TouchableOpacity>
                         
                         <Text className="text-[#fff] text-lg">Smart-Som Fashion Runway (D-Vibe)</Text>
