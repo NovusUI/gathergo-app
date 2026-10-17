@@ -1,52 +1,136 @@
 import { Ionicons } from "@expo/vector-icons";
+import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
 import type {
+  CarpoolVibeDialogMessage,
+  CarpoolVibeMascotStyle,
   CarpoolVibeSafetySignal,
-  CarpoolVibeSafetyTip,
 } from "@/constants/carpool";
 import { getCarpoolVibeSafetyRoleCopy } from "@/constants/carpool";
-import type { ComponentProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+} from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
+const EMPTY_DIALOG_MESSAGE: CarpoolVibeDialogMessage = [];
+
 interface RideVibeChatCardProps {
+  dialogKey: string;
+  dialogMessages: CarpoolVibeDialogMessage[];
   expanded: boolean;
   iconName: IoniconName;
-  isTyping: boolean;
   label: string;
-  message: string;
+  mascotStyle: CarpoolVibeMascotStyle;
   onOpenVibeCheck?: () => void;
   onToggle: () => void;
-  destinationLabel: string;
-  departureTimeLabel?: string | null;
-  expiryLabel?: string | null;
-  origin?: string | null;
   roleLabel: string;
   safetySignal: CarpoolVibeSafetySignal;
-  safetyTips: CarpoolVibeSafetyTip[];
-  seatLabel?: string | null;
-  statusLabel: string;
   vibeCheckButtonLabel?: string;
 }
 
+interface VibeTypingDialogProps {
+  accentColor: string;
+  onComplete?: () => void;
+  parts: CarpoolVibeDialogMessage;
+  speedMs?: number;
+  textKey: string;
+}
+
+const getDialogText = (parts: CarpoolVibeDialogMessage) =>
+  parts.map((part) => part.text).join("");
+
+const getVisibleDialogParts = (
+  parts: CarpoolVibeDialogMessage,
+  visibleCharacters: number
+) => {
+  let remainingCharacters = visibleCharacters;
+
+  return parts.flatMap((part) => {
+    if (remainingCharacters <= 0) return [];
+
+    const visibleText = part.text.slice(0, remainingCharacters);
+    remainingCharacters -= part.text.length;
+
+    return visibleText ? [{ ...part, text: visibleText }] : [];
+  });
+};
+
+const VibeTypingDialog = ({
+  accentColor,
+  onComplete,
+  parts,
+  speedMs = 22,
+  textKey,
+}: VibeTypingDialogProps) => {
+  const [visibleCharacters, setVisibleCharacters] = useState(0);
+  const fullText = useMemo(() => getDialogText(parts), [parts]);
+  const visibleParts = useMemo(
+    () => getVisibleDialogParts(parts, visibleCharacters),
+    [parts, visibleCharacters]
+  );
+  const isTyping = visibleCharacters < fullText.length;
+
+  useEffect(() => {
+    setVisibleCharacters(0);
+
+    if (!fullText) return undefined;
+
+    const typingInterval = setInterval(() => {
+      setVisibleCharacters((current) => {
+        const next = Math.min(current + 1, fullText.length);
+        if (next >= fullText.length) clearInterval(typingInterval);
+
+        return next;
+      });
+    }, speedMs);
+
+    return () => clearInterval(typingInterval);
+  }, [fullText, speedMs, textKey]);
+
+  useEffect(() => {
+    if (!fullText || visibleCharacters < fullText.length) return undefined;
+
+    const completeTimeout = setTimeout(() => onComplete?.(), 4200);
+
+    return () => clearTimeout(completeTimeout);
+  }, [fullText, onComplete, visibleCharacters]);
+
+  return (
+    <Text style={tw`text-white text-sm leading-5`}>
+      {visibleParts.map((part, index) => (
+        <Text
+          key={`${index}-${part.highlight ? "highlight" : "text"}`}
+          style={
+            part.highlight
+              ? { color: accentColor, fontWeight: "700" }
+              : undefined
+          }
+        >
+          {part.text}
+        </Text>
+      ))}
+      {isTyping ? <Text style={{ color: accentColor }}> |</Text> : null}
+    </Text>
+  );
+};
+
 export default function RideVibeChatCard({
+  dialogKey,
+  dialogMessages,
   expanded,
   iconName,
-  isTyping,
   label,
-  message,
+  mascotStyle,
   onOpenVibeCheck,
   onToggle,
-  destinationLabel,
-  departureTimeLabel,
-  expiryLabel,
-  origin,
   roleLabel,
   safetySignal,
-  safetyTips,
-  seatLabel,
-  statusLabel,
   vibeCheckButtonLabel = "Complete signal",
 }: RideVibeChatCardProps) {
   const safetyCopy = getCarpoolVibeSafetyRoleCopy(
@@ -54,18 +138,54 @@ export default function RideVibeChatCard({
     roleLabel,
     label
   );
+  const [dialogMessageIndex, setDialogMessageIndex] = useState(0);
+  const activeDialogMessage = useMemo(() => {
+    if (dialogMessages.length === 0) return EMPTY_DIALOG_MESSAGE;
+
+    return (
+      dialogMessages[dialogMessageIndex % dialogMessages.length] ??
+      EMPTY_DIALOG_MESSAGE
+    );
+  }, [dialogMessageIndex, dialogMessages]);
+  const dialogText = useMemo(
+    () => getDialogText(dialogMessages[0] ?? EMPTY_DIALOG_MESSAGE),
+    [dialogMessages]
+  );
+  const activeDialogMessageText = useMemo(
+    () => getDialogText(activeDialogMessage),
+    [activeDialogMessage]
+  );
+  const handleDialogComplete = useCallback(() => {
+    if (dialogMessages.length <= 1) return;
+
+    setDialogMessageIndex((current) => (current + 1) % dialogMessages.length);
+  }, [dialogMessages.length]);
+
+  useEffect(() => {
+    setDialogMessageIndex(0);
+  }, [dialogKey]);
 
   return (
     <View
-      style={tw`bg-[#07143B] rounded-3xl border border-[#1B2A50] overflow-hidden`}
+      style={[
+        tw`rounded-3xl border overflow-hidden`,
+        {
+          backgroundColor: mascotStyle.cardBackground,
+          borderColor: mascotStyle.cardBorder,
+        },
+      ]}
     >
-      {expanded && (
+      {expanded ? (
         <View style={tw`absolute top-0 left-0 right-0 h-1 flex-row`}>
-          <View style={tw`flex-1 bg-[#0FF1CF]`} />
-          <View style={tw`flex-1 bg-[#31C6F6]`} />
-          <View style={tw`flex-1 bg-[#8FA5E2]`} />
+          <View
+            style={[tw`flex-1`, { backgroundColor: mascotStyle.accent }]}
+          />
+          <View style={[tw`flex-1`, { backgroundColor: mascotStyle.body }]} />
+          <View
+            style={[tw`flex-1`, { backgroundColor: mascotStyle.badgeBg }]}
+          />
         </View>
-      )}
+      ) : null}
 
       <TouchableOpacity
         activeOpacity={0.9}
@@ -73,171 +193,171 @@ export default function RideVibeChatCard({
         onPress={onToggle}
         style={[tw`flex-row gap-3 p-4`, expanded ? tw`pt-5` : null]}
       >
-        <View
-          style={tw`w-12 h-12 rounded-2xl bg-[#0FF1CF]/12 items-center justify-center border border-[#0FF1CF]/20`}
-        >
-          <Ionicons name={iconName} size={26} color="#0FF1CF" />
-        </View>
+        <GatherGoMascot
+          animated
+          badgeContent={
+            <Ionicons
+              name={iconName}
+              size={expanded ? 14 : 12}
+              color={mascotStyle.iconColor}
+            />
+          }
+          palette={mascotStyle}
+          size={expanded ? 74 : 58}
+          style={{ flexShrink: 0 }}
+          variant={mascotStyle.variant}
+        />
 
         <View style={tw`flex-1 min-w-0`}>
-          <Text style={tw`text-[#0FF1CF] text-xs`} numberOfLines={1}>
-            {label} ride vibe
-          </Text>
-          <Text
-            style={[
-              tw`text-white text-sm leading-5 mt-1`,
-              { minHeight: expanded ? 60 : 40 },
-            ]}
-            numberOfLines={expanded ? 3 : 2}
-          >
-            {message}
-            <Text style={tw`text-[#0FF1CF]`}>{isTyping ? " |" : ""}</Text>
-          </Text>
+          <View style={tw`flex-row items-center justify-between gap-2`}>
+            <Text
+              style={[tw`text-xs`, { color: mascotStyle.accent }]}
+              numberOfLines={1}
+            >
+              {label} ride vibe
+            </Text>
+            <Ionicons
+              name={expanded ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={mascotStyle.accent}
+            />
+          </View>
+
+          {expanded ? (
+            <View
+              style={[
+                tw`mt-2 rounded-2xl border px-3 py-3`,
+                {
+                  backgroundColor: mascotStyle.dialogBackground,
+                  borderColor: mascotStyle.cardBorder,
+                  minHeight: 74,
+                },
+              ]}
+            >
+              <VibeTypingDialog
+                accentColor={mascotStyle.accent}
+                onComplete={handleDialogComplete}
+                parts={activeDialogMessage}
+                textKey={`${dialogKey}:${dialogMessageIndex}:${activeDialogMessageText}`}
+              />
+            </View>
+          ) : (
+            <Text
+              style={[tw`text-white text-sm leading-5 mt-1`, { minHeight: 40 }]}
+              numberOfLines={2}
+            >
+              {dialogText}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
 
-      {expanded && (
-        <View style={tw`px-4 pb-4 gap-3`}>
-          <View style={tw`flex-row flex-wrap gap-2`}>
-            <View style={tw`px-3 py-1 rounded-full bg-[#0FF1CF]/10`}>
-              <Text style={tw`text-[#0FF1CF] text-xs`}>{roleLabel}</Text>
-            </View>
-            <View style={tw`px-3 py-1 rounded-full bg-[#31C6F6]/10`}>
-              <Text style={tw`text-[#31C6F6] text-xs`}>{statusLabel}</Text>
-            </View>
-            {Boolean(seatLabel) && (
-              <View style={tw`px-3 py-1 rounded-full bg-[#8FA5E2]/10`}>
-                <Text style={tw`text-[#DDE6FF] text-xs`}>{seatLabel}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={tw`pt-3 border-t border-[#1B2A50] gap-3`}>
-            <View style={tw`flex-row items-center gap-3`}>
-              <View
-                style={tw`w-8 h-8 rounded-full bg-[#0FF1CF]/10 items-center justify-center`}
-              >
-                <Ionicons name="location-outline" size={15} color="#0FF1CF" />
-              </View>
+      {expanded ? (
+        <View style={tw`px-4 pb-4`}>
+          <View
+            style={[
+              tw`pt-3 border-t gap-3`,
+              { borderColor: mascotStyle.cardBorder },
+            ]}
+          >
+            <View style={tw`flex-row items-center justify-between gap-3`}>
               <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-[#8FA5E2] text-xs`}>Pickup</Text>
-                <Text style={tw`text-white text-xs`} numberOfLines={1}>
-                  {origin || "Pickup point pending"}
+                <Text style={tw`text-white text-sm font-semibold`}>
+                  Handshake flow
+                </Text>
+                <Text style={tw`text-[#A8BAE4] text-xs mt-1`}>
+                  {safetySignal.title}
                 </Text>
               </View>
-            </View>
-
-            <View style={tw`flex-row items-center gap-3`}>
               <View
-                style={tw`w-8 h-8 rounded-full bg-[#31C6F6]/10 items-center justify-center`}
-              >
-                <Ionicons name="flag-outline" size={15} color="#31C6F6" />
-              </View>
-              <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-[#8FA5E2] text-xs`}>Destination</Text>
-                <Text style={tw`text-white text-xs`} numberOfLines={1}>
-                  {destinationLabel}
-                </Text>
-              </View>
-            </View>
-
-            <View style={tw`flex-row items-center gap-3`}>
-              <View
-                style={tw`w-8 h-8 rounded-full bg-[#F8D05C]/10 items-center justify-center`}
-              >
-                <Ionicons name="time-outline" size={15} color="#F8D05C" />
-              </View>
-              <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-[#8FA5E2] text-xs`}>Departure</Text>
-                <Text style={tw`text-white text-xs`} numberOfLines={1}>
-                  {departureTimeLabel || "Time pending"}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={tw`pt-3 border-t border-[#1B2A50] gap-3`}>
-            <View style={tw`flex-row items-center gap-2`}>
-              <View
-                style={tw`w-8 h-8 rounded-full bg-[#F8D05C]/10 items-center justify-center`}
+                style={[
+                  tw`h-9 w-9 rounded-full items-center justify-center`,
+                  { backgroundColor: mascotStyle.dialogBackground },
+                ]}
               >
                 <Ionicons
                   name="shield-checkmark-outline"
-                  size={16}
-                  color="#F8D05C"
+                  size={18}
+                  color={mascotStyle.accent}
                 />
-              </View>
-              <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-white text-sm font-semibold`}>
-                  Ride safety
-                </Text>
-                <Text style={tw`text-[#A8BAE4] text-xs`} numberOfLines={2}>
-                  {safetyCopy.description}
-                </Text>
               </View>
             </View>
 
-            <View style={tw`flex-row flex-wrap gap-2`}>
-              <View style={tw`px-3 py-2 rounded-2xl bg-[#0FF1CF]/10`}>
-                <Text style={tw`text-[#0FF1CF] text-xs`}>
-                  {safetyCopy.primarySignalLabel}:{" "}
+            <View style={tw`flex-row gap-2`}>
+              <View
+                style={[
+                  tw`flex-1 rounded-2xl border p-3`,
+                  {
+                    backgroundColor: mascotStyle.dialogBackground,
+                    borderColor: mascotStyle.cardBorder,
+                    height: 76,
+                  },
+                ]}
+              >
+                <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+                  {safetyCopy.primarySignalLabel}
+                </Text>
+                <Text
+                  style={[
+                    tw`text-xs font-semibold mt-1`,
+                    { color: mascotStyle.accent },
+                  ]}
+                  numberOfLines={2}
+                >
                   {safetyCopy.primarySignalValue}
                 </Text>
               </View>
-              <View style={tw`px-3 py-2 rounded-2xl bg-[#31C6F6]/10`}>
-                <Text style={tw`text-[#31C6F6] text-xs`}>
-                  {safetyCopy.secondarySignalLabel}:{" "}
+              <View
+                style={[
+                  tw`flex-1 rounded-2xl border p-3`,
+                  {
+                    backgroundColor: mascotStyle.dialogBackground,
+                    borderColor: mascotStyle.cardBorder,
+                    height: 76,
+                  },
+                ]}
+              >
+                <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+                  {safetyCopy.secondarySignalLabel}
+                </Text>
+                <Text
+                  style={[
+                    tw`text-xs font-semibold mt-1`,
+                    { color: mascotStyle.badgeBg },
+                  ]}
+                  numberOfLines={2}
+                >
                   {safetyCopy.secondarySignalValue}
                 </Text>
               </View>
             </View>
 
-            <View style={tw`gap-2`}>
-              {safetyTips.slice(0, 2).map((tip) => (
-                <View key={tip.title} style={tw`flex-row gap-3`}>
-                  <Ionicons name={tip.iconName} size={16} color="#0FF1CF" />
-                  <View style={tw`flex-1 min-w-0`}>
-                    <Text style={tw`text-white text-xs font-semibold`}>
-                      {tip.title}
-                    </Text>
-                    <Text style={tw`text-[#A8BAE4] text-xs leading-4`}>
-                      {tip.body}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+            {onOpenVibeCheck ? (
+              <TouchableOpacity
+                activeOpacity={0.86}
+                accessibilityRole="button"
+                onPress={onOpenVibeCheck}
+                style={[
+                  tw`h-12 flex-row items-center justify-center gap-2 rounded-2xl border`,
+                  {
+                    backgroundColor: mascotStyle.badgeBg,
+                    borderColor: mascotStyle.badgeBg,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={17}
+                  color="#01082E"
+                />
+                <Text style={tw`text-[#01082E] text-sm font-semibold`}>
+                  {vibeCheckButtonLabel}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
-
-          {onOpenVibeCheck && (
-            <TouchableOpacity
-              activeOpacity={0.86}
-              accessibilityRole="button"
-              onPress={onOpenVibeCheck}
-              style={tw`flex-row items-center justify-center gap-2 rounded-2xl bg-[#F8D05C]/10 border border-[#F8D05C]/20 py-3`}
-            >
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={17}
-                color="#F8D05C"
-              />
-              <Text style={tw`text-[#F8D05C] text-sm font-semibold`}>
-                {vibeCheckButtonLabel}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {expiryLabel && (
-            <View
-              style={tw`self-start px-3 py-1 rounded-full bg-[#F8D05C]/10`}
-            >
-              <Text style={tw`text-[#F8D05C] text-xs`}>
-                Chat expires {expiryLabel}
-              </Text>
-            </View>
-          )}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

@@ -5,21 +5,14 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
-import ImpactSelector from "@/components/eventInfo/ImpactSelector";
+import EventStoryFields from "@/components/eventInfo/EventStoryFields";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { normalizeEventLink } from "@/constants/eventLinks";
-import {
-  buildImpactDescription,
-  buildImpactMapForPersistence,
-  buildImpactMapFormFields,
-  buildImpactSuggestionPayloadKey,
-  deriveImpactTags,
-  deriveImpactTitle,
-} from "@/constants/impact";
+import { buildEventImpactFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -30,14 +23,21 @@ import {
 } from "@/schemas/event";
 import { useUpdateEvent } from "@/services/mutations";
 import { useEventDetails } from "@/services/queries";
-import type { ImpactSuggestionData } from "@/types/impact";
-import { extractDate } from "@/utils/dateTimeHandler";
-import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import {
+  buildEventDateTimeIso,
+  extractDate,
+  isEventEditableBeforeStartDay,
+} from "@/utils/dateTimeHandler";
+import {
+  showGlobalError,
+  showGlobalSuccess,
+  showGlobalWarning,
+} from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
 import { objectToFormData } from "@/utils/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -76,14 +76,11 @@ const EditEvent = () => {
   const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
-    null
+    null,
   );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
-  const [impactMapDraft, setImpactMapDraft] = useState<{
-    data: ImpactSuggestionData;
-    payloadKey: string;
-  } | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
+  const blockedEditRedirectedRef = useRef(false);
 
   const openSheet = useCallback((section: string) => {
     setActiveSection(section);
@@ -107,6 +104,24 @@ const EditEvent = () => {
   const lockedRegistrationType = eventData?.data?.registrationType;
   const isDonationEvent = lockedRegistrationType === "donation";
   const pricingSectionTitle = isDonationEvent ? "Donation setup" : "Pricing";
+  const canEditEvent = isEventEditableBeforeStartDay(
+    eventData?.data?.startDate,
+  );
+
+  useEffect(() => {
+    if (
+      !eventData?.data ||
+      isPending ||
+      canEditEvent ||
+      blockedEditRedirectedRef.current
+    ) {
+      return;
+    }
+
+    blockedEditRedirectedRef.current = true;
+    showGlobalWarning("Events can no longer be edited on the day they start.");
+    router.replace(`/event/${eventId}`);
+  }, [canEditEvent, eventData?.data, eventId, isPending, router]);
 
   const onEdit = (data: EventTicket) => {
     setEditingTicket(data);
@@ -155,22 +170,6 @@ const EditEvent = () => {
     },
   });
 
-  const handleImpactSuggestionsChange = useCallback(
-    (data: ImpactSuggestionData, payloadKey: string) => {
-      setImpactMapDraft({ data, payloadKey });
-    },
-    []
-  );
-
-  const handleImpactDescriptionChange = useCallback(
-    (value: string) => {
-      setValue("impactDescription", value, {
-        shouldValidate: true,
-      });
-    },
-    [setValue]
-  );
-
   // *********** Populate Form When Data Loads ************ //
   useEffect(() => {
     if (eventData?.data) {
@@ -180,12 +179,7 @@ const EditEvent = () => {
         eventName: e.title || "",
         description: e.description || "",
         impactTitle: e.impactTitle || "",
-        impactDescription:
-          e.impactDescription ||
-          e.description ||
-          (e.impactTitle
-            ? buildImpactDescription(e.impactTitle, e.impactDescription)
-            : ""),
+        impactDescription: e.impactDescription || "",
         impactPercentage: undefined,
         impactSdgGoals: e.impactSdgGoals || [],
         impactPaths: e.impactPaths || [],
@@ -302,7 +296,7 @@ const EditEvent = () => {
     clearErrors(
       nextPricingData.registrationType === "donation"
         ? ["registrationType", "donationTarget"]
-        : "registrationType"
+        : "registrationType",
     );
     closeSheet();
   };
@@ -367,6 +361,14 @@ const EditEvent = () => {
     activeSection === "Pricing" ? pricingSectionTitle : activeSection;
 
   const onSubmit = async (data: EventFormData) => {
+    if (!isEventEditableBeforeStartDay(eventData?.data?.startDate)) {
+      showGlobalWarning(
+        "Events can no longer be edited on the day they start.",
+      );
+      router.replace(`/event/${eventId}`);
+      return;
+    }
+
     const {
       eventName,
       startDate,
@@ -381,56 +383,25 @@ const EditEvent = () => {
       donationTarget,
       links,
       location,
-      impactTitle,
-      impactDescription,
       tickets,
       imgUrl,
       isPhysicalEvent,
     } = data;
     const resolvedRegistrationType = lockedRegistrationType ?? registrationType;
-    const eventDescription = impactDescription.trim();
-    const derivedImpactTitle =
-      impactTitle?.trim() ||
-      deriveImpactTitle({
-        title: eventName,
-        description: eventDescription,
-        impactDescription,
-        registrationType: resolvedRegistrationType,
-      });
-    const impactAwareTags = deriveImpactTags({
-      title: eventName,
-      description: eventDescription,
-      impactTitle: derivedImpactTitle,
-      impactDescription,
-      registrationType: resolvedRegistrationType,
-    });
-    const impactMapPayload = {
-      title: eventName,
-      description: eventDescription,
-      impactDescription,
-      registrationType: resolvedRegistrationType,
-    };
-    const impactMap =
-      impactMapDraft?.payloadKey ===
-      buildImpactSuggestionPayloadKey(impactMapPayload)
-        ? impactMapDraft.data
-        : buildImpactMapForPersistence(impactMapPayload);
+    const eventDescription = data.description.trim();
     const correctedData = {
       links: normalizeEventLinks(links),
-      tags: impactAwareTags,
-      ...buildImpactMapFormFields(impactMap),
+      tags: JSON.stringify(data.tags),
+      ...buildEventImpactFormFields(data),
       title: eventName,
       description: eventDescription,
-      impactTitle: derivedImpactTitle,
-      impactDescription: buildImpactDescription(
-        derivedImpactTitle,
-        impactDescription
-      ),
       reoccurring: repeat,
       isPhysicalEvent,
       location: isPhysicalEvent ? location : "",
-      startDate: `${extractDate(startDate)}T${startTime}:00Z`,
-      endDate: `${extractDate(endDate)}T${endTime}:00Z`,
+      startDate: buildEventDateTimeIso(startDate, startTime),
+      endDate: buildEventDateTimeIso(endDate, endTime, {
+        endOfMinute: endTime === "23:59",
+      }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
       ...(resolvedRegistrationType === "registration"
         ? {
@@ -446,7 +417,7 @@ const EditEvent = () => {
       ...(resolvedRegistrationType === "ticket"
         ? {
             tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify(rest)
+              JSON.stringify(rest),
             ),
           }
         : {}),
@@ -469,12 +440,7 @@ const EditEvent = () => {
   // *********** Loading & Error States ************ //
   if (isPending) {
     return (
-      <View
-        style={[
-          tw`flex-1 bg-[#01082E]`,
-          { paddingTop: spacing.xxl },
-        ]}
-      >
+      <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Edit Event"
@@ -506,12 +472,10 @@ const EditEvent = () => {
   }
 
   const startDateWatch = watch("startDate");
-  const eventNameWatch = watch("eventName");
   const isPhysicalEventWatch = watch("isPhysicalEvent");
   const locationWatch = watch("location");
   const registrationTypeWatch = watch("registrationType");
   const donationTargetWatch = watch("donationTarget");
-  const impactDescriptionWatch = watch("impactDescription");
 
   return (
     <KeyboardAvoidingView
@@ -577,22 +541,7 @@ const EditEvent = () => {
                 )}
               </CustomView>
 
-              <CustomView className="gap-2 mt-2">
-                <FormLabel text="impact story" />
-                <ImpactSelector
-                  eventTitle={eventNameWatch}
-                  eventDescription=""
-                  impactDescription={impactDescriptionWatch}
-                  registrationType={registrationTypeWatch}
-                  onImpactSuggestionsChange={handleImpactSuggestionsChange}
-                  onImpactDescriptionChange={handleImpactDescriptionChange}
-                />
-                {errors.impactDescription && (
-                  <Text style={tw`text-red-500`}>
-                    {errors.impactDescription.message}
-                  </Text>
-                )}
-              </CustomView>
+              <EventStoryFields control={control} setValue={setValue} />
             </CustomView>
 
             <CustomView className="!bg-[#1B2A50]/40 h-2" />

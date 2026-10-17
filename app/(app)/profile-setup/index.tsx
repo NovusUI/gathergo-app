@@ -10,14 +10,11 @@ import {
   useCheckUsernameExists,
   useCompleteProfile,
 } from "@/services/mutations";
-import { CompleteProfileData } from "@/types/auth";
 import { extractDate } from "@/utils/dateTimeHandler";
-import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
-import { safeGoBack } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
+import { showGlobalError } from "@/utils/globalErrorHandler";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { useDebounce } from "@/utils/useDebounce";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
 import { AtSign, CakeIcon, UserRoundPen } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -33,13 +30,9 @@ import {
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import tw from "twrnc";
 
-// Update the ProfileFormData type in your schemas/profile.ts to only include these fields:
-// fullName: string
-// username: string
-// birthDate: Date | undefined
-
 const ProfileSetup = () => {
-  const { setUser } = useAuth();
+  const { user, setUser } = useAuth();
+  const router = useLockedRouter();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [picker, setPicker] = useState<boolean>(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -61,23 +54,16 @@ const ProfileSetup = () => {
   });
 
   const username = watch("username");
-  const birthDate = watch("birthDate");
   const debouncedUsername = useDebounce(username, 500);
   const { mutateAsync: checkUsername, isPending } = useCheckUsernameExists({});
-  const { mutateAsync: completProfile, isPending: completeProfilePending } =
+  const { mutateAsync: completeProfile, isPending: completeProfilePending } =
     useCompleteProfile({
-      onSuccess(data) {
-        showGlobalSuccess(data.message);
-        setUser((prev) => ({ ...prev, isProfileComplete: true }));
-        router.replace("/");
-      },
       onError(error) {
         showGlobalError(error.message);
-        console.log(error);
       },
     });
 
-  const renderDateTimePicker = (onChange: (value: any) => void) => {
+  const renderDateTimePicker = (onChange: (value: Date) => void) => {
     if (!picker) return null;
 
     return (
@@ -158,48 +144,31 @@ const ProfileSetup = () => {
     };
   }, []);
 
-  // --- Submit handler ---
-  const onSubmit = async (data: CompleteProfileData) => {
-    await completProfile(data);
-    console.log("Profile ready to save:", data);
-  };
-
-  const router = useLockedRouter();
-
-  const getBirthdayVibe = () => {
-    if (!birthDate) return "";
-    const year =
-      birthDate instanceof Date
-        ? birthDate.getFullYear()
-        : new Date(birthDate).getFullYear();
-
-    if (Number.isNaN(year)) return "";
-
-    if (year >= 2013) {
-      return "Hey Gen Alpha — you were born swiping. The future? Yeah, that’s your playground.";
+  const onSubmit = async (data: ProfileFormData) => {
+    if (!user) {
+      showGlobalError("Please sign in again to finish your profile.");
+      return;
     }
 
-    if (year >= 1997) {
-      return "What’s good, Gen Z — you’re remixing the rules and making the internet your stage.";
+    try {
+      const birthDate = extractDate(data.birthDate);
+      await completeProfile({
+        fullName: data.fullName,
+        username: data.username,
+        birthDate,
+      });
+      Keyboard.dismiss();
+      setUser({
+        ...user,
+        fullName: data.fullName,
+        username: data.username,
+        birthDate,
+        isProfileComplete: true,
+      });
+      router.replace(user.hasPreferences ? "/" : "/preference");
+    } catch (error) {
+      console.error("Profile completion failed:", error);
     }
-
-    if (year >= 1981) {
-      return "Millennial check-in — you survived dial-up, built the digital world, and kept it moving.";
-    }
-
-    if (year >= 1965) {
-      return "Gen X — low-key legends. Independent, adaptable, and never needing the spotlight.";
-    }
-
-    if (year >= 1946) {
-      return "Boomers — you put in the work and built the systems we still run on today.";
-    }
-
-    if (year >= 1928) {
-      return "Your generation carried resilience like a badge of honor — history remembers.";
-    }
-
-    return "Respect always — your generation’s courage shaped the world we live in.";
   };
 
   const scrollToInputArea = () => {
@@ -237,7 +206,7 @@ const ProfileSetup = () => {
             Make your presence known
           </Text>
           <Text style={tw`text-[#B9C7F1] text-sm leading-6`}>
-            Your profile helps people find you, trust you, and connect you to the right impact events.
+            Your profile helps people find you, trust you, and connect you to events and communities you enjoy.
           </Text>
         </View>
 
@@ -315,21 +284,10 @@ const ProfileSetup = () => {
                 <DatePicker
                   LeftIcon={CakeIcon}
                   placeholder="When were you born?"
-                  value={
-                    typeof value === "string"
-                      ? value
-                      : value
-                      ? extractDate(value)
-                      : ""
-                  }
+                  value={value ? extractDate(value) : ""}
                   onPress={() => setPicker(true)}
                   error={errors.birthDate?.message}
                 />
-                {!!getBirthdayVibe() && (
-                  <Text style={tw`text-[#0FF1CF] text-xs mt-1`}>
-                    {getBirthdayVibe()}
-                  </Text>
-                )}
                 {renderDateTimePicker(onChange)}
               </>
             )}
@@ -340,12 +298,12 @@ const ProfileSetup = () => {
       {/* Next Button */}
       <CustomButton
         onPress={handleSubmit(onSubmit)}
-        disabled={isPending || completeProfilePending}
+        disabled={isPending || completeProfilePending || isSubmitting}
         title={
-          isPending
+          completeProfilePending || isSubmitting
+            ? "Saving your profile..."
+            : isPending
             ? "Checking..."
-            : isSubmitting
-            ? "Submitting..."
             : "Step into GatherGo"
         }
         buttonClassName="bg-[#0FF1CF] border-0 !w-full"

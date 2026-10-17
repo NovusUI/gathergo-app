@@ -10,7 +10,7 @@ const minBirthdate = new Date(
 );
 
 export const profileSchema = z.object({
-  fullName: z.string().min(2, "Full Name must be at least 2 characters"),
+  fullName: z.string().trim().min(2, "Full Name must be at least 2 characters"),
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")

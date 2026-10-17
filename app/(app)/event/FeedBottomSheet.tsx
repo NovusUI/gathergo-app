@@ -89,6 +89,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       enabled:
         isVisible &&
         activeTab === "carpool" &&
+        !hasEventEnded &&
         (carpoolFilter !== "close_to_you" || Boolean(coords)),
     }
   );
@@ -101,6 +102,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
   const { data: eventData } = useEventDetails(eventId);
   const supportsCarpool = eventData?.data?.isPhysicalEvent !== false;
+  const canUseCarpool = supportsCarpool && !hasEventEnded;
   const eventRegistrationFee = eventData?.data?.registrationFee ?? null;
   const [refreshing, setRefreshing] = useState(false);
 
@@ -115,12 +117,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   }, [initialTab, isVisible]);
 
   useEffect(() => {
-    if (!supportsCarpool && activeTab === "carpool") {
+    if (!canUseCarpool && activeTab === "carpool") {
       setActiveTab("feed");
     }
-  }, [activeTab, supportsCarpool]);
+  }, [activeTab, canUseCarpool]);
 
   const handleFilterChange = async (filter: EventCarpoolFilter) => {
+    if (hasEventEnded) return;
+
     setCarpoolFilter(filter);
 
     if (filter === "close_to_you" && !coords) {
@@ -160,8 +164,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const renderCarpoolItem = useCallback(
     ({ item }: { item: any }) => (
       <TouchableOpacity
-        style={tw`mx-4 mb-3 p-4 bg-[#101C45] rounded-xl border border-[#1B2A50]`}
-        onPress={() => onAction?.({ type: "OPEN_CARPOOL", carpoolId: item.id })}
+        disabled={hasEventEnded}
+        style={[
+          tw`mx-4 mb-3 p-4 bg-[#101C45] rounded-xl border border-[#1B2A50]`,
+          hasEventEnded ? tw`opacity-50` : null,
+        ]}
+        onPress={() =>
+          onAction?.({ type: "OPEN_CARPOOL", carpoolId: item.id })
+        }
       >
         <View style={tw`flex-row justify-between items-start`}>
           <View style={tw`flex-1 pr-3`}>
@@ -220,7 +230,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         </View>
       </TouchableOpacity>
     ),
-    [carpoolFilter, onAction]
+    [carpoolFilter, hasEventEnded, onAction]
   );
 
   // Render event info based on type
@@ -355,7 +365,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 Live Feed
               </Text>
             </TouchableOpacity>
-            {supportsCarpool && (
+            {canUseCarpool && (
               <TouchableOpacity
                 style={tw.style(
                   "px-3 py-1.5 rounded-full",
@@ -420,11 +430,15 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 {carpoolTotal} ride{carpoolTotal === 1 ? "" : "s"} available
               </Text>
               <TouchableOpacity
+                disabled={hasEventEnded}
                 onPress={() => onAction?.({ type: "CREATE_CARPOOL" })}
-                style={tw`bg-[#0FF1CF]/20 px-3 py-1.5 rounded-full border border-[#0FF1CF]/40`}
+                style={[
+                  tw`bg-[#0FF1CF]/20 px-3 py-1.5 rounded-full border border-[#0FF1CF]/40`,
+                  hasEventEnded ? tw`opacity-50` : null,
+                ]}
               >
                 <Text style={tw`text-[#0FF1CF] text-xs font-semibold`}>
-                  Create ride
+                  {hasEventEnded ? "Event ended" : "Create ride"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -470,6 +484,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       onClose,
       onAction,
       renderFeedItem,
+      canUseCarpool,
     ]
   );
 
@@ -532,11 +547,13 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           <Ionicons name="car-outline" size={48} color="#666" />
           <Text style={tw`text-gray-500 mt-4`}>No rides found</Text>
           <Text style={tw`text-gray-600 text-sm mt-2`}>
-            Try another filter or create a ride for this event.
+            {hasEventEnded
+              ? "Ride creation and joining are closed for this event."
+              : "Try another filter or create a ride for this event."}
           </Text>
         </View>
       ) : null,
-    [activeTab, carpoolsLoading, feed?.loading]
+    [activeTab, carpoolsLoading, feed?.loading, hasEventEnded]
   );
 
   return (
@@ -580,6 +597,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           feedCount: feed?.regularFeeds?.length || 0,
           pinnedCount: feed?.pinnedFeeds?.length || 0,
           carpoolCount: carpoolList.length,
+          hasEventEnded,
         }}
         refreshing={activeTab === "feed" ? refreshing : false}
         onRefresh={

@@ -1,6 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { CarpoolVibeSafetySignal } from "@/constants/carpool";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type VibeCheckRole = "pooler" | "rider" | "member";
 
@@ -93,7 +92,6 @@ const VIBE_CHECK_CHAT_PREFIX = "Vibe signal - ";
 const VIBE_CHECK_SOCKET_EVENT = "vibeCheckConfirm";
 const VIBE_CHECK_SOCKET_UPDATE_EVENT = "vibeCheckUpdated";
 const VIBE_CHECK_PASSENGER_PATTERN = /\s*\[passenger:([^\]]+)\]\s*\.?$/;
-const VIBE_CHECK_STORAGE_VERSION = "v2";
 
 const normalizeRole = (role?: string | null): VibeCheckRole => {
   if (role === "driver" || role === "pooler") return "pooler";
@@ -249,7 +247,11 @@ const parseVibeCheckMessage = (
   const details = getVibeCheckMessageDetails(message.content);
   if (!details) return null;
 
-  const role = message.senderId === driverId ? "pooler" : "rider";
+  const senderIsPooler = Boolean(driverId) && message.senderId === driverId;
+  if (details.actorLabel === "Pooler" && !senderIsPooler) return null;
+  if (details.actorLabel === "Rider" && senderIsPooler) return null;
+
+  const role = details.actorLabel === "Pooler" ? "pooler" : "rider";
   const confirmedAt = message.createdAt || new Date().toISOString();
   const passengerId =
     details.passengerId ||
@@ -267,8 +269,17 @@ const parseVibeCheckMessage = (
         passengerId,
         riderConfirmedAt: confirmedAt,
         riderUserId: message.senderId ?? null,
-      };
+    };
 };
+
+const getHandshakePatchSignature = (patch: VibeCheckHandshakePatch) =>
+  [
+    patch.passengerId ?? "",
+    patch.poolerConfirmedAt ?? "",
+    patch.poolerUserId ?? "",
+    patch.riderConfirmedAt ?? "",
+    patch.riderUserId ?? "",
+  ].join(":");
 
 const getPatchFromSocketPayload = (
   payload: any,
@@ -353,24 +364,24 @@ export const useVibeCheckHandshake = ({
 
   const fallbackPassengerId =
     scopedPassengers.length === 1 ? scopedPassengers[0]?.id : null;
-
-  const storageKey = useMemo(() => {
-    if (!carpoolId) return null;
-    return `vibe_check_handshake_${VIBE_CHECK_STORAGE_VERSION}:${carpoolId}:${
-      departureTime || "pending"
-    }`;
-  }, [carpoolId, departureTime]);
-
-  const persistState = useCallback(
-    (nextState: VibeCheckHandshakeState) => {
-      if (!storageKey) return;
-
-      AsyncStorage.setItem(storageKey, JSON.stringify(nextState)).catch(
-        (error) => console.log("failed to save vibe-check handshake", error)
+  const parsedMessagePatches = useMemo(() => {
+    const patches = messages.flatMap((message) => {
+      const patch = parseVibeCheckMessage(
+        message,
+        driverId,
+        fallbackPassengerId
       );
-    },
-    [storageKey]
-  );
+
+      return patch ? [patch] : [];
+    });
+
+    return {
+      patches,
+      signature: patches.map(getHandshakePatchSignature).join("|"),
+    };
+  }, [driverId, fallbackPassengerId, messages]);
+  const parsedMessagePatchesRef = useRef<VibeCheckHandshakePatch[]>([]);
+  parsedMessagePatchesRef.current = parsedMessagePatches.patches;
 
   const mergeState = useCallback(
     (incoming: VibeCheckHandshakePatch) => {
@@ -395,61 +406,24 @@ export const useVibeCheckHandshake = ({
           return current;
         }
 
-        persistState(next);
         return next;
       });
     },
-    [carpoolId, departureTime, persistState]
+    [carpoolId, departureTime]
   );
 
   useEffect(() => {
-    if (!storageKey) {
-      setState(getInitialHandshakeState(carpoolId, departureTime));
-      return;
-    }
-
-    let active = true;
-
-    AsyncStorage.getItem(storageKey)
-      .then((value) => {
-        if (!active) return;
-
-        if (!value) {
-          setState(getInitialHandshakeState(carpoolId, departureTime));
-          return;
-        }
-
-        const parsed = JSON.parse(value) as VibeCheckHandshakeState;
-        setState({
-          ...getInitialHandshakeState(carpoolId, departureTime),
-          ...parsed,
-          handshakes: parsed.handshakes ?? {},
-        });
-      })
-      .catch((error) => {
-        console.log("failed to load vibe-check handshake", error);
-        if (active) {
-          setState(getInitialHandshakeState(carpoolId, departureTime));
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [carpoolId, departureTime, storageKey]);
+    const next = getInitialHandshakeState(carpoolId, departureTime);
+    setState((current) =>
+      hasSameHandshakeProgress(current, next) ? current : next
+    );
+  }, [carpoolId, departureTime]);
 
   useEffect(() => {
-    if (!enabled || messages.length === 0) return;
+    if (!enabled || parsedMessagePatches.signature.length === 0) return;
 
-    messages.forEach((message) => {
-      const patch = parseVibeCheckMessage(
-        message,
-        driverId,
-        fallbackPassengerId
-      );
-      if (patch) mergeState(patch);
-    });
-  }, [driverId, enabled, fallbackPassengerId, mergeState, messages]);
+    parsedMessagePatchesRef.current.forEach((patch) => mergeState(patch));
+  }, [enabled, mergeState, parsedMessagePatches.signature]);
 
   useEffect(() => {
     if (!enabled || !socket || !carpoolId) return;

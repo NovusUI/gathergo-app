@@ -29,6 +29,8 @@ const TagButton = ({ tag, isSelected, onPress }: TagButtonProps) => {
   return (
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: isSelected }}
         onPress={handlePress}
         style={tw`px-4 py-2 rounded-xl ${
           isSelected ? "bg-teal-400" : "bg-[#1b1b3a]"

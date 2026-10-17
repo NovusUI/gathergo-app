@@ -87,6 +87,7 @@ const ChatInput = ({
         ]}
       >
         <TextInput
+          autoCapitalize="none"
           ref={inputRef}
           style={[
             tw`pl-3 pr-2 flex-1 text-base`,

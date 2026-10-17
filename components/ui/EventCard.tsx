@@ -1,10 +1,7 @@
 import { EventArtworkFallback } from "@/components/ui/ArtworkFallback";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { usePressGuard } from "@/hooks/usePressGuard";
-import {
-  formatImpactSummary,
-  normalizePersistedImpactMap,
-} from "@/constants/impact";
+import { normalizePersistedImpactMap } from "@/constants/impact";
 import {
   SuggestedImpactCommitment,
   SuggestedImpactPath,
@@ -44,7 +41,6 @@ interface EventCardProps {
 export default function EventCard({
   id,
   title,
-  description,
   location,
   imageUrl,
   thumbnailUrl,
@@ -54,24 +50,21 @@ export default function EventCard({
   lowestTicketPrice,
   startDate,
   impactTitle,
-  impactDescription,
   impactSdgGoals,
   impactPaths,
   impactCommitments,
-  impactMapSource,
-  tags,
   onPress,
 }: EventCardProps) {
   const eventTypeConfig =
     registrationType === "ticket"
       ? { icon: <Ticket size={18} color="#0FF1CF" /> }
       : registrationType === "donation"
-      ? {
-          icon: <HandHeart size={18} color="#0FF1CF" />,
-        }
-      : {
-          icon: <PenLine size={18} color="#0FF1CF" />,
-        };
+        ? {
+            icon: <HandHeart size={18} color="#0FF1CF" />,
+          }
+        : {
+            icon: <PenLine size={18} color="#0FF1CF" />,
+          };
 
   const pricingMeta =
     registrationType === "ticket"
@@ -85,38 +78,29 @@ export default function EventCard({
             value: "Tickets",
           }
       : registrationType === "donation"
-      ? donationTarget && donationTarget > 0
-        ? {
-            label: "Target",
-            value: numberWithCommas(donationTarget, true, null),
-          }
-        : {
-            label: "Support",
-            value: "Donate",
-          }
-      : registrationFee && registrationFee > 0
-      ? {
-          label: "Fee",
-          value: numberWithCommas(registrationFee, true, null),
-        }
-      : {
-          label: "Fee",
-          value: "Free",
-        };
-  const persistedImpactMap = normalizePersistedImpactMap(
-    {
-      impactSdgGoals,
-      impactPaths,
-      impactCommitments,
-      impactMapSource,
-    },
-    {
-      title,
-      description,
-      impactDescription,
-      registrationType,
-    }
-  );
+        ? donationTarget && donationTarget > 0
+          ? {
+              label: "Target",
+              value: numberWithCommas(donationTarget, true, null),
+            }
+          : {
+              label: "Support",
+              value: "Donate",
+            }
+        : registrationFee && registrationFee > 0
+          ? {
+              label: "Fee",
+              value: numberWithCommas(registrationFee, true, null),
+            }
+          : {
+              label: "Fee",
+              value: "Free",
+            };
+  const persistedImpactMap = normalizePersistedImpactMap({
+    impactSdgGoals,
+    impactPaths,
+    impactCommitments,
+  });
   const [commitment] = persistedImpactMap.commitments;
   const [goal] = persistedImpactMap.sdgGoals;
   const [path] = persistedImpactMap.impactPaths;
@@ -125,17 +109,10 @@ export default function EventCard({
       ? `${commitment.label} - ${goal.shortTitle}`
       : commitment.label
     : path && goal
-    ? `${path.summaryLabel} - ${goal.shortTitle}`
-    : path
-    ? path.summaryLabel
-    : formatImpactSummary({
-        title,
-        description,
-        impactTitle,
-        impactDescription,
-        registrationType,
-        tags,
-      });
+      ? `${path.summaryLabel} - ${goal.shortTitle}`
+      : path
+        ? path.summaryLabel
+        : impactTitle?.trim() || null;
   const [showImage, setShowImage] = useState(Boolean(imageUrl));
 
   useEffect(() => {

@@ -220,32 +220,6 @@ export default function RootLayout() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={tw`rounded-3xl border border-[#FF6B6B]/30 bg-[#2A1022] p-5`}
-                  onPress={guardedCreateDonationEvent}
-                >
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <View
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#FF6B6B]/15`}
-                    >
-                      <Ionicons
-                        name="heart-outline"
-                        size={22}
-                        color="#FF8A8A"
-                      />
-                    </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        Donation Event
-                      </Text>
-                      <Text style={tw`mt-1 text-sm leading-5 text-[#F1B3C2]`}>
-                        Raise support around a cause, project, or community
-                        need.
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
                   style={tw`rounded-3xl border border-[#0FF1CF]/20 bg-[#101C45] p-5`}
                   onPress={guardedCreateGeneralEvent}
                 >
@@ -261,11 +235,37 @@ export default function RootLayout() {
                     </View>
                     <View style={tw`flex-1`}>
                       <Text style={tw`text-base font-semibold text-white`}>
-                        Other Event
+                        Create an event
                       </Text>
                       <Text style={tw`mt-1 text-sm leading-5 text-[#98ABD6]`}>
-                        Free, ticketed, or paid events with a flexible impact
-                        story.
+                        Host a free or paid event, from concerts and workshops
+                        to community gatherings.
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={tw`rounded-3xl border border-[#FF6B6B]/30 bg-[#2A1022] p-5`}
+                  onPress={guardedCreateDonationEvent}
+                >
+                  <View style={tw`flex-row items-center gap-4`}>
+                    <View
+                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#FF6B6B]/15`}
+                    >
+                      <Ionicons
+                        name="heart-outline"
+                        size={22}
+                        color="#FF8A8A"
+                      />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`text-base font-semibold text-white`}>
+                        Create a fundraiser
+                      </Text>
+                      <Text style={tw`mt-1 text-sm leading-5 text-[#F1B3C2]`}>
+                        Raise support around a cause, project, or community
+                        need.
                       </Text>
                     </View>
                   </View>

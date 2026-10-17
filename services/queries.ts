@@ -137,11 +137,12 @@ export const useWalletSettlements = (pageSize = 20, options?: any) => {
   });
 };
 
-export const useCurrentUser = () => {
+export const useCurrentUser = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: QUERY_KEYS.currentUser,
     queryFn: getCurrentUserFn,
     staleTime: 1000 * 60 * 5, // cache for 5 mins
+    ...options,
   });
 };
 
@@ -338,13 +339,15 @@ export const useEventImageStatus = (eventId: string, options = {}) => {
 
 export const useImpactSuggestions = (
   payload: ImpactSuggestionPayload,
-  options?: any
+  options?: { enabled?: boolean }
 ) => {
   return useQuery<ImpactSuggestionResponse>({
-    queryKey: [...QUERY_KEYS.impactSuggestions, payload],
-    queryFn: () => getImpactSuggestions(payload),
+    queryKey: [...QUERY_KEYS.impactSuggestions, "ai", payload],
+    queryFn: ({ signal }) => getImpactSuggestions(payload, signal),
     staleTime: 1000 * 60 * 5,
     retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     ...options,
   });
 };

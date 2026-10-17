@@ -122,6 +122,7 @@ const SearchScreen = () => {
       >
         <SearchIcon size={20} color="white" />
         <TextInput
+          autoCapitalize="none"
           ref={searchInputRef}
           placeholder="Search events"
           placeholderTextColor="#94A3B8"

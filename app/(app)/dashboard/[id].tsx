@@ -9,6 +9,7 @@ import TicketEventOverview from "@/components/ui/TicketEventOverview";
 import { useEventDashboardData, useShortcutEvent } from "@/hooks/useDashboard";
 import { useEventDetails } from "@/services/queries";
 
+import { isEventPastEnd } from "@/utils/dateTimeHandler";
 import { Payment } from "@/utils/mockPayments";
 import { safeGoBack } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
@@ -120,15 +121,10 @@ const EventDashboard = () => {
   const eventDetails = eventDetailsResponse?.data;
 
   const payments = useMemo(() => data?.data.payments || [], [data]);
-  const hasEventEnded = useMemo(() => {
-    const boundary = eventDetails?.endDate;
-    if (!boundary) return false;
-
-    const parsedBoundary = new Date(boundary);
-    if (Number.isNaN(parsedBoundary.getTime())) return false;
-
-    return parsedBoundary.getTime() < Date.now();
-  }, [eventDetails?.endDate]);
+  const hasEventEnded = useMemo(
+    () => isEventPastEnd(eventDetails?.startDate, eventDetails?.endDate),
+    [eventDetails?.endDate, eventDetails?.startDate],
+  );
   const shortcuts = useMemo(() => shortcutData?.data.shortcuts, [shortcutData]);
 
   if (isLoading) {
@@ -142,7 +138,7 @@ const EventDashboard = () => {
         </CustomView>
         <ImpactPageLoader
           title="Mapping event activity"
-          message="Loading your event performance, payments, and impact trail."
+          message="Loading your event performance, attendance, and payments."
         />
       </View>
     );
@@ -192,7 +188,7 @@ const EventDashboard = () => {
             </Text>
             <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
               {hasEventEnded
-                ? "This event has ended, but the public page still holds the story, impact, and shareable details."
+                ? "This event has ended. Its public page still holds the event details, updates, and any impact stories you shared."
                 : "Preview the event page the same way attendees, donors, and guests see it."}
             </Text>
             <Text style={tw`mt-3 text-sm font-semibold text-[#0FF1CF]`}>

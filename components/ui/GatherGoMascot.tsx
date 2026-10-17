@@ -5,9 +5,9 @@ import {
   Heart,
   ShieldCheck,
   Sparkles,
-  XCircle
+  XCircle,
 } from "lucide-react-native";
-import { type ComponentType, useEffect, useRef } from "react";
+import { type ComponentType, type ReactNode, useEffect, useRef } from "react";
 import { Animated, Easing, StyleProp, View, ViewStyle } from "react-native";
 import Svg, { Circle, Ellipse, Path } from "react-native-svg";
 import tw from "twrnc";
@@ -27,6 +27,15 @@ type MascotVariantConfig = {
   badgeBg: string;
 };
 
+export type GatherGoMascotPalette = Partial<{
+  accent: string;
+  badgeBg: string;
+  body: string;
+  face: string;
+  glow: string;
+  iconColor: string;
+}>;
+
 type SparklePoint = {
   key: string;
   top: number;
@@ -44,7 +53,7 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(15, 241, 207, 0.22)",
     icon: Sparkles,
     iconColor: "#06163C",
-    badgeBg: "#FFD76A"
+    badgeBg: "#FFD76A",
   },
   donation: {
     body: "#0FF1CF",
@@ -53,7 +62,7 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(255, 138, 174, 0.22)",
     icon: Heart,
     iconColor: "#FFFFFF",
-    badgeBg: "#FF5C8A"
+    badgeBg: "#FF5C8A",
   },
   success: {
     body: "#0FF1CF",
@@ -62,7 +71,7 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(15, 241, 207, 0.24)",
     icon: CheckCircle2,
     iconColor: "#06163C",
-    badgeBg: "#65F5C7"
+    badgeBg: "#65F5C7",
   },
   pending: {
     body: "#FFD76A",
@@ -71,7 +80,7 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(255, 215, 106, 0.2)",
     icon: Clock3,
     iconColor: "#06163C",
-    badgeBg: "#FFD76A"
+    badgeBg: "#FFD76A",
   },
   verified: {
     body: "#0FF1CF",
@@ -80,7 +89,7 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(101, 245, 199, 0.22)",
     icon: ShieldCheck,
     iconColor: "#06163C",
-    badgeBg: "#65F5C7"
+    badgeBg: "#65F5C7",
   },
   empty: {
     body: "#31C6F6",
@@ -89,7 +98,7 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(49, 198, 246, 0.2)",
     icon: Sparkles,
     iconColor: "#06163C",
-    badgeBg: "#FFD76A"
+    badgeBg: "#FFD76A",
   },
   error: {
     body: "#FF8FA9",
@@ -98,14 +107,16 @@ const VARIANT_CONFIG: Record<GatherGoMascotVariant, MascotVariantConfig> = {
     glow: "rgba(255, 143, 169, 0.2)",
     icon: XCircle,
     iconColor: "#FFFFFF",
-    badgeBg: "#D84866"
-  }
+    badgeBg: "#D84866",
+  },
 };
 
 type GatherGoMascotProps = {
   variant?: GatherGoMascotVariant;
   size?: number;
   animated?: boolean;
+  badgeContent?: ReactNode;
+  palette?: GatherGoMascotPalette;
   showBadge?: boolean;
   style?: StyleProp<ViewStyle>;
 };
@@ -115,21 +126,23 @@ const CELEBRATION_VARIANTS = new Set<GatherGoMascotVariant>([
   "donation",
   "success",
   "verified",
-  "empty"
+  "empty",
 ]);
 
 const SPARKLE_POINTS: SparklePoint[] = [
   { key: "top-left", top: 0.12, left: 0.08, size: 0.07, lift: -0.1 },
   { key: "top-right", top: 0.18, right: 0.06, size: 0.05, lift: -0.14 },
-  { key: "mid-right", top: 0.46, right: 0.02, size: 0.04, lift: -0.08 }
+  { key: "mid-right", top: 0.46, right: 0.02, size: 0.04, lift: -0.08 },
 ];
 
 export function GatherGoMascot({
   variant = "idle",
   size = 88,
   animated = true,
+  badgeContent,
+  palette,
   showBadge = true,
-  style
+  style,
 }: GatherGoMascotProps) {
   const entrance = useRef(new Animated.Value(animated ? 0 : 1)).current;
   const float = useRef(new Animated.Value(0)).current;
@@ -138,9 +151,15 @@ export function GatherGoMascot({
   const blink = useRef(new Animated.Value(1)).current;
   const badgePop = useRef(new Animated.Value(animated ? 0 : 1)).current;
   const shake = useRef(new Animated.Value(0)).current;
-  const config = VARIANT_CONFIG[variant];
+  const config = {
+    ...VARIANT_CONFIG[variant],
+    ...palette,
+  };
   const Icon = config.icon;
   const hasSparkles = CELEBRATION_VARIANTS.has(variant);
+  const badge = badgeContent ?? (Icon ? (
+    <Icon size={size * 0.18} color={config.iconColor} />
+  ) : null);
 
   useEffect(() => {
     entrance.setValue(animated ? 0 : 1);
@@ -160,7 +179,7 @@ export function GatherGoMascot({
         toValue: 1,
         friction: 6,
         tension: 80,
-        useNativeDriver: true
+        useNativeDriver: true,
       }),
       Animated.sequence([
         Animated.delay(160),
@@ -168,9 +187,9 @@ export function GatherGoMascot({
           toValue: 1,
           friction: 5,
           tension: 95,
-          useNativeDriver: true
-        })
-      ])
+          useNativeDriver: true,
+        }),
+      ]),
     ]);
     const floatAnimation = Animated.loop(
       Animated.sequence([
@@ -178,14 +197,14 @@ export function GatherGoMascot({
           toValue: 1,
           duration: variant === "pending" ? 1200 : 1800,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true
+          useNativeDriver: true,
         }),
         Animated.timing(float, {
           toValue: 0,
           duration: variant === "pending" ? 1200 : 1800,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true
-        })
+          useNativeDriver: true,
+        }),
       ])
     );
     const pulseAnimation = Animated.loop(
@@ -194,14 +213,14 @@ export function GatherGoMascot({
           toValue: 1,
           duration: variant === "pending" ? 1000 : 1500,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true
+          useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 0,
           duration: variant === "pending" ? 1000 : 1500,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true
-        })
+          useNativeDriver: true,
+        }),
       ])
     );
     const blinkAnimation = Animated.loop(
@@ -211,22 +230,22 @@ export function GatherGoMascot({
           toValue: 0.12,
           duration: 80,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true
+          useNativeDriver: true,
         }),
         Animated.timing(blink, {
           toValue: 1,
           duration: 110,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true
+          useNativeDriver: true,
         }),
-        Animated.delay(1200)
+        Animated.delay(1200),
       ])
     );
     const activeAnimations = [
       entranceAnimation,
       floatAnimation,
       pulseAnimation,
-      blinkAnimation
+      blinkAnimation,
     ];
 
     if (hasSparkles || variant === "pending") {
@@ -236,7 +255,7 @@ export function GatherGoMascot({
             toValue: 1,
             duration: variant === "pending" ? 1600 : 2200,
             easing: Easing.out(Easing.cubic),
-            useNativeDriver: true
+            useNativeDriver: true,
           })
         )
       );
@@ -250,8 +269,8 @@ export function GatherGoMascot({
             toValue: 1,
             duration: 360,
             easing: Easing.out(Easing.quad),
-            useNativeDriver: true
-          })
+            useNativeDriver: true,
+          }),
         ])
       );
     }
@@ -271,63 +290,63 @@ export function GatherGoMascot({
     pulse,
     shake,
     sparkle,
-    variant
+    variant,
   ]);
 
   const entranceOpacity = entrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 1]
+    outputRange: [0, 1],
   });
   const entranceTranslateY = entrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [10, 0]
+    outputRange: [10, 0],
   });
   const entranceScale = entrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.72, 1]
+    outputRange: [0.72, 1],
   });
   const translateY = float.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, variant === "success" || variant === "donation" ? -6 : -3]
+    outputRange: [0, variant === "success" || variant === "donation" ? -6 : -3],
   });
   const bodyRotate = float.interpolate({
     inputRange: [0, 1],
     outputRange:
       variant === "success" || variant === "donation"
         ? ["-2deg", "2deg"]
-        : ["-1deg", "1deg"]
+        : ["-1deg", "1deg"],
   });
   const shakeTranslateX = shake.interpolate({
     inputRange: [0, 0.2, 0.4, 0.6, 0.8, 1],
-    outputRange: [0, -4, 4, -3, 3, 0]
+    outputRange: [0, -4, 4, -3, 3, 0],
   });
   const glowScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.86, variant === "pending" ? 1.22 : 1.08]
+    outputRange: [0.86, variant === "pending" ? 1.22 : 1.08],
   });
   const glowOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.5, variant === "pending" ? 0.1 : 0.18]
+    outputRange: [0.5, variant === "pending" ? 0.1 : 0.18],
   });
   const ringScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.7, 1.1]
+    outputRange: [0.7, 1.1],
   });
   const ringOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [variant === "pending" ? 0.7 : 0.34, 0]
+    outputRange: [variant === "pending" ? 0.7 : 0.34, 0],
   });
   const sparkleOpacity = sparkle.interpolate({
     inputRange: [0, 0.22, 0.72, 1],
-    outputRange: [0, 1, 0.75, 0]
+    outputRange: [0, 1, 0.75, 0],
   });
   const sparkleScale = sparkle.interpolate({
     inputRange: [0, 0.35, 1],
-    outputRange: [0.35, 1, 0.7]
+    outputRange: [0.35, 1, 0.7],
   });
   const badgePulseScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, variant === "pending" ? 1.12 : 1.05]
+    outputRange: [1, variant === "pending" ? 1.12 : 1.05],
   });
 
   return (
@@ -336,9 +355,9 @@ export function GatherGoMascot({
         tw`items-center justify-center`,
         {
           width: size,
-          height: size
+          height: size,
         },
-        style
+        style,
       ]}
     >
       <AnimatedView
@@ -349,8 +368,8 @@ export function GatherGoMascot({
             height: size * 0.88,
             backgroundColor: config.glow,
             opacity: glowOpacity,
-            transform: [{ scale: glowScale }]
-          }
+            transform: [{ scale: glowScale }],
+          },
         ]}
       />
       <AnimatedView
@@ -361,8 +380,8 @@ export function GatherGoMascot({
             height: size * 0.9,
             borderColor: config.accent,
             opacity: ringOpacity,
-            transform: [{ scale: ringScale }]
-          }
+            transform: [{ scale: ringScale }],
+          },
         ]}
       />
       {hasSparkles || variant === "pending"
@@ -385,12 +404,12 @@ export function GatherGoMascot({
                     {
                       translateY: sparkle.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0, size * point.lift]
-                      })
+                        outputRange: [0, size * point.lift],
+                      }),
                     },
-                    { scale: sparkleScale }
-                  ]
-                }
+                    { scale: sparkleScale },
+                  ],
+                },
               ]}
             />
           ))
@@ -400,8 +419,8 @@ export function GatherGoMascot({
           opacity: entranceOpacity,
           transform: [
             { translateY: entranceTranslateY },
-            { scale: entranceScale }
-          ]
+            { scale: entranceScale },
+          ],
         }}
       >
         <AnimatedView
@@ -411,8 +430,8 @@ export function GatherGoMascot({
             transform: [
               { translateX: shakeTranslateX },
               { translateY },
-              { rotate: bodyRotate }
-            ]
+              { rotate: bodyRotate },
+            ],
           }}
         >
           <Svg width={size} height={size} viewBox="0 0 100 112">
@@ -479,8 +498,8 @@ export function GatherGoMascot({
                 width: size * 0.08,
                 height: size * 0.08,
                 backgroundColor: config.body,
-                transform: [{ scaleY: blink }]
-              }
+                transform: [{ scaleY: blink }],
+              },
             ]}
           />
           <AnimatedView
@@ -492,13 +511,13 @@ export function GatherGoMascot({
                 width: size * 0.08,
                 height: size * 0.08,
                 backgroundColor: config.body,
-                transform: [{ scaleY: blink }]
-              }
+                transform: [{ scaleY: blink }],
+              },
             ]}
           />
         </AnimatedView>
       </AnimatedView>
-      {showBadge && Icon ? (
+      {showBadge && badge ? (
         <AnimatedView
           style={[
             tw`absolute items-center justify-center rounded-full border-2 border-[#01082E]`,
@@ -508,11 +527,11 @@ export function GatherGoMascot({
               width: size * 0.34,
               height: size * 0.34,
               backgroundColor: config.badgeBg,
-              transform: [{ scale: badgePop }, { scale: badgePulseScale }]
-            }
+              transform: [{ scale: badgePop }, { scale: badgePulseScale }],
+            },
           ]}
         >
-          <Icon size={size * 0.18} color={config.iconColor} />
+          {badge}
         </AnimatedView>
       ) : null}
     </View>

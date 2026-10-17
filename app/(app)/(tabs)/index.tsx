@@ -104,7 +104,7 @@ export default function HomeScreen() {
   const secondEvent = events?.data?.[1];
   const fallbackBannerCards = [
     {
-      key: "impact",
+      key: "event",
       variant: "image" as const,
       imageUrl: featuredEvent?.imageUrl,
       onPress: () =>
@@ -131,7 +131,7 @@ export default function HomeScreen() {
       eyebrow: "Circle",
       title: secondEvent?.title
         ? `Circle will connect people around moments like ${secondEvent.title}`
-        : "Circle will connect people around causes, updates, and shared momentum",
+        : "Circle will connect people around events and shared interests",
       body: "When it lands, your event communities will have a dedicated home for conversations and belonging.",
       cta: "Preview Circle",
       onPress: () => router.push("/circle"),
@@ -163,16 +163,16 @@ export default function HomeScreen() {
     : fallbackBannerCards;
 
   const handleBannerScrollEnd = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
+    event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
     const nextIndex = Math.round(
-      event.nativeEvent.contentOffset.x / bannerCardWidth
+      event.nativeEvent.contentOffset.x / bannerCardWidth,
     );
     setBannerIndex(nextIndex);
   };
 
   const renderBannerAccent = (
-    card: HomeAdCard & { key: string; onPress: () => void }
+    card: HomeAdCard & { key: string; onPress: () => void },
   ) => {
     if (card.key === "circle") {
       return (
@@ -322,8 +322,8 @@ export default function HomeScreen() {
             (loading ? (
               <ImpactPageLoader
                 compact
-                title="Mapping your feed"
-                message="Finding events shaped around your impact interests."
+                title="Finding your next event"
+                message="Finding events that match your interests."
               />
             ) : events?.data?.length ? (
               <View style={styles.listGroup}>

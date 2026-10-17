@@ -28,7 +28,9 @@ import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { TypingIndicator } from "@/components/ui/TypingIndicator";
 import UserChatView from "@/components/ui/UserChatView";
 import {
-  getCarpoolVibeChatMessages,
+  getCarpoolVibeDialogMessages,
+  getCarpoolVibeHandshakeInstruction,
+  getCarpoolVibeMascotStyle,
   getCarpoolVibeSafetyRoleCopy,
   getCarpoolVibeSafetySignal,
   getCarpoolVibeSafetyTips,
@@ -125,9 +127,6 @@ const ChatPage = () => {
   const [sending, setSending] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [rideVibeExpanded, setRideVibeExpanded] = useState(false);
-  const [rideMessageIndex, setRideMessageIndex] = useState(0);
-  const [typedRideMessage, setTypedRideMessage] = useState("");
-  const [isRideMessageTyping, setIsRideMessageTyping] = useState(true);
   const draftLoadedRef = useRef(false);
 
   const flatListRef = useRef<FlatList>(null);
@@ -481,15 +480,6 @@ const ChatPage = () => {
       fullCarpool?.departureTime ||
       conversationCarpool?.departureTime;
   const departureTimeLabel = formatRideDepartureTime(rawDepartureTime);
-  const rideMessages = useMemo(
-    () =>
-      getCarpoolVibeChatMessages(rideVibeSource, {
-        pickupLocation: originLabel,
-        destination: destinationLabel,
-        departureTime: departureTimeLabel,
-      }),
-    [rideVibeSource, originLabel, destinationLabel, departureTimeLabel]
-  );
   const safetyTips = useMemo(
     () => getCarpoolVibeSafetyTips(rideVibeSource),
     [rideVibeSource]
@@ -498,19 +488,10 @@ const ChatPage = () => {
     () => getCarpoolVibeSafetySignal(rideVibeSource),
     [rideVibeSource]
   );
-  const rideMessage =
-    rideMessages[rideMessageIndex % rideMessages.length] || rideMessages[0];
-  const acceptedPassengers =
-    carpoolDetails?.passengers.filter((p) => p.status === "ACCEPTED").length ??
-    0;
-  const groupSize = carpoolDetails ? acceptedPassengers + 1 : 0;
-  const groupLabel =
-    groupSize > 1 ? `${groupSize} riders` : groupSize === 1 ? "Solo ride" : "";
-  const seatsLeft = carpoolDetails?.seatsLeft ?? carpoolDetails?.availableSeats;
-  const seatLabel =
-    typeof seatsLeft === "number"
-      ? `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`
-      : groupLabel;
+  const rideVibeMascotStyle = useMemo(
+    () => getCarpoolVibeMascotStyle(rideVibeSource),
+    [rideVibeSource]
+  );
   const userRole = getUserRole();
   const roleLabel =
     userRole === "driver"
@@ -524,16 +505,41 @@ const ChatPage = () => {
       : userRole === "passenger"
         ? "rider"
         : "member";
+  const handshakeInstruction = useMemo(
+    () => getCarpoolVibeHandshakeInstruction(vibeCheckRole),
+    [vibeCheckRole]
+  );
+  const rideVibeDialogMessages = useMemo(
+    () =>
+      getCarpoolVibeDialogMessages(rideVibeSource, {
+        departureTime: departureTimeLabel,
+        destination: destinationLabel,
+        handshakeInstruction,
+        pickupLocation: originLabel,
+        safetySignal,
+        safetyTips,
+      }),
+    [
+      rideVibeSource,
+      departureTimeLabel,
+      destinationLabel,
+      handshakeInstruction,
+      originLabel,
+      safetySignal,
+      safetyTips,
+    ]
+  );
+  const rideVibeDialogKey = useMemo(
+    () =>
+      rideVibeDialogMessages
+        .map((message) => message.map((part) => part.text).join(""))
+        .join("|"),
+    [rideVibeDialogMessages]
+  );
   const safetyCopy = useMemo(
     () => getCarpoolVibeSafetyRoleCopy(safetySignal, roleLabel, rideLabel),
     [safetySignal, roleLabel, rideLabel]
   );
-  const expiryLabel = carpoolDetails?.expiresAt
-    ? new Date(carpoolDetails.expiresAt).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      })
-    : null;
   const vibeCheckPrompt = useVibeCheckPrompt({
     carpoolId,
     departureTime: rawDepartureTime,
@@ -576,36 +582,6 @@ const ChatPage = () => {
       }
     );
   };
-  useEffect(() => {
-    setRideMessageIndex(0);
-  }, [rideVibeSource]);
-
-  useEffect(() => {
-    let charIndex = 0;
-    let nextMessageTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    setTypedRideMessage("");
-    setIsRideMessageTyping(true);
-
-    const typingInterval = setInterval(() => {
-      charIndex += 1;
-      setTypedRideMessage(rideMessage.slice(0, charIndex));
-
-      if (charIndex >= rideMessage.length) {
-        clearInterval(typingInterval);
-        setIsRideMessageTyping(false);
-        nextMessageTimeout = setTimeout(() => {
-          setRideMessageIndex((current) => (current + 1) % rideMessages.length);
-        }, 5500);
-      }
-    }, 26);
-
-    return () => {
-      clearInterval(typingInterval);
-      if (nextMessageTimeout) clearTimeout(nextMessageTimeout);
-    };
-  }, [rideMessage, rideMessages.length]);
-
   const renderMessage = ({ item }: { item: any }) => {
     const isUser = item.senderId === user?.id;
     const vibeCheckMessageDetails = getVibeCheckMessageDetails(item.content);
@@ -773,11 +749,12 @@ const ChatPage = () => {
         {carpoolDetails && (
           <View style={tw`px-4 mt-4 mb-4`}>
             <RideVibeChatCard
+              dialogKey={rideVibeDialogKey}
+              dialogMessages={rideVibeDialogMessages}
               expanded={rideVibeExpanded}
               iconName={rideIconName}
-              isTyping={isRideMessageTyping}
               label={rideLabel}
-              message={typedRideMessage}
+              mascotStyle={rideVibeMascotStyle}
               onOpenVibeCheck={vibeCheckPrompt.open}
               onToggle={() => setRideVibeExpanded((current) => !current)}
               vibeCheckButtonLabel={
@@ -790,15 +767,8 @@ const ChatPage = () => {
                     ? `Waiting for ${vibeCheckHandshake.waitingForLabel}`
                     : `Complete ${safetySignal.title}`
               }
-              destinationLabel={destinationLabel}
-              departureTimeLabel={departureTimeLabel}
-              expiryLabel={expiryLabel}
-              origin={originLabel}
               roleLabel={roleLabel}
               safetySignal={safetySignal}
-              safetyTips={safetyTips}
-              seatLabel={seatLabel}
-              statusLabel={carpoolDetails.status.toLowerCase()}
             />
           </View>
         )}
@@ -927,6 +897,7 @@ const ChatPage = () => {
         <VibeCheckModal
           visible={vibeCheckPrompt.visible}
           iconName={rideIconName}
+          mascotStyle={rideVibeMascotStyle}
           rideLabel={rideLabel}
           roleLabel={roleLabel}
           safetySignal={safetySignal}

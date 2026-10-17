@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { GatherGoMascotVariant } from "@/constants/mascot";
 import type { ComponentProps } from "react";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
@@ -142,6 +143,27 @@ export interface CarpoolVibeSafetyRoleCopy {
   secondarySignalValue: string;
 }
 
+export interface CarpoolVibeMascotStyle {
+  accent: string;
+  badgeBg: string;
+  body: string;
+  cardBackground: string;
+  cardBorder: string;
+  dialogBackground: string;
+  face: string;
+  glow: string;
+  iconColor: string;
+  variant: GatherGoMascotVariant;
+}
+
+export interface CarpoolVibeDialogPart {
+  highlight?: boolean;
+  text: string;
+}
+
+export type CarpoolVibeDialogMessage = CarpoolVibeDialogPart[];
+export type CarpoolVibeHandshakeRole = "pooler" | "rider" | "member";
+
 export const normalizeCarpoolVehicleIconKey = (vehicleIcon?: string | null) => {
   if (!vehicleIcon) return null;
 
@@ -165,6 +187,267 @@ export const getCarpoolVehicleOption = (vehicleIcon?: string | null) => {
     CARPOOL_VEHICLE_OPTIONS.find((option) => option.key === normalizedKey) ??
     null
   );
+};
+
+const DEFAULT_CARPOOL_VIBE_MASCOT_STYLE: CarpoolVibeMascotStyle = {
+  accent: "#0FF1CF",
+  badgeBg: "#FFD76A",
+  body: "#0FF1CF",
+  cardBackground: "#07143B",
+  cardBorder: "#1B2A50",
+  dialogBackground: "#0A173F",
+  face: "#06163C",
+  glow: "rgba(15, 241, 207, 0.22)",
+  iconColor: "#06163C",
+  variant: "idle",
+};
+
+const CARPOOL_VIBE_MASCOT_STYLES: Partial<
+  Record<CarpoolVehicleIconKey, CarpoolVibeMascotStyle>
+> = {
+  sport_car: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#FF5C8A",
+    cardBackground: "#11183D",
+    cardBorder: "#49335D",
+    dialogBackground: "#181D45",
+    face: "#06163C",
+    glow: "rgba(255, 92, 138, 0.24)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  city_car: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#31C6F6",
+    badgeBg: "#31C6F6",
+    body: "#0FF1CF",
+    glow: "rgba(49, 198, 246, 0.2)",
+    variant: "idle",
+  },
+  party_bus: {
+    accent: "#FF8AAE",
+    badgeBg: "#FF8AAE",
+    body: "#FFD76A",
+    cardBackground: "#15153F",
+    cardBorder: "#514168",
+    dialogBackground: "#211A47",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.24)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  bus: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#31C6F6",
+    glow: "rgba(101, 245, 199, 0.2)",
+    variant: "verified",
+  },
+  monster_truck: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#FF8A3D",
+    cardBackground: "#171839",
+    cardBorder: "#5A3C28",
+    dialogBackground: "#241B36",
+    face: "#06163C",
+    glow: "rgba(255, 138, 61, 0.22)",
+    iconColor: "#06163C",
+    variant: "pending",
+  },
+  food_truck: {
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#FFD76A",
+    cardBackground: "#121A3C",
+    cardBorder: "#4A4C31",
+    dialogBackground: "#1B213F",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.22)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  mystery_machine: {
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#8FA5E2",
+    cardBackground: "#10183E",
+    cardBorder: "#3A4775",
+    dialogBackground: "#141E4A",
+    face: "#06163C",
+    glow: "rgba(143, 165, 226, 0.22)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  go_kart: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#65F5C7",
+    cardBackground: "#071B3C",
+    cardBorder: "#275C5A",
+    dialogBackground: "#0B213F",
+    face: "#06163C",
+    glow: "rgba(101, 245, 199, 0.22)",
+    iconColor: "#06163C",
+    variant: "success",
+  },
+  moon_buggy: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#B889FF",
+    cardBackground: "#121641",
+    cardBorder: "#4D3B77",
+    dialogBackground: "#191B4D",
+    face: "#06163C",
+    glow: "rgba(184, 137, 255, 0.22)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  bicycle: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#65F5C7",
+    cardBackground: "#071B3C",
+    cardBorder: "#255C50",
+    dialogBackground: "#0A213D",
+    face: "#06163C",
+    glow: "rgba(101, 245, 199, 0.2)",
+    iconColor: "#06163C",
+    variant: "verified",
+  },
+  speed_boat: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#31C6F6",
+    cardBackground: "#07143B",
+    cardBorder: "#1E4770",
+    dialogBackground: "#0A1B45",
+    face: "#06163C",
+    glow: "rgba(49, 198, 246, 0.24)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  boat: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#31C6F6",
+    glow: "rgba(49, 198, 246, 0.2)",
+    variant: "idle",
+  },
+  pirate_ship: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#FF8A3D",
+    cardBackground: "#15153F",
+    cardBorder: "#60412A",
+    dialogBackground: "#201D3F",
+    face: "#06163C",
+    glow: "rgba(255, 138, 61, 0.22)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  hovercraft: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#8FA5E2",
+    badgeBg: "#8FA5E2",
+    body: "#31C6F6",
+    glow: "rgba(143, 165, 226, 0.2)",
+    variant: "empty",
+  },
+  helicopter: {
+    accent: "#31C6F6",
+    badgeBg: "#31C6F6",
+    body: "#FFD76A",
+    cardBackground: "#11183D",
+    cardBorder: "#51471C",
+    dialogBackground: "#1B1D42",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.22)",
+    iconColor: "#06163C",
+    variant: "pending",
+  },
+  stunt_plane: {
+    accent: "#FF8AAE",
+    badgeBg: "#FF8AAE",
+    body: "#FFD76A",
+    cardBackground: "#11183D",
+    cardBorder: "#57415E",
+    dialogBackground: "#1F1A43",
+    face: "#06163C",
+    glow: "rgba(255, 215, 106, 0.22)",
+    iconColor: "#06163C",
+    variant: "donation",
+  },
+  midnight_train: {
+    accent: "#FFD76A",
+    badgeBg: "#FFD76A",
+    body: "#8FA5E2",
+    cardBackground: "#0A1235",
+    cardBorder: "#384468",
+    dialogBackground: "#10183E",
+    face: "#06163C",
+    glow: "rgba(143, 165, 226, 0.18)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  ghost_tram: {
+    accent: "#65F5C7",
+    badgeBg: "#65F5C7",
+    body: "#C9D4FF",
+    cardBackground: "#0A1235",
+    cardBorder: "#3B496D",
+    dialogBackground: "#10183E",
+    face: "#06163C",
+    glow: "rgba(201, 212, 255, 0.18)",
+    iconColor: "#06163C",
+    variant: "empty",
+  },
+  subway_beast: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#8FA5E2",
+    cardBackground: "#07143B",
+    cardBorder: "#314B78",
+    dialogBackground: "#0E1A45",
+    face: "#06163C",
+    glow: "rgba(143, 165, 226, 0.2)",
+    iconColor: "#06163C",
+    variant: "pending",
+  },
+  airplane: {
+    ...DEFAULT_CARPOOL_VIBE_MASCOT_STYLE,
+    accent: "#31C6F6",
+    badgeBg: "#31C6F6",
+    body: "#FFD76A",
+    glow: "rgba(255, 215, 106, 0.2)",
+    variant: "pending",
+  },
+  rocket: {
+    accent: "#0FF1CF",
+    badgeBg: "#0FF1CF",
+    body: "#B889FF",
+    cardBackground: "#121641",
+    cardBorder: "#4D3B77",
+    dialogBackground: "#191B4D",
+    face: "#06163C",
+    glow: "rgba(184, 137, 255, 0.24)",
+    iconColor: "#06163C",
+    variant: "success",
+  },
+};
+
+export const getCarpoolVibeMascotStyle = (
+  vehicleIcon?: string | null
+): CarpoolVibeMascotStyle => {
+  const normalizedKey = normalizeCarpoolVehicleIconKey(vehicleIcon);
+
+  return normalizedKey
+    ? CARPOOL_VIBE_MASCOT_STYLES[normalizedKey] ??
+        DEFAULT_CARPOOL_VIBE_MASCOT_STYLE
+    : DEFAULT_CARPOOL_VIBE_MASCOT_STYLE;
 };
 
 export const getCarpoolPassengerMessage = (vehicleIcon?: string | null) => {
@@ -222,6 +505,12 @@ interface CarpoolVibeChatContext {
   departureTime?: string | null;
 }
 
+interface CarpoolVibeDialogContext extends CarpoolVibeChatContext {
+  handshakeInstruction?: string | null;
+  safetySignal?: CarpoolVibeSafetySignal | null;
+  safetyTips?: CarpoolVibeSafetyTip[];
+}
+
 const getRideChatDetail = (
   value: string | null | undefined,
   fallback: string
@@ -229,6 +518,20 @@ const getRideChatDetail = (
   const trimmed = value?.trim();
 
   return trimmed || fallback;
+};
+
+export const getCarpoolVibeHandshakeInstruction = (
+  role: CarpoolVibeHandshakeRole
+) => {
+  if (role === "pooler") {
+    return "Riders confirm when they find the ride. You confirm each rider only after matching the person at pickup.";
+  }
+
+  if (role === "rider") {
+    return "Confirm only after the pickup, pooler, and ride details match. The handshake finishes when the pooler confirms you too.";
+  }
+
+  return "The handshake finishes when the rider and pooler both confirm they have found the right ride.";
 };
 
 // Future pin: grow vibe copy into engagement prompts, riddles, fun facts, and small ride games.
@@ -382,6 +685,100 @@ export const getCarpoolVibeChatMessages = (
         `Keep the crew synced before ${timeLabel} gets the ride moving.`,
       ];
   }
+};
+
+const getHighlightedDialogParts = (
+  message: string,
+  highlights: string[]
+): CarpoolVibeDialogPart[] => {
+  const uniqueHighlights = Array.from(
+    new Set(highlights.map((highlight) => highlight.trim()).filter(Boolean))
+  ).sort((first, second) => second.length - first.length);
+  const parts: CarpoolVibeDialogPart[] = [];
+  let cursor = 0;
+
+  while (cursor < message.length) {
+    let matchIndex = -1;
+    let matchText = "";
+
+    uniqueHighlights.forEach((highlight) => {
+      const index = message.indexOf(highlight, cursor);
+      if (
+        index >= 0 &&
+        (matchIndex < 0 ||
+          index < matchIndex ||
+          (index === matchIndex && highlight.length > matchText.length))
+      ) {
+        matchIndex = index;
+        matchText = highlight;
+      }
+    });
+
+    if (matchIndex < 0) {
+      parts.push({ text: message.slice(cursor) });
+      break;
+    }
+
+    if (matchIndex > cursor) {
+      parts.push({ text: message.slice(cursor, matchIndex) });
+    }
+
+    parts.push({ text: matchText, highlight: true });
+    cursor = matchIndex + matchText.length;
+  }
+
+  return parts;
+};
+
+export const getCarpoolVibeDialogMessages = (
+  vehicleIcon?: string | null,
+  context: CarpoolVibeDialogContext = {}
+): CarpoolVibeDialogMessage[] => {
+  const pickupLocation = getRideChatDetail(
+    context.pickupLocation,
+    "the pickup spot"
+  );
+  const destination = getRideChatDetail(context.destination, "the destination");
+  const departureTime = context.departureTime?.trim();
+  const pickupAtTime = departureTime
+    ? `${pickupLocation} at ${departureTime}`
+    : `${pickupLocation} once timing is set`;
+  const timeLabel = departureTime || "departure time";
+  const highlightedDetails = [
+    pickupAtTime,
+    pickupLocation,
+    destination,
+    timeLabel,
+  ];
+  const vibeMessages = getCarpoolVibeChatMessages(vehicleIcon, {
+    departureTime,
+    destination,
+    pickupLocation,
+  }).map((message) => getHighlightedDialogParts(message, highlightedDetails));
+  const safetyMessages =
+    context.safetyTips?.slice(0, 2).map((tip) => [
+      { text: `${tip.title}: `, highlight: true },
+      { text: tip.body },
+    ]) ?? [];
+  const handshakeMessage = context.handshakeInstruction
+    ? [
+        { text: "Handshake: ", highlight: true },
+        { text: context.handshakeInstruction },
+      ]
+    : null;
+  const messages = safetyMessages.length > 0
+    ? [...vibeMessages, ...safetyMessages]
+    : context.safetySignal
+      ? [
+          ...vibeMessages,
+          [
+            { text: `${context.safetySignal.title}: `, highlight: true },
+            { text: context.safetySignal.description },
+          ],
+        ]
+      : vibeMessages;
+
+  return handshakeMessage ? [...messages, handshakeMessage] : messages;
 };
 
 export const getCarpoolVibeSafetySignal = (

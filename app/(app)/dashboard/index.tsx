@@ -63,7 +63,7 @@ const Dashboard = () => {
         </CustomView>
         <ImpactPageLoader
           title="Mapping your dashboard"
-          message="Collecting payments, events, and impact signals."
+          message="Loading your events, attendance, and payments."
         />
       </View>
     );

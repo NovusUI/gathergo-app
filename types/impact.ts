@@ -1,10 +1,6 @@
 import { Registration, StandardResponse } from "./auth";
 
-export type ImpactSuggestionSource =
-  | "backend_rules"
-  | "local_rules"
-  | "ai"
-  | "manual";
+export type ImpactSuggestionSource = "ai" | "manual";
 
 export type ImpactSuggestionConfidence = "high" | "medium" | "low";
 

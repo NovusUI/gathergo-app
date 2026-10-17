@@ -1,6 +1,7 @@
 import client from "@/api/client";
 import {
   CompleteProfileData,
+  CurrentUserResponse,
   ForgotPasswordPayload,
   forgotPasswordResponse,
   ResendEmailVerificationPayload,
@@ -185,8 +186,8 @@ export const logoutFn = async () => {
   return res.data;
 };
 
-export const getCurrentUserFn = async () => {
-  const res = await client.get(AUTH_URLS.me);
+export const getCurrentUserFn = async (): Promise<CurrentUserResponse> => {
+  const res = await client.get<CurrentUserResponse>(AUTH_URLS.me);
   return res.data;
 };
 
@@ -361,7 +362,6 @@ export const completUserProfile = async (
     USER_URL.completeProfile,
     payload
   );
-  // Assume API returns { exists: true/false }
   return response.data;
 };
 
@@ -415,11 +415,13 @@ export const createEvent = async (
 };
 
 export const getImpactSuggestions = async (
-  payload: ImpactSuggestionPayload
+  payload: ImpactSuggestionPayload,
+  signal?: AbortSignal
 ): Promise<ImpactSuggestionResponse> => {
   const response = await client.post<ImpactSuggestionResponse>(
     IMPACT_URL.suggestions,
-    payload
+    payload,
+    { signal }
   );
   return response.data;
 };

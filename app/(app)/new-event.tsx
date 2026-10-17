@@ -5,20 +5,13 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
-import ImpactSelector from "@/components/eventInfo/ImpactSelector";
+import EventStoryFields from "@/components/eventInfo/EventStoryFields";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import { normalizeEventLink } from "@/constants/eventLinks";
-import {
-  buildImpactDescription,
-  buildImpactMapForPersistence,
-  buildImpactMapFormFields,
-  buildImpactSuggestionPayloadKey,
-  deriveImpactTags,
-  deriveImpactTitle,
-} from "@/constants/impact";
+import { buildEventImpactFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -28,8 +21,7 @@ import {
   eventSchema,
 } from "@/schemas/event";
 import { useCreateEvent } from "@/services/mutations";
-import type { ImpactSuggestionData } from "@/types/impact";
-import { extractDate } from "@/utils/dateTimeHandler";
+import { buildEventDateTimeIso, extractDate } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { CHACHE_KEYS } from "@/utils/keys";
 import { useLockedRouter } from "@/utils/navigation";
@@ -70,16 +62,12 @@ const NewEvent = () => {
 
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
-    null
+    null,
   );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
 
   const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null);
-  const [impactMapDraft, setImpactMapDraft] = useState<{
-    data: ImpactSuggestionData;
-    payloadKey: string;
-  } | null>(null);
 
   const onEdit = (data: EventTicket) => {
     setEditingTicket(data);
@@ -132,7 +120,7 @@ const NewEvent = () => {
     clearErrors(
       isDonationEvent
         ? ["registrationType", "donationTarget"]
-        : "registrationType"
+        : "registrationType",
     );
   };
 
@@ -239,28 +227,10 @@ const NewEvent = () => {
   });
 
   const startDate = watch("startDate");
-  const eventNameWatch = watch("eventName");
   const isPhysicalEvent = watch("isPhysicalEvent");
   const location = watch("location");
   const registrationType = watch("registrationType");
   const donationTarget = watch("donationTarget");
-  const impactDescription = watch("impactDescription");
-
-  const handleImpactSuggestionsChange = useCallback(
-    (data: ImpactSuggestionData, payloadKey: string) => {
-      setImpactMapDraft({ data, payloadKey });
-    },
-    []
-  );
-
-  const handleImpactDescriptionChange = useCallback(
-    (value: string) => {
-      setValue("impactDescription", value, {
-        shouldValidate: true,
-      });
-    },
-    [setValue]
-  );
 
   const buildPricingState = useCallback(
     (values: Partial<EventFormData>): EventPricing | null => {
@@ -290,7 +260,7 @@ const NewEvent = () => {
           nextRegistrationType === "registration"
             ? Boolean(
                 values.registrationAttendees &&
-                  Number(values.registrationAttendees) !== 100000
+                  Number(values.registrationAttendees) !== 100000,
               )
             : false,
         registrationAttendees:
@@ -300,7 +270,7 @@ const NewEvent = () => {
         tickets: nextRegistrationType === "ticket" ? values.tickets || [] : [],
       };
     },
-    [isDonationEvent]
+    [isDonationEvent],
   );
 
   useEffect(() => {
@@ -365,7 +335,7 @@ const NewEvent = () => {
 
   const onError = (errors: any) => {
     const firstErrorMessage = Object.values(errors || {}).find(
-      (value: any) => value?.message
+      (value: any) => value?.message,
     ) as { message?: string } | undefined;
 
     showGlobalError(firstErrorMessage?.message || "Error in form");
@@ -382,7 +352,7 @@ const NewEvent = () => {
       const hasPaidTickets =
         createdEventType === "ticket" &&
         (watch("tickets") || []).some(
-          (ticket: any) => Number(ticket?.price || 0) > 0
+          (ticket: any) => Number(ticket?.price || 0) > 0,
         );
       const shouldPromptWallet =
         hasPaidRegistration || hasDonationFlow || hasPaidTickets;
@@ -390,14 +360,14 @@ const NewEvent = () => {
       showGlobalSuccess(
         data.data.isImageProcessing
           ? "Event created! Image uploading in background..."
-          : "Event created successfully!"
+          : "Event created successfully!",
       );
       await removeItem(eventFormCacheKey);
       await removeItem(CHACHE_KEYS.eventFormKey);
       router.replace(
         shouldPromptWallet
           ? `/event/${data.data.id}?openPayoutSetup=1`
-          : `/event/${data.data.id}`
+          : `/event/${data.data.id}`,
       );
     },
     onError: (e) => {
@@ -423,12 +393,9 @@ const NewEvent = () => {
       eventName,
       startTime,
       endTime,
-      isRecurring,
       registrationType,
       registrationFee,
       registrationAttendees,
-      impactTitle,
-      impactDescription,
       startDate,
       endDate,
       endRepeat,
@@ -436,55 +403,22 @@ const NewEvent = () => {
       donationTarget,
       links,
       isPhysicalEvent,
-      ...rest
+      location,
     } = data;
 
-    tickets?.map(({ paid, limited, isNew, ...rest }) => ({ rest }));
     const finalRegistrationType = isDonationEvent
       ? "donation"
       : registrationType;
-    const eventDescription = impactDescription.trim();
-    const derivedImpactTitle =
-      impactTitle?.trim() ||
-      deriveImpactTitle({
-        title: eventName,
-        description: eventDescription,
-        impactDescription,
-        registrationType: finalRegistrationType,
-      });
-    const impactAwareTags = deriveImpactTags({
-      title: eventName,
-      description: eventDescription,
-      impactTitle: derivedImpactTitle,
-      impactDescription,
-      registrationType: finalRegistrationType,
-    });
-    const impactMapPayload = {
-      title: eventName,
-      description: eventDescription,
-      impactDescription,
-      registrationType: finalRegistrationType,
-    };
-    const impactMap =
-      impactMapDraft?.payloadKey ===
-      buildImpactSuggestionPayloadKey(impactMapPayload)
-        ? impactMapDraft.data
-        : buildImpactMapForPersistence(impactMapPayload);
+    const eventDescription = data.description.trim();
     const correctedData = {
-      ...rest,
       title: eventName,
       description: eventDescription,
       links: normalizeEventLinks(links),
-      tags: impactAwareTags,
-      ...buildImpactMapFormFields(impactMap),
-      impactTitle: derivedImpactTitle,
-      impactDescription: buildImpactDescription(
-        derivedImpactTitle,
-        impactDescription
-      ),
+      tags: JSON.stringify(data.tags),
+      ...buildEventImpactFormFields(data),
       reoccurring: repeat,
       isPhysicalEvent,
-      location: isPhysicalEvent ? rest.location : "",
+      location: isPhysicalEvent ? location : "",
       ...(finalRegistrationType === "registration"
         ? finalRegistrationType === "registration" && !registrationAttendees
           ? { registrationAttendees: 100000 }
@@ -499,13 +433,15 @@ const NewEvent = () => {
         ? { donationTarget }
         : {}),
       registrationType: finalRegistrationType,
-      startDate: `${extractDate(startDate)}T${startTime}:00Z`,
-      endDate: `${extractDate(endDate)}T${endTime}:00Z`,
+      startDate: buildEventDateTimeIso(startDate, startTime),
+      endDate: buildEventDateTimeIso(endDate, endTime, {
+        endOfMinute: endTime === "23:59",
+      }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
       ...(finalRegistrationType === "ticket"
         ? {
             tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify({ ...rest })
+              JSON.stringify({ ...rest }),
             ),
           }
         : {}),
@@ -552,7 +488,7 @@ const NewEvent = () => {
         <View style={tw`flex-1 w-full max-w-[500px]`}>
           <CustomView style={tw`px-5`}>
             <CustomeTopBarNav
-              title={isDonationEvent ? "New Donation Event" : "New Event"}
+              title={isDonationEvent ? "New Fundraiser" : "New Event"}
               onClickBack={() => router.replace("/")}
             />
           </CustomView>
@@ -600,22 +536,7 @@ const NewEvent = () => {
                 />
               </CustomView>
 
-              <CustomView style={tw`gap-2 mt-2`}>
-                <FormLabel text="impact story" />
-                <ImpactSelector
-                  eventTitle={eventNameWatch}
-                  eventDescription=""
-                  impactDescription={impactDescription}
-                  registrationType={registrationType}
-                  onImpactSuggestionsChange={handleImpactSuggestionsChange}
-                  onImpactDescriptionChange={handleImpactDescriptionChange}
-                />
-                {errors.impactDescription && (
-                  <Text style={tw`text-red-500`}>
-                    {errors.impactDescription.message}
-                  </Text>
-                )}
-              </CustomView>
+              <EventStoryFields control={control} setValue={setValue} />
             </CustomView>
 
             <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />

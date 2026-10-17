@@ -121,6 +121,7 @@ const PerksList: React.FC<PerksListProps> = ({
         <View style={tw`mt-3 flex-row items-center rounded-2xl bg-[#07122E] px-4`}>
           <Ionicons name="add-circle-outline" size={18} color="#0FF1CF" />
           <InputComponent
+            autoCapitalize="none"
             ref={inputRef}
             value={draftPerk}
             onChangeText={setDraftPerk}

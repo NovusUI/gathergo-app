@@ -5,7 +5,7 @@ import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { useAuthStore } from "../store/auth";
 
 const client = axios.create({
-  baseURL: "http://10.228.2.134:4000/api/v1", //API_BASE_URL,
+  baseURL: "http://192.168.0.101:4000/api/v1", //API_BASE_URL,
   timeout: 100000,
 });
 

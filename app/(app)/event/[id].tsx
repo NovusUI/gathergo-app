@@ -12,11 +12,7 @@ import AppToast from "@/components/ui/AppToast";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { getEventLinkMeta, normalizeEventLink } from "@/constants/eventLinks";
-import {
-  buildImpactDescription,
-  formatImpactSummary,
-  normalizePersistedImpactMap
-} from "@/constants/impact";
+import { normalizePersistedImpactMap } from "@/constants/impact";
 import { spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useEventFeedConnection } from "@/hooks/useEventFeedConnection";
@@ -40,7 +36,11 @@ import {
   PaymentProvider,
   UpsertEventImpactReportPayload
 } from "@/types/event";
-import { formatEventDateTime } from "@/utils/dateTimeHandler";
+import {
+  formatEventDateTime,
+  isEventEditableBeforeStartDay,
+  isEventPastEnd
+} from "@/utils/dateTimeHandler";
 import {
   showGlobalError,
   showGlobalSuccess,
@@ -479,14 +479,13 @@ const EventPage = () => {
 
   const { data, isPending, isError } = useEventDetails(resolvedEventId);
   const { data: onboardingData } = useWalletOnboarding({ enabled: !!user?.id });
-  const eventEndBoundary = data?.data?.endDate || data?.data?.startDate;
-  const parsedEventEndBoundary = eventEndBoundary
-    ? new Date(eventEndBoundary)
-    : null;
-  const hasEventEnded = Boolean(
-    parsedEventEndBoundary &&
-      !Number.isNaN(parsedEventEndBoundary.getTime()) &&
-      parsedEventEndBoundary.getTime() <= Date.now()
+  const hasEventEnded = useMemo(
+    () => isEventPastEnd(data?.data?.startDate, data?.data?.endDate),
+    [data?.data?.endDate, data?.data?.startDate]
+  );
+  const canEditEvent = useMemo(
+    () => isEventEditableBeforeStartDay(data?.data?.startDate),
+    [data?.data?.startDate]
   );
 
   const [showPaystackWebView, setShowPaystackWebView] = useState(false);
@@ -591,6 +590,13 @@ const EventPage = () => {
       "This event has ended. Ticketing, registration, and donations are closed."
     );
   }, [closePaymentSelectionSurfaces]);
+
+  const closeEndedCarpoolFlow = useCallback(() => {
+    setShowFeed(false);
+    showGlobalWarning(
+      "This event has ended. Ride creation and joining are closed."
+    );
+  }, []);
 
   const openSheet = useCallback(() => {
     if (hasEventEnded) {
@@ -1048,6 +1054,15 @@ const EventPage = () => {
         return;
       }
 
+      const isCarpoolAction =
+        normalized.includes("OPEN_CARPOOL") ||
+        normalized.includes("CREATE_CARPOOL");
+
+      if (isCarpoolAction && hasEventEnded) {
+        closeEndedCarpoolFlow();
+        return;
+      }
+
       if (normalized.includes("OPEN_CARPOOL") && action.carpoolId) {
         setShowFeed(false);
         router.push(`/carpool/${action.carpoolId}`);
@@ -1068,6 +1083,7 @@ const EventPage = () => {
       }
     },
     [
+      closeEndedCarpoolFlow,
       closeEndedPaymentFlow,
       data?.data?.isPhysicalEvent,
       handleRegisterPress,
@@ -1116,8 +1132,8 @@ const EventPage = () => {
           />
         </CustomView>
         <ImpactPageLoader
-          title="Mapping event impact"
-          message="Pulling the story, tickets, rides, and give-back details into view."
+          title="Loading event"
+          message="Loading event details, tickets, and travel options."
         />
       </View>
     );
@@ -1151,9 +1167,7 @@ const EventPage = () => {
     impactSdgGoals,
     impactPaths,
     impactCommitments,
-    impactMapSource,
     impactReport,
-    tags,
     imageUrl,
     startDate,
     endDate,
@@ -1167,32 +1181,16 @@ const EventPage = () => {
   } = data?.data;
 
   const eventDateTime = formatEventDateTime(startDate, endDate);
-  const impactSummary = formatImpactSummary({
-    title,
-    description,
-    impactTitle,
-    impactDescription,
-    registrationType,
-    tags
+  const impactSummary = impactTitle?.trim() || null;
+  const impactNote = impactDescription?.trim() || "";
+  const persistedImpactMap = normalizePersistedImpactMap({
+    impactSdgGoals,
+    impactPaths,
+    impactCommitments,
   });
-  const impactNote = buildImpactDescription(impactTitle, impactDescription);
-  const persistedImpactMap = normalizePersistedImpactMap(
-    {
-      impactSdgGoals,
-      impactPaths,
-      impactCommitments,
-      impactMapSource
-    },
-    {
-      title,
-      description,
-      impactDescription,
-      registrationType
-    }
-  );
-  const inferredSdgGoals = persistedImpactMap.sdgGoals;
-  const inferredMechanisms = persistedImpactMap.impactPaths;
-  const inferredCommitments = persistedImpactMap.commitments;
+  const selectedSdgGoals = persistedImpactMap.sdgGoals;
+  const selectedImpactPaths = persistedImpactMap.impactPaths;
+  const selectedCommitments = persistedImpactMap.commitments;
   const eventLinks = links || [];
   const eventTone = getEventTone(registrationType);
   const eventModeLabel =
@@ -1207,9 +1205,9 @@ const EventPage = () => {
     registrationFee,
     donationTarget: data.data.donationTarget
   });
-  const heroImpactGoal = inferredSdgGoals[0];
+  const heroImpactGoal = selectedSdgGoals[0];
   const heroImpactLabel =
-    heroImpactGoal?.shortTitle || impactSummary || "Impact mapped";
+    heroImpactGoal?.shortTitle || impactSummary;
   const reportedOutcomes = Array.isArray(impactReport?.outcomes)
     ? impactReport.outcomes
     : [];
@@ -1232,8 +1230,8 @@ const EventPage = () => {
             unit: outcome.unit,
             note: outcome.note || ""
           }))
-        : inferredCommitments.length
-          ? inferredCommitments.map((commitment) => ({
+        : selectedCommitments.length
+          ? selectedCommitments.map((commitment) => ({
               id: commitment.id,
               type: commitment.type,
               label: commitment.label,
@@ -1389,11 +1387,13 @@ const EventPage = () => {
                       label={eventModeLabel}
                       accent="#31C6F6"
                     />
-                    <EventHeroChip
-                      iconName="leaf-outline"
-                      label={heroImpactLabel}
-                      accent={heroImpactGoal?.color || "#F8D05C"}
-                    />
+                    {heroImpactLabel && (
+                      <EventHeroChip
+                        iconName="leaf-outline"
+                        label={heroImpactLabel}
+                        accent={heroImpactGoal?.color || "#F8D05C"}
+                      />
+                    )}
                   </View>
                   <View style={tw`mt-4 flex-row items-end gap-3`}>
                     <Text
@@ -1465,13 +1465,19 @@ const EventPage = () => {
                   This event has ended
                 </Text>
                 <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
-                  You can still review the event details, impact story,
+                  You can still review the event details, updates,
                   organizer profile, and related links here.
                 </Text>
               </View>
             </CustomView>
           )}
 
+          <CustomView style={tw`px-5 pt-4`}>
+            <Text style={tw`text-xl font-semibold text-white`}>About this event</Text>
+            <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>{description}</Text>
+          </CustomView>
+
+          {(impactSummary || impactNote || selectedSdgGoals.length > 0 || selectedImpactPaths.length > 0 || selectedCommitments.length > 0) && (
           <CustomView style={tw`px-4 pt-4`}>
             <View
               style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
@@ -1484,21 +1490,21 @@ const EventPage = () => {
                     Impact story
                   </Text>
                   <Text style={tw`mt-2 text-xl font-semibold text-white`}>
-                    {impactSummary || "Cause-led event"}
+                    {impactSummary || "From the organiser"}
                   </Text>
                   <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
                     {impactNote}
                   </Text>
                 </View>
-                {inferredSdgGoals[0] ? (
+                {selectedSdgGoals[0] ? (
                   <View
                     style={[
                       tw`h-11 w-11 items-center justify-center rounded-full`,
-                      { backgroundColor: inferredSdgGoals[0].color }
+                      { backgroundColor: selectedSdgGoals[0].color }
                     ]}
                   >
                     <SdgGoalIcon
-                      number={inferredSdgGoals[0].number}
+                      number={selectedSdgGoals[0].number}
                       color="white"
                       size={23}
                     />
@@ -1512,11 +1518,11 @@ const EventPage = () => {
                 )}
               </View>
 
-              {(inferredSdgGoals.length > 0 ||
-                inferredMechanisms.length > 0 ||
-                inferredCommitments.length > 0) && (
+              {(selectedSdgGoals.length > 0 ||
+                selectedImpactPaths.length > 0 ||
+                selectedCommitments.length > 0) && (
                 <View style={tw`mt-4 flex-row flex-wrap gap-2`}>
-                  {inferredSdgGoals.map((goal) => (
+                  {selectedSdgGoals.map((goal) => (
                     <View
                       key={goal.id}
                       style={tw`flex-row items-center rounded-full bg-[#0A173F] pr-3`}
@@ -1539,7 +1545,7 @@ const EventPage = () => {
                     </View>
                   ))}
 
-                  {inferredCommitments.map((commitment) => (
+                  {selectedCommitments.map((commitment) => (
                     <View
                       key={commitment.id}
                       style={tw`rounded-full bg-[#F4B942]/10 px-3 py-2`}
@@ -1550,7 +1556,7 @@ const EventPage = () => {
                     </View>
                   ))}
 
-                  {inferredMechanisms.map((mechanism) => (
+                  {selectedImpactPaths.map((mechanism) => (
                     <View
                       key={mechanism.id}
                       style={tw`rounded-full bg-[#0FF1CF]/10 px-3 py-2`}
@@ -1564,6 +1570,7 @@ const EventPage = () => {
               )}
             </View>
           </CustomView>
+          )}
           {hasEventEnded && (impactReport || owner) && (
             <CustomView style={tw`px-5 pb-4`}>
               <View
@@ -1836,8 +1843,20 @@ const EventPage = () => {
             )}
             {owner && (
               <TouchableOpacity
-                style={tw`p-3 rounded-lg`}
-                onPress={() => router.push(`/event/edit/${resolvedEventId}`)}
+                style={[
+                  tw`p-3 rounded-lg`,
+                  !canEditEvent ? tw`opacity-40` : null
+                ]}
+                onPress={() => {
+                  if (!canEditEvent) {
+                    showGlobalWarning(
+                      "Events can no longer be edited on the day they start."
+                    );
+                    return;
+                  }
+
+                  router.push(`/event/edit/${resolvedEventId}`);
+                }}
               >
                 <Edit2Icon color="#0FF1CF" />
               </TouchableOpacity>
@@ -2160,6 +2179,7 @@ const EventPage = () => {
               Optional Message (Optional)
             </Text>
             <BottomSheetTextInput
+              autoCapitalize="none"
               style={tw`bg-[#101C45] rounded-xl px-4 py-3 text-white min-h-[100px]`}
               value={donationMessage}
               onChangeText={setDonationMessage}
@@ -2504,6 +2524,7 @@ const EventPage = () => {
                   Summary
                 </Text>
                 <TextInput
+                  autoCapitalize="none"
                   value={impactReportSummary}
                   onChangeText={setImpactReportSummary}
                   placeholder="What happened, who benefited, and what changed?"
@@ -2554,6 +2575,7 @@ const EventPage = () => {
                     </View>
 
                     <TextInput
+                      autoCapitalize="none"
                       value={outcome.label}
                       onChangeText={(value) =>
                         updateImpactReportOutcome(index, { label: value })
@@ -2575,6 +2597,7 @@ const EventPage = () => {
                         style={tw`flex-1 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
                       />
                       <TextInput
+                        autoCapitalize="none"
                         value={outcome.unit}
                         onChangeText={(value) =>
                           updateImpactReportOutcome(index, { unit: value })
@@ -2586,6 +2609,7 @@ const EventPage = () => {
                     </View>
 
                     <TextInput
+                      autoCapitalize="none"
                       value={outcome.note}
                       onChangeText={(value) =>
                         updateImpactReportOutcome(index, { note: value })
@@ -2606,6 +2630,7 @@ const EventPage = () => {
                   Evidence links
                 </Text>
                 <TextInput
+                  autoCapitalize="none"
                   value={impactReportEvidenceText}
                   onChangeText={setImpactReportEvidenceText}
                   placeholder="Paste up to 5 links, one per line"

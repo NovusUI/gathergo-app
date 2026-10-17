@@ -1,6 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { CarpoolVibeSafetySignal } from "@/constants/carpool";
-import { getCarpoolVibeSafetyRoleCopy } from "@/constants/carpool";
+import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import type {
+  CarpoolVibeMascotStyle,
+  CarpoolVibeSafetySignal,
+} from "@/constants/carpool";
+import {
+  getCarpoolVibeHandshakeInstruction,
+  getCarpoolVibeSafetyRoleCopy,
+} from "@/constants/carpool";
 import type {
   VibeCheckPassengerHandshake,
   VibeCheckRole,
@@ -13,6 +20,7 @@ type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
 interface VibeCheckModalProps {
   iconName: IoniconName;
+  mascotStyle: CarpoolVibeMascotStyle;
   rideLabel: string;
   roleLabel: string;
   safetySignal: CarpoolVibeSafetySignal;
@@ -34,6 +42,7 @@ interface VibeCheckModalProps {
 
 export default function VibeCheckModal({
   iconName,
+  mascotStyle,
   rideLabel,
   roleLabel,
   safetySignal,
@@ -46,6 +55,9 @@ export default function VibeCheckModal({
     safetySignal,
     roleLabel,
     rideLabel
+  );
+  const handshakeInstruction = getCarpoolVibeHandshakeInstruction(
+    vibeCheck?.role ?? "member"
   );
   const currentSignal = safetyCopy.primarySignalValue;
   const activePassenger =
@@ -74,23 +86,45 @@ export default function VibeCheckModal({
     >
       <View style={tw`flex-1 bg-black/75 justify-center items-center px-5`}>
         <View
-          style={tw`w-full max-w-[430px] max-h-[88%] rounded-[28px] bg-[#07143B] border border-[#1B2A50] overflow-hidden`}
+          style={[
+            tw`w-full max-w-[430px] max-h-[88%] rounded-[28px] border overflow-hidden`,
+            {
+              backgroundColor: mascotStyle.cardBackground,
+              borderColor: mascotStyle.cardBorder,
+            },
+          ]}
         >
           <View style={tw`h-1 flex-row`}>
-            <View style={tw`flex-1 bg-[#0FF1CF]`} />
-            <View style={tw`flex-1 bg-[#31C6F6]`} />
-            <View style={tw`flex-1 bg-[#F8D05C]`} />
+            <View
+              style={[tw`flex-1`, { backgroundColor: mascotStyle.accent }]}
+            />
+            <View style={[tw`flex-1`, { backgroundColor: mascotStyle.body }]} />
+            <View
+              style={[tw`flex-1`, { backgroundColor: mascotStyle.badgeBg }]}
+            />
           </View>
 
           <ScrollView contentContainerStyle={tw`p-5 gap-4`}>
             <View style={tw`flex-row items-start gap-3`}>
-              <View
-                style={tw`w-14 h-14 rounded-3xl bg-[#0FF1CF]/12 border border-[#0FF1CF]/25 items-center justify-center`}
-              >
-                <Ionicons name={iconName} size={30} color="#0FF1CF" />
-              </View>
+              <GatherGoMascot
+                animated
+                badgeContent={
+                  <Ionicons
+                    name={iconName}
+                    size={15}
+                    color={mascotStyle.iconColor}
+                  />
+                }
+                palette={mascotStyle}
+                size={66}
+                style={{ flexShrink: 0 }}
+                variant={mascotStyle.variant}
+              />
               <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-[#0FF1CF] text-xs`} numberOfLines={1}>
+                <Text
+                  style={[tw`text-xs`, { color: mascotStyle.accent }]}
+                  numberOfLines={1}
+                >
                   {rideLabel} vibe-check
                 </Text>
                 <Text style={tw`text-white text-xl font-semibold mt-1`}>
@@ -102,18 +136,31 @@ export default function VibeCheckModal({
               </View>
             </View>
 
-            <View style={tw`rounded-3xl bg-[#0FF1CF]/10 p-4 gap-2`}>
+            <View
+              style={[
+                tw`rounded-3xl border p-4 gap-2`,
+                {
+                  backgroundColor: mascotStyle.dialogBackground,
+                  borderColor: mascotStyle.cardBorder,
+                },
+              ]}
+            >
               <View style={tw`flex-row items-center gap-2`}>
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={17}
-                  color="#0FF1CF"
+                  color={mascotStyle.accent}
                 />
                 <Text style={tw`text-white text-sm font-semibold`}>
                   {safetyCopy.primarySignalLabel}
                 </Text>
               </View>
-              <Text style={tw`text-[#DDE6FF] text-sm font-semibold`}>
+              <Text
+                style={[
+                  tw`text-sm font-semibold`,
+                  { color: mascotStyle.badgeBg },
+                ]}
+              >
                 {currentSignal}
               </Text>
             </View>
@@ -139,6 +186,9 @@ export default function VibeCheckModal({
                         : "Waiting"}
                   </Text>
                 </View>
+                <Text style={tw`text-[#A8BAE4] text-xs leading-4`}>
+                  {handshakeInstruction}
+                </Text>
 
                 {isPooler ? (
                   <View style={tw`gap-3`}>

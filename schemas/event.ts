@@ -84,9 +84,9 @@ export const eventSchema = z
 
     description: z
       .string()
-      .max(300, "Impact story must be at most 300 characters")
-      .optional()
-      .default(""),
+      .trim()
+      .min(1, "Describe your event")
+      .max(300, "Event description must be at most 300 characters"),
 
     impactTitle: z
       .string()
@@ -95,8 +95,9 @@ export const eventSchema = z
 
     impactDescription: z
       .string()
-      .min(1, "Describe the event's impact story")
-      .max(180, "Impact story must be at most 180 characters"),
+      .trim()
+      .max(180, "Impact story must be at most 180 characters")
+      .default(""),
 
     impactPercentage: z
       .union([
@@ -131,7 +132,7 @@ export const eventSchema = z
 
         return value
           .map((item) =>
-            normalizeEventLink(typeof item === "string" ? item : "")
+            normalizeEventLink(typeof item === "string" ? item : ""),
           )
           .filter(Boolean)
           .slice(0, 5);
@@ -140,9 +141,9 @@ export const eventSchema = z
         .array(
           z.string().refine(isValidEventLink, {
             message: "Each link must be a valid URL",
-          })
+          }),
         )
-        .max(5, "You can add up to 5 links")
+        .max(5, "You can add up to 5 links"),
     ),
 
     tags: z.array(z.string()),
@@ -228,7 +229,7 @@ export const dateTimeSchema = z
     // Inclusive day count
     const daysBetween =
       Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
       ) + 1;
 
     // Recurring validations
@@ -341,7 +342,7 @@ export const dateTimeEditSchema = z
     // Inclusive day count
     const daysBetween =
       Math.ceil(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
       ) + 1;
 
     // Recurring validations

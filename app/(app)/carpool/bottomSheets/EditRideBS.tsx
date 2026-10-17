@@ -212,6 +212,7 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                     style={tw`rounded-2xl bg-[#1B2A50]/40 px-4 py-4 min-h-[132px]`}
                   >
                     <BottomSheetTextInput
+                      autoCapitalize="none"
                       value={rideNote}
                       onChangeText={setRideNote}
                       multiline

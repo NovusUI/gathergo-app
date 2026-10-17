@@ -25,6 +25,7 @@ import {
   showGlobalSuccess,
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
+import { isEventPastEnd } from "@/utils/dateTimeHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { dummy, formatTo12Hour } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
@@ -362,6 +363,10 @@ const CarpoolPage = () => {
 
   const carpool = data.data;
   const owner = carpool.driver.id === user?.id;
+  const eventHasEnded = isEventPastEnd(
+    carpool.event?.startDate,
+    carpool.event?.endDate
+  );
   const rideUnavailable = carpool.status !== "ACTIVE";
   const isFollowingDriver = carpool.isFollowingDriver;
   const isFollowedByDriver = carpool.isFollowedByDriver;
@@ -407,6 +412,10 @@ const CarpoolPage = () => {
     }
   };
   const getButtonProps = () => {
+    if (eventHasEnded) {
+      return { title: "Event ended", disabled: true, action: null };
+    }
+
     if (rideUnavailable) {
       return { title: "Unavailable", disabled: true };
     }

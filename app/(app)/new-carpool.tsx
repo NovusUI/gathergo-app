@@ -17,7 +17,7 @@ import {
   useGetSearchResult,
 } from "@/services/queries";
 import { CarpoolForm } from "@/types/carpool";
-import { extractTime } from "@/utils/dateTimeHandler";
+import { extractTime, isEventPastEnd } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,17 +54,12 @@ const defaultCarpoolFormValues: CarpoolFormValues = {
 };
 
 const isEventEligibleForCarpool = (event?: {
+  startDate?: string | null;
   endDate?: string | null;
   isPhysicalEvent?: boolean | null;
 }) => {
   if (event?.isPhysicalEvent === false) return false;
-  if (!event?.endDate) return true;
-
-  const deadline = new Date(event.endDate);
-  if (Number.isNaN(deadline.getTime())) return true;
-
-  deadline.setHours(deadline.getHours() + 6);
-  return new Date() <= deadline;
+  return !isEventPastEnd(event?.startDate, event?.endDate);
 };
 
 const NewCarpool = () => {
@@ -140,6 +135,11 @@ const NewCarpool = () => {
       return;
     }
 
+    if (isEventPastEnd(event?.startDate, event?.endDate)) {
+      showGlobalError("You can no longer create a carpool for this event");
+      return;
+    }
+
     setSelectedEvent(event);
     setIsFormModalVisible(true);
   }, []);
@@ -177,12 +177,10 @@ const NewCarpool = () => {
     }
   }, [isToEvent, toggleNearby, useCurrentLocation]);
 
-  const carpoolCreationDeadline = useMemo(() => {
-    if (!selectedEvent?.endDate) return null;
-    const deadline = new Date(selectedEvent.endDate);
-    deadline.setHours(deadline.getHours() + 6);
-    return deadline;
-  }, [selectedEvent?.endDate]);
+  const selectedEventHasEnded = useMemo(
+    () => isEventPastEnd(selectedEvent?.startDate, selectedEvent?.endDate),
+    [selectedEvent?.endDate, selectedEvent?.startDate]
+  );
 
   const renderEventList = () => {
     if (isPending || loading) {
@@ -318,7 +316,7 @@ const NewCarpool = () => {
       return;
     }
 
-    if (carpoolCreationDeadline && new Date() > carpoolCreationDeadline) {
+    if (selectedEventHasEnded) {
       showGlobalError("You can no longer create a carpool for this event");
       return;
     }
@@ -380,6 +378,7 @@ const NewCarpool = () => {
         >
           <SearchIcon size={20} color="white" />
           <TextInput
+            autoCapitalize="none"
             ref={searchInputRef}
             placeholder="Search a physical event to carpool"
             placeholderTextColor="#94A3B8"
@@ -610,6 +609,7 @@ const NewCarpool = () => {
                   render={({ field }) => (
                     <View style={tw`w-full`}>
                       <TextInput
+                        autoCapitalize="none"
                         style={tw`min-h-[120px] rounded-2xl bg-[#0A173F] p-4 text-base text-white`}
                         placeholder="Any extra details?"
                         placeholderTextColor="#9CA3AF"

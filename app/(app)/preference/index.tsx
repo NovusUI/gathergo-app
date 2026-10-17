@@ -1,12 +1,16 @@
+import {
+  EVENT_INTEREST_GROUPS,
+  INTEREST_GRAPH,
+} from "@/constants/eventInterests";
 import CustomButton from "@/components/buttons/CustomBtn1";
+import ProfileWelcomeModal from "@/components/ui/ProfileWelcomeModal";
 import { useAuth } from "@/context/AuthContext";
 import { useSavePreferences } from "@/services/mutations";
-import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
+import { useCurrentUser } from "@/services/queries";
+import { showGlobalError } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
-import { saveItem } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  type ComponentProps,
   useEffect,
   useMemo,
   useRef,
@@ -24,101 +28,11 @@ import {
 import Svg, { Circle, Line } from "react-native-svg";
 import tw from "twrnc";
 
-type IoniconName = ComponentProps<typeof Ionicons>["name"];
-
-const INTEREST_GRAPH: Record<string, string[]> = {
-  Cinema: ["Film Festivals", "Pop Culture", "Nightlife", "Photography"],
-  Concert: ["Music", "Nightlife", "Festival", "Dance"],
-  Art: ["Design", "Photography", "Museum", "Crafts"],
-  Music: ["Concert", "Dance", "Nightlife", "Festival"],
-  Brunches: ["Food", "Lifestyle", "Wellness", "Networking"],
-  Sport: ["Fitness", "Outdoor", "Health", "Adventure"],
-  Scientific: ["STEM", "Innovation", "Education", "Tech"],
-  Business: ["Startup", "Networking", "Finance", "Leadership"],
-  Tech: ["Innovation", "AI", "Gaming", "STEM"],
-  Realstate: ["Business", "Finance", "Architecture", "Design"],
-  Automotive: ["Motorsport", "Adventure", "Tech", "Outdoor"],
-  Fashion: ["Lifestyle", "Design", "Beauty", "Photography"],
-  Outdoor: ["Adventure", "Travel", "Fitness", "Nature"],
-  Education: ["Career", "STEM", "Leadership", "Scientific"],
-  Design: ["Art", "Architecture", "Fashion", "Photography"],
-  Nightlife: ["Music", "Dance", "Food", "Festival"],
-  Zoo: ["Nature", "Family", "Outdoor", "Photography"],
-  Food: ["Brunches", "Lifestyle", "Culture", "Travel"],
-  Dance: ["Music", "Nightlife", "Fitness", "Festival"],
-  Festival: ["Music", "Outdoor", "Culture", "Travel"],
-  Photography: ["Art", "Design", "Fashion", "Travel"],
-  Museum: ["Art", "Culture", "Education", "History"],
-  Startup: ["Tech", "Business", "Networking", "Innovation"],
-  Networking: ["Business", "Career", "Leadership", "Startup"],
-  Finance: ["Business", "Realstate", "Career", "Leadership"],
-  Wellness: ["Health", "Fitness", "Lifestyle", "Mindfulness"],
-  Health: ["Wellness", "Fitness", "Scientific", "Lifestyle"],
-  Fitness: ["Sport", "Outdoor", "Health", "Dance"],
-  Adventure: ["Outdoor", "Travel", "Automotive", "Nature"],
-  Travel: ["Outdoor", "Festival", "Food", "Culture"],
-  Nature: ["Outdoor", "Zoo", "Adventure", "Photography"],
-  Culture: ["Food", "Museum", "Festival", "Art"],
-  Architecture: ["Design", "Realstate", "Art", "Culture"],
-  Beauty: ["Fashion", "Lifestyle", "Wellness", "Design"],
-  AI: ["Tech", "Innovation", "STEM", "Scientific"],
-  Gaming: ["Tech", "Pop Culture", "Innovation", "Nightlife"],
-  Leadership: ["Business", "Career", "Education", "Networking"],
-  Career: ["Education", "Business", "Leadership", "Networking"],
-  Family: ["Zoo", "Food", "Outdoor", "Culture"],
-  "Pop Culture": ["Cinema", "Gaming", "Music", "Festival"],
-  STEM: ["Tech", "Scientific", "Education", "AI"],
-  Innovation: ["Tech", "Startup", "Scientific", "AI"],
-  History: ["Museum", "Culture", "Education", "Art"],
-  Crafts: ["Art", "Design", "Culture", "Lifestyle"],
-  Lifestyle: ["Brunches", "Fashion", "Food", "Wellness"],
-  Mindfulness: ["Wellness", "Health", "Lifestyle", "Nature"],
-};
-
-const STARTER_CLUSTERS = [
-  {
-    label: "Arts, Culture & Storytelling",
-    items: ["Art", "Cinema", "Museum", "Photography", "Design"],
-    accent: "#F8D05C",
-    iconName: "color-palette-outline" as IoniconName,
-  },
-  {
-    label: "Community & Social Good",
-    items: ["Food", "Brunches", "Culture", "Family", "Networking"],
-    accent: "#FF6B6B",
-    iconName: "people-outline" as IoniconName,
-  },
-  {
-    label: "Health, Wellness & Care",
-    items: ["Wellness", "Health", "Fitness", "Mindfulness", "Sport"],
-    accent: "#0FF1CF",
-    iconName: "heart-circle-outline" as IoniconName,
-  },
-  {
-    label: "Education, Learning & Growth",
-    items: ["Education", "Career", "Leadership", "Scientific", "STEM"],
-    accent: "#31C6F6",
-    iconName: "school-outline" as IoniconName,
-  },
-  {
-    label: "Climate, Nature & Outdoors",
-    items: ["Outdoor", "Nature", "Adventure", "Travel", "Zoo"],
-    accent: "#60D394",
-    iconName: "leaf-outline" as IoniconName,
-  },
-  {
-    label: "Innovation, Work & Future Ideas",
-    items: ["Tech", "AI", "Gaming", "Business", "Innovation"],
-    accent: "#B78CFF",
-    iconName: "bulb-outline" as IoniconName,
-  },
-];
-
-const ALL_STARTER_ITEMS = STARTER_CLUSTERS.flatMap((c) => c.items);
+const ALL_STARTER_ITEMS = EVENT_INTEREST_GROUPS.flatMap((c) => c.items);
 const FALLBACK_MAP_SIGNALS = [
   "Culture",
   "Wellness",
-  "Climate",
+  "Music",
   "Learning",
   "Tech",
   "Community",
@@ -138,7 +52,7 @@ const MAP_NODE_SIZE = 44;
 const MAP_LABEL_WIDTH = 84;
 const MAP_CENTER_SIZE = 118;
 
-function ImpactFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
+function EventFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
   const pulse = useRef(new Animated.Value(0)).current;
   const [mapWidth, setMapWidth] = useState(MAP_VIEWBOX_WIDTH);
   const activeSignals = selectedPrefs.slice(0, MAP_NODE_SLOTS.length);
@@ -152,10 +66,10 @@ function ImpactFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
   const labelWidth = MAP_LABEL_WIDTH * mapScale;
   const clusterCount = useMemo(
     () =>
-      STARTER_CLUSTERS.filter((cluster) =>
-        cluster.items.some((item) => selectedPrefs.includes(item))
+      EVENT_INTEREST_GROUPS.filter((cluster) =>
+        cluster.items.some((item) => selectedPrefs.includes(item)),
       ).length,
-    [selectedPrefs]
+    [selectedPrefs],
   );
 
   useEffect(() => {
@@ -172,7 +86,7 @@ function ImpactFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
           duration: 0,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     animation.start();
@@ -209,14 +123,13 @@ function ImpactFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
           <Text
             style={tw`text-[#0FF1CF] text-[11px] font-bold tracking-widest uppercase`}
           >
-            Your Impact Map
+            Your Event Interests
           </Text>
           <Text style={tw`mt-2 text-white text-3xl font-bold leading-9`}>
             Build a feed around what moves you.
           </Text>
           <Text style={tw`mt-2 text-[#A8BAE4] text-sm leading-5`}>
-            Your choices become signals for events, causes, rides, and
-            community moments.
+            Your choices help you discover events, rides, and community moments.
           </Text>
         </View>
         <View
@@ -358,9 +271,9 @@ function ImpactFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
       </View>
 
       <View style={tw`mt-4 flex-row gap-3`}>
-        <ImpactMetric value={`${selectedPrefs.length}`} label="Signals" />
-        <ImpactMetric value={`${clusterCount || 0}`} label="Clusters" />
-        <ImpactMetric
+        <InterestMetric value={`${selectedPrefs.length}`} label="Signals" />
+        <InterestMetric value={`${clusterCount || 0}`} label="Clusters" />
+        <InterestMetric
           value={`${suggestedBranchCount(selectedPrefs)}`}
           label="Branches"
         />
@@ -369,7 +282,7 @@ function ImpactFeedMapPreview({ selectedPrefs }: { selectedPrefs: string[] }) {
   );
 }
 
-function ImpactMetric({ value, label }: { value: string; label: string }) {
+function InterestMetric({ value, label }: { value: string; label: string }) {
   return (
     <View
       style={tw`flex-1 rounded-2xl border border-[#1B2A50] bg-[#0A173F] px-3 py-3`}
@@ -487,34 +400,40 @@ export default function PreferencesScreen() {
   const router = useLockedRouter();
   const { user, setUser } = useAuth();
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const { data: currentUser } = useCurrentUser({
+    enabled: Boolean(user && !user.birthDate),
+  });
+  const welcomeUser = user?.birthDate ? user : currentUser?.data ?? user;
 
   const { mutate: onUpdatePreference, isPending } = useSavePreferences({
-    onSuccess: async () => {
+    onSuccess: () => {
       if (user) {
-        const updatedUser = { ...user, hasPreferences: true };
-        setUser(updatedUser);
-        await saveItem("user", JSON.stringify(updatedUser));
+        setUser({ ...user, hasPreferences: true });
       }
 
-      showGlobalSuccess("Preferences saved!");
-      router.replace("/");
+      setShowWelcome(true);
     },
     onError: (err: any) => {
       showGlobalError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to save preferences"
+          "Failed to save preferences",
       );
     },
   });
 
   const handleSelect = (item: string) => {
     setSelectedPrefs((prev) =>
-      prev.includes(item) ? prev.filter((p) => p !== item) : [...prev, item]
+      prev.includes(item) ? prev.filter((p) => p !== item) : [...prev, item],
     );
   };
 
   const savePreference = () => {
+    if (!user) {
+      showGlobalError("Please sign in again to save your preferences.");
+      return;
+    }
     if (selectedPrefs.length === 0) {
       showGlobalError("Please select at least one preference");
       return;
@@ -530,7 +449,7 @@ export default function PreferencesScreen() {
       (suggestion) =>
         !selectedPrefs.includes(suggestion) &&
         !ALL_STARTER_ITEMS.includes(suggestion) &&
-        !addedToGroup.has(suggestion)
+        !addedToGroup.has(suggestion),
     );
 
     if (items.length > 0) {
@@ -545,11 +464,11 @@ export default function PreferencesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={tw`gap-5 pb-4`}
       >
-        <ImpactFeedMapPreview selectedPrefs={selectedPrefs} />
+        <EventFeedMapPreview selectedPrefs={selectedPrefs} />
 
-        {STARTER_CLUSTERS.map((cluster) => {
+        {EVENT_INTEREST_GROUPS.map((cluster) => {
           const selectedCountInCluster = cluster.items.filter((item) =>
-            selectedPrefs.includes(item)
+            selectedPrefs.includes(item),
           ).length;
 
           return (
@@ -655,8 +574,8 @@ export default function PreferencesScreen() {
                   : "Choose a few signals to wake the map up."}
               </Text>
               <Text style={tw`mt-1 text-[#8FA5E2] text-xs leading-5`}>
-                GatherGo will use this to tune event discovery around causes,
-                communities, and experiences that feel close to you.
+                GatherGo will use this to tune event discovery around your
+                interests, communities, and experiences that feel close to you.
               </Text>
             </View>
           </View>
@@ -681,13 +600,19 @@ export default function PreferencesScreen() {
         )}
         <CustomButton
           onPress={savePreference}
-          title={isPending ? "Saving..." : "Build my impact feed"}
-          disabled={isPending || selectedPrefs.length === 0}
+          title={isPending ? "Saving..." : "Find my events"}
+          disabled={isPending || showWelcome || selectedPrefs.length === 0}
           buttonClassName="bg-[#0FF1CF] border-0 w-full"
           textClassName="!text-black"
           arrowCircleColor="bg-[#0A7F7F]"
         />
       </View>
+      {showWelcome && welcomeUser && (
+        <ProfileWelcomeModal
+          profile={welcomeUser}
+          onContinue={() => router.replace("/")}
+        />
+      )}
     </View>
   );
 }
