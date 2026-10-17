@@ -12,6 +12,8 @@ type PricingCardProps = {
   onPress?: () => void;
   perks?: string[];
   ticketQuantity?: number;
+  selectedQuantity?: number;
+  canIncrease?: boolean;
   onQuantityChange?: (quantity: number) => void;
   sold?: number;
   isNew?: boolean;
@@ -28,6 +30,8 @@ const PricingCard = ({
   price,
   perks,
   ticketQuantity,
+  selectedQuantity,
+  canIncrease = true,
   sold,
   onQuantityChange,
   isNew,
@@ -38,21 +42,17 @@ const PricingCard = ({
   onEdit,
 }: PricingCardProps) => {
   const [showPerk, setShowPerk] = useState(false);
-  const [quantity, setQuantity] = useState(0);
+  const [localQuantity, setQuantity] = useState(0);
+  const quantity = selectedQuantity ?? localQuantity;
 
   const handleAdd = () => {
-    console.log(
-      ticketQuantity,
-      sold,
-      quantity,
-      ticketQuantity && sold && ticketQuantity - sold > quantity
-    );
     if (
+      canIncrease &&
       ticketQuantity &&
       sold !== undefined &&
       ticketQuantity - sold > quantity
     ) {
-      setQuantity((prev) => prev + 1);
+      if (selectedQuantity === undefined) setQuantity((prev) => prev + 1);
       onQuantityChange?.(1);
     } else {
       showGlobalWarning("Reached stock limit");
@@ -61,7 +61,7 @@ const PricingCard = ({
 
   const handleRemove = () => {
     if (quantity > 0) {
-      setQuantity((prev) => prev - 1);
+      if (selectedQuantity === undefined) setQuantity((prev) => prev - 1);
       onQuantityChange?.(-1);
     }
   };
@@ -163,6 +163,9 @@ const PricingCard = ({
           <View style={tw`flex-row items-center mt-4 gap-3`}>
             <TouchableOpacity
               onPress={handleRemove}
+              accessibilityRole="button"
+              accessibilityLabel="Remove ticket"
+              disabled={quantity === 0}
               style={tw`bg-[#ffff] h-8 w-8 rounded-full flex-row justify-center items-center`}
             >
               <Text style={tw`text-black text-lg`}>-</Text>
@@ -170,6 +173,9 @@ const PricingCard = ({
             <Text style={tw`text-white text-lg`}>{quantity}</Text>
             <TouchableOpacity
               onPress={handleAdd}
+              accessibilityRole="button"
+              accessibilityLabel="Add ticket"
+              disabled={!canIncrease}
               style={tw`${
                 quantity ? "bg-[#0FF1CF]" : "bg-[#ffff]"
               } h-8 w-8 rounded-full flex-row justify-center items-center`}

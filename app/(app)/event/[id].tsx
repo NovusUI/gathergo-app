@@ -1,3 +1,5 @@
+import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
+import { checkoutIntentKey } from "@/utils/checkout";
 // EventPage.tsx
 import AvatarWithLabel from "@/components/AvatarWithLabel";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
@@ -32,6 +34,7 @@ import {
   EventImpactReportOutcome,
   EventTicket,
   GetTickets,
+  GetTicketsResponse,
   PaymentInstructions,
   PaymentProvider,
   UpsertEventImpactReportPayload
@@ -455,7 +458,6 @@ const EventPage = () => {
     "1";
   const router = useLockedRouter();
 
-  const [ticketTotal, setTicketTotal] = useState(0);
   const [selectedTickets, setSelectedTickets] = useState<GetTickets[]>([]);
   const [donationAmount, setDonationAmount] = useState<string>("500");
   const [donationMessage, setDonationMessage] = useState<string>("");
@@ -466,7 +468,10 @@ const EventPage = () => {
     useState(false);
   const [transferInstructions, setTransferInstructions] =
     useState<PaymentInstructions | null>(null);
-  const [transferCountdownSeconds, setTransferCountdownSeconds] = useState(300);
+  const [checkoutDeadlineMs, setCheckoutDeadlineMs] = useState<number | null>(
+    null
+  );
+  const transferCountdownSeconds = useCheckoutCountdown(checkoutDeadlineMs);
   const [showCreatorSetupModal, setShowCreatorSetupModal] = useState(false);
   const [showRegistrationCheckout, setShowRegistrationCheckout] =
     useState(false);
@@ -544,12 +549,28 @@ const EventPage = () => {
   const handleTicketSelection = (
     ticketId: string,
     ticketName: string,
-    price: number,
     change: number
   ) => {
-    setTicketTotal((prev) => prev + price * change);
+    if (!paymentOptions) return;
+    const maximum = paymentOptions.maxTicketsPerCheckout;
+    if (
+      change > 0 &&
+      selectedTickets.reduce((sum, item) => sum + item.quantity, 0) + change >
+        maximum
+    ) {
+      showGlobalWarning(
+        `You can reserve up to ${maximum} tickets per checkout.`
+      );
+      return;
+    }
 
     setSelectedTickets((prevTickets) => {
+      if (
+        change > 0 &&
+        prevTickets.reduce((sum, item) => sum + item.quantity, 0) + change >
+          maximum
+      )
+        return prevTickets;
       const existingTicket = prevTickets.find(
         (ticket) => ticket.id === ticketId
       );
@@ -622,6 +643,12 @@ const EventPage = () => {
       ),
     [paymentOptions?.pricingConfig, registrationFeeAmount, selectedProvider]
   );
+  const ticketTotal = selectedTickets.reduce((total, selected) => {
+    const ticket = data!.data.eventTickets.find(
+      (ticket) => ticket.id === selected.id
+    )!;
+    return total + selected.quantity * (ticket.updatedPrice ?? ticket.price);
+  }, 0);
   const ticketPreview = useMemo(
     () =>
       buildCheckoutPreview(
@@ -689,33 +716,23 @@ const EventPage = () => {
   ]);
 
   useEffect(() => {
-    if (!showTransferInstructions) {
-      setTransferCountdownSeconds(300);
-      return;
-    }
-
-    setTransferCountdownSeconds(300);
-
-    const timer = setInterval(() => {
-      setTransferCountdownSeconds((current) => Math.max(current - 1, 0));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [showTransferInstructions, currentTransactionId]);
+    if (transferCountdownSeconds !== 0 || !currentTransactionId) return;
+    setShowTransferInstructions(false);
+    setShowPaystackWebView(false);
+    router.push(`/transaction/${currentTransactionId}?type=${transactionType}`);
+  }, [transferCountdownSeconds, currentTransactionId, router, transactionType]);
 
   const handleProviderInitSuccess = useCallback(
     (
-      payload: {
-        data: {
-          transactionId: string;
-          paymentUrl: string | null;
-          paymentInstructions?: PaymentInstructions | null;
-          freeTickets?: any[];
-        };
-      },
+      payload: GetTicketsResponse | DonationResponse,
       type: "DONATION" | "REGISTRATION" | "TICKET"
     ) => {
       setCurrentTransactionId(payload.data.transactionId);
+      setCheckoutDeadlineMs(
+        "checkoutDeadlineMs" in payload.data
+          ? payload.data.checkoutDeadlineMs
+          : null
+      );
       setTransactionType(type);
       closePaymentSelectionSurfaces();
 
@@ -855,18 +872,21 @@ const EventPage = () => {
     onSuccess: (response) => {
       showGlobalSuccess("Checkout started successfully.");
 
-      if (response.data.freeTickets.length > 0 && response.data.paymentUrl) {
-        showGlobalSuccess(
-          "Free tickets created. Continuing with the paid checkout.",
-          6
-        );
-      }
-
       handleProviderInitSuccess(response, "TICKET");
     },
     onError: (error) => {
       console.log(error);
-      showGlobalError("Error initiating transaction");
+      const details = error.response?.data as
+        | { transactionId?: string; message?: string }
+        | undefined;
+      if (details?.transactionId) {
+        router.push(`/transaction/${details.transactionId}`);
+        return;
+      }
+      showGlobalError(
+        details?.message ||
+          "Could not start checkout. Retry to resume your request."
+      );
     }
   });
 
@@ -878,7 +898,19 @@ const EventPage = () => {
       },
       onError: (error) => {
         console.log(error);
-        showGlobalError("Error initiating transaction");
+        const details = error.response?.data as
+          | { transactionId?: string; message?: string }
+          | undefined;
+        if (details?.transactionId) {
+          router.push(
+            `/transaction/${details.transactionId}?type=REGISTRATION`
+          );
+          return;
+        }
+        showGlobalError(
+          details?.message ||
+            "Could not start checkout. Retry to resume your request."
+        );
       }
     });
 
@@ -914,8 +946,24 @@ const EventPage = () => {
         return;
       }
 
+      if (!user) return;
+      const intent = isRegistration
+        ? JSON.stringify({ type: "REGISTRATION", provider: selectedProvider })
+        : JSON.stringify({
+            type: "TICKET",
+            provider: selectedProvider,
+            items: [...selectedTickets]
+              .sort((a, b) => a.id.localeCompare(b.id))
+              .map(({ id, quantity }) => ({ id, quantity }))
+          });
+      const idempotencyKey = await checkoutIntentKey(
+        user.id,
+        resolvedEventId,
+        intent
+      );
       if (isRegistration) {
         await registerEvent({
+          idempotencyKey,
           eventId: resolvedEventId,
           provider: selectedProvider,
           platform: "mobile"
@@ -924,6 +972,7 @@ const EventPage = () => {
       }
 
       await mutateAsync({
+        idempotencyKey,
         items: selectedTickets,
         provider: selectedProvider,
         clientContext: {
@@ -938,7 +987,8 @@ const EventPage = () => {
       registerEvent,
       resolvedEventId,
       selectedProvider,
-      selectedTickets
+      selectedTickets,
+      user
     ]
   );
 
@@ -1186,7 +1236,7 @@ const EventPage = () => {
   const persistedImpactMap = normalizePersistedImpactMap({
     impactSdgGoals,
     impactPaths,
-    impactCommitments,
+    impactCommitments
   });
   const selectedSdgGoals = persistedImpactMap.sdgGoals;
   const selectedImpactPaths = persistedImpactMap.impactPaths;
@@ -1206,8 +1256,7 @@ const EventPage = () => {
     donationTarget: data.data.donationTarget
   });
   const heroImpactGoal = selectedSdgGoals[0];
-  const heroImpactLabel =
-    heroImpactGoal?.shortTitle || impactSummary;
+  const heroImpactLabel = heroImpactGoal?.shortTitle || impactSummary;
   const reportedOutcomes = Array.isArray(impactReport?.outcomes)
     ? impactReport.outcomes
     : [];
@@ -1465,111 +1514,119 @@ const EventPage = () => {
                   This event has ended
                 </Text>
                 <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
-                  You can still review the event details, updates,
-                  organizer profile, and related links here.
+                  You can still review the event details, updates, organizer
+                  profile, and related links here.
                 </Text>
               </View>
             </CustomView>
           )}
 
           <CustomView style={tw`px-5 pt-4`}>
-            <Text style={tw`text-xl font-semibold text-white`}>About this event</Text>
-            <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>{description}</Text>
+            <Text style={tw`text-xl font-semibold text-white`}>
+              About this event
+            </Text>
+            <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
+              {description}
+            </Text>
           </CustomView>
 
-          {(impactSummary || impactNote || selectedSdgGoals.length > 0 || selectedImpactPaths.length > 0 || selectedCommitments.length > 0) && (
-          <CustomView style={tw`px-4 pt-4`}>
-            <View
-              style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
-            >
-              <View style={tw`flex-row items-start justify-between gap-3`}>
-                <View style={tw`flex-1`}>
-                  <Text
-                    style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                  >
-                    Impact story
-                  </Text>
-                  <Text style={tw`mt-2 text-xl font-semibold text-white`}>
-                    {impactSummary || "From the organiser"}
-                  </Text>
-                  <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
-                    {impactNote}
-                  </Text>
-                </View>
-                {selectedSdgGoals[0] ? (
-                  <View
-                    style={[
-                      tw`h-11 w-11 items-center justify-center rounded-full`,
-                      { backgroundColor: selectedSdgGoals[0].color }
-                    ]}
-                  >
-                    <SdgGoalIcon
-                      number={selectedSdgGoals[0].number}
-                      color="white"
-                      size={23}
-                    />
-                  </View>
-                ) : (
-                  <View style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}>
-                    <Text style={tw`text-sm font-bold text-[#01082E]`}>
-                      Impact
+          {(impactSummary ||
+            impactNote ||
+            selectedSdgGoals.length > 0 ||
+            selectedImpactPaths.length > 0 ||
+            selectedCommitments.length > 0) && (
+            <CustomView style={tw`px-4 pt-4`}>
+              <View
+                style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
+              >
+                <View style={tw`flex-row items-start justify-between gap-3`}>
+                  <View style={tw`flex-1`}>
+                    <Text
+                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                    >
+                      Impact story
                     </Text>
+                    <Text style={tw`mt-2 text-xl font-semibold text-white`}>
+                      {impactSummary || "From the organiser"}
+                    </Text>
+                    <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
+                      {impactNote}
+                    </Text>
+                  </View>
+                  {selectedSdgGoals[0] ? (
+                    <View
+                      style={[
+                        tw`h-11 w-11 items-center justify-center rounded-full`,
+                        { backgroundColor: selectedSdgGoals[0].color }
+                      ]}
+                    >
+                      <SdgGoalIcon
+                        number={selectedSdgGoals[0].number}
+                        color="white"
+                        size={23}
+                      />
+                    </View>
+                  ) : (
+                    <View style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}>
+                      <Text style={tw`text-sm font-bold text-[#01082E]`}>
+                        Impact
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {(selectedSdgGoals.length > 0 ||
+                  selectedImpactPaths.length > 0 ||
+                  selectedCommitments.length > 0) && (
+                  <View style={tw`mt-4 flex-row flex-wrap gap-2`}>
+                    {selectedSdgGoals.map((goal) => (
+                      <View
+                        key={goal.id}
+                        style={tw`flex-row items-center rounded-full bg-[#0A173F] pr-3`}
+                      >
+                        <View
+                          style={[
+                            tw`h-7 w-7 items-center justify-center rounded-full`,
+                            { backgroundColor: goal.color }
+                          ]}
+                        >
+                          <SdgGoalIcon
+                            number={goal.number}
+                            color="white"
+                            size={14}
+                          />
+                        </View>
+                        <Text style={tw`ml-2 text-xs font-semibold text-white`}>
+                          {goal.shortTitle}
+                        </Text>
+                      </View>
+                    ))}
+
+                    {selectedCommitments.map((commitment) => (
+                      <View
+                        key={commitment.id}
+                        style={tw`rounded-full bg-[#F4B942]/10 px-3 py-2`}
+                      >
+                        <Text style={tw`text-xs font-semibold text-[#FFE5A0]`}>
+                          {commitment.label}
+                        </Text>
+                      </View>
+                    ))}
+
+                    {selectedImpactPaths.map((mechanism) => (
+                      <View
+                        key={mechanism.id}
+                        style={tw`rounded-full bg-[#0FF1CF]/10 px-3 py-2`}
+                      >
+                        <Text style={tw`text-xs font-semibold text-[#B7FFF5]`}>
+                          {mechanism.summaryLabel}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
                 )}
               </View>
-
-              {(selectedSdgGoals.length > 0 ||
-                selectedImpactPaths.length > 0 ||
-                selectedCommitments.length > 0) && (
-                <View style={tw`mt-4 flex-row flex-wrap gap-2`}>
-                  {selectedSdgGoals.map((goal) => (
-                    <View
-                      key={goal.id}
-                      style={tw`flex-row items-center rounded-full bg-[#0A173F] pr-3`}
-                    >
-                      <View
-                        style={[
-                          tw`h-7 w-7 items-center justify-center rounded-full`,
-                          { backgroundColor: goal.color }
-                        ]}
-                      >
-                        <SdgGoalIcon
-                          number={goal.number}
-                          color="white"
-                          size={14}
-                        />
-                      </View>
-                      <Text style={tw`ml-2 text-xs font-semibold text-white`}>
-                        {goal.shortTitle}
-                      </Text>
-                    </View>
-                  ))}
-
-                  {selectedCommitments.map((commitment) => (
-                    <View
-                      key={commitment.id}
-                      style={tw`rounded-full bg-[#F4B942]/10 px-3 py-2`}
-                    >
-                      <Text style={tw`text-xs font-semibold text-[#FFE5A0]`}>
-                        {commitment.label}
-                      </Text>
-                    </View>
-                  ))}
-
-                  {selectedImpactPaths.map((mechanism) => (
-                    <View
-                      key={mechanism.id}
-                      style={tw`rounded-full bg-[#0FF1CF]/10 px-3 py-2`}
-                    >
-                      <Text style={tw`text-xs font-semibold text-[#B7FFF5]`}>
-                        {mechanism.summaryLabel}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          </CustomView>
+            </CustomView>
           )}
           {hasEventEnded && (impactReport || owner) && (
             <CustomView style={tw`px-5 pb-4`}>
@@ -1949,16 +2006,22 @@ const EventPage = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={tw`py-5 gap-5`}>
-            {eventTickets?.map((ticket, index) => (
+            {eventTickets?.map((ticket) => (
               <PricingCard
-                key={index}
+                key={ticket.id}
+                selectedQuantity={
+                  selectedTickets.find((item) => item.id === ticket.id)
+                    ?.quantity ?? 0
+                }
+                canIncrease={
+                  paymentOptions !== undefined &&
+                  selectedTickets.reduce(
+                    (sum, item) => sum + item.quantity,
+                    0
+                  ) < paymentOptions.maxTicketsPerCheckout
+                }
                 onQuantityChange={(change) =>
-                  handleTicketSelection(
-                    ticket.id,
-                    ticket.type,
-                    ticket.updatedPrice || ticket.price || 0,
-                    change
-                  )
+                  handleTicketSelection(ticket.id, ticket.type, change)
                 }
                 title={ticket.type}
                 price={ticket.price}
@@ -2407,7 +2470,11 @@ const EventPage = () => {
                   Expires in
                 </Text>
                 <Text style={tw`mt-1 text-lg font-bold text-[#FFD76A]`}>
-                  {formatCountdown(transferCountdownSeconds)}
+                  {transferCountdownSeconds === null
+                    ? "Bank transfer"
+                    : transferCountdownSeconds === 0
+                      ? "Hold expired"
+                      : formatCountdown(transferCountdownSeconds)}
                 </Text>
               </View>
             </View>
@@ -2675,10 +2742,11 @@ const EventPage = () => {
           closePaymentSelectionSurfaces();
         }}
         paymentUrl={paystackPaymentUrl}
+        checkoutDeadlineMs={checkoutDeadlineMs}
         type={transactionType}
         onSuccess={(reference) => {
           console.log("✅ Payment successful, reference:", reference);
-          showGlobalSuccess("Payment successful!");
+          showGlobalSuccess("Confirming your payment…");
           closePaymentSelectionSurfaces();
           setShowPaystackWebView(false);
           router.replace(

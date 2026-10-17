@@ -62,6 +62,8 @@ export interface CheckoutPricingConfig {
 }
 
 export interface EventPaymentOptions {
+  maxTicketsPerCheckout: number;
+  reservationSeconds: number;
   requiresPayment: boolean;
   supportsPaystack: boolean;
   supportsAlatTransfer: boolean;
@@ -139,8 +141,8 @@ export interface PaginatedSeachResponse extends paginatedResponse {
 }
 
 export interface EventDetails extends EventData {
-  eventTickets?: EventTicket[];
-  paymentOptions?: EventPaymentOptions;
+  eventTickets: EventTicket[];
+  paymentOptions: EventPaymentOptions;
   impactReport?: EventImpactReport | null;
 }
 
@@ -201,6 +203,7 @@ export interface GetTickets {
 }
 
 export interface TicketCheckoutPayload {
+  idempotencyKey: string;
   items: GetTickets[];
   provider?: PaymentProvider;
   clientContext?: {
@@ -210,28 +213,46 @@ export interface TicketCheckoutPayload {
 }
 
 export interface RegistrationCheckoutPayload {
+  idempotencyKey: string;
   eventId: string;
   provider?: PaymentProvider;
   deviceId?: string;
   platform?: string;
 }
 
-export interface GetTicketsResponse extends StandardResponse {
+export interface CheckoutApiResponse extends Omit<StandardResponse, "status_code"> {
   data: {
+    checkoutStatus:
+      | "PENDING"
+      | "AWAITING_TRANSFER"
+      | "SUCCESS"
+      | "EXPIRED"
+      | "FAILED"
+      | "REFUND_REQUIRED"
+      | "REFUNDED";
+    initializationStatus: "NOT_STARTED" | "INITIALIZING" | "READY" | "FAILED";
+    reservationStatus: "HELD" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | null;
+    reservationExpiresAt: string | null;
+    serverTime: string;
+    maxTicketsPerCheckout: number;
     message: string;
     transactionId: string;
     paymentProvider: PaymentProvider;
     paymentUrl: string | null;
-    paymentInstructions?: PaymentInstructions | null;
-    unavailableTickets: any[];
-    freeTickets: any[];
+    paymentInstructions: PaymentInstructions | null;
+    unavailableTickets: never[];
+    freeTickets: (Omit<GetTickets, "id"> & { eventTicketId: string })[];
     totalAmount: number;
-    totalAmountKobo?: number;
-    pricing?: CheckoutPricingSummary;
-    riskStatus?: string;
-    settlementStatus?: string;
+    totalAmountKobo: number;
+    pricing: CheckoutPricingSummary;
+    riskStatus: string;
+    settlementStatus: string;
   };
 }
+
+export type GetTicketsResponse = Omit<CheckoutApiResponse, "data"> & {
+  data: CheckoutApiResponse["data"] & { checkoutDeadlineMs: number | null };
+};
 
 export interface InitiateDonationPayload {
   eventId: string;
@@ -265,3 +286,37 @@ export interface DonationResponse extends StandardResponse {
     };
   };
 }
+
+export type TransactionStatusApiResponse = Omit<StandardResponse, "data" | "status_code"> & {
+  data: {
+    id: string;
+    status: GetTicketsResponse["data"]["checkoutStatus"];
+    paymentProvider: PaymentProvider;
+    amount: number;
+    metadata: {
+      type: "TICKET" | "REGISTRATION" | "DONATION";
+      eventId: string;
+      eventTitle: string;
+      providerInstructions?: PaymentInstructions | null;
+    };
+  } & (
+    | ({ paymentType: "TICKET" | "REGISTRATION" | null } & Pick<
+        GetTicketsResponse["data"],
+        | "paymentUrl"
+        | "reservationExpiresAt"
+        | "serverTime"
+        | "initializationStatus"
+      >)
+    | {
+        paymentType: "DONATION";
+        paymentUrl?: never;
+        reservationExpiresAt?: never;
+        serverTime?: never;
+        initializationStatus?: never;
+      }
+  );
+};
+
+export type TransactionStatusResponse = Omit<TransactionStatusApiResponse, "data"> & {
+  data: TransactionStatusApiResponse["data"] & { checkoutDeadlineMs: number | null };
+};

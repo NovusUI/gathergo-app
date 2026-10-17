@@ -1,3 +1,8 @@
+import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
+import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
+import { clearCheckoutIntent } from "@/utils/checkout";
+import { cancelCheckout } from "@/services/serviceFn";
+import { PaystackWebViewWrapper } from "@/components/PaystackWebViewWrapper";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import QRCodeGenerator from "@/components/QRCodeGen";
 import CustomView from "@/components/View";
@@ -62,7 +67,9 @@ const TransactionRef = () => {
     bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
-  const { data, isPending, isError } = useTransactionRef(
+  const [showPayment, setShowPayment] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const { data, isPending, isError, refetch } = useTransactionRef(
     resolvedTransactionId,
     {
       enabled: !!transactionId, // prevent running when no ID
@@ -73,7 +80,8 @@ const TransactionRef = () => {
         if (status === "AWAITING_TRANSFER") {
           return 5000;
         }
-        return status === "PENDING" || status === "PROCESSING" ? 3000 : false;
+        if (["EXPIRED", "REFUND_REQUIRED"].includes(status)) return 30000;
+        return ["PENDING", "PROCESSING"].includes(status) ? 5000 : false;
       }
     }
   );
@@ -89,7 +97,16 @@ const TransactionRef = () => {
   ).toUpperCase();
   const isStatusSuccess = data?.data.status === "SUCCESS";
   const isAwaitingTransfer = transactionStatus === "AWAITING_TRANSFER";
+  const isExpired = transactionStatus === "EXPIRED";
+  const isRefundRequired = transactionStatus === "REFUND_REQUIRED";
+  const isRefunded = transactionStatus === "REFUNDED";
   const isFailedStatus = transactionStatus === "FAILED";
+  const deadlineMs: number | null = data?.data?.checkoutDeadlineMs ?? null;
+  const remaining = useCheckoutCountdown(deadlineMs);
+  const canPay =
+    ["PENDING", "AWAITING_TRANSFER"].includes(transactionStatus) &&
+    remaining !== 0;
+
   const isAlatTransfer = paymentProvider === "ALAT_TRANSFER";
   const hasTickets =
     transactionType === "TICKET" || transactionType === "REGISTRATION";
@@ -107,8 +124,7 @@ const TransactionRef = () => {
   const [livePulseOn, setLivePulseOn] = useState(true);
   const tickets = TicketsOrReg?.data || [];
   const primaryTicket = tickets[currentIndex];
-  const eventIdForCta =
-    data?.data?.metadata?.eventId || primaryTicket?.event?.id;
+  const eventIdForCta = data?.data.metadata.eventId;
   const { data: eventDetails } = useEventDetails(eventIdForCta || "", {
     enabled: isStatusSuccess && Boolean(eventIdForCta)
   });
@@ -116,17 +132,23 @@ const TransactionRef = () => {
   const eventTitleForCta =
     eventDetails?.data?.title || primaryTicket?.event?.title || "your event";
   const providerInstructions = data?.data?.metadata?.providerInstructions;
-  const headlineCopy = isStatusSuccess
-    ? transactionType === "DONATION"
-      ? "Donation confirmed"
-      : transactionType === "REGISTRATION"
-        ? "Registration confirmed"
-        : "Ticket purchase confirmed"
-    : isAwaitingTransfer
-      ? "Awaiting transfer confirmation"
-      : isFailedStatus
-        ? "Payment not confirmed"
-        : "Payment in progress";
+  const headlineCopy = isExpired
+    ? "Your hold has expired"
+    : isRefundRequired
+      ? "Your payment needs a refund"
+      : isRefunded
+        ? "Refund completed"
+        : isStatusSuccess
+          ? transactionType === "DONATION"
+            ? "Donation confirmed"
+            : transactionType === "REGISTRATION"
+              ? "Registration confirmed"
+              : "Ticket purchase confirmed"
+          : isAwaitingTransfer
+            ? "Awaiting transfer confirmation"
+            : isFailedStatus
+              ? "Payment not confirmed"
+              : "Payment in progress";
   const mascotMoment = isStatusSuccess
     ? transactionType === "DONATION"
       ? TRANSACTION_MASCOT_MOMENTS.DONATION_SUCCESS
@@ -139,7 +161,19 @@ const TransactionRef = () => {
         ? TRANSACTION_MASCOT_MOMENTS.FAILED
         : TRANSACTION_MASCOT_MOMENTS.PROCESSING;
   const canOpenPasses = isStatusSuccess && hasTickets && tickets.length > 0;
-  const mascotMomentContent = (
+  const recoveryMessage = isExpired
+    ? "These spaces are available to other buyers now. If you already paid, check status: we’ll confirm availability or arrange a refund."
+    : isRefundRequired
+      ? "We received your payment but could not issue your passes. A full refund is queued; it is not completed yet."
+      : isRefunded
+        ? "The provider refund has been confirmed. Your bank may take time to credit your account."
+        : null;
+  const mascotMomentContent = recoveryMessage ? (
+    <View style={tw`p-4 gap-2`}>
+      <Text style={tw`text-white text-lg font-bold`}>{headlineCopy}</Text>
+      <Text style={tw`text-gray-300`}>{recoveryMessage}</Text>
+    </View>
+  ) : (
     <MascotMoment
       variant={mascotMoment.variant}
       title={mascotMoment.title}
@@ -244,7 +278,9 @@ const TransactionRef = () => {
                   : "Amount Paid:"}
               </Text>
               <Text style={tw`text-white text-ellipsis`}>
-                {numberWithCommas(data?.data.amount / 100, true, null)}
+                {data
+                  ? numberWithCommas(data.data.amount / 100, true, null)
+                  : "Checking…"}
               </Text>
             </View>
             <Text style={tw`text-white`}>{headlineCopy}</Text>
@@ -259,7 +295,90 @@ const TransactionRef = () => {
             </Text>
           </View>
         </View>
-        {isAwaitingTransfer && isAlatTransfer ? (
+        <CheckoutCountdown deadlineMs={deadlineMs} />
+        {!isStatusSuccess && !isRefunded ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => {
+              void refetch();
+            }}
+            style={tw`mt-3 p-3 rounded-xl bg-[#172853]`}
+          >
+            <Text style={tw`text-white text-center`}>Check payment status</Text>
+          </TouchableOpacity>
+        ) : null}
+        {canPay && data?.data?.paymentUrl ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => setShowPayment(true)}
+            style={tw`mt-3 p-3 rounded-xl bg-[#0FF1CF]`}
+          >
+            <Text style={tw`text-[#01082E] text-center`}>Resume payment</Text>
+          </TouchableOpacity>
+        ) : null}
+        {canPay ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={cancelling}
+            onPress={async () => {
+              setCancelling(true);
+              try {
+                await cancelCheckout(resolvedTransactionId);
+                await refetch();
+              } catch {
+                showGlobalError(
+                  "Could not cancel this checkout. Check payment status."
+                );
+              } finally {
+                setCancelling(false);
+              }
+            }}
+            style={tw`mt-3 p-3`}
+          >
+            <Text style={tw`text-gray-300 text-center`}>
+              {cancelling
+                ? "Cancelling…"
+                : "Cancel checkout and release spaces"}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {(isExpired || isFailedStatus || isStatusSuccess || isRefundRequired || isRefunded) &&
+        user &&
+        data?.data?.metadata?.eventId ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={async () => {
+              await clearCheckoutIntent(user.id, data.data.metadata.eventId);
+              router.replace(`/event/${data.data.metadata.eventId}`);
+            }}
+            style={tw`mt-3 p-3 rounded-xl bg-[#172853]`}
+          >
+            <Text style={tw`text-white text-center`}>Start a new checkout</Text>
+          </TouchableOpacity>
+        ) : null}
+        <PaystackWebViewWrapper
+          visible={showPayment && canPay}
+          onClose={() => setShowPayment(false)}
+          paymentUrl={data?.data?.paymentUrl || ""}
+          checkoutDeadlineMs={deadlineMs}
+          type={
+            transactionType === "REGISTRATION"
+              ? "REGISTRATION"
+              : transactionType === "DONATION"
+                ? "DONATION"
+                : "TICKET"
+          }
+          onSuccess={() => {
+            setShowPayment(false);
+            void refetch();
+          }}
+          onCancel={() => setShowPayment(false)}
+          onError={() => {
+            setShowPayment(false);
+            showGlobalError("Check payment status before trying again.");
+          }}
+        />
+        {canPay && isAlatTransfer ? (
           <View
             style={tw`mt-5 rounded-2xl border border-[#5A4718] bg-[#2A2209] overflow-hidden`}
           >
@@ -306,7 +425,9 @@ const TransactionRef = () => {
                     Amount
                   </Text>
                   <Text style={tw`text-white font-semibold`}>
-                    {numberWithCommas(data?.data?.amount / 100, true, null)}
+                    {data
+                      ? numberWithCommas(data.data.amount / 100, true, null)
+                      : "Checking…"}
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>

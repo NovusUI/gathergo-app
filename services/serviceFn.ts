@@ -1,3 +1,4 @@
+import { checkoutDeadline } from "@/utils/checkout";
 import client from "@/api/client";
 import {
   CompleteProfileData,
@@ -30,6 +31,9 @@ import {
   OwnedRegistrationsResponse,
   OwnedTicketsResponse,
   GetTicketsResponse,
+  CheckoutApiResponse,
+  TransactionStatusApiResponse,
+  TransactionStatusResponse,
   InitiateDonationPayload,
   PaginatedDashboardEventsResponse,
   PaginatedEventResponse,
@@ -95,6 +99,16 @@ import {
 export interface SignUpPayload {
   email: string;
   password: string;
+}
+
+function receiveCheckout(response: CheckoutApiResponse): GetTicketsResponse {
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      checkoutDeadlineMs: checkoutDeadline(response.data.reservationExpiresAt, response.data.serverTime)
+    }
+  };
 }
 
 export const loginFn = async (payload: {
@@ -469,15 +483,24 @@ export const getEventDetails = async (
 };
 
 export const getTransactionRef = async (
-  ctx: QueryFunctionContext
-): Promise<StandardResponse> => {
+  ctx: QueryFunctionContext,
+): Promise<TransactionStatusResponse> => {
   const [, tId] = ctx.queryKey as [string, string];
 
-  const response = await client.get<StandardResponse>(
-    TRANSACTION_URL.getTransactionRef(tId)
+  const response = await client.get<TransactionStatusApiResponse>(
+    TRANSACTION_URL.getTransactionRef(tId),
   );
 
-  return response.data;
+  const data = response.data.data;
+  return {
+    ...response.data,
+    data: {
+      ...data,
+      checkoutDeadlineMs: data.paymentType === "DONATION"
+        ? null
+        : checkoutDeadline(data.reservationExpiresAt, data.serverTime)
+    }
+  };
 };
 
 export const getTicketOrRegByTransactionId = async (
@@ -506,35 +529,37 @@ export const getMyRegistrationsFn = async (): Promise<OwnedRegistrationsResponse
 };
 
 export const getTickets = async (
-  payload: TicketCheckoutPayload
+  payload: TicketCheckoutPayload,
 ): Promise<GetTicketsResponse> => {
-  const response = await client.post<GetTicketsResponse>(
+  const response = await client.post<CheckoutApiResponse>(
     EVENT_URL.getTickets,
     {
       items: payload.items,
       provider: payload.provider,
       clientContext: payload.clientContext,
-    }
+    },
+    { headers: { "Idempotency-Key": payload.idempotencyKey } },
   );
-  return response.data;
+  return receiveCheckout(response.data);
 };
 
 export const registerForEvent = async (
-  payload: RegistrationCheckoutPayload
+  payload: RegistrationCheckoutPayload,
 ): Promise<GetTicketsResponse> => {
-  const response = await client.post<GetTicketsResponse>(
+  const response = await client.post<CheckoutApiResponse>(
     EVENT_URL.registerEvent,
     {},
     {
+      headers: { "Idempotency-Key": payload.idempotencyKey },
       params: {
         eventid: payload.eventId,
         provider: payload.provider,
         deviceId: payload.deviceId,
         platform: payload.platform,
       },
-    }
+    },
   );
-  return response.data;
+  return receiveCheckout(response.data);
 };
 
 export const upsertEventImpactReport = async (
@@ -1008,4 +1033,13 @@ export const canScanFn = async (
     canMarkAsUsed: boolean;
   }>(SCANNER_URL.canScan(eventId));
   return response.data;
+};
+
+export const cancelCheckout = async (
+  transactionId: string,
+): Promise<GetTicketsResponse> => {
+  const response = await client.post<CheckoutApiResponse>(
+    TRANSACTION_URL.cancelCheckout(transactionId),
+  );
+  return receiveCheckout(response.data);
 };

@@ -41,6 +41,8 @@ export const EVENT_URL = {
 };
 
 export const TRANSACTION_URL = {
+  cancelCheckout: (id: string) =>
+    base_url + `/transaction-reference/${id}/cancel`,
   getTransactionRef: (id: string) =>
     base_url + `/transaction-reference/status/${id}`,
   getTicketOrRegByTransactionId: (id: string) =>

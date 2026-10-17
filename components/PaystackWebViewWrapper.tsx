@@ -1,3 +1,4 @@
+import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
 // Create a new file: components/PaystackWebViewWrapper.tsx
 import AppToast from "@/components/ui/AppToast";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +9,7 @@ import tw from "twrnc";
 
 interface PaystackWebViewProps {
   visible: boolean;
+  checkoutDeadlineMs?: number | null;
   onClose: () => void;
   paymentUrl: string;
   onSuccess: (reference: string) => void;
@@ -18,12 +20,13 @@ interface PaystackWebViewProps {
 
 export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
   visible,
+  checkoutDeadlineMs = null,
   onClose,
   paymentUrl,
   onSuccess,
   onCancel,
   onError,
-  type
+  type,
 }) => {
   const webViewRef = useRef<WebView>(null);
   const hasNavigatedRef = useRef(false);
@@ -96,6 +99,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
           </TouchableOpacity>
         </View>
 
+        <CheckoutCountdown deadlineMs={checkoutDeadlineMs} />
         {/* WebView */}
         <WebView
           ref={webViewRef}
