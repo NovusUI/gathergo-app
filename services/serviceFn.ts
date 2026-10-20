@@ -1,5 +1,9 @@
 import { checkoutDeadline } from "@/utils/checkout";
 import client from "@/api/client";
+import type {
+  SaveVolunteerRole, VolunteerAction, VolunteerApplication, VolunteerHistoryEntry,
+  VolunteerResponse, VolunteerRole, VolunteerRoleListing, VolunteerRosterEntry, VolunteerSummary,
+} from "@/types/volunteer";
 import {
   CompleteProfileData,
   CurrentUserResponse,
@@ -80,6 +84,7 @@ import {
   ValidationResponse,
 } from "@/types/scanner";
 import {
+  VOLUNTEER_URL,
   AUTH_URLS,
   CARPOOL_URL,
   DASHBOARD_URL,
@@ -1043,3 +1048,74 @@ export const cancelCheckout = async (
   );
   return receiveCheckout(response.data);
 };
+
+export const getVolunteerRoles = async (eventId: string) =>
+  (
+    await client.get<VolunteerResponse<VolunteerRoleListing[]>>(
+      VOLUNTEER_URL.roles(eventId),
+    )
+  ).data;
+
+export const getVolunteerRoster = async (eventId: string) =>
+  (
+    await client.get<VolunteerResponse<VolunteerRosterEntry[]>>(
+      VOLUNTEER_URL.applications(eventId),
+    )
+  ).data;
+
+export const getVolunteerSummary = async (eventId: string) =>
+  (
+    await client.get<VolunteerResponse<VolunteerSummary & { eventId: string }>>(
+      VOLUNTEER_URL.summary(eventId),
+    )
+  ).data;
+
+export const getVolunteerHistory = async () =>
+  (
+    await client.get<VolunteerResponse<VolunteerHistoryEntry[]>>(
+      VOLUNTEER_URL.history,
+    )
+  ).data;
+
+export async function saveVolunteerRole(
+  eventId: string,
+  change: SaveVolunteerRole,
+) {
+  const response =
+    change.type === "create"
+      ? await client.post<VolunteerResponse<VolunteerRole>>(
+          VOLUNTEER_URL.roles(eventId),
+          change.data,
+        )
+      : await client.patch<VolunteerResponse<VolunteerRole>>(
+          VOLUNTEER_URL.role(eventId, change.roleId),
+          change.data,
+        );
+  return response.data;
+}
+
+export async function performVolunteerAction(
+  eventId: string,
+  action: VolunteerAction,
+) {
+  if (action.type === "apply") {
+    return (
+      await client.post<VolunteerResponse<VolunteerApplication>>(
+        VOLUNTEER_URL.apply(eventId, action.roleId),
+        { note: action.note },
+      )
+    ).data;
+  }
+  const body =
+    action.type === "review"
+      ? { status: action.status }
+      : action.type === "complete"
+        ? { confirmedMinutes: action.confirmedMinutes }
+        : {};
+  return (
+    await client.patch<VolunteerResponse<VolunteerApplication>>(
+      VOLUNTEER_URL.action(eventId, action.applicationId, action.type),
+      body,
+    )
+  ).data;
+}

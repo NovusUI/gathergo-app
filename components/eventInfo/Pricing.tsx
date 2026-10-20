@@ -164,7 +164,7 @@ const Pricing = ({
   };
 
   const changePricing = (
-    type: "registration" | "ticket" | "donation",
+    type: EventPricing["registrationType"],
     onChange: (event: EventPricing["registrationType"]) => void
   ) => {
     if (
@@ -369,9 +369,9 @@ const Pricing = ({
                       insideBottomSheet={insideBottomSheet}
                       numeric
                       moneyFormat
-                      onChangeText={onChange}
-                      value={value?.toString()}
-                      placeholder="₦500,000 minimum"
+                      onChangeText={(text) => onChange(text === "" ? undefined : Math.round(Number(text) * 100))}
+                      value={value === undefined ? "" : String(value / 100)}
+                      placeholder="Target in ₦ (minimum ₦5,000)"
                     />
                     <ErrorText message={errors.donationTarget?.message} />
                   </>

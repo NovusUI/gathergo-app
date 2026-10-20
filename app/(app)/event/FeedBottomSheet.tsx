@@ -1,4 +1,6 @@
+import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
 // components/event/FeedBottomSheet.tsx
+import VolunteerButton from "@/components/volunteer/VolunteerButton";
 import FeedRenderer from "@/components/feed/FeedRenderer";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import { FeedItem } from "@/hooks/useEventFeed";
@@ -101,6 +103,12 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const carpoolTotal = carpoolPages?.pages?.[0]?.meta?.total ?? 0;
 
   const { data: eventData } = useEventDetails(eventId);
+  const {
+    registration: freeRegistration,
+    isPending: checkingRegistration,
+    isError: registrationCheckFailed,
+    refetch: refreshRegistration,
+  } = useFreeEventRegistration(eventData?.data);
   const supportsCarpool = eventData?.data?.isPhysicalEvent !== false;
   const canUseCarpool = supportsCarpool && !hasEventEnded;
   const eventRegistrationFee = eventData?.data?.registrationFee ?? null;
@@ -243,6 +251,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       registrationFee,
       donationTarget,
       totalDonations,
+      donationsEnabled,
     } = eventData.data;
 
     return (
@@ -289,21 +298,36 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
         {!hasEventEnded && registrationType === "registration" && (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Event registration"
+            accessibilityState={{
+              disabled: checkingRegistration || Boolean(freeRegistration),
+            }}
+            disabled={checkingRegistration || Boolean(freeRegistration)}
             style={tw`mb-3`}
-            onPress={() => onAction?.({ type: "REGISTER" })}
+            onPress={() =>
+              registrationCheckFailed
+                ? void refreshRegistration()
+                : onAction?.({ type: "REGISTER" })
+            }
           >
             <Text style={tw`text-gray-300 mb-1`}>Registration:</Text>
             <Text style={tw`text-[#0FF1CF] font-bold text-lg`}>
-              {registrationFee && registrationFee > 0
-                ? `₦${numberWithCommas(registrationFee, false, null)}`
-                : "Free"}
+              {checkingRegistration
+                ? "Checking registration…"
+                : freeRegistration
+                  ? "Registered"
+                  : registrationCheckFailed
+                    ? "Retry registration check"
+                    : registrationFee && registrationFee > 0
+                      ? `₦${numberWithCommas(registrationFee, false, null)}`
+                      : "Free"}
             </Text>
           </TouchableOpacity>
         )}
 
         {!hasEventEnded &&
-          registrationType === "donation" &&
-          donationTarget && (
+          donationsEnabled && (registrationType === "donation" || registrationType === "volunteer") && (
             <DontationProgress
               onAction={onAction}
               donationTarget={donationTarget}
@@ -346,9 +370,9 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     () => (
       <>
         <View
-          style={tw`flex-row justify-between items-center p-5 border-b border-gray-800`}
+          style={tw`flex-row justify-between items-center gap-2 p-5 border-b border-gray-800`}
         >
-          <View style={tw`flex-row items-center gap-2`}>
+          <View style={tw`flex-1 flex-row flex-wrap items-center gap-2`}>
             <TouchableOpacity
               style={tw.style(
                 "px-3 py-1.5 rounded-full",
@@ -384,15 +408,28 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               </TouchableOpacity>
             )}
           </View>
-          <View style={tw`flex-row items-center`}>
-            {activeTab === "feed" && Boolean(feed?.error) && (
-              <Text style={tw`text-red-500 text-xs mr-3`}>{feed?.error}</Text>
-            )}
-            <TouchableOpacity onPress={onClose}>
+          <View style={tw`flex-row items-center gap-2`}>
+            {eventData && onAction ? (
+              <VolunteerButton
+                event={eventData.data}
+                hasEventEnded={hasEventEnded}
+                variant="compact"
+                onPress={() => onAction({ type: "VOLUNTEER" })}
+              />
+            ) : null}
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close feed"
+              onPress={onClose}
+              hitSlop={8}
+            >
               <Ionicons name="close" size={24} color="white" />
             </TouchableOpacity>
           </View>
         </View>
+        {activeTab === "feed" && feed?.error ? (
+          <Text style={tw`px-5 pt-2 text-red-500 text-xs`}>{feed.error}</Text>
+        ) : null}
 
         {activeTab === "feed" ? (
           <>
@@ -478,6 +515,11 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       carpoolsLoading,
       carpoolTotal,
       feed,
+      eventData,
+      freeRegistration,
+      checkingRegistration,
+      registrationCheckFailed,
+      refreshRegistration,
       hasEventEnded,
       locationError,
       requestingCloseToYou,

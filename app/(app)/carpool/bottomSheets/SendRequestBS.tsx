@@ -1,3 +1,4 @@
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
@@ -20,7 +21,6 @@ import {
   ScrollView,
   Switch,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import tw from "twrnc";
@@ -161,11 +161,10 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
                   Request a ride
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setIsVisible(false)}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                  Close
-                </Text>
-              </TouchableOpacity>
+              <SheetCloseButton
+                accessibilityLabel="Close ride request sheet"
+                onPress={() => setIsVisible(false)}
+              />
             </View>
 
             <ScrollView

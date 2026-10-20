@@ -1,3 +1,4 @@
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
@@ -418,11 +419,10 @@ const NewCarpool = () => {
                     "Set the ride details riders need before they join."}
                 </Text>
               </View>
-              <TouchableOpacity onPress={closeFormModal}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                  Close
-                </Text>
-              </TouchableOpacity>
+              <SheetCloseButton
+                accessibilityLabel="Close carpool sheet"
+                onPress={closeFormModal}
+              />
             </View>
 
             <ScrollView

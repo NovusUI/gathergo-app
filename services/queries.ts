@@ -29,6 +29,7 @@ import {
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./queryKeys";
 import {
+  getVolunteerRoles, getVolunteerRoster, getVolunteerSummary, getVolunteerHistory,
   canScanFn,
   getAllUserEvent,
   getCarpoolChatAccess,
@@ -65,6 +66,40 @@ import {
   getUserProfile,
   searchScannerUsersFn,
 } from "./serviceFn";
+
+export const useVolunteerRoles = (eventId: string, enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.volunteerRoles, eventId],
+    queryFn: () => getVolunteerRoles(eventId),
+    enabled: enabled && Boolean(eventId),
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
+
+export const useVolunteerRoster = (eventId: string, enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.volunteerRoster, eventId],
+    queryFn: () => getVolunteerRoster(eventId),
+    enabled: enabled && Boolean(eventId),
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
+
+export const useVolunteerSummary = (eventId: string, enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.volunteerSummary, eventId],
+    queryFn: () => getVolunteerSummary(eventId),
+    enabled: enabled && Boolean(eventId),
+    staleTime: 15000,
+  });
+
+export const useVolunteerHistory = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.volunteerHistory,
+    queryFn: getVolunteerHistory,
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
 
 export const useWalletOverview = (options = {}) => {
   return useQuery<WalletOverviewResponse>({

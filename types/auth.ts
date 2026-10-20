@@ -18,7 +18,7 @@ export type User = {
   // add anything else you expect from backend (e.g. avatar, role, phone)
 };
 
-export type Registration = "ticket" | "registration" | "donation";
+export type Registration = "ticket" | "registration" | "donation" | "volunteer";
 
 export type EventData = {
   id: string;
@@ -51,7 +51,8 @@ export type EventData = {
   };
   reason: string;
   isImageProcessing: boolean;
-  donationTarget: number;
+  donationTarget: number | null;
+  donationsEnabled: boolean;
   lowestTicketPrice?: number | null;
   impactTitle?: string | null;
   impactDescription?: string | null;

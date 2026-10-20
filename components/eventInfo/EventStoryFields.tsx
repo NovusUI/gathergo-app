@@ -2,6 +2,8 @@ import TagButton from "@/components/buttons/TagButton";
 import Input from "@/components/inputs/CustomInput1";
 import TextArea from "@/components/inputs/CustomTextArea";
 import FormLabel from "@/components/labels/FormLabel";
+import { VOLUNTEER_IMPACT_STORY_REQUIRED } from "@/utils/volunteer";
+import { showGlobalWarning } from "@/utils/globalErrorHandler";
 import { EVENT_INTEREST_GROUPS } from "@/constants/eventInterests";
 import type { EventFormData } from "@/schemas/event";
 import { useState } from "react";
@@ -31,6 +33,7 @@ export default function EventStoryFields({
     sdgGoals,
     impactPaths,
     commitments,
+    volunteerRoles,
   ] = useWatch({
     control,
     name: [
@@ -43,6 +46,7 @@ export default function EventStoryFields({
       "impactSdgGoals",
       "impactPaths",
       "impactCommitments",
+      "volunteerRoles",
     ],
   });
   const selectedMap = {
@@ -57,7 +61,14 @@ export default function EventStoryFields({
       selectedMap.commitments.length >
       0;
 
+  const requiresImpactStory =
+    registrationType === "volunteer" || volunteerRoles.length > 0;
+
   const removeImpact = () => {
+    if (requiresImpactStory) {
+      showGlobalWarning(VOLUNTEER_IMPACT_STORY_REQUIRED);
+      return;
+    }
     setValue("impactTitle", "");
     setValue("impactDescription", "");
     setValue("impactPercentage", undefined);
@@ -150,11 +161,13 @@ export default function EventStoryFields({
         )}
       </View>
 
-      {impactExpanded || hasImpact ? (
+      {impactExpanded || hasImpact || requiresImpactStory ? (
         <View style={tw`gap-3 rounded-2xl border border-[#17305D] p-4`}>
           <View style={tw`flex-row items-center justify-between gap-3`}>
             <Text style={tw`flex-1 text-white font-semibold`}>
-              Impact story (optional)
+              {requiresImpactStory
+                ? "Impact story (required for volunteering)"
+                : "Impact story (optional)"}
             </Text>
             <TouchableOpacity accessibilityRole="button" onPress={removeImpact}>
               <Text style={tw`text-sm text-[#FF8A8A]`}>Remove</Text>

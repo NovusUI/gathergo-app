@@ -1,3 +1,4 @@
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
 import CustomView from "@/components/View";
@@ -6,12 +7,14 @@ import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
 import EventStoryFields from "@/components/eventInfo/EventStoryFields";
+import VolunteerSetupFields from "@/components/eventInfo/VolunteerSetupFields";
+import EventFundraisingFields from "@/components/eventInfo/EventFundraisingFields";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import { normalizeEventLink } from "@/constants/eventLinks";
-import { buildEventImpactFormFields } from "@/utils/eventForm";
+import { buildEventImpactFormFields, buildEventParticipationFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -114,7 +117,7 @@ const NewEvent = () => {
     setValue("registrationType", data.registrationType);
     setValue("registrationAttendees", data.registrationAttendees);
     setValue("registrationFee", data.registrationFee);
-    setValue("donationTarget", data.donationTarget);
+    if (data.registrationType === "donation") setValue("donationTarget", data.donationTarget);
     setValue("tickets", data.tickets || []);
     closeSheet();
     clearErrors(
@@ -145,6 +148,9 @@ const NewEvent = () => {
                 <Location
                   isPhysicalEvent={watch("isPhysicalEvent")}
                   onSave={({ location, isPhysicalEvent }) => {
+                    if (!isPhysicalEvent && (watch("registrationType") === "volunteer" || watch("volunteerRoles").length > 0)) {
+                      showGlobalError("Volunteer roles require a physical venue."); return;
+                    }
                     onChange(location);
                     setValue("isPhysicalEvent", isPhysicalEvent, {
                       shouldValidate: true,
@@ -223,6 +229,8 @@ const NewEvent = () => {
       registrationAttendees: undefined,
       registrationFee: undefined,
       donationTarget: undefined,
+      donationsEnabled: false,
+      volunteerRoles: [],
     },
   });
 
@@ -238,7 +246,7 @@ const NewEvent = () => {
         ? "donation"
         : values.registrationType;
 
-      if (!nextRegistrationType) {
+      if (!nextRegistrationType || nextRegistrationType === "volunteer") {
         return null;
       }
 
@@ -282,6 +290,8 @@ const NewEvent = () => {
         try {
           const parsed = {
             isPhysicalEvent: true,
+            donationsEnabled: false,
+            volunteerRoles: [],
             ...JSON.parse(cached),
           };
           if (!isMounted) {
@@ -348,7 +358,7 @@ const NewEvent = () => {
       const hasPaidRegistration =
         createdEventType === "registration" &&
         Number(watch("registrationFee") || 0) > 0;
-      const hasDonationFlow = createdEventType === "donation";
+      const hasDonationFlow = createdEventType === "donation" || (createdEventType === "volunteer" && watch("donationsEnabled"));
       const hasPaidTickets =
         createdEventType === "ticket" &&
         (watch("tickets") || []).some(
@@ -394,13 +404,9 @@ const NewEvent = () => {
       startTime,
       endTime,
       registrationType,
-      registrationFee,
-      registrationAttendees,
       startDate,
       endDate,
       endRepeat,
-      tickets,
-      donationTarget,
       links,
       isPhysicalEvent,
       location,
@@ -419,32 +425,13 @@ const NewEvent = () => {
       reoccurring: repeat,
       isPhysicalEvent,
       location: isPhysicalEvent ? location : "",
-      ...(finalRegistrationType === "registration"
-        ? finalRegistrationType === "registration" && !registrationAttendees
-          ? { registrationAttendees: 100000 }
-          : { registrationAttendees }
-        : {}),
-      ...(finalRegistrationType === "registration"
-        ? finalRegistrationType === "registration" && !registrationFee
-          ? { registrationFee: 0 }
-          : { registrationFee }
-        : {}),
-      ...(finalRegistrationType === "donation" && donationTarget
-        ? { donationTarget }
-        : {}),
-      registrationType: finalRegistrationType,
+      ...buildEventParticipationFormFields({ ...data, registrationType: finalRegistrationType }, "create"),
       startDate: buildEventDateTimeIso(startDate, startTime),
       endDate: buildEventDateTimeIso(endDate, endTime, {
         endOfMinute: endTime === "23:59",
       }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
-      ...(finalRegistrationType === "ticket"
-        ? {
-            tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify({ ...rest }),
-            ),
-          }
-        : {}),
+
     };
     const refinedData = convertUndefinedToNull(correctedData);
     const formData = objectToFormData(refinedData);
@@ -588,33 +575,42 @@ const NewEvent = () => {
                   )}
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                onPress={() => openSheet("Pricing")}
-              >
-                <View>
-                  <Text style={tw`text-white text-base`}>
-                    {pricingSectionTitle}
-                  </Text>
-                  {(isDonationEvent
-                    ? errors.donationTarget
-                    : errors.registrationType) && (
-                    <Text style={tw`text-red-500`}>
-                      {isDonationEvent
-                        ? errors.donationTarget?.message
-                        : errors.registrationType?.message}
+              {registrationType !== "volunteer" ? (
+                <TouchableOpacity
+                  style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                  onPress={() => {
+                    setPricingData(buildPricingState(getValues()));
+                    openSheet("Pricing");
+                  }}
+                >
+                  <View>
+                    <Text style={tw`text-white text-base`}>
+                      {pricingSectionTitle}
                     </Text>
-                  )}
-                </View>
-                {!errors.registrationType &&
-                  !errors.donationTarget &&
-                  (isDonationEvent ? donationTarget : registrationType) && (
-                    <CheckCheck color="#0FF1CF" />
-                  )}
-              </TouchableOpacity>
+                    {(isDonationEvent
+                      ? errors.donationTarget
+                      : errors.registrationType) && (
+                      <Text style={tw`text-red-500`}>
+                        {isDonationEvent
+                          ? errors.donationTarget?.message
+                          : errors.registrationType?.message}
+                      </Text>
+                    )}
+                  </View>
+                  {!errors.registrationType &&
+                    !errors.donationTarget &&
+                    (isDonationEvent ? donationTarget : registrationType) && (
+                      <CheckCheck color="#0FF1CF" />
+                    )}
+                </TouchableOpacity>
+              ) : null}
             </CustomView>
 
             <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+
+            <VolunteerSetupFields control={control} setValue={setValue} />
+            {errors.volunteerRoles?.message ? <Text style={tw`px-5 text-red-400`}>{errors.volunteerRoles.message}</Text> : null}
+            <EventFundraisingFields control={control} setValue={setValue} />
 
             <EventLinks
               links={watch("links") || []}
@@ -660,11 +656,10 @@ const NewEvent = () => {
                       {activeSectionTitle}
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={closeSheet}>
-                    <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                      Close
-                    </Text>
-                  </TouchableOpacity>
+                  <SheetCloseButton
+                    accessibilityLabel="Close event section"
+                    onPress={closeSheet}
+                  />
                 </View>
 
                 <ScrollView
@@ -701,11 +696,10 @@ const NewEvent = () => {
                       {editingTicket ? "Edit ticket" : "Create ticket"}
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={closeSheetTicket}>
-                    <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                      Close
-                    </Text>
-                  </TouchableOpacity>
+                  <SheetCloseButton
+                    accessibilityLabel="Close ticket sheet"
+                    onPress={closeSheetTicket}
+                  />
                 </View>
 
                 <ScrollView

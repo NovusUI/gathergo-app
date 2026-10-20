@@ -1,3 +1,5 @@
+import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
 import { checkoutIntentKey } from "@/utils/checkout";
 // EventPage.tsx
@@ -84,6 +86,9 @@ import {
 import tw from "twrnc";
 import DontationProgress from "./DontationProgress";
 import FeedBottomSheet from "./FeedBottomSheet";
+import EventVolunteering from "@/components/volunteer/EventVolunteering";
+import VolunteerRolesSheet from "@/components/volunteer/VolunteerRolesSheet";
+import VolunteerButton from "@/components/volunteer/VolunteerButton";
 
 type CheckoutPreview = {
   grossAmountNaira: number;
@@ -117,6 +122,7 @@ const createEmptyImpactOutcome = (): ImpactReportOutcomeDraft => ({
 });
 
 const EVENT_TONES: Record<string, EventTone> = {
+  volunteer: { label: "Volunteering", accent: "#0FF1CF", iconName: "people-outline" },
   ticket: {
     label: "Ticketed",
     accent: "#0FF1CF",
@@ -254,9 +260,11 @@ const formatParticipationSummary = ({
   if (registrationType === "donation") {
     const target = Number(donationTarget || 0);
     return target > 0
-      ? `Target ${numberWithCommas(target, true, null)}`
+      ? `Target ${numberWithCommas(target / 100, true, null)}`
       : "Open donation";
   }
+
+  if (registrationType === "volunteer") return "Volunteer places · no ticket required";
 
   return "Open invite";
 };
@@ -483,6 +491,13 @@ const EventPage = () => {
   const [impactReportEvidenceText, setImpactReportEvidenceText] = useState("");
 
   const { data, isPending, isError } = useEventDetails(resolvedEventId);
+  const {
+    registration: freeRegistration,
+    isPending: checkingRegistration,
+    isError: registrationCheckFailed,
+    refetch: refreshRegistration,
+  } = useFreeEventRegistration(data?.data);
+  const hasFreeRegistration = Boolean(freeRegistration);
   const { data: onboardingData } = useWalletOnboarding({ enabled: !!user?.id });
   const hasEventEnded = useMemo(
     () => isEventPastEnd(data?.data?.startDate, data?.data?.endDate),
@@ -524,6 +539,7 @@ const EventPage = () => {
 
   const feedStats = getFeedStats();
   const [showFeed, setShowFeed] = useState(false);
+  const [showVolunteerRoles, setShowVolunteerRoles] = useState(false);
   const autoOpenFeedDoneRef = useRef(false);
 
   useEffect(() => {
@@ -703,7 +719,7 @@ const EventPage = () => {
     if (
       shouldOpenPayoutSetup &&
       isOwner &&
-      paymentOptions?.requiresPayment &&
+      (paymentOptions?.requiresPayment || paymentOptions?.acceptsDonations) &&
       onboarding?.showPersistentAlert
     ) {
       setShowCreatorSetupModal(true);
@@ -712,6 +728,7 @@ const EventPage = () => {
     isOwner,
     onboarding?.showPersistentAlert,
     paymentOptions?.requiresPayment,
+    paymentOptions?.acceptsDonations,
     shouldOpenPayoutSetup
   ]);
 
@@ -761,7 +778,7 @@ const EventPage = () => {
       accent: "teal" | "red" = "teal",
       title = "Choose payment method"
     ) => {
-      if (!paymentOptions?.requiresPayment || baseAmountNaira <= 0) {
+      if (!paymentOptions || paymentOptions.availableProviders.length === 0 || baseAmountNaira <= 0) {
         return null;
       }
 
@@ -914,6 +931,9 @@ const EventPage = () => {
       }
     });
 
+  const registrationDisabled =
+    registeringEvent || checkingRegistration || hasFreeRegistration;
+
   const { mutateAsync: initiateDonation, isPending: initiatingDonation } =
     useInitiateDonation({
       onSuccess: (response: DonationResponse) => {
@@ -943,6 +963,12 @@ const EventPage = () => {
     async (isRegistration?: boolean) => {
       if (hasEventEnded) {
         closeEndedPaymentFlow();
+        return;
+      }
+
+      if (isRegistration && registrationDisabled) return;
+      if (isRegistration && registrationCheckFailed) {
+        await refreshRegistration();
         return;
       }
 
@@ -985,6 +1011,9 @@ const EventPage = () => {
       hasEventEnded,
       mutateAsync,
       registerEvent,
+      registrationDisabled,
+      registrationCheckFailed,
+      refreshRegistration,
       resolvedEventId,
       selectedProvider,
       selectedTickets,
@@ -1072,6 +1101,11 @@ const EventPage = () => {
       const actionLabel = action?.label?.toUpperCase();
       const normalized = actionType || actionLabel;
       if (!normalized) return;
+      if (normalized.includes("VOLUNTEER")) {
+        setShowFeed(false);
+        setShowVolunteerRoles(true);
+        return;
+      }
       const isPaymentAction =
         normalized.includes("TICKET") ||
         normalized.includes("DONAT") ||
@@ -1465,12 +1499,16 @@ const EventPage = () => {
               </View>
 
               <View style={tw`gap-4 p-5`}>
-                {data.data.registrationType === "donation" && (
+                {(data.data.donationsEnabled || data.data.totalDonations > 0) && (
                   <DontationProgress
                     donationTarget={data.data.donationTarget}
                     totalDonations={data.data.totalDonations}
                   />
                 )}
+                {data.data.donationsEnabled && registrationType === "volunteer" && !hasEventEnded ? (
+                  <CustomButton showArrow={false} title="Support with a donation" onPress={openDonationSheet}
+                    buttonClassName="w-full border-[#FF6B6B]" textClassName="text-[#FF9D9D]" />
+                ) : null}
 
                 <View style={tw`flex-row flex-wrap gap-3`}>
                   <EventInfoTile
@@ -1503,6 +1541,14 @@ const EventPage = () => {
                 </View>
               </View>
             </View>
+          </View>
+
+          <View style={tw`px-5 pt-4`}>
+            <EventVolunteering
+              event={data.data}
+              owner={owner}
+              onPress={() => setShowVolunteerRoles(true)}
+            />
           </View>
 
           {hasEventEnded && (
@@ -1849,7 +1895,7 @@ const EventPage = () => {
           )}
           {owner &&
             onboarding?.showPersistentAlert &&
-            paymentOptions?.requiresPayment && (
+            (paymentOptions?.requiresPayment || paymentOptions?.acceptsDonations) && (
               <CustomView style={tw`px-4 pt-4`}>
                 <View
                   style={tw`rounded-[24px] border border-[#F1D417] bg-[#1B2A50] p-4`}
@@ -1899,71 +1945,98 @@ const EventPage = () => {
               </TouchableOpacity>
             )}
             {owner && (
-              <TouchableOpacity
-                style={[
-                  tw`p-3 rounded-lg`,
-                  !canEditEvent ? tw`opacity-40` : null
-                ]}
-                onPress={() => {
-                  if (!canEditEvent) {
-                    showGlobalWarning(
-                      "Events can no longer be edited on the day they start."
-                    );
-                    return;
+              <View style={tw`flex-row items-center gap-2`}>
+                <VolunteerButton
+                  event={data.data}
+                  hasEventEnded={hasEventEnded}
+                  purpose="manage"
+                  variant="icon"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/volunteers/[id]",
+                      params: { id: resolvedEventId }
+                    })
                   }
+                />
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit event"
+                  style={[
+                    tw`p-3 rounded-lg`,
+                    !canEditEvent ? tw`opacity-40` : null
+                  ]}
+                  onPress={() => {
+                    if (!canEditEvent) {
+                      showGlobalWarning(
+                        "Events can no longer be edited on the day they start."
+                      );
+                      return;
+                    }
 
-                  router.push(`/event/edit/${resolvedEventId}`);
-                }}
-              >
-                <Edit2Icon color="#0FF1CF" />
-              </TouchableOpacity>
+                    router.push(`/event/edit/${resolvedEventId}`);
+                  }}
+                >
+                  <Edit2Icon color="#0FF1CF" />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
 
-        {hasEventEnded ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
+        <View style={tw`px-5 w-full max-w-[500px]`}>
+          {hasEventEnded ? (
             <CustomButton
               disabled
               onPress={() => {}}
-              buttonClassName="bg-[#1B2A50] border border-[#2B3C66] w-full max-w-[500px]"
+              showArrow={false}
+              buttonClassName="bg-[#1B2A50] border border-[#2B3C66] w-full"
               textClassName="!text-[#8FA1CB]"
-              arrowCircleColor="bg-[#22315E]"
               title="Event ended"
             />
-          </View>
-        ) : registrationType === "ticket" ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
+          ) : registrationType === "ticket" ? (
             <CustomButton
               onPress={openSheet}
-              buttonClassName="bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-              textClassName="!text-black"
-              arrowCircleColor="bg-[#0C7F7F]"
+              showArrow={false}
+              buttonClassName="bg-[#0FF1CF] border-0 w-full"
+              textClassName="!text-black shrink"
               title="View tickets"
             />
-          </View>
-        ) : registrationType === "registration" ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
+          ) : registrationType === "registration" ? (
             <CustomButton
               onPress={handleRegisterPress}
-              disabled={registeringEvent}
-              buttonClassName="bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-              textClassName="!text-black"
-              arrowCircleColor="bg-[#0C7F7F]"
-              title={registeringEvent ? "Registering" : "Register"}
+              disabled={registrationDisabled}
+              showArrow={false}
+              buttonClassName="bg-[#0FF1CF] border-0 w-full"
+              textClassName="!text-black shrink"
+              title={
+                checkingRegistration
+                  ? "Checking registration…"
+                  : registeringEvent
+                    ? "Registering…"
+                    : hasFreeRegistration
+                      ? "Registered"
+                      : registrationCheckFailed
+                        ? "Retry registration check"
+                        : "Register"
+              }
             />
-          </View>
-        ) : registrationType === "donation" ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
+          ) : registrationType === "donation" ? (
             <CustomButton
               onPress={openDonationSheet}
-              buttonClassName="bg-[#FF6B6B] border-0 w-full max-w-[500px]"
-              textClassName="!text-white"
-              arrowCircleColor="bg-[#D93E3E]"
-              title={`Donate Now`}
+              showArrow={false}
+              buttonClassName="bg-[#FF6B6B] border-0 w-full"
+              textClassName="!text-white shrink"
+              title="Donate Now"
             />
-          </View>
-        ) : null}
+          ) : !owner ? (
+            <VolunteerButton
+              event={data.data}
+              hasEventEnded={hasEventEnded}
+              variant="primary"
+              onPress={() => setShowVolunteerRoles(true)}
+            />
+          ) : null}
+        </View>
       </CustomView>
 
       {/* Companion feed button */}
@@ -2108,7 +2181,7 @@ const EventPage = () => {
                   setShowRegistrationCheckout(false);
                   handleTransaction(true);
                 }}
-                disabled={hasEventEnded || registeringEvent}
+                disabled={hasEventEnded || registrationDisabled}
                 buttonClassName="bg-[#0FF1CF] border-0 w-full"
                 textClassName="!text-black"
                 arrowCircleColor="bg-[#0C7F7F]"
@@ -2335,6 +2408,13 @@ const EventPage = () => {
           />
         </View>
       </BottomSheetModal>
+      {showVolunteerRoles ? (
+        <VolunteerRolesSheet
+          event={data.data}
+          owner={owner}
+          onClose={() => setShowVolunteerRoles(false)}
+        />
+      ) : null}
       <FeedBottomSheet
         eventId={resolvedEventId}
         isVisible={showFeed}
@@ -2381,9 +2461,15 @@ const EventPage = () => {
                 </Text>
               </View>
             </View>
-            <Text style={tw`text-xl font-bold text-white`}>
-              Complete your transfer
-            </Text>
+            <View style={tw`flex-row items-center justify-between gap-3`}>
+              <Text style={tw`flex-1 text-xl font-bold text-white`}>
+                Complete your transfer
+              </Text>
+              <SheetCloseButton
+                accessibilityLabel="Close transfer instructions"
+                onPress={() => setShowTransferInstructions(false)}
+              />
+            </View>
 
             <View style={tw`mt-4 gap-2 rounded-3xl bg-[#09173A] p-4`}>
               <View style={tw`flex-row items-start gap-3`}>
@@ -2492,15 +2578,6 @@ const EventPage = () => {
                 style={tw`text-center text-sm font-semibold text-[#01082E]`}
               >
                 I’ve made the transfer
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowTransferInstructions(false)}
-              style={tw`mt-3 rounded-full border border-[#2A3E6A] px-4 py-4`}
-            >
-              <Text style={tw`text-center text-sm font-semibold text-white`}>
-                Close
               </Text>
             </TouchableOpacity>
           </View>

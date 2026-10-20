@@ -1,4 +1,8 @@
 export const QUERY_KEYS = {
+  volunteerRoles: ["volunteerRoles"] as const,
+  volunteerRoster: ["volunteerRoster"] as const,
+  volunteerSummary: ["volunteerSummary"] as const,
+  volunteerHistory: ["volunteerHistory"] as const,
   currentUser: ["currentUser"] as const,
   userPublicProfile: ["userPublicProfile"] as const,
   foryouEvents: ["foryouevents"] as const,

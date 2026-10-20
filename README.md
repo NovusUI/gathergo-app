@@ -63,3 +63,42 @@ or continue without a map. Configure `DEEPSEEK_API_KEY` on the backend only.
 
 Run the event creation and map regression checks with `npm run test:event-first`.
 Run AI suggestion and selection checks with `npm run test:impact-suggestions`.
+
+## Event volunteering
+
+The creation chooser offers Create an event and Create a fundraiser. In event
+setup, Volunteering unlocks only after a physical event has non-empty impact
+story text. The volunteer-only option then removes ticket and attendee
+registration requirements. Roles can also be added alongside tickets or
+registration. An impact title alone does not unlock volunteering, and fundraisers
+must add a story too. Attempts to add volunteers first show a reminder.
+Role creation and editing open a bottom sheet in the event draft and organiser
+management. Draft roles change only on Save; organiser saves use the role API.
+Each role has its own capacity and organiser approval setting. Optional donations are available only
+for volunteer-only events; fundraisers keep their donation setup. The form
+displays naira and sends donation amounts in kobo.
+The update API keeps an omitted target; switching donations off removes it.
+
+The Give your time card opens volunteer roles for ticket, registration and
+donation events, keeping the main action focused on event participation.
+Volunteer-only events keep a full-width primary Volunteer action. Organisers open
+volunteer management from the people icon beside Edit, and the feed header includes a
+compact Volunteer action. The Give your time card and Volunteer actions open a
+sheet of roles, where participants can apply, join or withdraw. Roles load when
+the sheet opens.
+Participants apply or join and can withdraw pending applications or confirmed
+places before the event starts, from the roles sheet or My volunteering. They
+track their places in Settings
+→ My volunteering. Organisers manage roles and applications from the event or
+its dashboard, check volunteers in during the event, and confirm actual minutes
+after it ends. Recruitment and withdrawals close at the event start.
+
+These screens require the backend volunteering migration and endpoints, including
+`/events/:eventId/volunteer-roles`, `/events/:eventId/volunteers`, and
+`/volunteers/me`. Run the focused checks with `npm run test:volunteering`.
+
+Free attendee registration is limited to one active place per person and event.
+Event details and the feed check the existing registrations endpoint, display
+Registered for an owned place, and block repeat submissions. Registration checks
+must finish successfully before a new free registration can begin. Settings
+scrolls so all destinations and Logout remain reachable on smaller screens.

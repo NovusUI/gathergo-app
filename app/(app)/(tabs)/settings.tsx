@@ -8,10 +8,23 @@ import { safeGoBack } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
 import { saveItem } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import tw from "twrnc";
 
 const settingsItems = [
+  {
+    label: "My Volunteering",
+    subtitle: "Track volunteer applications, places and confirmed contributions",
+    route: "/my-volunteering",
+    icon: "people-outline" as const,
+  },
   {
     label: "My Passes",
     subtitle: "Open every ticket and registration you own in one place",
@@ -72,7 +85,14 @@ const Settings = () => {
         onClickBack={() => safeGoBack(router, "/")}
       />
 
-      <View style={[tw`w-full max-w-[500px] self-center`, styles.content]}>
+      <ScrollView
+        style={tw`flex-1`}
+        contentContainerStyle={[
+          tw`w-full max-w-[500px] self-center`,
+          styles.content,
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[tw`bg-[#122255] rounded-2xl border border-[#203370]`, styles.accountCard]}>
           <Text style={tw`text-white text-lg font-bold`}>
             {user?.name || "Account"}
@@ -108,7 +128,7 @@ const Settings = () => {
             <Text style={tw`text-[#FF6B9D] font-semibold ml-2`}>Logout</Text>
           </View>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -121,7 +141,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutSpacing.pageHorizontal,
   },
   content: {
-    marginTop: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: layoutSpacing.listBottomInset,
   },
   accountCard: {
     padding: layoutSpacing.cardPadding,

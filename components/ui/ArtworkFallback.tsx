@@ -27,6 +27,16 @@ type NotificationVisualConfig = {
 };
 
 const EVENT_VISUALS: Record<Registration, EventVisualConfig> = {
+  volunteer: {
+    icon: "people-outline",
+    title: "Volunteer event",
+    subtitle: "Give your time and help make a difference in person.",
+    background: "#102B2C",
+    accent: "#0FF1CF",
+    bubble: "rgba(15, 241, 207, 0.18)",
+    glow: "rgba(49, 198, 246, 0.22)",
+    label: "Volunteer",
+  },
   ticket: {
     icon: "ticket-outline",
     title: "Ticket event",

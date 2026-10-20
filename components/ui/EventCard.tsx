@@ -11,7 +11,7 @@ import { Registration } from "@/types/auth";
 import { formatShortDate } from "@/utils/dateTimeHandler";
 import { numberWithCommas } from "@/utils/utils";
 import { Image } from "expo-image";
-import { HandHeart, PenLine, Ticket } from "lucide-react-native";
+import { HandHeart, MapPin, PenLine, Ticket } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
@@ -41,6 +41,7 @@ interface EventCardProps {
 export default function EventCard({
   id,
   title,
+  description,
   location,
   imageUrl,
   thumbnailUrl,
@@ -56,7 +57,9 @@ export default function EventCard({
   onPress,
 }: EventCardProps) {
   const eventTypeConfig =
-    registrationType === "ticket"
+    registrationType === "volunteer"
+      ? { icon: <HandHeart size={18} color="#0FF1CF" /> }
+      : registrationType === "ticket"
       ? { icon: <Ticket size={18} color="#0FF1CF" /> }
       : registrationType === "donation"
         ? {
@@ -67,7 +70,9 @@ export default function EventCard({
           };
 
   const pricingMeta =
-    registrationType === "ticket"
+    registrationType === "volunteer"
+      ? { label: "Take part", value: "Volunteer" }
+      : registrationType === "ticket"
       ? lowestTicketPrice && lowestTicketPrice > 0
         ? {
             label: "From",
@@ -81,7 +86,7 @@ export default function EventCard({
         ? donationTarget && donationTarget > 0
           ? {
               label: "Target",
-              value: numberWithCommas(donationTarget, true, null),
+              value: numberWithCommas(donationTarget / 100, true, null),
             }
           : {
               label: "Support",
@@ -168,13 +173,13 @@ export default function EventCard({
           </View>
         )}
 
-        <View style={tw`ml-4 min-h-[84px] flex-1 justify-between`}>
+        <View style={tw`ml-4 min-h-[84px] flex-1 gap-2`}>
           <Text style={tw`text-white font-semibold text-lg`} numberOfLines={2}>
             {title}
           </Text>
-          {Boolean(impactSummary) && (
+          {impactSummary ? (
             <View
-              style={tw`mt-2 flex-row items-center rounded-full bg-[#0FF1CF]/10 px-3 py-1.5 self-start`}
+              style={tw`flex-row items-center rounded-full bg-[#0FF1CF]/10 px-3 py-1.5 self-start`}
             >
               {goal ? (
                 <View
@@ -200,7 +205,25 @@ export default function EventCard({
                 {impactSummary}
               </Text>
             </View>
-          )}
+          ) : description ? (
+            <Text
+              style={tw`text-xs leading-5 text-[#A8BAE4]`}
+              numberOfLines={2}
+            >
+              {description}
+            </Text>
+          ) : null}
+          {location ? (
+            <View style={tw`flex-row items-center gap-1.5`}>
+              <MapPin size={13} color="#8FA5C9" />
+              <Text
+                style={tw`flex-1 text-xs text-[#8FA5C9]`}
+                numberOfLines={1}
+              >
+                {location}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 

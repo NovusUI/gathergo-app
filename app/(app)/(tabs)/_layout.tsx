@@ -219,57 +219,22 @@ export default function RootLayout() {
                   <Text style={tw`text-sm font-semibold text-white`}>Back</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={tw`rounded-3xl border border-[#0FF1CF]/20 bg-[#101C45] p-5`}
-                  onPress={guardedCreateGeneralEvent}
-                >
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <View
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}
-                    >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={22}
-                        color="#0FF1CF"
-                      />
+                {[
+                  { title: "Create an event", description: "Host a free or paid event, from concerts and workshops to community gatherings.", icon: "calendar-outline" as const, color: "#0FF1CF", onPress: guardedCreateGeneralEvent },
+                  { title: "Create a fundraiser", description: "Raise support around a cause, project, or community need.", icon: "heart-outline" as const, color: "#FF8A8A", onPress: guardedCreateDonationEvent },
+                ].map((option) => (
+                  <TouchableOpacity key={option.title} accessibilityRole="button" style={[tw`rounded-3xl border bg-[#101C45] p-5`, { borderColor: option.color + "44" }]} onPress={option.onPress}>
+                    <View style={tw`flex-row items-center gap-4`}>
+                      <View style={[tw`h-12 w-12 items-center justify-center rounded-full`, { backgroundColor: option.color + "20" }]}>
+                        <Ionicons name={option.icon} size={22} color={option.color} />
+                      </View>
+                      <View style={tw`flex-1`}>
+                        <Text style={tw`text-base font-semibold text-white`}>{option.title}</Text>
+                        <Text style={tw`mt-1 text-sm leading-5 text-[#98ABD6]`}>{option.description}</Text>
+                      </View>
                     </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        Create an event
-                      </Text>
-                      <Text style={tw`mt-1 text-sm leading-5 text-[#98ABD6]`}>
-                        Host a free or paid event, from concerts and workshops
-                        to community gatherings.
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={tw`rounded-3xl border border-[#FF6B6B]/30 bg-[#2A1022] p-5`}
-                  onPress={guardedCreateDonationEvent}
-                >
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <View
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#FF6B6B]/15`}
-                    >
-                      <Ionicons
-                        name="heart-outline"
-                        size={22}
-                        color="#FF8A8A"
-                      />
-                    </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        Create a fundraiser
-                      </Text>
-                      <Text style={tw`mt-1 text-sm leading-5 text-[#F1B3C2]`}>
-                        Raise support around a cause, project, or community
-                        need.
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
               </>
             )}
           </View>

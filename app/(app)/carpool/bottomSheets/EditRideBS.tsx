@@ -1,3 +1,4 @@
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
@@ -25,7 +26,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import tw from "twrnc";
 
@@ -169,13 +170,10 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                     Edit ride details
                   </Text>
                 </View>
-                <TouchableOpacity
+                <SheetCloseButton
+                  accessibilityLabel="Close ride details sheet"
                   onPress={() => bottomSheetRef.current?.close()}
-                >
-                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                    Close
-                  </Text>
-                </TouchableOpacity>
+                />
               </View>
 
               <View style={tw`rounded-[28px] bg-[#0A173F] p-5 gap-4`}>

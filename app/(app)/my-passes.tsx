@@ -5,6 +5,7 @@ import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useMyRegistrations, useMyTickets } from "@/services/queries";
 import { OwnedRegistration, OwnedTicket } from "@/types/event";
+import type { Registration } from "@/types/auth";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { numberWithCommas } from "@/utils/utils";
@@ -38,7 +39,7 @@ type UnifiedPass = {
   eventEndDate: string;
   location: string | null;
   thumbnailUrl?: string | null;
-  registrationType: "ticket" | "registration" | "donation";
+  registrationType: Registration;
   isPhysicalEvent: boolean;
   ticketType?: string;
   ticketPrice?: number;

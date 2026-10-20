@@ -6,6 +6,8 @@ import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import Payments from "@/components/ui/Payments";
 import RegistrationEventOverview from "@/components/ui/RegistrationEventOverview";
 import TicketEventOverview from "@/components/ui/TicketEventOverview";
+import VolunteerOverview from "@/components/volunteer/VolunteerOverview";
+import { canRecruitVolunteers } from "@/utils/volunteer";
 import { useEventDashboardData, useShortcutEvent } from "@/hooks/useDashboard";
 import { useEventDetails } from "@/services/queries";
 
@@ -202,6 +204,8 @@ const EventDashboard = () => {
           {event.type === "registration" && (
             <RegistrationEventOverview event={event} />
           )}
+
+          {eventDetails && (eventDetails.volunteerRoles.length > 0 || canRecruitVolunteers(eventDetails)) ? <VolunteerOverview event={eventDetails} /> : null}
 
           {/* Account Info */}
           {/* <AccountInfoCard accountInfo={event.accountInfo} /> */}

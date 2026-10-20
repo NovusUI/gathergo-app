@@ -49,6 +49,17 @@ export const TRANSACTION_URL = {
     base_url + `/transaction-reference/ticketorreg/${id}`,
 };
 
+export const VOLUNTEER_URL = {
+  roles: (eventId: string) => base_url + `/events/${eventId}/volunteer-roles`,
+  role: (eventId: string, roleId: string) => base_url + `/events/${eventId}/volunteer-roles/${roleId}`,
+  apply: (eventId: string, roleId: string) => base_url + `/events/${eventId}/volunteer-roles/${roleId}/apply`,
+  applications: (eventId: string) => base_url + `/events/${eventId}/volunteers`,
+  action: (eventId: string, id: string, action: "review" | "withdraw" | "check-in" | "complete") =>
+    base_url + `/events/${eventId}/volunteers/${id}/${action}`,
+  summary: (eventId: string) => base_url + `/events/${eventId}/volunteers/summary`,
+  history: base_url + "/volunteers/me",
+};
+
 export const TICKET_URL = {
   myTickets: base_url + "/tickets/my-tickets",
 };
