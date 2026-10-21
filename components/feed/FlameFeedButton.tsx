@@ -1,10 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
-import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import {
+  FEED_FRENZY_COLORS,
+  FEED_FRENZY_LABELS,
+  type FeedFrenzyLevel
+} from "@/constants/feedFrenzy";
+import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
+import { GogoFrenzyArtwork } from "./GogoFrenzyArtwork";
+import { GogoCarFrenzyArtwork } from "./GogoCarFrenzyArtwork";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
-  Easing,
   PanResponder,
   Text,
   TouchableOpacity,
@@ -17,13 +22,13 @@ import tw from "twrnc";
 
 interface FlameFeedButtonProps {
   unreadCount: number;
+  frenzyLevel: FeedFrenzyLevel;
   onPress: () => void;
   disabled?: boolean;
-  showCarpoolSignal?: boolean;
+  supportsCarpool?: boolean;
 }
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
-const SIGNAL_CYCLE_MS = 5200;
 const BUTTON_SIZE = 76;
 const SIDE_INSET = 16;
 const TOP_INSET = 72;
@@ -36,15 +41,18 @@ const clamp = (value: number, min: number, max: number) =>
 
 export default function FlameFeedButton({
   unreadCount,
+  frenzyLevel,
   onPress,
   disabled = false,
-  showCarpoolSignal = false
+  supportsCarpool = false
 }: FlameFeedButtonProps) {
+  const reducedMotion = useReducedMotionPreference();
+  const heatColor = FEED_FRENZY_COLORS[frenzyLevel][0];
+  const Artwork = supportsCarpool ? GogoCarFrenzyArtwork : GogoFrenzyArtwork;
   const { width, height } = useWindowDimensions();
   const maxX = Math.max(SIDE_INSET, width - BUTTON_SIZE - SIDE_INSET);
   const maxY = Math.max(TOP_INSET, height - BUTTON_SIZE - BOTTOM_INSET);
   const pulse = useRef(new Animated.Value(1)).current;
-  const signalProgress = useRef(new Animated.Value(0)).current;
   const position = useRef(
     new Animated.ValueXY({ x: maxX, y: TOP_INSET })
   ).current;
@@ -66,31 +74,6 @@ export default function FlameFeedButton({
     [maxX, maxY, width]
   );
   const boundsRef = useRef(bounds);
-
-  const feedOpacity = signalProgress.interpolate({
-    inputRange: [0, 0.36, 0.48, 0.88, 1],
-    outputRange: [1, 1, 0, 0, 1]
-  });
-  const feedScale = signalProgress.interpolate({
-    inputRange: [0, 0.36, 0.48, 0.88, 1],
-    outputRange: [1, 1, 0.82, 0.82, 1]
-  });
-  const carpoolOpacity = signalProgress.interpolate({
-    inputRange: [0, 0.36, 0.48, 0.88, 1],
-    outputRange: [0, 0, 1, 1, 0]
-  });
-  const carpoolScale = signalProgress.interpolate({
-    inputRange: [0, 0.36, 0.48, 0.88, 1],
-    outputRange: [0.96, 0.96, 1, 1, 0.96]
-  });
-  const signalRingScale = signalProgress.interpolate({
-    inputRange: [0, 0.48, 0.66, 0.84, 1],
-    outputRange: [0.92, 0.92, 1.16, 1.04, 0.92]
-  });
-  const signalRingOpacity = signalProgress.interpolate({
-    inputRange: [0, 0.48, 0.66, 0.84, 1],
-    outputRange: [0.16, 0.16, 0.34, 0.18, 0.16]
-  });
 
   useEffect(() => {
     disabledRef.current = disabled;
@@ -123,6 +106,10 @@ export default function FlameFeedButton({
       latestPositionRef.current = nextPosition;
       dragStartRef.current = nextPosition;
 
+      if (reducedMotion) {
+        position.setValue(nextPosition);
+        return;
+      }
       Animated.spring(position, {
         toValue: nextPosition,
         friction: 7,
@@ -130,7 +117,7 @@ export default function FlameFeedButton({
         useNativeDriver: true
       }).start();
     },
-    [position]
+    [position, reducedMotion]
   );
 
   const panResponder = useMemo(
@@ -206,38 +193,17 @@ export default function FlameFeedButton({
   );
 
   useEffect(() => {
-    if (!showCarpoolSignal) {
-      signalProgress.stopAnimation();
-      signalProgress.setValue(0);
-      return;
-    }
-
-    signalProgress.stopAnimation();
-    signalProgress.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(signalProgress, {
-        toValue: 1,
-        duration: SIGNAL_CYCLE_MS,
-        easing: Easing.linear,
-        useNativeDriver: true
-      })
-    );
-
-    loop.start();
-    return () => {
-      loop.stop();
-      signalProgress.stopAnimation();
-    };
-  }, [showCarpoolSignal, signalProgress]);
-
-  useEffect(() => {
     const prevUnread = previousUnreadRef.current;
     previousUnreadRef.current = unreadCount;
 
-    if (unreadCount <= 0) return;
-
+    pulse.stopAnimation();
     pulse.setValue(1);
-    Animated.sequence([
+    if (unreadCount > prevUnread && !disabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    if (unreadCount <= 0 || reducedMotion || disabled) return;
+
+    const animation = Animated.sequence([
       Animated.timing(pulse, {
         toValue: 1.18,
         duration: 180,
@@ -248,12 +214,11 @@ export default function FlameFeedButton({
         duration: 220,
         useNativeDriver: true
       })
-    ]).start();
+    ]);
+    animation.start();
 
-    if (unreadCount > prevUnread) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    }
-  }, [pulse, unreadCount]);
+    return () => animation.stop();
+  }, [disabled, pulse, reducedMotion, unreadCount]);
 
   const handlePress = useCallback(() => {
     if (Date.now() - lastDragEndAtRef.current < PRESS_BLOCK_MS) return;
@@ -275,57 +240,44 @@ export default function FlameFeedButton({
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={
-          showCarpoolSignal
+          supportsCarpool
             ? "Open live feed and carpool companion"
             : "Open live feed"
         }
+        accessibilityValue={{
+          text: `${FEED_FRENZY_LABELS[frenzyLevel]}. ${unreadCount} unread ${unreadCount === 1 ? "update" : "updates"}.`
+        }}
+        accessibilityHint="Tap to open the feed. Drag to move this button."
         style={[
-          tw`relative items-center justify-center rounded-full border border-[#0FF1CF]/30 bg-[#041130]/90 p-1`,
-          { transform: [{ scale: pulse }] }
+          tw`relative items-center justify-center rounded-full border bg-[#041130]/90 p-1`,
+          {
+            width: BUTTON_SIZE,
+            height: BUTTON_SIZE,
+            borderColor: `${heatColor}66`,
+            transform: [{ scale: pulse }]
+          }
         ]}
       >
         {unreadCount > 0 ? (
-          <Animated.View
+          <View
             pointerEvents="none"
             style={[
-              tw`absolute inset-0 rounded-full bg-[#0FF1CF]/10`,
-              {
-                opacity: signalRingOpacity,
-                transform: [{ scale: signalRingScale }]
-              }
+              tw`absolute inset-0 rounded-full`,
+              { backgroundColor: `${heatColor}1A`, opacity: 0.16 }
             ]}
           />
         ) : null}
         <View style={tw`h-[66px] w-[66px] items-center justify-center`}>
-          <GatherGoMascot
-            variant={showCarpoolSignal ? "empty" : "idle"}
-            size={62}
-            showBadge={false}
-          />
-          <Animated.View
+          <View
             pointerEvents="none"
-            style={[
-              tw`absolute -bottom-1 -right-1 h-7 w-7 items-center justify-center rounded-full border-2 border-[#01082E] bg-[#FFD76A]`,
-              {
-                opacity: feedOpacity,
-                transform: [{ scale: feedScale }]
-              }
-            ]}
+            style={{ transform: [{ translateY: supportsCarpool ? 0 : -5 }] }}
           >
-            <Ionicons name="flame-outline" size={16} color="#01082E" />
-          </Animated.View>
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              tw`absolute -bottom-1 -right-1 h-7 w-7 items-center justify-center rounded-full border-2 border-[#01082E] bg-[#0FF1CF]`,
-              {
-                opacity: carpoolOpacity,
-                transform: [{ scale: carpoolScale }]
-              }
-            ]}
-          >
-            <Ionicons name="car-sport-outline" size={16} color="#01082E" />
-          </Animated.View>
+            <Artwork
+              level={frenzyLevel}
+              size={supportsCarpool ? 96 : 88}
+              animated={!disabled && !reducedMotion}
+            />
+          </View>
         </View>
 
         {unreadCount > 0 ? (

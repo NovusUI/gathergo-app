@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 0 240 272" width="360" height="408" role="img" aria-labelledby="t d">
+  <title id="t">Gogo loading</title>
+  <desc id="d">Gogo waits patiently, glancing around, while its antenna ring spins and three small rings bounce in turn underneath.</desc>
+  <style>
+    .l-shadow { transform-origin: 100px 207px; animation: l-shadow 1.8s ease-in-out infinite; }
+    .l-bob { transform-origin: 100px 200px; animation: l-bob 1.8s ease-in-out infinite; }
+    .l-spin { transform-origin: 100px 14px; animation: l-spin 1.2s linear infinite; }
+    .l-eyes { transform-origin: 100px 96px; animation: l-blink 4.4s infinite; }
+    .l-pupils { animation: l-look 3.6s ease-in-out infinite; }
+    .l-arm { transform-origin: 172px 128px; animation: l-tap 0.9s ease-in-out infinite; }
+    .l-dot { animation: l-hop 1.2s ease-in-out infinite; }
+    .l-d2 { animation-delay: .2s; } .l-d3 { animation-delay: .4s; }
+    @keyframes l-bob { 0%,100% { transform: translateY(0) scale(1.01,.99); } 50% { transform: translateY(-5px) scale(.99,1.01); } }
+    @keyframes l-shadow { 0%,100% { transform: scale(1); opacity: .1; } 50% { transform: scale(.9); opacity: .07; } }
+    @keyframes l-spin { to { transform: rotate(360deg); } }
+    @keyframes l-blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+    @keyframes l-look { 0%,10% { transform: translate(-6px,-4px); } 40%,55% { transform: translate(6px,-4px); } 85%,100% { transform: translate(-6px,-4px); } }
+    @keyframes l-tap { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-8deg); } }
+    @keyframes l-hop { 0%,60%,100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-14px); opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .l-shadow,.l-bob,.l-spin,.l-eyes,.l-pupils,.l-arm,.l-dot { animation: none; } .l-dot { opacity: 1; } }
+  </style>
+  <ellipse class="l-shadow" cx="100" cy="207" rx="50" ry="7" fill="#0B3B35" opacity="0.1"/>
+  <g class="l-bob">
+    <ellipse cx="76" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <ellipse cx="124" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+    <circle class="l-spin" cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5" stroke-dasharray="30 27"/>
+    <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+    <circle cx="44" cy="136" r="8" fill="#FF8F7E" opacity="0.55"/>
+    <circle cx="156" cy="136" r="8" fill="#FF8F7E" opacity="0.55"/>
+    <g class="l-eyes">
+      <circle cx="70" cy="96" r="25" fill="#fff"/>
+      <circle cx="130" cy="96" r="25" fill="#fff"/>
+      <g class="l-pupils">
+        <circle cx="70" cy="98" r="11" fill="#0B3B35"/>
+        <circle cx="130" cy="98" r="11" fill="#0B3B35"/>
+        <circle cx="74" cy="93" r="3.5" fill="#fff"/>
+        <circle cx="134" cy="93" r="3.5" fill="#fff"/>
+      </g>
+    </g>
+    <path d="M78 144Q100 156 122 144" fill="none" stroke="#0B3B35" stroke-width="8" stroke-linecap="round"/>
+    <path d="M28 128Q8 140 14 160" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/>
+    <g class="l-arm"><path d="M172 128Q192 140 186 160" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/></g>
+  </g>
+  <g fill="none" stroke="#0FB898" stroke-width="4.5">
+    <circle class="l-dot" cx="72" cy="248" r="7"/>
+    <circle class="l-dot l-d2" cx="100" cy="248" r="7"/>
+    <circle class="l-dot l-d3" cx="128" cy="248" r="7"/>
+  </g>
+</svg>

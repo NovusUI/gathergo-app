@@ -1,5 +1,6 @@
+import AppLoader from "@/components/ui/AppLoader";
 import { useSocket } from "@/context/SocketContext";
-import { LoaderCircle, Send } from "lucide-react-native";
+import { Send } from "lucide-react-native";
 import { useRef, useState } from "react";
 import {
   NativeSyntheticEvent,
@@ -129,7 +130,11 @@ const ChatInput = ({
             />
           )}
           {sending && (
-            <LoaderCircle color={disabled ? "#6B7280" : "#fff"} size={20} />
+            <AppLoader
+              tone="light"
+              size={24}
+              accessibilityLabel="Sending message"
+            />
           )}
         </TouchableOpacity>
       </View>

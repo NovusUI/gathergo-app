@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-30 -100 260 320" width="390" height="480" role="img" aria-labelledby="t d">
+  <title id="t">Gogo, frenzy level 4: inferno</title>
+  <desc id="d">Gogo is on fire with excitement: star-shaped eyes, a huge layered flame, a glowing aura, flames on its head and embers flying up.</desc>
+  <defs>
+    <radialGradient id="d4-aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FF8A2B" stop-opacity="0.6"/>
+      <stop offset="0.6" stop-color="#FF5A36" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FF5A36" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <style>
+    .d4-aura { transform-origin: 100px 60px; animation: d4-aura 0.8s ease-in-out infinite; }
+    .d4-shadow { transform-origin: 100px 207px; animation: d4-shadow 0.55s ease-in-out infinite; }
+    .d4-shake { animation: d4-shake 0.18s linear infinite; }
+    .d4-hop { transform-origin: 100px 200px; animation: d4-hop 0.55s ease-in-out infinite; }
+    .d4-flame { transform-origin: 20px 56px; animation: d4-flick 0.45s ease-in-out infinite; }
+    .d4-side { transform-origin: 20px 56px; animation: d4-flick 0.37s ease-in-out infinite; }
+    .d4-star { transform-box: fill-box; transform-origin: center; animation: d4-star 0.55s ease-in-out infinite; }
+    .d4-armL { transform-origin: 28px 124px; animation: d4-armL 0.55s ease-in-out infinite; }
+    .d4-armR { transform-origin: 172px 124px; animation: d4-armR 0.55s ease-in-out infinite; }
+    .d4-ember { animation: d4-rise 1.3s linear infinite; }
+    .d4-e2 { animation-delay: -.2s; } .d4-e3 { animation-delay: -.45s; } .d4-e4 { animation-delay: -.7s; } .d4-e5 { animation-delay: -.95s; } .d4-e6 { animation-delay: -1.15s; }
+    @keyframes d4-aura { 0%,100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.12); opacity: 1; } }
+    @keyframes d4-shake { 0% { transform: translate(0,0); } 25% { transform: translate(1.6px,-1px); } 50% { transform: translate(-1.4px,1px); } 75% { transform: translate(1px,1.2px); } 100% { transform: translate(0,0); } }
+    @keyframes d4-hop { 0%,100% { transform: translateY(0) scale(1.06,.94); } 45% { transform: translateY(-16px) scale(.96,1.05); } 70% { transform: translateY(-4px) scale(1,1); } }
+    @keyframes d4-shadow { 0%,100% { transform: scale(1); opacity: .14; } 45% { transform: scale(.68); opacity: .06; } }
+    @keyframes d4-flick { 0%,100% { transform: scale(1,1) skewX(0); } 25% { transform: scale(.88,1.18) skewX(-6deg); } 55% { transform: scale(1.1,.9) skewX(5deg); } 80% { transform: scale(.94,1.1) skewX(-3deg); } }
+    @keyframes d4-star { 0%,100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.22) rotate(12deg); } }
+    @keyframes d4-armL { 0%,100% { transform: rotate(10deg); } 45% { transform: rotate(-16deg); } }
+    @keyframes d4-armR { 0%,100% { transform: rotate(-10deg); } 45% { transform: rotate(16deg); } }
+    @keyframes d4-rise { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 1; } 100% { transform: translateY(-62px); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .d4-aura,.d4-shadow,.d4-shake,.d4-hop,.d4-flame,.d4-side,.d4-star,.d4-armL,.d4-armR,.d4-ember { animation: none; } }
+  </style>
+  <ellipse class="d4-aura" cx="100" cy="60" rx="130" ry="150" fill="url(#d4-aura)"/>
+  <ellipse class="d4-shadow" cx="100" cy="207" rx="50" ry="7" fill="#0B3B35" opacity="0.14"/>
+  <g class="d4-shake">
+  <g class="d4-hop">
+    <ellipse cx="76" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <ellipse cx="124" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <g transform="translate(100 9) scale(1.7) translate(-20 -56)">
+      <g class="d4-flame">
+        <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+        <path d="M20 14C23 24 33 30 33 41C33 49 27 55 20 55C13 55 7 49 7 41C7 34 11 30 14 25C15 29 17 31 19 31C17 25 18 19 20 14Z" fill="#FF6B1F"/>
+        <path d="M20 28C22 34 28 38 28 45C28 50 24 54 20 54C16 54 12 50 12 45C12 40 15 38 17 34C18 36 19 37 20 37C19 33 19 31 20 28Z" fill="#FFD23F"/>
+        <path d="M20 42C21 45 24 46 24 49C24 52 22 54 20 54C18 54 16 52 16 49C16 47 18 46 18 44C19 44 19 43 20 42Z" fill="#FFF6D6"/>
+      </g>
+    </g>
+    <g transform="translate(58 52) rotate(-34) scale(0.62) translate(-20 -56)">
+      <g class="d4-side">
+        <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+        <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FF9F2E"/>
+      </g>
+    </g>
+    <g transform="translate(142 52) rotate(34) scale(0.62) translate(-20 -56)">
+      <g class="d4-side">
+        <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+        <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FF9F2E"/>
+      </g>
+    </g>
+    <circle class="d4-ember" cx="60" cy="-30" r="3" fill="#FFD23F"/>
+    <circle class="d4-ember d4-e2" cx="140" cy="-34" r="3.5" fill="#FF9F2E"/>
+    <circle class="d4-ember d4-e3" cx="92" cy="-48" r="2.5" fill="#FFF6D6"/>
+    <circle class="d4-ember d4-e4" cx="118" cy="-44" r="3" fill="#FF6B1F"/>
+    <circle class="d4-ember d4-e5" cx="40" cy="-8" r="2.5" fill="#FFD23F"/>
+    <circle class="d4-ember d4-e6" cx="160" cy="-12" r="2.5" fill="#FF6B1F"/>
+    <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5"/>
+    <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+    <circle cx="44" cy="136" r="10" fill="#FF5A36" opacity="0.8"/>
+    <circle cx="156" cy="136" r="10" fill="#FF5A36" opacity="0.8"/>
+    <circle cx="70" cy="96" r="26" fill="#fff"/>
+    <circle cx="130" cy="96" r="26" fill="#fff"/>
+    <path class="d4-star" d="M70 78L75 91L88 96L75 101L70 114L65 101L52 96L65 91Z" fill="#FF8A00"/>
+    <path class="d4-star" d="M130 78L135 91L148 96L135 101L130 114L125 101L112 96L125 91Z" fill="#FF8A00"/>
+    <path d="M68 132Q100 188 132 132Z" fill="#0B3B35" stroke="#0B3B35" stroke-width="6" stroke-linejoin="round"/>
+    <g class="d4-armL"><path d="M28 124Q2 108 10 70" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="10" cy="65" r="10" fill="#0FB898"/></g>
+    <g class="d4-armR"><path d="M172 124Q198 108 190 70" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="190" cy="65" r="10" fill="#0FB898"/></g>
+  </g>
+  </g>
+</svg>

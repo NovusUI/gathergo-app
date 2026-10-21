@@ -1,10 +1,13 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import ConversationView from "@/components/ConversationView";
 import { useSocket } from "@/context/SocketContext";
 import { useLockedRouter } from "@/utils/navigation";
 import { useFocusEffect } from "expo-router";
 import { MessageCircle, UserRound } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
 import { useConversations } from "../../../hooks/useSocketReactHook";
 
@@ -47,14 +50,13 @@ const Conversations = () => {
       <ScrollView
         style={tw`w-full max-w-[500px] mt-5`}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["white"]}
-            tintColor="white"
           />
         }
       >
+        <RefreshIndicator refreshing={refreshing} />
         <View style={tw`gap-5`}>
           {conversations.length === 0 ? (
             <View style={tw`items-center justify-center py-20`}>

@@ -6,6 +6,7 @@ const state = {};
 const { default: ImpactSelector } = loadTypeScript(
   "components/eventInfo/ImpactSelector.tsx",
   {
+    "@/components/ui/AppLoader": { default: "Spinner" },
     "@/services/queries": {
       useImpactSuggestions: (payload, options) => {
         state.payload = payload;
@@ -25,7 +26,6 @@ const { default: ImpactSelector } = loadTypeScript(
     },
     react: { useMemo: (create) => create() },
     "react-native": {
-      ActivityIndicator: "Spinner",
       Text: "Text",
       TouchableOpacity: "Button",
       View: "View",

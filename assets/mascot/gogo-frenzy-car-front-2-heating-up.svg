@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -70 480 420" width="480" height="420" role="img" aria-labelledby="t d">
+  <title id="t">Gogo driving toward you, frenzy level 2: heating up</title>
+  <desc id="d">Front view: Gogo's eyes go wide and cheeks flush as the roadster speeds up toward you, a medium flame dancing on its antenna.</desc>
+  <style>
+    .g-rays { transform-origin: 200px 190px; animation: g-rays 1s linear infinite; }
+    .g-zoom { transform-origin: 200px 330px; animation: g-zoom 0.9s ease-in-out infinite; }
+    .g-car { animation: g-car 0.5s ease-in-out infinite alternate; }
+    .g-gogo { transform-origin: 200px 200px; animation: g-hop 0.9s ease-in-out infinite; }
+    .g-flame { transform-origin: 20px 56px; animation: g-flick 0.9s ease-in-out infinite; }
+    .g-armL { transform-origin: 28px 126px; animation: g-armL 0.9s ease-in-out infinite; }
+    .g-armR { transform-origin: 172px 126px; animation: g-armR 0.9s ease-in-out infinite; }
+    .g-tread { animation: g-tread 0.6s linear infinite; }
+    .g-glow { animation: g-glow 0.8s ease-in-out infinite alternate; }
+    .g-ember { animation: g-rise 2s linear infinite; }
+    .g-m2 { animation-delay: -1s; }
+    @keyframes g-rays { 0% { transform: scale(.78); opacity: .8; } 100% { transform: scale(1.35); opacity: 0; } }
+    @keyframes g-zoom { 0%,100% { transform: scale(1); } 50% { transform: scale(1.018); } }
+    @keyframes g-car { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+    @keyframes g-hop { 0%,100% { transform: translateY(0) scale(1.02,.98); } 50% { transform: translateY(-5px) scale(.99,1.01); } }
+    @keyframes g-flick { 0%,100% { transform: scale(1,1) skewX(0); } 25% { transform: scale(.93,1.1) skewX(-4deg); } 55% { transform: scale(1.06,.94) skewX(3deg); } 80% { transform: scale(.97,1.06) skewX(-2deg); } }
+    @keyframes g-armL { 0%,100% { transform: rotate(4deg); } 50% { transform: rotate(-6deg); } }
+    @keyframes g-armR { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(6deg); } }
+    @keyframes g-tread { to { stroke-dashoffset: -16; } }
+    @keyframes g-glow { from { opacity: .2; } to { opacity: .45; } }
+    @keyframes g-rise { 0% { transform: translate(0,0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(0,-34px); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .g-rays,.g-zoom,.g-car,.g-gogo,.g-flame,.g-armL,.g-armR,.g-tread,.g-glow,.g-ember { animation: none; } }
+  </style>
+
+  <g stroke="#0FB898" stroke-width="5" stroke-linecap="round">
+    <g class="g-rays">
+      <line x1="350" y1="190" x2="390" y2="190"/><line x1="330" y1="265" x2="364.5" y2="285"/><line x1="275" y1="320" x2="295" y2="354.5"/><line x1="200" y1="340" x2="200" y2="380"/><line x1="125" y1="320" x2="105" y2="354.5"/><line x1="70" y1="265" x2="35.5" y2="285"/><line x1="50" y1="190" x2="10" y2="190"/><line x1="70" y1="115" x2="35.5" y2="95"/><line x1="125" y1="60" x2="105" y2="25.5"/><line x1="200" y1="40" x2="200" y2="0"/><line x1="275" y1="60" x2="295" y2="25.5"/><line x1="330" y1="115" x2="364.5" y2="95"/>
+    </g>
+  </g>
+
+  <ellipse cx="200" cy="332" rx="160" ry="14" fill="#0B3B35" opacity="0.14"/>
+
+  <g class="g-zoom"><g class="g-car">
+    <g class="g-gogo">
+      <g transform="translate(128 60) scale(0.72)">
+        <g transform="translate(100 9) scale(0.92) translate(-20 -56)">
+          <g class="g-flame">
+            <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#FF8A2B"/>
+            <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FFC93C"/>
+            <path d="M20 34C21 39 25 41 25 46C25 50 23 53 20 53C17 53 15 50 15 46C15 42 18 41 18 38C19 38 19 36 20 34Z" fill="#FFF1B8"/>
+          </g>
+        </g>
+        <circle class="g-ember" cx="82" cy="-4" r="2.5" fill="#FFC93C"/>
+        <circle class="g-ember g-m2" cx="120" cy="-2" r="2" fill="#FF8A2B"/>
+        <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5"/>
+        <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+        <circle cx="44" cy="136" r="9" fill="#FF6B5E" opacity="0.75"/>
+        <circle cx="156" cy="136" r="9" fill="#FF6B5E" opacity="0.75"/>
+        <circle cx="70" cy="96" r="26" fill="#fff"/>
+        <circle cx="130" cy="96" r="26" fill="#fff"/>
+        <circle cx="71" cy="97" r="9" fill="#0B3B35"/>
+        <circle cx="131" cy="97" r="9" fill="#0B3B35"/>
+        <circle cx="74" cy="93" r="3" fill="#fff"/>
+        <circle cx="134" cy="93" r="3" fill="#fff"/>
+        <path d="M80 138Q100 164 120 138Z" fill="#0B3B35" stroke="#0B3B35" stroke-width="6" stroke-linejoin="round"/>
+        <g class="g-armL"><path d="M28 126Q4 120 6 94" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="6" cy="89" r="10" fill="#0FB898"/></g>
+        <g class="g-armR"><path d="M172 126Q196 120 194 94" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="194" cy="89" r="10" fill="#0FB898"/></g>
+      </g>
+    </g>
+
+    <rect x="52" y="262" width="32" height="68" rx="13" fill="#0B3B35"/>
+    <rect x="316" y="262" width="32" height="68" rx="13" fill="#0B3B35"/>
+    <line class="g-tread" x1="68" y1="266" x2="68" y2="326" stroke="#17524A" stroke-width="22" stroke-dasharray="6 10"/>
+    <line class="g-tread" x1="332" y1="266" x2="332" y2="326" stroke="#17524A" stroke-width="22" stroke-dasharray="6 10"/>
+
+    <rect x="70" y="200" width="260" height="92" rx="30" fill="#FF5C7A"/>
+    <rect x="190" y="200" width="20" height="46" fill="#FFD84D"/>
+    <path d="M112 200L128 168L272 168L288 200Z" fill="#D5F7EF" fill-opacity="0.45" stroke="#0B3B35" stroke-width="5" stroke-linejoin="round"/>
+    <circle cx="102" cy="190" r="9" fill="#D93A5C"/>
+    <circle cx="298" cy="190" r="9" fill="#D93A5C"/>
+
+    <circle class="g-glow" cx="120" cy="238" r="30" fill="#FFD84D"/>
+    <circle class="g-glow" cx="280" cy="238" r="30" fill="#FFD84D"/>
+    <circle cx="120" cy="238" r="18" fill="#FFF3B0" stroke="#1EEBC8" stroke-width="7"/>
+    <circle cx="280" cy="238" r="18" fill="#FFF3B0" stroke="#1EEBC8" stroke-width="7"/>
+
+    <path d="M160 262Q200 288 240 262" fill="none" stroke="#0B3B35" stroke-width="8" stroke-linecap="round"/>
+    <rect x="84" y="284" width="232" height="16" rx="8" fill="#D93A5C"/>
+    <rect x="172" y="286" width="56" height="12" rx="4" fill="#FFD84D"/>
+  </g></g>
+</svg>

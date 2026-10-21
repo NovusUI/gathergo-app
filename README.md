@@ -102,3 +102,60 @@ Event details and the feed check the existing registrations endpoint, display
 Registered for an owned place, and block repeat submissions. Registration checks
 must finish successfully before a new free registration can begin. Settings
 scrolls so all destinations and Logout remain reachable on smaller screens.
+
+## Gogo mascot
+
+The shared GatherGoMascot uses the supplied Gogo artwork, with its mint body,
+ring eyes and antenna. The original base, wave and celebration SVGs live in
+assets/mascot; GogoArtwork renders their geometry with react-native-svg, and
+useGogoMotion translates the SVG CSS keyframes into native Reanimated motion.
+The idle companion uses the wave pose and confirmations use celebration. Empty
+states use the lost shrugging pose from the mascot guide, recreated in the shared
+vector component and saved as assets/mascot/gogo-lost.svg. Pending and error
+states retain their contextual status badges.
+
+Empty passes and unpublished event tickets use a clean, stacked Gogo message.
+Unpublished ticket sheets omit totals and checkout controls. Scanner guidance,
+wallet setup reminders, logout confirmation and Circle's coming-soon page also
+use Gogo. Event search uses the small loader just below the search bar.
+Context palettes style badges and glow while Gogo keeps the supplied colours.
+Mascot motion, loading animation and typed messages respect reduced motion.
+
+Shared full-screen and compact page loaders use assets/mascot/gogo-loading.svg.
+GogoLoadingArtwork preserves its proportions, patient expression and three ring
+dots; useGogoLoadingMotion runs the supplied bob, spin, glance, blink, arm tap
+and staggered ring animation natively. Reduced motion shows the still artwork.
+Each page keeps its existing loading title and message.
+
+Other loading states use assets/mascot/gogo-loading-small.svg through AppLoader.
+Its ring spins while the face pulses and glances; existing sizes, ring colours,
+visibility controls and reduced-motion preferences are supported. Forms, lists,
+chat, image uploads and web views share this loader. AppRefreshControl retains
+the native pull gesture and refresh callback, with Gogo in the content header
+while refreshing.
+
+The floating live feed button uses the four supplied frenzy SVG designs. Warming
+is the default; the latest CURRENT_FRENZY feed maps LOW to Heating up, MEDIUM to
+Frenzy, and HIGH to Inferno. The unread badge stays independent of heat. Native
+animation follows the supplied flame, bounce, ember and expression keyframes;
+reduced motion shows a still pose. Physical events with carpool available use the
+front-facing Gogo roadster at the same heat level; online and ended events use
+the standing mascot. The roadster replaces the separate car icon and its badge
+cycle. Car, wheel, headlight and ray animation stops for reduced motion.
+
+## App icon and startup screen
+
+The app icon PNG assets are rendered from assets/images/gglogo.svg. The app icon
+uses an opaque mint background; Android uses a separate transparent foreground
+with the mark inside the adaptive icon safe area.
+
+Startup uses assets/mascot/gogo-startup.svg: the three rings become Gogo, who
+pops up and waves. GogoStartupArtwork and useGogoStartupMotion reproduce its
+5.6-second animation natively. It plays once after the startup view lays out;
+navigation waits for the sequence, auth restoration and store hydration. Reduced
+motion shows the finished pose immediately. Later page loaders are unchanged.
+
+The native launch screen uses a still frame of the same artwork at 240 points
+on white, configured through expo-splash-screen. Native asset changes require
+a new app build and installation; restarting Metro or sending an OTA update
+will not update them.

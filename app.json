@@ -9,11 +9,6 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "platforms": ["ios", "android", "web"],
-    "splash": {
-      "image": "./assets/images/gglogo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#01082E"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gathergo.dev",
@@ -26,8 +21,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/gglogo.png",
-        "backgroundColor": "#01082E"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0FF1CF"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.gathergo.dev",
@@ -65,10 +60,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/gglogo.png",
-          "imageWidth": 200,
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 240,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#FFFFFF"
         }
       ],
       "expo-secure-store",

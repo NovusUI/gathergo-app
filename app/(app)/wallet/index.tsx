@@ -1,3 +1,6 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
@@ -66,7 +69,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -2181,6 +2183,12 @@ const WalletScreen = () => {
     }
   };
 
+  const transactionsRefreshing =
+    transactionsHistoryQuery.isRefetching &&
+    !transactionsHistoryQuery.isFetchingNextPage;
+  const settlementsRefreshing =
+    settlementsHistoryQuery.isRefetching &&
+    !settlementsHistoryQuery.isFetchingNextPage;
   const isInitialLoading = overviewQuery.isLoading || onboardingQuery.isLoading;
 
   if (historyView === "transactions") {
@@ -2196,16 +2204,15 @@ const WalletScreen = () => {
             "pb-8 pt-4",
             fullTransactions.length === 0 && "flex-grow justify-center"
           )}
+          ListHeaderComponent={
+            <RefreshIndicator refreshing={transactionsRefreshing} />
+          }
           refreshControl={
-            <RefreshControl
-              refreshing={
-                transactionsHistoryQuery.isRefetching &&
-                !transactionsHistoryQuery.isFetchingNextPage
-              }
+            <AppRefreshControl
+              refreshing={transactionsRefreshing}
               onRefresh={() => {
                 void transactionsHistoryQuery.refetch();
               }}
-              tintColor="#0FF1CF"
             />
           }
           onEndReachedThreshold={0.35}
@@ -2256,16 +2263,15 @@ const WalletScreen = () => {
             "pb-8 pt-4",
             fullSettlements.length === 0 && "flex-grow justify-center"
           )}
+          ListHeaderComponent={
+            <RefreshIndicator refreshing={settlementsRefreshing} />
+          }
           refreshControl={
-            <RefreshControl
-              refreshing={
-                settlementsHistoryQuery.isRefetching &&
-                !settlementsHistoryQuery.isFetchingNextPage
-              }
+            <AppRefreshControl
+              refreshing={settlementsRefreshing}
               onRefresh={() => {
                 void settlementsHistoryQuery.refetch();
               }}
-              tintColor="#0FF1CF"
             />
           }
           onEndReachedThreshold={0.35}
@@ -2319,14 +2325,14 @@ const WalletScreen = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={refetchAll}
-            tintColor="#0FF1CF"
           />
         }
         contentContainerStyle={tw`pb-12 pt-4`}
       >
+        <RefreshIndicator refreshing={refreshing} />
         <CustomView
           style={twStyle(
             "rounded-[28px] border border-[#1D335E] bg-[#091538] p-5",

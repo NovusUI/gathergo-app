@@ -1,3 +1,9 @@
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
+import AppLoader from "@/components/ui/AppLoader";
+import { MascotMoment } from "@/components/ui/MascotMoment";
+import { usePressGuard } from "@/hooks/usePressGuard";
+import { showGlobalError } from "@/utils/globalErrorHandler";
+import { useState } from "react";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
@@ -9,7 +15,8 @@ import { useLockedRouter } from "@/utils/navigation";
 import { saveItem } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  Alert,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,7 +28,8 @@ import tw from "twrnc";
 const settingsItems = [
   {
     label: "My Volunteering",
-    subtitle: "Track volunteer applications, places and confirmed contributions",
+    subtitle:
+      "Track volunteer applications, places and confirmed contributions",
     route: "/my-volunteering",
     icon: "people-outline" as const,
   },
@@ -45,7 +53,8 @@ const settingsItems = [
   },
   {
     label: "Wallet",
-    subtitle: "Add or edit payout account, complete KYC, and see settlement history ",
+    subtitle:
+      "Add or edit payout account, complete KYC, and see settlement history ",
     route: "/wallet",
     icon: "wallet" as const,
   },
@@ -56,6 +65,8 @@ const Settings = () => {
   const { expoPushToken } = usePushNotification();
   const router = useLockedRouter();
   const { mutateAsync: removePushToken } = useRemovePushToken();
+  const [showLogout, setShowLogout] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const logout = async () => {
     if (expoPushToken) {
@@ -71,12 +82,20 @@ const Settings = () => {
     router.replace("/login");
   };
 
-  const confirmLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: logout },
-    ]);
+  const closeLogout = () => {
+    if (!isLoggingOut) setShowLogout(false);
   };
+
+  const confirmLogout = usePressGuard(async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      showGlobalError("Unable to log out. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  });
 
   return (
     <View style={[tw`flex-1 bg-[#01082E]`, styles.screen]}>
@@ -93,26 +112,45 @@ const Settings = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[tw`bg-[#122255] rounded-2xl border border-[#203370]`, styles.accountCard]}>
+        <View
+          style={[
+            tw`bg-[#122255] rounded-2xl border border-[#203370]`,
+            styles.accountCard,
+          ]}
+        >
           <Text style={tw`text-white text-lg font-bold`}>
             {user?.name || "Account"}
           </Text>
-          <Text style={tw`text-gray-300 mt-1`}>{user?.email || "No email"}</Text>
+          <Text style={tw`text-gray-300 mt-1`}>
+            {user?.email || "No email"}
+          </Text>
         </View>
 
         {settingsItems.map((item) => (
           <TouchableOpacity
             key={item.label}
             onPress={() => router.push(item.route as any)}
-            style={[tw`bg-[#101C45] rounded-2xl border border-[#1C2A60]`, styles.settingsItem]}
+            style={[
+              tw`bg-[#101C45] rounded-2xl border border-[#1C2A60]`,
+              styles.settingsItem,
+            ]}
           >
             <View style={tw`flex-row items-center`}>
-              <View style={[tw`w-10 h-10 rounded-full bg-[#0FF1CF]/15 items-center justify-center`, styles.settingsIcon]}>
+              <View
+                style={[
+                  tw`w-10 h-10 rounded-full bg-[#0FF1CF]/15 items-center justify-center`,
+                  styles.settingsIcon,
+                ]}
+              >
                 <Ionicons name={item.icon} color="#0FF1CF" size={20} />
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-white font-semibold text-base`}>{item.label}</Text>
-                <Text style={tw`text-gray-400 text-xs mt-1`}>{item.subtitle}</Text>
+                <Text style={tw`text-white font-semibold text-base`}>
+                  {item.label}
+                </Text>
+                <Text style={tw`text-gray-400 text-xs mt-1`}>
+                  {item.subtitle}
+                </Text>
               </View>
               <Ionicons name="chevron-forward" color="#8FA5E2" size={18} />
             </View>
@@ -120,8 +158,11 @@ const Settings = () => {
         ))}
 
         <TouchableOpacity
-          onPress={confirmLogout}
-          style={[tw`bg-[#351238] rounded-2xl border border-[#6B2A70]`, styles.logoutButton]}
+          onPress={() => setShowLogout(true)}
+          style={[
+            tw`bg-[#351238] rounded-2xl border border-[#6B2A70]`,
+            styles.logoutButton,
+          ]}
         >
           <View style={tw`flex-row items-center justify-center`}>
             <Ionicons name="log-out-outline" color="#FF6B9D" size={18} />
@@ -129,6 +170,71 @@ const Settings = () => {
           </View>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={showLogout}
+        transparent
+        animationType="fade"
+        onRequestClose={closeLogout}
+      >
+        <View
+          style={tw`flex-1 items-center justify-center bg-black/75 px-5 py-10`}
+        >
+          <Pressable
+            accessible={false}
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeLogout}
+          />
+          <View
+            accessibilityViewIsModal
+            style={tw`w-full max-w-[430px] max-h-[90%] rounded-[28px] border border-[#24345A] bg-[#07143B]`}
+          >
+            <ScrollView contentContainerStyle={tw`px-5 pb-5`}>
+              <View style={tw`items-end pt-2`}>
+                <SheetCloseButton
+                  onPress={closeLogout}
+                  disabled={isLoggingOut}
+                  accessibilityLabel="Cancel logout"
+                />
+              </View>
+              <MascotMoment
+                layout="stacked"
+                compact
+                title="Heading out?"
+                message="Log out of GatherGo? I'll be here when you're ready to come back."
+                typing={false}
+              />
+              <View style={tw`flex-row gap-3 mt-2`}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: isLoggingOut }}
+                  disabled={isLoggingOut}
+                  onPress={closeLogout}
+                  style={tw`flex-1 min-h-12 items-center justify-center rounded-2xl bg-[#1B2A50] px-4 py-3`}
+                >
+                  <Text style={tw`font-semibold text-white`}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Confirm logout"
+                  accessibilityState={{
+                    disabled: isLoggingOut,
+                    busy: isLoggingOut,
+                  }}
+                  disabled={isLoggingOut}
+                  onPress={confirmLogout}
+                  style={tw`flex-1 min-h-12 flex-row gap-2 items-center justify-center rounded-2xl bg-[#FF6B9D] px-4 py-3`}
+                >
+                  {isLoggingOut ? <AppLoader tone="dark" /> : null}
+                  <Text style={tw`font-semibold text-[#01082E]`}>
+                    {isLoggingOut ? "Logging out…" : "Logout"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

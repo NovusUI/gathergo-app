@@ -5,20 +5,17 @@ import * as ImagePicker from "expo-image-picker";
 import { Plus } from "lucide-react-native";
 import { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
-import * as Progress from "react-native-progress";
+import AppLoader from "@/components/ui/AppLoader";
 import tw from "twrnc";
 
 export default function ProfileImageBox({ uri }: { uri?: string }) {
   const [image, setImage] = useState<string | null>(uri || null);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   const { mutateAsync } = useEditProfilePicture({
     onSuccess: () => {
       setUploading(false);
-      setProgress(1);
       showGlobalSuccess("Upload successful");
-      setTimeout(() => setProgress(0), 1000); // Hide progress after success
     },
     onError: (error) => {
       setUploading(false);
@@ -61,7 +58,6 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
       } as any);
 
       setUploading(true);
-      setProgress(0);
 
       try {
         await mutateAsync(formData);
@@ -87,19 +83,12 @@ export default function ProfileImageBox({ uri }: { uri?: string }) {
         )}
       </View>
 
-      {/* Progress ring */}
       {uploading && (
-        <Progress.Circle
-          size={100}
-          progress={progress}
-          indeterminate={progress === 0}
-          showsText={false}
-          color="#0FF1CF"
-          borderWidth={0}
-          thickness={4}
-          unfilledColor="#e5e7eb"
-          style={{ position: "absolute", top: -4, left: -4 }}
-        />
+        <View
+          style={tw`absolute inset-0 rounded-2xl bg-black/45 items-center justify-center`}
+        >
+          <AppLoader size={32} accessibilityLabel="Uploading profile photo" />
+        </View>
       )}
 
       {/* Floating + button */}

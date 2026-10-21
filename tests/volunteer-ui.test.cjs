@@ -3,6 +3,17 @@ const { test } = require("node:test");
 const { loadTypeScript } = require("./loadTypeScript.cjs");
 
 const state = {};
+const refreshComponents = loadTypeScript(
+  "components/ui/AppRefreshControl.tsx",
+  {
+    "./AppLoader": { default: "Spinner" },
+    "react-native": {
+      Platform: { OS: "android" },
+      RefreshControl: "RefreshControl",
+      StyleSheet: { create: (styles) => styles },
+    },
+  },
+);
 const { default: WithdrawApplicationButton } = loadTypeScript(
   "components/volunteer/WithdrawApplicationButton.tsx",
   {
@@ -34,6 +45,7 @@ const { default: SheetCloseButton } = loadTypeScript(
 const { default: VolunteerRolesSheet } = loadTypeScript(
   "components/volunteer/VolunteerRolesSheet.tsx",
   {
+    "@/components/ui/AppLoader": { default: "Spinner" },
     "@/components/volunteer/WithdrawApplicationButton": {
       default: WithdrawApplicationButton,
     },
@@ -60,7 +72,6 @@ const { default: VolunteerRolesSheet } = loadTypeScript(
     },
     react: { useState: (initial) => [initial, () => {}] },
     "react-native": {
-      ActivityIndicator: "Spinner",
       KeyboardAvoidingView: "KeyboardAvoidingView",
       Modal: "Modal",
       Platform: { OS: "ios" },
@@ -495,6 +506,10 @@ test("the volunteer action opens the role flow only when the event offers roles"
 });
 
 let feedEvent;
+let feedRefreshing = false;
+let feedHookIndex = 0;
+let feedCarpoolsRefreshing = false;
+let carpoolRefreshes = 0;
 let feedRegistrationQuery = {
   isSuccess: true,
   isPending: false,
@@ -511,6 +526,7 @@ const { default: FeedBottomSheet } = loadTypeScript(
   "app/(app)/event/FeedBottomSheet.tsx",
   {
     "@/hooks/useFreeEventRegistration": { useFreeEventRegistration },
+    "@/components/ui/AppRefreshControl": refreshComponents,
     "@/components/volunteer/VolunteerButton": { default: VolunteerButton },
     "@/components/feed/FeedRenderer": { default: "FeedRenderer" },
     "@/components/ui/AppLoader": { default: "Spinner" },
@@ -519,7 +535,13 @@ const { default: FeedBottomSheet } = loadTypeScript(
     },
     "@/services/queries": {
       useEventDetails: () => ({ data: { data: feedEvent } }),
-      usePaginatedEventCarpools: () => ({ isPending: false, refetch() {} }),
+      usePaginatedEventCarpools: () => ({
+        isPending: false,
+        isRefetching: feedCarpoolsRefreshing,
+        refetch() {
+          carpoolRefreshes++;
+        },
+      }),
     },
     "@expo/vector-icons": { Ionicons: "Icon" },
     "@gorhom/bottom-sheet": {
@@ -531,7 +553,11 @@ const { default: FeedBottomSheet } = loadTypeScript(
     react: {
       useCallback: (fn) => fn,
       useMemo: (fn) => fn(),
-      useState: (initial) => [initial, () => {}],
+      useState: (initial) => {
+        if (initial === "feed" || initial === "carpool") feedHookIndex = 0;
+        const index = feedHookIndex++;
+        return [index === 3 ? feedRefreshing : initial, () => {}];
+      },
       useRef: () => ({ current: null }),
       useEffect() {},
     },
@@ -872,6 +898,8 @@ const query = (data) => ({
 const { default: ManageVolunteers } = loadTypeScript(
   "app/(app)/volunteers/[id].tsx",
   {
+    "@/components/ui/AppLoader": { default: "Spinner" },
+    "@/components/ui/AppRefreshControl": refreshComponents,
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },
     "@/components/inputs/CustomInput1": { default: "Input" },
@@ -914,7 +942,6 @@ const { default: ManageVolunteers } = loadTypeScript(
       },
     },
     "react-native": {
-      ActivityIndicator: "Spinner",
       RefreshControl: "RefreshControl",
       ScrollView: "ScrollView",
       Text: "Text",
@@ -1060,6 +1087,8 @@ test("organisers can open recruitment setup from the icon before publishing any 
 const { default: MyVolunteering } = loadTypeScript(
   "app/(app)/my-volunteering.tsx",
   {
+    "@/components/ui/AppLoader": { default: "Spinner" },
+    "@/components/ui/AppRefreshControl": refreshComponents,
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },
     "@/components/volunteer/WithdrawApplicationButton": {
@@ -1071,7 +1100,6 @@ const { default: MyVolunteering } = loadTypeScript(
       safeGoBack() {},
     },
     "react-native": {
-      ActivityIndicator: "Spinner",
       FlatList: "List",
       Text: "Text",
       TouchableOpacity: "Button",
@@ -1228,4 +1256,90 @@ test("the feed waits for registration checks and retries a failed check before a
   );
   retry.props.onPress();
   assert.equal(retried, true);
+});
+
+function loadingIndicators(tree) {
+  return [...nodes(tree)]
+    .flatMap((node) =>
+      node.type === refreshComponents.RefreshIndicator
+        ? [...nodes(node.type(node.props))]
+        : [node],
+    )
+    .filter((node) => node.type === "Spinner");
+}
+
+test("pulling to refresh an empty feed shows one Gogo and suppresses initial and pagination loaders", () => {
+  feedEvent = { ...event, registrationType: "ticket" };
+  feedRefreshing = true;
+  const sheet = FeedBottomSheet({
+    eventId: "event",
+    isVisible: true,
+    onClose() {},
+    feedData: {
+      pinnedFeeds: [],
+      regularFeeds: [],
+      allFeeds: [],
+      hasMore: true,
+      loading: true,
+      loadingMore: true,
+      error: null,
+      hideFeed() {},
+      loadMore() {},
+      refresh() {},
+    },
+  });
+  const list = [...nodes(sheet)].find((node) => node.type === "FeedList");
+  const header = loadingIndicators(list.props.ListHeaderComponent());
+  assert.equal(header.length, 1);
+  assert.equal(header[0].props.accessibilityLabel, "Refreshing");
+  assert.equal(loadingIndicators(list.props.ListFooterComponent()).length, 0);
+  assert.equal(list.props.refreshControl.props.onRefresh, list.props.onRefresh);
+  assert.ok(list.props.progressViewOffset < -64);
+  feedRefreshing = false;
+});
+
+test("carpool refresh uses one controlled Gogo and keeps the ride refresh callback", () => {
+  feedEvent = { ...event, registrationType: "ticket" };
+  feedCarpoolsRefreshing = true;
+  carpoolRefreshes = 0;
+  const list = [
+    ...nodes(
+      FeedBottomSheet({
+        eventId: "event",
+        isVisible: true,
+        initialTab: "carpool",
+        onClose() {},
+      }),
+    ),
+  ].find((node) => node.type === "FeedList");
+  assert.equal(list.props.refreshing, true);
+  assert.equal(loadingIndicators(list.props.ListHeaderComponent()).length, 1);
+  list.props.onRefresh();
+  assert.equal(carpoolRefreshes, 1);
+  feedCarpoolsRefreshing = false;
+});
+
+test("volunteer history refresh has one Gogo and no auto-generated list spinner", () => {
+  let refreshes = 0;
+  state.history = {
+    isPending: false,
+    isError: false,
+    isRefetching: true,
+    data: { data: [] },
+    refetch() {
+      refreshes++;
+    },
+  };
+  const list = [...nodes(MyVolunteering())].find(
+    (node) => node.type === "List",
+  );
+  assert.equal(list.props.onRefresh, undefined);
+  const header = loadingIndicators(list.props.ListHeaderComponent);
+  assert.equal(header.length, 1);
+  const control = list.props.refreshControl.type(
+    list.props.refreshControl.props,
+  );
+  assert.equal(control.props.refreshing, true);
+  control.props.onRefresh();
+  assert.equal(refreshes, 1);
 });

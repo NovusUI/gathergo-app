@@ -1,16 +1,13 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
-import { useRouter } from "expo-router";
-import { BarChart3, Clock, QrCode, Shield, Users } from "lucide-react-native";
+import { Clock, QrCode, Shield, Users } from "lucide-react-native";
 import { useState } from "react";
-import {
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
+import { MascotMoment } from "@/components/ui/MascotMoment";
 import PermissionBadge from "@/components/scanner/PermissionBadge";
 import QuickScanCard from "@/components/scanner/QuickScanCard";
 import ScannerStats from "@/components/scanner/ScannerStats";
@@ -101,24 +98,16 @@ const ScannerHome = () => {
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#5669FF"
-            colors={["#5669FF"]}
-          />
+          <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Welcome Section */}
-        <View style={tw`mb-6`}>
-          <Text style={tw`text-white text-2xl font-bold mb-2`}>
-            QR Code Scanner
-          </Text>
-          <Text style={tw`text-gray-400 text-base`}>
-            Scan tickets, registrations, and donations. Everyone can view
-            details. Mark as used requires permission.
-          </Text>
-        </View>
+        <RefreshIndicator refreshing={refreshing} />
+        <MascotMoment
+          title="Let's scan"
+          message="Point your camera at a QR code to view its details. Checking someone in needs the organiser's permission."
+          typing={false}
+          style={tw`mb-6`}
+        />
 
         {/* Quick Scan Card */}
         <View style={tw`mb-6`}>
@@ -207,20 +196,6 @@ const ScannerHome = () => {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        {/* Info Section */}
-        <View style={tw`bg-[#1B2A50] rounded-xl p-4 mb-6`}>
-          <View style={tw`flex-row items-center mb-2`}>
-            <BarChart3 size={20} color="#0FF1CF" />
-            <Text style={tw`text-white text-sm font-semibold ml-2`}>
-              How Scanning Works
-            </Text>
-          </View>
-          <Text style={tw`text-gray-400 text-sm`}>
-            • Everyone can scan QR codes to view details{"\n"}• Only event
-            owners and authorized scanners can mark as used{"\n"}• Granting a user scanner permission gives them access to scan any of your events{"\n"}• All scans are logged for security
-          </Text>
         </View>
       </ScrollView>
     </View>

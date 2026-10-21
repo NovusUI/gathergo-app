@@ -1,3 +1,7 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
@@ -27,8 +31,6 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -65,6 +67,11 @@ export default function ManageVolunteers() {
         (entry) => filter === "ALL" || entry.status === filter
       )
     : [];
+  const refreshing =
+    eventQuery.isRefetching ||
+    roles.isRefetching ||
+    roster.isRefetching ||
+    summary.isRefetching;
   const refresh = () =>
     Promise.all([
       eventQuery.refetch(),
@@ -102,18 +109,13 @@ export default function ManageVolunteers() {
           contentContainerStyle={tw`gap-5 px-5 pb-16`}
           keyboardShouldPersistTaps="handled"
           refreshControl={
-            <RefreshControl
-              tintColor="#0FF1CF"
-              refreshing={
-                eventQuery.isRefetching ||
-                roles.isRefetching ||
-                roster.isRefetching ||
-                summary.isRefetching
-              }
+            <AppRefreshControl
+              refreshing={refreshing}
               onRefresh={refresh}
             />
           }
         >
+          <RefreshIndicator refreshing={refreshing} />
           <Text style={tw`text-2xl font-bold text-white`}>
             {eventQuery.data.data.title}
           </Text>

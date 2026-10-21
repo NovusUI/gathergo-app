@@ -1,3 +1,6 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import EventPermissionCard from "@/components/scanner/EventPermissionCard";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
@@ -8,7 +11,6 @@ import { useRouter } from "expo-router";
 import { Calendar, ChevronRight, Shield, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
-  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -217,14 +219,13 @@ const MyPermissions = () => {
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#5669FF"
-            colors={["#5669FF"]}
           />
         }
       >
+        <RefreshIndicator refreshing={refreshing} />
         {error.permissions ? (
           <View style={tw`items-center justify-center py-20`}>
             <Shield size={64} color="#FF5757" />

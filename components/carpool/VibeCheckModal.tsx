@@ -118,7 +118,7 @@ export default function VibeCheckModal({
                 palette={mascotStyle}
                 size={66}
                 style={{ flexShrink: 0 }}
-                variant={mascotStyle.variant}
+                variant="idle"
               />
               <View style={tw`flex-1 min-w-0`}>
                 <Text

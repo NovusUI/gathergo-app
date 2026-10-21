@@ -1,7 +1,7 @@
 // components/EventImageWithProcessing.tsx
 import { EventArtworkFallback } from "@/components/ui/ArtworkFallback";
 import { Registration } from "@/types/auth";
-import { Ionicons } from "@expo/vector-icons";
+import AppLoader from "@/components/ui/AppLoader";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
@@ -55,7 +55,7 @@ export const EventImageWithProcessing: React.FC<
               onError={() => setShowImage(false)}
             />
             <View style={tw`absolute inset-0 items-center justify-center`}>
-              <Ionicons name="cloud-upload-outline" size={40} color="#0FF1CF" />
+              <AppLoader size={40} accessibilityLabel="Uploading event image" />
               <Text style={tw`text-[#0FF1CF] mt-2 font-semibold`}>
                 Uploading image...
               </Text>
@@ -66,7 +66,7 @@ export const EventImageWithProcessing: React.FC<
           </>
         ) : (
           <>
-            <Ionicons name="cloud-upload-outline" size={40} color="#0FF1CF" />
+            <AppLoader size={40} accessibilityLabel="Uploading event image" />
             <Text style={tw`text-[#0FF1CF] mt-2 font-semibold`}>
               Image uploading...
             </Text>

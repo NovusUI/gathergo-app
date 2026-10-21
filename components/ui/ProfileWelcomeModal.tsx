@@ -63,9 +63,8 @@ export default function ProfileWelcomeModal({
                 {copy.title}
               </Text>
               <Text style={tw`text-sm leading-6 text-[#D9E2FF]`}>
-                Hey, I&apos;m your GatherGo sidekick. I&apos;ll be around for
-                the little nudges and the big &quot;you&apos;re in!&quot;
-                moments.
+                Hi, I&apos;m Gogo, your GatherGo guide. I&apos;ll help you find
+                events, join in and celebrate every contribution.
               </Text>
               <MascotMessage message={copy.message} style={tw`leading-6`} />
             </View>

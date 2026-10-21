@@ -205,7 +205,7 @@ export default function RideVibeChatCard({
           palette={mascotStyle}
           size={expanded ? 74 : 58}
           style={{ flexShrink: 0 }}
-          variant={mascotStyle.variant}
+          variant="idle"
         />
 
         <View style={tw`flex-1 min-w-0`}>

@@ -3,6 +3,7 @@ import EventsOverview from "@/components/EventsOverview";
 import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import { MascotMoment } from "@/components/ui/MascotMoment";
 import Payments from "@/components/ui/Payments";
 import { useDashboardData, useShortcut } from "@/hooks/useDashboard";
 import { useWalletOnboarding } from "@/services/queries";
@@ -87,20 +88,26 @@ const Dashboard = () => {
       >
         {onboarding?.data?.showPersistentAlert && (
           <TouchableOpacity
-            style={tw`bg-[#1B2A50] border border-[#F1D417] rounded-2xl p-4 mb-5`}
-            onPress={() => router.push('/wallet')}
+            style={tw`mb-5`}
+            accessibilityRole="button"
+            accessibilityLabel="Open wallet to finish setup"
+            onPress={() => router.push("/wallet")}
           >
-            <Text style={tw`text-[#F1D417] font-bold text-base mb-1`}>
-              Action needed
+            <MascotMoment
+              variant="pending"
+              title="Let's finish your wallet"
+              typing={false}
+              message={
+                onboarding.data.nextAction === "ADD_SETTLEMENT_ACCOUNT"
+                  ? "Add your settlement account to unlock creator payouts."
+                  : onboarding.data.nextAction === "COMPLETE_KYC"
+                    ? "Complete verification so your earnings can be settled."
+                    : "Finish wallet setup to enable ALAT transfer."
+              }
+            />
+            <Text style={tw`text-[#0FF1CF] text-sm font-semibold mt-3 ml-3`}>
+              Open wallet →
             </Text>
-            <Text style={tw`text-white text-sm mb-2`}>
-              {onboarding.data.nextAction === 'ADD_SETTLEMENT_ACCOUNT'
-                ? 'Add your settlement account to unlock creator payouts.'
-                : onboarding.data.nextAction === 'COMPLETE_KYC'
-                  ? 'Complete verification so your earnings can be settled.'
-                  : 'Finish wallet setup to enable ALAT transfer.'}
-            </Text>
-            <Text style={tw`text-[#0FF1CF] text-sm font-semibold`}>Open wallet</Text>
           </TouchableOpacity>
         )}
 

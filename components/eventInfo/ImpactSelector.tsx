@@ -1,3 +1,4 @@
+import ActivityIndicator from "@/components/ui/AppLoader";
 import type { EventRegistrationType } from "@/constants/impact";
 import { useImpactSuggestions } from "@/services/queries";
 import type {
@@ -7,7 +8,7 @@ import type {
 } from "@/types/impact";
 import { useDebounce } from "@/utils/useDebounce";
 import { useMemo } from "react";
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import tw, { style } from "twrnc";
 import TextArea from "../inputs/CustomTextArea";
 

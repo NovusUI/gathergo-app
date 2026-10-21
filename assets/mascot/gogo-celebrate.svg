@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -4 224 228" width="448" height="456" role="img" aria-labelledby="t d">
+  <title id="t">Gogo celebrating</title>
+  <desc id="d">Gogo, the GatherGo mascot, bounces with joy while confetti falls. For thank-you and confirmation screens.</desc>
+  <style>
+    .shadow { transform-origin: 100px 207px; animation: shadow 0.9s ease-in-out infinite; }
+    .hop { transform-origin: 100px 200px; animation: hop 0.9s ease-in-out infinite; }
+    .armL { transform-origin: 28px 124px; animation: armL 0.9s ease-in-out infinite; }
+    .armR { transform-origin: 172px 124px; animation: armR 0.9s ease-in-out infinite; }
+    .ring { transform-origin: 100px 14px; animation: spin 1.8s linear infinite; }
+    .c { animation: fall 2.4s linear infinite; }
+    .c2 { animation-delay: -.5s; } .c3 { animation-delay: -1s; } .c4 { animation-delay: -1.5s; } .c5 { animation-delay: -2s; } .c6 { animation-delay: -.25s; }
+    @keyframes hop {
+      0%,100% { transform: translateY(0) scale(1.06,.94); }
+      45% { transform: translateY(-14px) scale(.97,1.04); }
+      70% { transform: translateY(-4px) scale(1,1); }
+    }
+    @keyframes shadow { 0%,100% { transform: scale(1); opacity: .12; } 45% { transform: scale(.7); opacity: .05; } }
+    @keyframes armL { 0%,100% { transform: rotate(8deg); } 45% { transform: rotate(-12deg); } }
+    @keyframes armR { 0%,100% { transform: rotate(-8deg); } 45% { transform: rotate(12deg); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fall { 0% { transform: translateY(-20px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(240px); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .shadow,.hop,.armL,.armR,.ring,.c { animation: none; } .c { opacity: 1; } }
+  </style>
+  <g>
+    <rect class="c" x="30" y="0" width="10" height="5" rx="1" fill="#FF5C7A"/>
+    <rect class="c c2" x="68" y="0" width="9" height="5" rx="1" fill="#FFD84D"/>
+    <rect class="c c3" x="112" y="0" width="10" height="5" rx="1" fill="#0B3B35"/>
+    <rect class="c c4" x="150" y="0" width="9" height="5" rx="1" fill="#0FB898"/>
+    <circle class="c c5" cx="14" cy="0" r="4" fill="#FFD84D"/>
+    <circle class="c c6" cx="188" cy="0" r="4" fill="#FF5C7A"/>
+  </g>
+  <ellipse class="shadow" cx="100" cy="207" rx="50" ry="7" fill="#0B3B35" opacity="0.12"/>
+  <g class="hop">
+    <ellipse cx="76" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <ellipse cx="124" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+    <circle class="ring" cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5" stroke-dasharray="40 17"/>
+    <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+    <circle cx="44" cy="136" r="8" fill="#FF8F7E" opacity="0.55"/>
+    <circle cx="156" cy="136" r="8" fill="#FF8F7E" opacity="0.55"/>
+    <path d="M48 102Q70 78 92 102" fill="none" stroke="#0B3B35" stroke-width="7" stroke-linecap="round"/>
+    <path d="M108 102Q130 78 152 102" fill="none" stroke="#0B3B35" stroke-width="7" stroke-linecap="round"/>
+    <path d="M70 132Q100 178 130 132Z" fill="#0B3B35" stroke="#0B3B35" stroke-width="6" stroke-linejoin="round"/>
+    <g class="armL"><path d="M28 124Q2 108 10 70" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="10" cy="65" r="10" fill="#0FB898"/></g>
+    <g class="armR"><path d="M172 124Q198 108 190 70" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="190" cy="65" r="10" fill="#0FB898"/></g>
+  </g>
+</svg>

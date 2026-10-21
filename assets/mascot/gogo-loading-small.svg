@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128" role="img" aria-labelledby="t d">
+  <title id="t">Gogo spinner</title>
+  <desc id="d">A small Gogo face inside a spinning ring, for buttons, avatars and inline loading.</desc>
+  <style>
+    .s-ring { transform-origin: 32px 32px; animation: s-spin 1s linear infinite; }
+    .s-face { transform-origin: 32px 34px; animation: s-pulse 1.4s ease-in-out infinite; }
+    .s-pupils { animation: s-look 2.8s ease-in-out infinite; }
+    @keyframes s-spin { to { transform: rotate(360deg); } }
+    @keyframes s-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    @keyframes s-look { 0%,10% { transform: translate(-2px,-1px); } 45%,60% { transform: translate(2px,-1px); } 90%,100% { transform: translate(-2px,-1px); } }
+    @media (prefers-reduced-motion: reduce) { .s-ring,.s-face,.s-pupils { animation: none; } }
+  </style>
+  <circle cx="32" cy="32" r="29" fill="none" stroke="#1EEBC8" stroke-opacity="0.25" stroke-width="4"/>
+  <circle class="s-ring" cx="32" cy="32" r="29" fill="none" stroke="#1EEBC8" stroke-width="4" stroke-linecap="round" stroke-dasharray="46 137"/>
+  <g class="s-face" transform="translate(12 10) scale(0.2)">
+    <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5"/>
+    <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+    <circle cx="70" cy="96" r="25" fill="#fff"/>
+    <circle cx="130" cy="96" r="25" fill="#fff"/>
+    <g class="s-pupils">
+      <circle cx="70" cy="98" r="12" fill="#0B3B35"/>
+      <circle cx="130" cy="98" r="12" fill="#0B3B35"/>
+    </g>
+    <path d="M76 142Q100 164 124 142" fill="none" stroke="#0B3B35" stroke-width="9" stroke-linecap="round"/>
+  </g>
+</svg>

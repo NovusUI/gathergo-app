@@ -1,3 +1,4 @@
+import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleProp, Text, TextStyle } from "react-native";
 import tw from "twrnc";
@@ -17,11 +18,13 @@ export function MascotMessage({
   startDelayMs = 160,
   style
 }: MascotMessageProps) {
-  const [visibleMessage, setVisibleMessage] = useState(animate ? "" : message);
+  const reducedMotion = useReducedMotionPreference();
+  const shouldAnimate = animate && !reducedMotion;
+  const [visibleMessage, setVisibleMessage] = useState(shouldAnimate ? "" : message);
   const cursorOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!animate) {
+    if (!shouldAnimate) {
       setVisibleMessage(message);
       return undefined;
     }
@@ -48,9 +51,9 @@ export function MascotMessage({
         clearInterval(interval);
       }
     };
-  }, [animate, message, speedMs, startDelayMs]);
+  }, [shouldAnimate, message, speedMs, startDelayMs]);
 
-  const isTyping = animate && visibleMessage.length < message.length;
+  const isTyping = shouldAnimate && visibleMessage.length < message.length;
 
   useEffect(() => {
     if (!isTyping) {

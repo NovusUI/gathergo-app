@@ -1,3 +1,7 @@
+import AppLoader from "@/components/ui/AppLoader";
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 // app/notifications.tsx
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
@@ -13,7 +17,6 @@ import { formatBadgeCount } from "@/utils/utils";
 import { useCallback, useMemo, useState } from "react";
 import {
   Pressable,
-  RefreshControl,
   SectionList,
   StyleSheet,
   Text,
@@ -127,8 +130,9 @@ export default function NotificationsScreen() {
         stickySectionHeadersEnabled={false}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
+        ListHeaderComponent={<RefreshIndicator refreshing={refreshing} />}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <AppRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -138,6 +142,7 @@ export default function NotificationsScreen() {
         ListFooterComponent={
           isLoadingMore ? (
             <View style={styles.footerLoading}>
+              <AppLoader accessibilityLabel="Loading more notifications" />
               <Text style={tw`text-gray-500`}>Loading more...</Text>
             </View>
           ) : null

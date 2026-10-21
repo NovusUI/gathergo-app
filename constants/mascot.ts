@@ -7,6 +7,27 @@ export type GatherGoMascotVariant =
   | "empty"
   | "error";
 
+export const GOGO_PALETTE = {
+  body: "#1EEBC8",
+  limbs: "#0FB898",
+  face: "#0B3B35",
+  coral: "#FF5C7A",
+  yellow: "#FFD84D",
+  blush: "#FF8F7E",
+} as const;
+
+export type GogoPose = "base" | "wave" | "celebrate" | "lost";
+
+export const GOGO_POSES: Record<GatherGoMascotVariant, GogoPose> = {
+  idle: "wave",
+  donation: "celebrate",
+  success: "celebrate",
+  pending: "base",
+  verified: "celebrate",
+  empty: "lost",
+  error: "base",
+};
+
 export type MascotMomentCopy = {
   variant: GatherGoMascotVariant;
   title: string;
@@ -24,7 +45,9 @@ export const getProfileWelcomeCopy = (
       (today.getMonth() === birthDate.getMonth() &&
         today.getDate() < birthDate.getDate());
     age =
-      today.getFullYear() - birthDate.getFullYear() - Number(birthdayStillAhead);
+      today.getFullYear() -
+      birthDate.getFullYear() -
+      Number(birthdayStillAhead);
   }
 
   const message =
@@ -36,13 +59,13 @@ export const getProfileWelcomeCopy = (
           ? "Good company, fresh experiences, and plans worth making time for. Let's give your calendar something to smile about."
           : "Good company never gets old, and neither does finding a new favourite experience. Shall we make a few lovely memories?";
 
-  return { variant: "success", title: "Meet your GatherGo sidekick", message };
+  return { variant: "success", title: "Meet Gogo", message };
 };
 
 export const TRANSACTION_MASCOT_MOMENTS = {
   DONATION_SUCCESS: {
     variant: "donation",
-    title: "A note from GatherGo",
+    title: "A note from Gogo",
     message:
       "Thank you for showing up. Your donation just helped this event move forward.",
   },

@@ -1,3 +1,6 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useScanner } from "@/hooks/useScanner";
@@ -7,7 +10,6 @@ import { useRouter } from "expo-router";
 import { Clock } from "lucide-react-native";
 import { useState } from "react";
 import {
-  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -135,14 +137,13 @@ const ScannerHistory = () => {
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#5669FF"
-            colors={["#5669FF"]}
           />
         }
       >
+        <RefreshIndicator refreshing={refreshing} />
         {isLoading.history ? (
           <ImpactPageLoader
             compact

@@ -22,7 +22,6 @@ import RideVibeChatCard from "@/components/carpool/RideVibeChatCard";
 import VibeCheckMessageCard from "@/components/carpool/VibeCheckMessageCard";
 import VibeCheckModal from "@/components/carpool/VibeCheckModal";
 import ChatInput from "@/components/inputs/ChatInput";
-import { ChatSkeleton } from "@/components/ui/ChatSkeleton";
 import ChatView1 from "@/components/ui/ChatView1";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { TypingIndicator } from "@/components/ui/TypingIndicator";
@@ -712,8 +711,9 @@ const ChatPage = () => {
             onClickBack={() => safeGoBack(router, "/conversations")}
             rightNode={
               isLoadingCarpoolDetails ? (
-                <View
-                  style={tw`w-11 h-11 rounded-full bg-gray-700 animate-pulse`}
+                <ActivityIndicator
+                  size={32}
+                  accessibilityLabel="Loading ride details"
                 />
               ) : (
                 <TouchableOpacity
@@ -787,7 +787,11 @@ const ChatPage = () => {
 
         <View style={tw`w-full max-w-[500px] flex-1`}>
           {showLoader ? (
-            <ChatSkeleton />
+            <ActivityIndicator
+              size="large"
+              accessibilityLabel="Loading messages"
+              style={tw`flex-1`}
+            />
           ) : (
             <FlatList
               ref={flatListRef}

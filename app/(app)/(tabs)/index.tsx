@@ -2,6 +2,7 @@ import Tab from "@/components/Tab";
 import CarpoolCard from "@/components/ui/CarpoolCard";
 import EventCard from "@/components/ui/EventCard";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
+import { MascotMoment } from "@/components/ui/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { HomeAdCard } from "@/types/home";
@@ -397,16 +398,12 @@ export default function HomeScreen() {
               onPress={() => router.push("/circle")}
               activeOpacity={0.85}
             >
-              <GgCircleArtwork
-                width="100%"
-                height={styles.circleBannerImage.height}
-                style={styles.circleBannerImage}
+              <MascotMoment
+                layout="stacked"
+                compact
+                title="Circle is coming soon"
+                message="A place for your people is on its way. I'll meet you here."
               />
-              <Text
-                style={tw`text-white text-base font-semibold mt-3 text-center`}
-              >
-                Circle is coming soon
-              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -548,11 +545,5 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#101C45",
     alignItems: "center",
-  },
-  circleBannerImage: {
-    width: "100%",
-    maxWidth: 420,
-    height: 140,
-    borderRadius: 12,
   },
 });

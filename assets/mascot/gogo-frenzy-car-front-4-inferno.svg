@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -70 480 420" width="480" height="420" role="img" aria-labelledby="t d">
+  <title id="t">Gogo driving toward you, frenzy level 4: inferno</title>
+  <desc id="d">Front view: Gogo, on fire with excitement and star-eyed, charges at you in a roadster with burning tires, a glowing aura and embers flying everywhere.</desc>
+  <defs>
+    <radialGradient id="h4-aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FF8A2B" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#FF5A36" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#FF5A36" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <style>
+    .g-aura { transform-origin: 200px 160px; animation: g-aura 0.8s ease-in-out infinite; }
+    .g-rays { transform-origin: 200px 190px; animation: g-rays 0.45s linear infinite; }
+    .g-r2 { animation-delay: -.22s; }
+    .g-zoom { transform-origin: 200px 330px; animation: g-zoom 0.5s ease-in-out infinite; }
+    .g-car { animation: g-car 0.22s ease-in-out infinite alternate; }
+    .g-shake { animation: g-shake 0.16s linear infinite; }
+    .g-gogo { transform-origin: 200px 200px; animation: g-hop 0.5s ease-in-out infinite; }
+    .g-flame { transform-origin: 20px 56px; animation: g-flick 0.45s ease-in-out infinite; }
+    .g-side { transform-origin: 20px 56px; animation: g-flick 0.37s ease-in-out infinite; }
+    .g-tf { transform-origin: 20px 56px; animation: g-flick 0.3s ease-in-out infinite; }
+    .g-star { transform-box: fill-box; transform-origin: center; animation: g-star 0.5s ease-in-out infinite; }
+    .g-armL { transform-origin: 28px 124px; animation: g-armL 0.5s ease-in-out infinite; }
+    .g-armR { transform-origin: 172px 124px; animation: g-armR 0.5s ease-in-out infinite; }
+    .g-tread { animation: g-tread 0.2s linear infinite; }
+    .g-glow { animation: g-glow 0.4s ease-in-out infinite alternate; }
+    .g-ember { animation: g-rise 1.2s linear infinite; }
+    .g-m2 { animation-delay: -.2s; } .g-m3 { animation-delay: -.4s; } .g-m4 { animation-delay: -.6s; } .g-m5 { animation-delay: -.8s; } .g-m6 { animation-delay: -1s; }
+    @keyframes g-aura { 0%,100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.1); opacity: 1; } }
+    @keyframes g-rays { 0% { transform: scale(.75); opacity: 1; } 100% { transform: scale(1.45); opacity: 0; } }
+    @keyframes g-zoom { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+    @keyframes g-car { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+    @keyframes g-shake { 0% { transform: translate(0,0); } 25% { transform: translate(1.4px,-.8px); } 50% { transform: translate(-1.4px,.8px); } 75% { transform: translate(.8px,1.2px); } 100% { transform: translate(0,0); } }
+    @keyframes g-hop { 0%,100% { transform: translateY(0) scale(1.05,.95); } 45% { transform: translateY(-10px) scale(.97,1.04); } 70% { transform: translateY(-2px) scale(1,1); } }
+    @keyframes g-flick { 0%,100% { transform: scale(1,1) skewX(0); } 25% { transform: scale(.88,1.18) skewX(-6deg); } 55% { transform: scale(1.1,.9) skewX(5deg); } 80% { transform: scale(.94,1.1) skewX(-3deg); } }
+    @keyframes g-star { 0%,100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.22) rotate(12deg); } }
+    @keyframes g-armL { 0%,100% { transform: rotate(10deg); } 45% { transform: rotate(-16deg); } }
+    @keyframes g-armR { 0%,100% { transform: rotate(-10deg); } 45% { transform: rotate(16deg); } }
+    @keyframes g-tread { to { stroke-dashoffset: -16; } }
+    @keyframes g-glow { from { opacity: .35; } to { opacity: .7; } }
+    @keyframes g-rise { 0% { transform: translate(0,0); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(0,-60px); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .g-aura,.g-rays,.g-zoom,.g-car,.g-shake,.g-gogo,.g-flame,.g-side,.g-tf,.g-star,.g-armL,.g-armR,.g-tread,.g-glow,.g-ember { animation: none; } }
+  </style>
+
+  <ellipse class="g-aura" cx="200" cy="160" rx="260" ry="220" fill="url(#h4-aura)"/>
+
+  <g stroke="#FF8A2B" stroke-width="5" stroke-linecap="round">
+    <g class="g-rays">
+      <line x1="350" y1="190" x2="390" y2="190"/><line x1="330" y1="265" x2="364.5" y2="285"/><line x1="275" y1="320" x2="295" y2="354.5"/><line x1="200" y1="340" x2="200" y2="380"/><line x1="125" y1="320" x2="105" y2="354.5"/><line x1="70" y1="265" x2="35.5" y2="285"/><line x1="50" y1="190" x2="10" y2="190"/><line x1="70" y1="115" x2="35.5" y2="95"/><line x1="125" y1="60" x2="105" y2="25.5"/><line x1="200" y1="40" x2="200" y2="0"/><line x1="275" y1="60" x2="295" y2="25.5"/><line x1="330" y1="115" x2="364.5" y2="95"/>
+    </g>
+    <g class="g-rays g-r2">
+      <line x1="350" y1="190" x2="390" y2="190"/><line x1="330" y1="265" x2="364.5" y2="285"/><line x1="275" y1="320" x2="295" y2="354.5"/><line x1="200" y1="340" x2="200" y2="380"/><line x1="125" y1="320" x2="105" y2="354.5"/><line x1="70" y1="265" x2="35.5" y2="285"/><line x1="50" y1="190" x2="10" y2="190"/><line x1="70" y1="115" x2="35.5" y2="95"/><line x1="125" y1="60" x2="105" y2="25.5"/><line x1="200" y1="40" x2="200" y2="0"/><line x1="275" y1="60" x2="295" y2="25.5"/><line x1="330" y1="115" x2="364.5" y2="95"/>
+    </g>
+  </g>
+
+  <ellipse cx="200" cy="332" rx="160" ry="14" fill="#0B3B35" opacity="0.16"/>
+
+  <g class="g-zoom"><g class="g-car"><g class="g-shake">
+    <g class="g-gogo">
+      <g transform="translate(128 60) scale(0.72)">
+        <g transform="translate(100 9) scale(1.7) translate(-20 -56)">
+          <g class="g-flame">
+            <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+            <path d="M20 14C23 24 33 30 33 41C33 49 27 55 20 55C13 55 7 49 7 41C7 34 11 30 14 25C15 29 17 31 19 31C17 25 18 19 20 14Z" fill="#FF6B1F"/>
+            <path d="M20 28C22 34 28 38 28 45C28 50 24 54 20 54C16 54 12 50 12 45C12 40 15 38 17 34C18 36 19 37 20 37C19 33 19 31 20 28Z" fill="#FFD23F"/>
+            <path d="M20 42C21 45 24 46 24 49C24 52 22 54 20 54C18 54 16 52 16 49C16 47 18 46 18 44C19 44 19 43 20 42Z" fill="#FFF6D6"/>
+          </g>
+        </g>
+        <g transform="translate(58 52) rotate(-34) scale(0.62) translate(-20 -56)">
+          <g class="g-side">
+            <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+            <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FF9F2E"/>
+          </g>
+        </g>
+        <g transform="translate(142 52) rotate(34) scale(0.62) translate(-20 -56)">
+          <g class="g-side">
+            <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+            <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FF9F2E"/>
+          </g>
+        </g>
+        <circle class="g-ember" cx="60" cy="-20" r="3" fill="#FFD23F"/>
+        <circle class="g-ember g-m2" cx="140" cy="-24" r="3.5" fill="#FF9F2E"/>
+        <circle class="g-ember g-m3" cx="92" cy="-38" r="2.5" fill="#FFF6D6"/>
+        <circle class="g-ember g-m4" cx="118" cy="-34" r="3" fill="#FF6B1F"/>
+        <circle class="g-ember g-m5" cx="40" cy="0" r="2.5" fill="#FFD23F"/>
+        <circle class="g-ember g-m6" cx="160" cy="-2" r="2.5" fill="#FF6B1F"/>
+        <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5"/>
+        <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+        <circle cx="44" cy="136" r="10" fill="#FF5A36" opacity="0.8"/>
+        <circle cx="156" cy="136" r="10" fill="#FF5A36" opacity="0.8"/>
+        <circle cx="70" cy="96" r="26" fill="#fff"/>
+        <circle cx="130" cy="96" r="26" fill="#fff"/>
+        <path class="g-star" d="M70 78L75 91L88 96L75 101L70 114L65 101L52 96L65 91Z" fill="#FF8A00"/>
+        <path class="g-star" d="M130 78L135 91L148 96L135 101L130 114L125 101L112 96L125 91Z" fill="#FF8A00"/>
+        <path d="M68 132Q100 188 132 132Z" fill="#0B3B35" stroke="#0B3B35" stroke-width="6" stroke-linejoin="round"/>
+        <g class="g-armL"><path d="M28 124Q2 108 10 70" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="10" cy="65" r="10" fill="#0FB898"/></g>
+        <g class="g-armR"><path d="M172 124Q198 108 190 70" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/><circle cx="190" cy="65" r="10" fill="#0FB898"/></g>
+      </g>
+    </g>
+
+    <!-- burning tires -->
+    <g transform="translate(46 300) rotate(-25) scale(0.45) translate(-20 -56)"><g class="g-tf">
+      <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+      <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FFD23F"/>
+    </g></g>
+    <g transform="translate(354 300) rotate(25) scale(0.45) translate(-20 -56)"><g class="g-tf">
+      <path d="M20 0C23 13 38 21 38 38C38 49 30 56 20 56C10 56 2 49 2 38C2 29 7 23 11 16C13 22 15 25 18 26C16 17 17 8 20 0Z" fill="#E6252B"/>
+      <path d="M20 18C22 27 31 32 31 42C31 49 26 54 20 54C14 54 9 49 9 42C9 36 12 32 15 28C16 32 17 34 19 34C18 28 18 23 20 18Z" fill="#FFD23F"/>
+    </g></g>
+    <rect x="52" y="262" width="32" height="68" rx="13" fill="#0B3B35"/>
+    <rect x="316" y="262" width="32" height="68" rx="13" fill="#0B3B35"/>
+    <line class="g-tread" x1="68" y1="266" x2="68" y2="326" stroke="#17524A" stroke-width="22" stroke-dasharray="6 10"/>
+    <line class="g-tread" x1="332" y1="266" x2="332" y2="326" stroke="#17524A" stroke-width="22" stroke-dasharray="6 10"/>
+
+    <rect x="70" y="200" width="260" height="92" rx="30" fill="#FF5C7A"/>
+    <rect x="190" y="200" width="20" height="46" fill="#FFD84D"/>
+    <path d="M112 200L128 168L272 168L288 200Z" fill="#D5F7EF" fill-opacity="0.45" stroke="#0B3B35" stroke-width="5" stroke-linejoin="round"/>
+    <circle cx="102" cy="190" r="9" fill="#D93A5C"/>
+    <circle cx="298" cy="190" r="9" fill="#D93A5C"/>
+
+    <circle class="g-glow" cx="120" cy="238" r="34" fill="#FFD84D"/>
+    <circle class="g-glow" cx="280" cy="238" r="34" fill="#FFD84D"/>
+    <circle cx="120" cy="238" r="18" fill="#FFF3B0" stroke="#1EEBC8" stroke-width="7"/>
+    <circle cx="280" cy="238" r="18" fill="#FFF3B0" stroke="#1EEBC8" stroke-width="7"/>
+
+    <path d="M160 262Q200 288 240 262" fill="none" stroke="#0B3B35" stroke-width="8" stroke-linecap="round"/>
+    <rect x="84" y="284" width="232" height="16" rx="8" fill="#D93A5C"/>
+    <rect x="172" y="286" width="56" height="12" rx="4" fill="#FFD84D"/>
+  </g></g></g>
+</svg>

@@ -45,7 +45,7 @@ test("all age groups get the same mascot introduction and celebration", () => {
   for (const birthYear of [2010, 2000, 1985, 1960, 1930]) {
     const copy = getProfileWelcomeCopy(new Date(birthYear, 0, 1), today);
     assert.equal(copy.variant, "success");
-    assert.equal(copy.title, "Meet your GatherGo sidekick");
+    assert.equal(copy.title, "Meet Gogo");
     assert.ok(copy.message.length > 0);
   }
 });
@@ -53,7 +53,7 @@ test("all age groups get the same mascot introduction and celebration", () => {
 test("a profile without a birthday gets a welcome without an age assumption", () => {
   const copy = getProfileWelcomeCopy(null, today);
   assert.equal(copy.variant, "success");
-  assert.equal(copy.title, "Meet your GatherGo sidekick");
+  assert.equal(copy.title, "Meet Gogo");
   assert.match(copy.message, /find an event that feels like you/);
 });
 

@@ -1,3 +1,7 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+  nativeRefreshIndicatorOffset,
+} from "@/components/ui/AppRefreshControl";
 import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
 // components/event/FeedBottomSheet.tsx
 import VolunteerButton from "@/components/volunteer/VolunteerButton";
@@ -75,6 +79,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const {
     data: carpoolPages,
     isPending: carpoolsLoading,
+    isRefetching: carpoolsRefreshing,
     isFetchingNextPage: carpoolsLoadingMore,
     fetchNextPage: loadMoreCarpools,
     hasNextPage: hasMoreCarpools,
@@ -113,6 +118,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const canUseCarpool = supportsCarpool && !hasEventEnded;
   const eventRegistrationFee = eventData?.data?.registrationFee ?? null;
   const [refreshing, setRefreshing] = useState(false);
+  const listRefreshing = activeTab === "feed" ? refreshing : carpoolsRefreshing;
 
   // Open/close handling
   useEffect(() => {
@@ -151,6 +157,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     feed?.refresh();
     setTimeout(() => setRefreshing(false), 1000);
   }, [feed?.refresh]);
+
+  const refreshList = useCallback(() => {
+    if (activeTab === "feed") {
+      onRefresh();
+    } else {
+      void refreshCarpools();
+    }
+  }, [activeTab, onRefresh, refreshCarpools]);
 
   const handleLoadMore = useCallback(() => {
     if (feed?.hasMore && !feed?.loadingMore) {
@@ -369,6 +383,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const ListHeaderComponent = useCallback(
     () => (
       <>
+        <RefreshIndicator refreshing={listRefreshing} />
         <View
           style={tw`flex-row justify-between items-center gap-2 p-5 border-b border-gray-800`}
         >
@@ -456,9 +471,15 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               📝 Latest Activity
             </Text>
 
-            {feed?.loading && feed?.regularFeeds?.length === 0 && (
-              <ActivityIndicator tone="accent" size="large" style={tw`py-10`} />
-            )}
+            {!listRefreshing &&
+              feed?.loading &&
+              feed?.regularFeeds?.length === 0 && (
+                <ActivityIndicator
+                  tone="accent"
+                  size="large"
+                  style={tw`py-10`}
+                />
+              )}
           </>
         ) : (
           <View style={tw`px-4 pt-4 gap-3`}>
@@ -502,7 +523,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               </View>
             )}
 
-            {(carpoolsLoading || requestingCloseToYou) && (
+            {!listRefreshing && (carpoolsLoading || requestingCloseToYou) && (
               <ActivityIndicator tone="accent" size="large" style={tw`py-8`} />
             )}
           </View>
@@ -510,6 +531,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       </>
     ),
     [
+      listRefreshing,
       activeTab,
       carpoolFilter,
       carpoolsLoading,
@@ -535,10 +557,10 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     () => (
       <>
         {/* Loading More Indicator */}
-        {activeTab === "feed" && feed?.loadingMore && (
+        {!listRefreshing && activeTab === "feed" && feed?.loadingMore && (
           <ActivityIndicator tone="accent" style={tw`py-4`} />
         )}
-        {activeTab === "carpool" && carpoolsLoadingMore && (
+        {!listRefreshing && activeTab === "carpool" && carpoolsLoadingMore && (
           <ActivityIndicator tone="accent" style={tw`py-4`} />
         )}
 
@@ -563,6 +585,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       </>
     ),
     [
+      listRefreshing,
       activeTab,
       carpoolList.length,
       carpoolsLoadingMore,
@@ -641,13 +664,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           carpoolCount: carpoolList.length,
           hasEventEnded,
         }}
-        refreshing={activeTab === "feed" ? refreshing : false}
-        onRefresh={
-          activeTab === "feed"
-            ? onRefresh
-            : () => {
-                refreshCarpools();
-              }
+        refreshing={listRefreshing}
+        onRefresh={refreshList}
+        progressViewOffset={nativeRefreshIndicatorOffset}
+        refreshControl={
+          <AppRefreshControl
+            refreshing={listRefreshing}
+            onRefresh={refreshList}
+          />
         }
         onEndReached={
           activeTab === "feed"

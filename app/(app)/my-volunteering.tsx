@@ -1,3 +1,7 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
+import ActivityIndicator from "@/components/ui/AppLoader";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import WithdrawApplicationButton from "@/components/volunteer/WithdrawApplicationButton";
@@ -7,7 +11,6 @@ import { VOLUNTEER_STATUS_LABELS } from "@/utils/volunteer";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import {
-  ActivityIndicator,
   FlatList,
   Text,
   TouchableOpacity,
@@ -43,10 +46,15 @@ export default function MyVolunteering() {
           data={query.data.data}
           keyExtractor={(item) => item.id}
           contentContainerStyle={tw`gap-4 px-5 pb-16`}
-          refreshing={query.isRefetching}
-          onRefresh={() => query.refetch()}
+          refreshControl={
+            <AppRefreshControl
+              refreshing={query.isRefetching}
+              onRefresh={() => query.refetch()}
+            />
+          }
           ListHeaderComponent={
             <View style={tw`gap-2 pb-4`}>
+              <RefreshIndicator refreshing={query.isRefetching} />
               <Text style={tw`text-2xl font-bold text-white`}>
                 Your time makes an impact
               </Text>

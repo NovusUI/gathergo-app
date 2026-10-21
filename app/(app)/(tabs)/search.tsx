@@ -1,11 +1,9 @@
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
-import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useGetSearchResult } from "@/services/queries";
 import { useLockedRouter } from "@/utils/navigation";
-import { useRouter } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -35,21 +33,10 @@ const SearchScreen = () => {
 
   const results = useMemo(
     () => searchResults?.pages?.flatMap((page: any) => page.data) ?? [],
-    [searchResults]
+    [searchResults],
   );
 
   const renderContent = () => {
-    if (isPending) {
-      return (
-        <ImpactPageLoader
-          compact
-          title="Mapping matches"
-          message="Finding events with the right place, purpose, and timing."
-          style={tw`flex-1`}
-        />
-      );
-    }
-
     if (query.trim().length === 0) {
       return (
         <View style={tw`mt-5`}>
@@ -57,6 +44,15 @@ const SearchScreen = () => {
             Type something to search for events
           </Text>
         </View>
+      );
+    }
+
+    if (isPending) {
+      return (
+        <ActivityIndicator
+          accessibilityLabel="Searching events"
+          style={styles.searchLoading}
+        />
       );
     }
 
@@ -108,7 +104,10 @@ const SearchScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      style={[tw`flex-1 bg-[#01082E] items-center flex-col overflow-hidden`, styles.screen]}
+      style={[
+        tw`flex-1 bg-[#01082E] items-center flex-col overflow-hidden`,
+        styles.screen,
+      ]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -152,6 +151,10 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     marginBottom: layoutSpacing.listBottomInset,
+  },
+  searchLoading: {
+    alignSelf: "center",
+    paddingTop: spacing.sm,
   },
   listContent: {
     gap: layoutSpacing.listGap,

@@ -1,6 +1,9 @@
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import { EventImageWithProcessing } from "@/components/EventImageWithProcessing";
-import CustomButton from "@/components/buttons/CustomBtn1";
+import { MascotMoment } from "@/components/ui/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useMyRegistrations, useMyTickets } from "@/services/queries";
@@ -13,7 +16,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
   Modal,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -169,38 +171,26 @@ const getStatusMeta = (pass: UnifiedPass) => {
 const getLocationCopy = (pass: UnifiedPass) =>
   pass.isPhysicalEvent ? pass.location || "Venue to be announced" : "Online event";
 
-const EmptyState = ({
-  activeKinds,
-  onExplore,
-}: {
-  activeKinds: PassKind[];
-  onExplore: () => void;
-}) => {
+const EmptyState = ({ activeKinds }: { activeKinds: PassKind[] }) => {
   const onlyKind = activeKinds.length === 1 ? activeKinds[0] : null;
-  const copy =
+  const title =
+    onlyKind === "registration" ? "No registrations yet" : "No tickets yet";
+  const message =
     onlyKind === "ticket"
-      ? "No tickets yet. Once you grab a seat, it will show up here with its QR code."
+      ? "Your tickets will appear here once you get a pass to an event."
       : onlyKind === "registration"
-        ? "No registrations yet. Your confirmed spots will live here."
-        : "Nothing here yet. Tickets and registrations you own will appear here automatically.";
+        ? "Register for an event and your confirmed spot will appear here."
+        : "Find an event you care about. Your tickets and registrations will appear here.";
 
   return (
-    <View style={[tw`items-center rounded-[28px] border border-[#21336E] bg-[#0D1B49]`, styles.emptyCard]}>
-      <View style={tw`w-16 h-16 rounded-full items-center justify-center bg-[#0FF1CF]/15`}>
-        <Ionicons name="ticket-outline" size={28} color="#0FF1CF" />
-      </View>
-      <Text style={tw`text-white text-lg font-semibold mt-4`}>Nothing to show yet</Text>
-      <Text style={tw`text-[#AFC0F4] text-center mt-2 leading-6`}>{copy}</Text>
-      <View style={tw`w-full mt-5`}>
-        <CustomButton
-          title="Explore events"
-          buttonClassName="!w-full bg-[#0FF1CF] border-0"
-          textClassName="!text-black"
-          arrowCircleColor="bg-[#0C7F7F]"
-          onPress={onExplore}
-        />
-      </View>
-    </View>
+    <MascotMoment
+      variant="empty"
+      layout="stacked"
+      title={title}
+      message={message}
+      typing={false}
+      style={styles.emptyCard}
+    />
   );
 };
 
@@ -534,123 +524,128 @@ const MyPassesPage = () => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        style={tw`flex-1`}
+        contentContainerStyle={[
+          styles.scrollContent,
+          combinedPasses.length === 0 && styles.emptyContent,
+        ]}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#0FF1CF"
           />
         }
       >
-        <View style={[tw`rounded-[32px] border border-[#203370] bg-[#0C1741]`, styles.heroCard]}>
-          <Text style={tw`text-[#7F93CC] text-[12px] uppercase tracking-[1.4px]`}>
-            Your access
-          </Text>
-          <Text style={tw`text-white text-[30px] font-bold mt-3`}>
-            Every ticket and registration, in one place.
-          </Text>
-          <Text style={tw`text-[#AFC0F4] mt-3 leading-6`}>
-            Quick QR access, event details, and a clean split between what is ready now and what has already been used.
-          </Text>
+        <RefreshIndicator refreshing={isRefreshing} />
+        {combinedPasses.length > 0 ? (
+          <>
+            <View style={[tw`rounded-[32px] border border-[#203370] bg-[#0C1741]`, styles.heroCard]}>
+              <Text style={tw`text-[#7F93CC] text-[12px] uppercase tracking-[1.4px]`}>
+                Your access
+              </Text>
+              <Text style={tw`text-white text-[30px] font-bold mt-3`}>
+                Every ticket and registration, in one place.
+              </Text>
+              <Text style={tw`text-[#AFC0F4] mt-3 leading-6`}>
+                Quick QR access, event details, and a clean split between what is ready now and what has already been used.
+              </Text>
 
-          <View style={tw`flex-row gap-3 mt-6`}>
-            <View style={[tw`flex-1 rounded-2xl border border-[#23408A] bg-[#13255E]`, styles.summaryChip]}>
-              <Text style={tw`text-[#8FA5E2] text-[11px] uppercase tracking-[1px]`}>
-                Total
-              </Text>
-              <Text style={tw`text-white text-2xl font-bold mt-2`}>
-                {combinedPasses.length}
-              </Text>
-            </View>
-            <View style={[tw`flex-1 rounded-2xl border border-[#214B55] bg-[#0B2A34]`, styles.summaryChip]}>
-              <Text style={tw`text-[#8FE8E0] text-[11px] uppercase tracking-[1px]`}>
-                Tickets
-              </Text>
-              <Text style={tw`text-white text-2xl font-bold mt-2`}>
-                {tickets.length}
-              </Text>
-            </View>
-            <View style={[tw`flex-1 rounded-2xl border border-[#50427A] bg-[#201C4F]`, styles.summaryChip]}>
-              <Text style={tw`text-[#C4B6FF] text-[11px] uppercase tracking-[1px]`}>
-                Registrations
-              </Text>
-              <Text style={tw`text-white text-2xl font-bold mt-2`}>
-                {registrations.length}
-              </Text>
-            </View>
-          </View>
-
-          {nextPass ? (
-            <View style={[tw`mt-6 rounded-2xl border border-[#1D2E69] bg-[#0E1C49]`, styles.nextUpCard]}>
-              <Text style={tw`text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
-                Next up
-              </Text>
-              <Text style={tw`text-white text-lg font-semibold mt-2`} numberOfLines={2}>
-                {nextPass.eventTitle}
-              </Text>
-              <Text style={tw`text-[#AFC0F4] mt-1`}>
-                {formatEventDateTime(nextPass.eventStartDate, nextPass.eventEndDate)}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={[tw`flex-row gap-3`, styles.filtersWrap]}>
-          {filters.map((filter) => {
-            const isActive = activeKinds.includes(filter.id);
-            const count = filter.id === "ticket" ? tickets.length : registrations.length;
-
-            return (
-              <TouchableOpacity
-                key={filter.id}
-                onPress={() => toggleKind(filter.id)}
-                style={[
-                  tw`flex-1 rounded-[22px] border px-4 py-4`,
-                  isActive
-                    ? {
-                        backgroundColor: filter.activeBackground,
-                        borderColor: filter.activeBorder,
-                      }
-                    : {
-                        backgroundColor: "#081233",
-                        borderColor: "#1A2A62",
-                      },
-                ]}
-              >
-                <View style={tw`flex-row items-center justify-center`}>
-                  <Ionicons
-                    name={filter.icon}
-                    size={18}
-                    color={isActive ? filter.activeText : "#8FA5E2"}
-                  />
-                  <Text
-                    style={[
-                      tw`ml-2 font-semibold`,
-                      { color: isActive ? "#FFFFFF" : "#D9E2FF" },
-                    ]}
-                  >
-                    {filter.label}
+              <View style={tw`flex-row gap-3 mt-6`}>
+                <View style={[tw`flex-1 rounded-2xl border border-[#23408A] bg-[#13255E]`, styles.summaryChip]}>
+                  <Text style={tw`text-[#8FA5E2] text-[11px] uppercase tracking-[1px]`}>
+                    Total
+                  </Text>
+                  <Text style={tw`text-white text-2xl font-bold mt-2`}>
+                    {combinedPasses.length}
                   </Text>
                 </View>
-                <Text
-                  style={[
-                    tw`text-center text-xs mt-2`,
-                    { color: isActive ? filter.activeText : "#7F93CC" },
-                  ]}
-                >
-                  {count} owned
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                <View style={[tw`flex-1 rounded-2xl border border-[#214B55] bg-[#0B2A34]`, styles.summaryChip]}>
+                  <Text style={tw`text-[#8FE8E0] text-[11px] uppercase tracking-[1px]`}>
+                    Tickets
+                  </Text>
+                  <Text style={tw`text-white text-2xl font-bold mt-2`}>
+                    {tickets.length}
+                  </Text>
+                </View>
+                <View style={[tw`flex-1 rounded-2xl border border-[#50427A] bg-[#201C4F]`, styles.summaryChip]}>
+                  <Text style={tw`text-[#C4B6FF] text-[11px] uppercase tracking-[1px]`}>
+                    Registrations
+                  </Text>
+                  <Text style={tw`text-white text-2xl font-bold mt-2`}>
+                    {registrations.length}
+                  </Text>
+                </View>
+              </View>
+
+              {nextPass ? (
+                <View style={[tw`mt-6 rounded-2xl border border-[#1D2E69] bg-[#0E1C49]`, styles.nextUpCard]}>
+                  <Text style={tw`text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
+                    Next up
+                  </Text>
+                  <Text style={tw`text-white text-lg font-semibold mt-2`} numberOfLines={2}>
+                    {nextPass.eventTitle}
+                  </Text>
+                  <Text style={tw`text-[#AFC0F4] mt-1`}>
+                    {formatEventDateTime(nextPass.eventStartDate, nextPass.eventEndDate)}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={[tw`flex-row gap-3`, styles.filtersWrap]}>
+              {filters.map((filter) => {
+                const isActive = activeKinds.includes(filter.id);
+                const count = filter.id === "ticket" ? tickets.length : registrations.length;
+
+                return (
+                  <TouchableOpacity
+                    key={filter.id}
+                    onPress={() => toggleKind(filter.id)}
+                    style={[
+                      tw`flex-1 rounded-[22px] border px-4 py-4`,
+                      isActive
+                        ? {
+                            backgroundColor: filter.activeBackground,
+                            borderColor: filter.activeBorder,
+                          }
+                        : {
+                            backgroundColor: "#081233",
+                            borderColor: "#1A2A62",
+                          },
+                    ]}
+                  >
+                    <View style={tw`flex-row items-center justify-center`}>
+                      <Ionicons
+                        name={filter.icon}
+                        size={18}
+                        color={isActive ? filter.activeText : "#8FA5E2"}
+                      />
+                      <Text
+                        style={[
+                          tw`ml-2 font-semibold`,
+                          { color: isActive ? "#FFFFFF" : "#D9E2FF" },
+                        ]}
+                      >
+                        {filter.label}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        tw`text-center text-xs mt-2`,
+                        { color: isActive ? filter.activeText : "#7F93CC" },
+                      ]}
+                    >
+                      {count} owned
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
 
         {filteredPasses.length === 0 ? (
-          <EmptyState
-            activeKinds={activeKinds}
-            onExplore={() => router.push("/search" as any)}
-          />
+          <EmptyState activeKinds={activeKinds} />
         ) : (
           <>
             {readyPasses.length > 0 ? (
@@ -710,6 +705,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: spacing.xl,
     paddingBottom: 110,
+  },
+  emptyContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   heroCard: {
     padding: 22,

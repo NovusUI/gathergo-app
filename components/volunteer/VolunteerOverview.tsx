@@ -1,8 +1,9 @@
+import ActivityIndicator from "@/components/ui/AppLoader";
 import { useVolunteerSummary } from "@/services/queries";
 import type { EventDetails } from "@/types/event";
 import { useLockedRouter } from "@/utils/navigation";
 import VolunteerStats from "./VolunteerStats";
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 export default function VolunteerOverview({ event }: { event: EventDetails }) {

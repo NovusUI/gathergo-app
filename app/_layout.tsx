@@ -5,7 +5,8 @@ import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
 import AppToast from "@/components/ui/AppToast";
-import FullScreenLoader from "@/components/ui/FullScreenLoader";
+import GogoStartupScreen from "@/components/ui/GogoStartupScreen";
+import { useAuthStore } from "@/store/auth";
 import { applyUrbanistFontDefaults, URBANIST_FONT_ASSETS } from "@/utils/fonts";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,7 +15,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PaystackProvider } from "react-native-paystack-webview";
 import "../global.css";
@@ -25,14 +26,29 @@ SplashScreen.preventAutoHideAsync();
 function AppContent() {
   const { loading } = useAuth();
 
+  const { hasHydrated } = useAuthStore();
+  const [startupPhase, setStartupPhase] = useState<
+    "playing" | "waiting" | "ready"
+  >("playing");
+  const completeStartup = useCallback(() => {
+    setStartupPhase((phase) => (phase === "playing" ? "waiting" : phase));
+  }, []);
   useEffect(() => {
-    if (!loading) {
-      SplashScreen.hideAsync();
+    if (startupPhase === "waiting" && !loading && hasHydrated) {
+      setStartupPhase("ready");
     }
-  }, [loading]);
+  }, [hasHydrated, loading, startupPhase]);
+  const hideNativeSplash = useCallback(() => {
+    void SplashScreen.hideAsync();
+  }, []);
 
-  if (loading) {
-    return <FullScreenLoader />;
+  if (startupPhase !== "ready") {
+    return (
+      <GogoStartupScreen
+        onComplete={completeStartup}
+        onLayout={hideNativeSplash}
+      />
+    );
   }
 
   return (
@@ -47,8 +63,8 @@ export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
   const [persister] = useState(() =>
     createAsyncStoragePersister({
-      storage: AsyncStorage
-    })
+      storage: AsyncStorage,
+    }),
   );
   const fontsReady = fontsLoaded || Boolean(fontError);
 

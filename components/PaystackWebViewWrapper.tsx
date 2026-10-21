@@ -1,3 +1,4 @@
+import AppLoader from "@/components/ui/AppLoader";
 import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
 // Create a new file: components/PaystackWebViewWrapper.tsx
 import AppToast from "@/components/ui/AppToast";
@@ -107,6 +108,14 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
           style={tw`flex-1`}
           onNavigationStateChange={handleNavigationStateChange}
           startInLoadingState={true}
+          renderLoading={() => (
+            <AppLoader
+              size="large"
+              tone="dark"
+              accessibilityLabel="Loading checkout"
+              style={tw`absolute inset-0 bg-white`}
+            />
+          )}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           sharedCookiesEnabled={true}

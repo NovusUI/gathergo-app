@@ -1,3 +1,4 @@
+import ActivityIndicator from "@/components/ui/AppLoader";
 import WithdrawApplicationButton from "@/components/volunteer/WithdrawApplicationButton";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import AppToast from "@/components/ui/AppToast";
@@ -20,7 +21,6 @@ import { showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,

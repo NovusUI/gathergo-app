@@ -1,3 +1,4 @@
+import { getFeedFrenzyLevel } from "@/utils/feedFrenzy";
 import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
@@ -13,6 +14,7 @@ import PricingCard from "@/components/eventInfo/TicketCard";
 import FlameFeedButton from "@/components/feed/FlameFeedButton";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import AppToast from "@/components/ui/AppToast";
+import { MascotMoment } from "@/components/ui/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { getEventLinkMeta, normalizeEventLink } from "@/constants/eventLinks";
@@ -1264,6 +1266,7 @@ const EventPage = () => {
     registrationType
   } = data?.data;
 
+  const publishedTickets = eventTickets.filter((ticket) => ticket.isVisible);
   const eventDateTime = formatEventDateTime(startDate, endDate);
   const impactSummary = impactTitle?.trim() || null;
   const impactNote = impactDescription?.trim() || "";
@@ -2045,10 +2048,11 @@ const EventPage = () => {
         style={[tw`absolute inset-0`, showFeed ? tw`z-0 opacity-0` : tw`z-20`]}
       >
         <FlameFeedButton
+          frenzyLevel={getFeedFrenzyLevel(allFeeds)}
           unreadCount={feedStats.totalCount}
           onPress={() => setShowFeed(true)}
           disabled={showFeed}
-          showCarpoolSignal={isPhysicalEvent !== false}
+          supportsCarpool={isPhysicalEvent !== false && !hasEventEnded}
         />
       </View>
 
@@ -2070,66 +2074,92 @@ const EventPage = () => {
         backgroundStyle={{ backgroundColor: "#01082E" }}
       >
         <View style={tw`flex-row justify-between items-center p-5`}>
-          <Text style={tw`text-white`}>BUY TICKET</Text>
-          <AnimatedNumber value={ticketTotal} />
+          <Text style={tw`text-white`}>
+            {publishedTickets.length > 0 ? "BUY TICKET" : "Tickets"}
+          </Text>
+          <View style={tw`flex-row items-center gap-3`}>
+            {publishedTickets.length > 0 ? (
+              <AnimatedNumber value={ticketTotal} />
+            ) : null}
+            <SheetCloseButton
+              onPress={() => bottomSheetRef.current?.dismiss()}
+            />
+          </View>
         </View>
 
         <BottomSheetScrollView
           style={tw`p-5`}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={
+            publishedTickets.length === 0
+              ? tw`grow justify-center pb-10`
+              : undefined
+          }
         >
-          <View style={tw`py-5 gap-5`}>
-            {eventTickets?.map((ticket) => (
-              <PricingCard
-                key={ticket.id}
-                selectedQuantity={
-                  selectedTickets.find((item) => item.id === ticket.id)
-                    ?.quantity ?? 0
-                }
-                canIncrease={
-                  paymentOptions !== undefined &&
-                  selectedTickets.reduce(
-                    (sum, item) => sum + item.quantity,
-                    0
-                  ) < paymentOptions.maxTicketsPerCheckout
-                }
-                onQuantityChange={(change) =>
-                  handleTicketSelection(ticket.id, ticket.type, change)
-                }
-                title={ticket.type}
-                price={ticket.price}
-                description={ticket.description}
-                perks={ticket.perks}
-                ticketQuantity={ticket.quantity}
-                sold={ticket.sold}
-                isVisible={ticket.isVisible}
-                updatedPrice={ticket.updatedPrice}
-              />
-            ))}
-          </View>
+          {publishedTickets.length === 0 ? (
+            <MascotMoment
+              variant="empty"
+              layout="stacked"
+              title="Tickets aren't live yet"
+              message="The organiser hasn't published tickets for this event. Check back here soon."
+              typing={false}
+            />
+          ) : (
+            <View style={tw`py-5 gap-5`}>
+              {publishedTickets.map((ticket) => (
+                <PricingCard
+                  key={ticket.id}
+                  selectedQuantity={
+                    selectedTickets.find((item) => item.id === ticket.id)
+                      ?.quantity ?? 0
+                  }
+                  canIncrease={
+                    paymentOptions !== undefined &&
+                    selectedTickets.reduce(
+                      (sum, item) => sum + item.quantity,
+                      0,
+                    ) < paymentOptions.maxTicketsPerCheckout
+                  }
+                  onQuantityChange={(change) =>
+                    handleTicketSelection(ticket.id, ticket.type, change)
+                  }
+                  title={ticket.type}
+                  price={ticket.price}
+                  description={ticket.description}
+                  perks={ticket.perks}
+                  ticketQuantity={ticket.quantity}
+                  sold={ticket.sold}
+                  isVisible={ticket.isVisible}
+                  updatedPrice={ticket.updatedPrice}
+                />
+              ))}
+            </View>
+          )}
         </BottomSheetScrollView>
 
-        <View style={tw`w-full max-w-[500px] gap-3 p-5`}>
-          {renderProviderSelector(ticketTotal)}
-          <CustomButton
-            onPress={() => handleTransaction(false)}
-            disabled={
-              hasEventEnded || selectedTickets.length === 0 || gettingTickets
-            }
-            title={
-              hasEventEnded
-                ? "Event ended"
-                : gettingTickets
-                  ? "Initiating..."
-                  : ticketTotal > 0
-                    ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
-                    : "Claim tickets"
-            }
-            buttonClassName="bg-[#0FF1CF] w-full border-0"
-            textClassName="!text-black"
-            showArrow={false}
-          />
-        </View>
+        {publishedTickets.length > 0 ? (
+          <View style={tw`w-full max-w-[500px] gap-3 p-5`}>
+            {renderProviderSelector(ticketTotal)}
+            <CustomButton
+              onPress={() => handleTransaction(false)}
+              disabled={
+                hasEventEnded || selectedTickets.length === 0 || gettingTickets
+              }
+              title={
+                hasEventEnded
+                  ? "Event ended"
+                  : gettingTickets
+                    ? "Initiating..."
+                    : ticketTotal > 0
+                      ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
+                      : "Claim tickets"
+              }
+              buttonClassName="bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-black"
+              showArrow={false}
+            />
+          </View>
+        ) : null}
       </BottomSheetModal>
 
       <Modal
