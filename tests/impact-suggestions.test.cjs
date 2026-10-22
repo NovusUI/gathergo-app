@@ -4,10 +4,10 @@ const { loadTypeScript } = require("./loadTypeScript.cjs");
 
 const state = {};
 const { default: ImpactSelector } = loadTypeScript(
-  "components/eventInfo/ImpactSelector.tsx",
+  "components/gogo/tasks/impactSuggestions/ImpactSelector.tsx",
   {
     "@/components/ui/AppLoader": { default: "Spinner" },
-    "@/services/queries": {
+    "@/components/gogo/tasks/impactSuggestions/useImpactSuggestions": {
       useImpactSuggestions: (payload, options) => {
         state.payload = payload;
         state.options = options;
@@ -31,7 +31,7 @@ const { default: ImpactSelector } = loadTypeScript(
       View: "View",
     },
     twrnc: { default: () => ({}), style: () => ({}) },
-    "../inputs/CustomTextArea": { default: "TextArea" },
+    "@/components/inputs/CustomTextArea": { default: "TextArea" },
   },
 );
 

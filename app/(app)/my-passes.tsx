@@ -3,7 +3,7 @@ import AppRefreshControl, {
 } from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import { EventImageWithProcessing } from "@/components/EventImageWithProcessing";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useMyRegistrations, useMyTickets } from "@/services/queries";

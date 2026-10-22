@@ -3,13 +3,13 @@ import CustomButton from "@/components/buttons/CustomBtn1";
 import {
   GOGO_STARTUP_BACKGROUND,
   GOGO_STARTUP_SIZE,
-} from "@/constants/gogoStartup";
-import { useGogoStartupMotion } from "@/hooks/useGogoStartupMotion";
+} from "@/components/gogo/mascot/startup";
+import { useGogoStartupMotion } from "@/components/gogo/mascot/motion/useGogoStartupMotion";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useCallback, useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GogoStartupArtwork } from "./GogoStartupArtwork";
+import { GogoStartupArtwork } from "@/components/gogo/mascot/GogoStartupArtwork";
 
 export default function GogoWelcomeScreen({
   onContinue,

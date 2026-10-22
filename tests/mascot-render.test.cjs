@@ -76,31 +76,31 @@ const svg = {
   RadialGradient: "radialGradient",
   Stop: "stop",
 };
-loadTypeScript("utils/svgMotion.ts", {
+loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "android" } },
   "react-native-reanimated": reanimated,
 });
-const parts = loadTypeScript("components/ui/GogoArtworkParts.tsx", {
+const parts = loadTypeScript("components/gogo/mascot/GogoArtworkParts.tsx", {
   "react-native-reanimated": reanimated,
   "react-native-svg": svg,
 });
-const frenzyMotion = loadTypeScript("hooks/useGogoFrenzyMotion.ts", {
+const frenzyMotion = loadTypeScript("components/gogo/mascot/motion/useGogoFrenzyMotion.ts", {
   "react-native-reanimated": reanimated,
 });
 const { GogoFrenzyArtwork } = loadTypeScript(
-  "components/feed/GogoFrenzyArtwork.tsx",
+  "components/gogo/mascot/GogoFrenzyArtwork.tsx",
   {
-    "@/components/ui/GogoArtworkParts": parts,
-    "@/hooks/useGogoFrenzyMotion": frenzyMotion,
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
+    "@/components/gogo/mascot/motion/useGogoFrenzyMotion": frenzyMotion,
     "react-native-svg": svg,
   },
 );
-const normalMotion = loadTypeScript("hooks/useGogoMotion.ts", {
+const normalMotion = loadTypeScript("components/gogo/mascot/motion/useGogoMotion.ts", {
   "react-native-reanimated": reanimated,
 });
-const { GogoArtwork } = loadTypeScript("components/ui/GogoArtwork.tsx", {
-  "./GogoArtworkParts": parts,
-  "@/hooks/useGogoMotion": normalMotion,
+const { GogoArtwork } = loadTypeScript("components/gogo/mascot/GogoArtwork.tsx", {
+  "@/components/gogo/mascot/GogoArtworkParts": parts,
+  "@/components/gogo/mascot/motion/useGogoMotion": normalMotion,
   "react-native-svg": svg,
 });
 
@@ -128,19 +128,19 @@ test("the regular mascot's animated antenna still renders for every pose", () =>
   }
 });
 
-const carMotion = loadTypeScript("hooks/useGogoCarMotion.ts", {
+const carMotion = loadTypeScript("components/gogo/mascot/motion/useGogoCarMotion.ts", {
   "react-native-reanimated": reanimated,
-  "@/hooks/useGogoFrenzyMotion": frenzyMotion,
+  "@/components/gogo/mascot/motion/useGogoFrenzyMotion": frenzyMotion,
 });
 const { GogoCarFrenzyArtwork } = loadTypeScript(
-  "components/feed/GogoCarFrenzyArtwork.tsx",
+  "components/gogo/mascot/GogoCarFrenzyArtwork.tsx",
   {
-    "@/components/ui/GogoArtworkParts": parts,
-    "./GogoFrenzyArtwork": loadTypeScript(
-      "components/feed/GogoFrenzyArtwork.tsx",
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
+    "@/components/gogo/mascot/GogoFrenzyArtwork": loadTypeScript(
+      "components/gogo/mascot/GogoFrenzyArtwork.tsx",
     ),
-    "@/hooks/useGogoCarMotion": carMotion,
-    "@/hooks/useGogoFrenzyMotion": frenzyMotion,
+    "@/components/gogo/mascot/motion/useGogoCarMotion": carMotion,
+    "@/components/gogo/mascot/motion/useGogoFrenzyMotion": frenzyMotion,
     "react-native-reanimated": reanimated,
     "react-native-svg": svg,
   },
@@ -164,14 +164,14 @@ test("the roadster renders all heat levels through the real animation prop filte
   }
 });
 
-const loadingMotion = loadTypeScript("hooks/useGogoLoadingMotion.ts", {
+const loadingMotion = loadTypeScript("components/gogo/mascot/motion/useGogoLoadingMotion.ts", {
   "react-native-reanimated": reanimated,
 });
 const { GogoLoadingArtwork } = loadTypeScript(
-  "components/ui/GogoLoadingArtwork.tsx",
+  "components/gogo/mascot/GogoLoadingArtwork.tsx",
   {
-    "./GogoArtworkParts": parts,
-    "@/hooks/useGogoLoadingMotion": loadingMotion,
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
+    "@/components/gogo/mascot/motion/useGogoLoadingMotion": loadingMotion,
     "react-native-svg": svg,
   },
 );
@@ -190,14 +190,14 @@ test("the page loader renders its antenna and all three rings through the real a
   }
 });
 
-const spinnerMotion = loadTypeScript("hooks/useGogoSpinnerMotion.ts", {
+const spinnerMotion = loadTypeScript("components/gogo/mascot/motion/useGogoSpinnerMotion.ts", {
   "react-native-reanimated": reanimated,
 });
 const { GogoSpinnerArtwork } = loadTypeScript(
-  "components/ui/GogoSpinnerArtwork.tsx",
+  "components/gogo/mascot/GogoSpinnerArtwork.tsx",
   {
-    "./GogoArtworkParts": parts,
-    "@/hooks/useGogoSpinnerMotion": spinnerMotion,
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
+    "@/components/gogo/mascot/motion/useGogoSpinnerMotion": spinnerMotion,
     "react-native-svg": svg,
   },
 );
@@ -220,14 +220,14 @@ test("small Gogo renders at button and inline sizes through the real animation p
   }
 });
 
-const startupMotion = loadTypeScript("hooks/useGogoStartupMotion.ts", {
+const startupMotion = loadTypeScript("components/gogo/mascot/motion/useGogoStartupMotion.ts", {
   "react-native-reanimated": reanimated,
 });
 const { GogoStartupArtwork } = loadTypeScript(
-  "components/ui/GogoStartupArtwork.tsx",
+  "components/gogo/mascot/GogoStartupArtwork.tsx",
   {
-    "@/hooks/useGogoStartupMotion": startupMotion,
-    "./GogoArtworkParts": parts,
+    "@/components/gogo/mascot/motion/useGogoStartupMotion": startupMotion,
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
     "react-native-reanimated": reanimated,
     "react-native-svg": svg,
   },
@@ -253,14 +253,14 @@ test("startup renders its logo-to-Gogo frames through the installed native anima
   }
 });
 
-const comingSoonMotion = loadTypeScript("hooks/useGogoComingSoonMotion.ts", {
+const comingSoonMotion = loadTypeScript("components/gogo/mascot/motion/useGogoComingSoonMotion.ts", {
   "react-native-reanimated": reanimated,
 });
 const { GogoComingSoonArtwork } = loadTypeScript(
-  "components/ui/GogoComingSoonArtwork.tsx",
+  "components/gogo/mascot/GogoComingSoonArtwork.tsx",
   {
-    "@/hooks/useGogoComingSoonMotion": comingSoonMotion,
-    "./GogoArtworkParts": parts,
+    "@/components/gogo/mascot/motion/useGogoComingSoonMotion": comingSoonMotion,
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
     "react-native-svg": svg,
   },
 );
@@ -281,16 +281,16 @@ test("the laptop coming-soon artwork renders through the installed native prop f
 });
 
 const onboardingCarpoolMotion = loadTypeScript(
-  "hooks/useGogoOnboardingCarpoolMotion.ts",
+  "components/gogo/mascot/motion/useGogoOnboardingCarpoolMotion.ts",
   {
     "react-native-reanimated": reanimated,
   },
 );
 const { GogoOnboardingCarpoolArtwork } = loadTypeScript(
-  "components/ui/GogoOnboardingCarpoolArtwork.tsx",
+  "components/gogo/mascot/GogoOnboardingCarpoolArtwork.tsx",
   {
-    "@/hooks/useGogoOnboardingCarpoolMotion": onboardingCarpoolMotion,
-    "./GogoArtworkParts": parts,
+    "@/components/gogo/mascot/motion/useGogoOnboardingCarpoolMotion": onboardingCarpoolMotion,
+    "@/components/gogo/mascot/GogoArtworkParts": parts,
     "react-native-reanimated": reanimated,
     "react-native-svg": svg,
   },

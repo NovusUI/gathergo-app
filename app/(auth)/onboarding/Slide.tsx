@@ -1,4 +1,4 @@
-import { GogoOnboardingCarpoolArtwork } from "@/components/ui/GogoOnboardingCarpoolArtwork";
+import { GogoOnboardingCarpoolArtwork } from "@/components/gogo/mascot/GogoOnboardingCarpoolArtwork";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
 import LocalSvgAsset, {
   type LocalSvgAssetName,

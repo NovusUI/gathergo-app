@@ -1,4 +1,4 @@
-import { GOGO_PALETTE, type GogoPose } from "@/constants/mascot";
+import { GOGO_PALETTE, type GogoPose } from "@/components/gogo/mascot/constants";
 import type { ComponentProps, ReactNode } from "react";
 import Animated from "react-native-reanimated";
 import { Circle, Ellipse, G, Path, Rect } from "react-native-svg";

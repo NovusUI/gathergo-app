@@ -14,17 +14,17 @@ const { Easing } = loadTypeScript(
     ),
   },
 );
-const { rotationAt } = loadTypeScript("utils/svgMotion.ts", {
+const { rotationAt } = loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "android" } },
   "react-native-reanimated": {
     createAnimatedPropAdapter: (adapter) => adapter,
   },
 });
 const { useGogoComingSoonMotion, useGogoComingSoonCode } = loadTypeScript(
-  "hooks/useGogoComingSoonMotion.ts",
+  "components/gogo/mascot/motion/useGogoComingSoonMotion.ts",
   {
     react: { useEffect: (effect) => effects.push(effect) },
-    "@/utils/svgMotion": { rotationAt, svgTransformAdapter: undefined },
+    "@/components/gogo/mascot/motion/svgMotion": { rotationAt, svgTransformAdapter: undefined },
     "react-native-reanimated": {
       Easing,
       ReduceMotion: { Never: "never" },
@@ -135,13 +135,13 @@ function* nodes(node) {
     yield* nodes(child);
 }
 let reducedMotion = false;
-const { MascotMoment } = loadTypeScript("components/ui/MascotMoment.tsx", {
+const { MascotMoment } = loadTypeScript("components/gogo/mascot/MascotMoment.tsx", {
   "@/hooks/useReducedMotionPreference": {
     useReducedMotionPreference: () => reducedMotion,
   },
-  "./GogoComingSoonArtwork": { GogoComingSoonArtwork: "LaptopGogo" },
-  "./GatherGoMascot": { GatherGoMascot: "RegularGogo" },
-  "./MascotMessage": { MascotMessage: "Message" },
+  "@/components/gogo/mascot/GogoComingSoonArtwork": { GogoComingSoonArtwork: "LaptopGogo" },
+  "@/components/gogo/mascot/GatherGoMascot": { GatherGoMascot: "RegularGogo" },
+  "@/components/gogo/mascot/MascotMessage": { MascotMessage: "Message" },
   react: { useEffect() {}, useRef: (current) => ({ current }) },
   "react-native": {
     View: "View",
@@ -186,7 +186,7 @@ const { default: CircleScreen } = loadTypeScript(
   "app/(app)/(tabs)/circle.tsx",
   {
     "@/components/CustomeTopBarNav": { default: "TopBar" },
-    "@/components/ui/MascotMoment": { MascotMoment: "Moment" },
+    "@/components/gogo/mascot/MascotMoment": { MascotMoment: "Moment" },
     "@/utils/navigation": { useLockedRouter: () => ({ replace() {} }) },
     "react-native": { View: "View", ScrollView: "ScrollView" },
     twrnc: { default: () => ({}) },

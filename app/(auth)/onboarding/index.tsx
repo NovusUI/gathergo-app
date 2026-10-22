@@ -1,6 +1,6 @@
 import CustomButton from "@/components/buttons/CustomBtn1";
 import SkipOnboardingButton from "@/components/buttons/SkipOnboardingButton";
-import GogoWelcomeScreen from "@/components/ui/GogoWelcomeScreen";
+import GogoWelcomeScreen from "@/components/gogo/mascot/GogoWelcomeScreen";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { useOnboardingStore } from "@/store/onboarding";
 import { useLockedRouter } from "@/utils/navigation";

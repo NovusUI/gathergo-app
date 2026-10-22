@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
-import FullScreenLoader from "@/components/ui/FullScreenLoader";
+import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import { useAuthStore } from "@/store/auth";
 import { Stack } from "expo-router";
 
@@ -8,7 +8,7 @@ export default function RootNavigator() {
   const { isAuthenticated, hasHydrated } = useAuthStore();
 
   if (loading || !hasHydrated) {
-    return <FullScreenLoader />;
+    return <AppLaunchScreen />;
   }
 
   return (
@@ -16,7 +16,7 @@ export default function RootNavigator() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: "#01082E" },
-        animation: "fade",
+        animation: "none",
       }}
     >
       {isAuthenticated ? (

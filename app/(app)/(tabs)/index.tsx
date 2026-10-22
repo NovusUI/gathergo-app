@@ -2,7 +2,7 @@ import Tab from "@/components/Tab";
 import CarpoolCard from "@/components/ui/CarpoolCard";
 import EventCard from "@/components/ui/EventCard";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { HomeAdCard } from "@/types/home";

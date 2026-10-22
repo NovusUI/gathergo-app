@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
-import ImpactSelector from "./ImpactSelector";
+import ImpactSelector from "@/components/gogo/tasks/impactSuggestions/ImpactSelector";
 
 type EventStoryFieldsProps = Pick<
   UseFormReturn<EventFormData>,

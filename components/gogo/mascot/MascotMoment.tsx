@@ -1,11 +1,11 @@
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import type { GatherGoMascotVariant } from "@/constants/mascot";
+import type { GatherGoMascotVariant } from "@/components/gogo/mascot/constants";
 import { useEffect, useRef } from "react";
 import { Animated, StyleProp, Text, View, ViewStyle } from "react-native";
 import tw from "twrnc";
-import { GogoComingSoonArtwork } from "./GogoComingSoonArtwork";
-import { GatherGoMascot } from "./GatherGoMascot";
-import { MascotMessage } from "./MascotMessage";
+import { GogoComingSoonArtwork } from "@/components/gogo/mascot/GogoComingSoonArtwork";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
+import { MascotMessage } from "@/components/gogo/mascot/MascotMessage";
 
 type MascotMomentProps = {
   variant?: GatherGoMascotVariant;

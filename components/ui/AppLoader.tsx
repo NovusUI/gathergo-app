@@ -1,7 +1,7 @@
-import { GOGO_PALETTE } from "@/constants/mascot";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { type ActivityIndicatorProps, StyleSheet, View } from "react-native";
-import { GogoSpinnerArtwork } from "./GogoSpinnerArtwork";
+import { GogoSpinnerArtwork } from "@/components/gogo/mascot/GogoSpinnerArtwork";
 
 const loaderColors = {
   accent: GOGO_PALETTE.body,

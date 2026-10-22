@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { loadTypeScript } = require("./loadTypeScript.cjs");
 
-const { getProfileWelcomeCopy } = loadTypeScript("constants/mascot.ts");
+const { getProfileWelcomeCopy } = loadTypeScript("components/gogo/mascot/constants.ts");
 const { profileSchema } = loadTypeScript("schemas/profile.ts");
 const today = new Date(2026, 9, 17);
 
@@ -102,8 +102,21 @@ function Redirect() {}
 const { default: AppLayout } = loadTypeScript("app/(app)/_layout.tsx", {
   "@/context/AuthContext": { useAuth: () => layoutState },
   "@/store/auth": { useAuthStore: () => layoutState },
-  "@/components/ui/FullScreenLoader": { default: () => null },
+  "@/components/ui/AppLaunchScreen": { default: "LaunchScreen" },
   "expo-router": { Stack, Redirect, useSegments: () => layoutState.segments },
+});
+
+test("the authenticated route uses the app logo while startup authentication is loading", () => {
+  try {
+    layoutState.loading = true;
+    assert.equal(AppLayout().type, "LaunchScreen");
+    layoutState.loading = false;
+    layoutState.hasHydrated = false;
+    assert.equal(AppLayout().type, "LaunchScreen");
+  } finally {
+    layoutState.loading = false;
+    layoutState.hasHydrated = true;
+  }
 });
 
 test("saving the profile moves directly to preference onboarding", () => {
@@ -260,8 +273,8 @@ const { default: WelcomeModal } = loadTypeScript("components/ui/ProfileWelcomeMo
   "@/components/buttons/CustomBtn1": { default: CustomButton },
   "react-native": { Modal: "Modal", ScrollView: "ScrollView", Text: "Text", View: "View" },
   twrnc: { default: () => ({}) },
-  "./GatherGoMascot": { GatherGoMascot: "Mascot" },
-  "./MascotMessage": { MascotMessage },
+  "@/components/gogo/mascot/GatherGoMascot": { GatherGoMascot: "Mascot" },
+  "@/components/gogo/mascot/MascotMessage": { MascotMessage },
 });
 
 test("birthdays keep their calendar day for both saved and API date formats", () => {

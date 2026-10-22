@@ -8,8 +8,8 @@ import QRCodeGenerator from "@/components/QRCodeGen";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { EventDetails } from "@/components/ui/EventDetails";
-import { MascotMoment } from "@/components/ui/MascotMoment";
-import { TRANSACTION_MASCOT_MOMENTS } from "@/constants/mascot";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
+import { TRANSACTION_MASCOT_MOMENTS } from "@/components/gogo/mascot/constants";
 import { useAuth } from "@/context/AuthContext";
 import {
   useEventDetails,

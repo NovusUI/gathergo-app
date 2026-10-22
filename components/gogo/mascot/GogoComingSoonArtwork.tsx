@@ -1,11 +1,11 @@
-import { GOGO_PALETTE } from "@/constants/mascot";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import {
   useGogoComingSoonCode,
   useGogoComingSoonMotion,
-} from "@/hooks/useGogoComingSoonMotion";
+} from "@/components/gogo/mascot/motion/useGogoComingSoonMotion";
 import type { SharedValue } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
-import { AnimatedGroup } from "./GogoArtworkParts";
+import { AnimatedGroup } from "@/components/gogo/mascot/GogoArtworkParts";
 
 function CodeSymbol({
   d,

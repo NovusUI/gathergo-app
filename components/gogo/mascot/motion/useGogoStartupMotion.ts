@@ -4,8 +4,8 @@ import {
   type StartupProperty,
   type StartupTrack,
   type StartupTrackName,
-} from "@/constants/gogoStartup";
-import { rotationAt, svgTransformAdapter } from "@/utils/svgMotion";
+} from "@/components/gogo/mascot/startup";
+import { rotationAt, svgTransformAdapter } from "@/components/gogo/mascot/motion/svgMotion";
 import { useCallback, useEffect, useRef } from "react";
 import {
   cancelAnimation,

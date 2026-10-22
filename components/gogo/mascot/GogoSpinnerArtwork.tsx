@@ -1,7 +1,7 @@
-import { GOGO_PALETTE } from "@/constants/mascot";
-import { useGogoSpinnerMotion } from "@/hooks/useGogoSpinnerMotion";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
+import { useGogoSpinnerMotion } from "@/components/gogo/mascot/motion/useGogoSpinnerMotion";
 import Svg, { Circle, G, Path } from "react-native-svg";
-import { AnimatedGroup, GogoBody } from "./GogoArtworkParts";
+import { AnimatedGroup, GogoBody } from "@/components/gogo/mascot/GogoArtworkParts";
 
 export function GogoSpinnerArtwork({
   size,

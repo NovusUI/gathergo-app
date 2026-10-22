@@ -1,13 +1,13 @@
-import { GOGO_PALETTE } from "@/constants/mascot";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import {
   GOGO_STARTUP_BACKGROUND,
   type StartupTrackName,
-} from "@/constants/gogoStartup";
+} from "@/components/gogo/mascot/startup";
 import {
   useStartupGroup,
   useStartupRing,
   useStartupStroke,
-} from "@/hooks/useGogoStartupMotion";
+} from "@/components/gogo/mascot/motion/useGogoStartupMotion";
 import type { ReactNode } from "react";
 import Animated, { type SharedValue } from "react-native-reanimated";
 import Svg, {
@@ -18,7 +18,7 @@ import Svg, {
   Rect,
   type PathProps,
 } from "react-native-svg";
-import { AnimatedGroup } from "./GogoArtworkParts";
+import { AnimatedGroup } from "@/components/gogo/mascot/GogoArtworkParts";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedPath = Animated.createAnimatedComponent(Path);

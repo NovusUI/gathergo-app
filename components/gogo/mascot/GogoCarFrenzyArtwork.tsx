@@ -1,7 +1,7 @@
-import { AnimatedGroup } from "@/components/ui/GogoArtworkParts";
-import { GOGO_PALETTE } from "@/constants/mascot";
-import { useGogoCarMotion } from "@/hooks/useGogoCarMotion";
-import { useGogoFrenzyMotion } from "@/hooks/useGogoFrenzyMotion";
+import { AnimatedGroup } from "@/components/gogo/mascot/GogoArtworkParts";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
+import { useGogoCarMotion } from "@/components/gogo/mascot/motion/useGogoCarMotion";
+import { useGogoFrenzyMotion } from "@/components/gogo/mascot/motion/useGogoFrenzyMotion";
 import { type ComponentProps, useId } from "react";
 import Animated from "react-native-reanimated";
 import Svg, {
@@ -19,7 +19,7 @@ import {
   GogoFrenzyCharacter,
   GogoFrenzyFlame,
   type GogoFrenzyArtwork,
-} from "./GogoFrenzyArtwork";
+} from "@/components/gogo/mascot/GogoFrenzyArtwork";
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 const RAYS = [

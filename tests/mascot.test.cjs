@@ -19,11 +19,11 @@ function* nodes(node) {
 
 let reducedMotion = false;
 const wrapperEffects = [];
-const { GatherGoMascot } = loadTypeScript("components/ui/GatherGoMascot.tsx", {
+const { GatherGoMascot } = loadTypeScript("components/gogo/mascot/GatherGoMascot.tsx", {
   "@/hooks/useReducedMotionPreference": {
     useReducedMotionPreference: () => reducedMotion,
   },
-  "./GogoArtwork": { GogoArtwork: "Artwork" },
+  "@/components/gogo/mascot/GogoArtwork": { GogoArtwork: "Artwork" },
   "lucide-react-native": Object.fromEntries(
     [
       "CheckCircle2",
@@ -224,11 +224,11 @@ const animationMock = {
   withSequence: (...values) => values[values.length - 1],
   withTiming: (value) => value,
 };
-loadTypeScript("utils/svgMotion.ts", {
+loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "ios" } },
   "react-native-reanimated": animationMock,
 });
-const motion = loadTypeScript("hooks/useGogoMotion.ts", {
+const motion = loadTypeScript("components/gogo/mascot/motion/useGogoMotion.ts", {
   react: { useEffect: (effect) => motionEffects.push(effect) },
   "react-native": { Platform: { OS: "ios" } },
   "react-native-reanimated": animationMock,
@@ -298,13 +298,13 @@ const svgMock = {
   Path: "Path",
   Rect: "Rect",
 };
-const artworkParts = loadTypeScript("components/ui/GogoArtworkParts.tsx", {
+const artworkParts = loadTypeScript("components/gogo/mascot/GogoArtworkParts.tsx", {
   "react-native-reanimated": animationMock,
   "react-native-svg": svgMock,
 });
-const { GogoArtwork } = loadTypeScript("components/ui/GogoArtwork.tsx", {
-  "@/hooks/useGogoMotion": motion,
-  "./GogoArtworkParts": artworkParts,
+const { GogoArtwork } = loadTypeScript("components/gogo/mascot/GogoArtwork.tsx", {
+  "@/components/gogo/mascot/motion/useGogoMotion": motion,
+  "@/components/gogo/mascot/GogoArtworkParts": artworkParts,
   "react-native-svg": svgMock,
 });
 

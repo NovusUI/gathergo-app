@@ -1,5 +1,5 @@
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { useLockedRouter } from "@/utils/navigation";
 import { ScrollView, View } from "react-native";
 import tw from "twrnc";

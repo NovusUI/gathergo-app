@@ -1,6 +1,6 @@
 import type { FeedFrenzyLevel } from "@/constants/feedFrenzy";
-import { useGogoFlameMotion } from "@/hooks/useGogoFrenzyMotion";
-import { svgTransformAdapter } from "@/utils/svgMotion";
+import { useGogoFlameMotion } from "@/components/gogo/mascot/motion/useGogoFrenzyMotion";
+import { svgTransformAdapter } from "@/components/gogo/mascot/motion/svgMotion";
 import { useEffect } from "react";
 import {
   cancelAnimation,

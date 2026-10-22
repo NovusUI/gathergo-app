@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import type {
   CarpoolVibeDialogMessage,
   CarpoolVibeMascotStyle,

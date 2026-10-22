@@ -1,11 +1,11 @@
-import { GOGO_PALETTE } from "@/constants/mascot";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import {
   useGogoLoadingMotion,
   useGogoLoadingRing,
-} from "@/hooks/useGogoLoadingMotion";
+} from "@/components/gogo/mascot/motion/useGogoLoadingMotion";
 import type { SharedValue } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path } from "react-native-svg";
-import { AnimatedGroup, GogoArms, GogoBody } from "./GogoArtworkParts";
+import { AnimatedGroup, GogoArms, GogoBody } from "@/components/gogo/mascot/GogoArtworkParts";
 
 function LoadingRing({
   x,

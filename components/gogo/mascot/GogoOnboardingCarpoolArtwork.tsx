@@ -2,10 +2,10 @@ import {
   useGogoOnboardingCarpoolMotion,
   useGogoOnboardingSparkle,
   useGogoOnboardingSpeed,
-} from "@/hooks/useGogoOnboardingCarpoolMotion";
+} from "@/components/gogo/mascot/motion/useGogoOnboardingCarpoolMotion";
 import Animated, { type SharedValue } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
-import { AnimatedGroup } from "./GogoArtworkParts";
+import { AnimatedGroup } from "@/components/gogo/mascot/GogoArtworkParts";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 

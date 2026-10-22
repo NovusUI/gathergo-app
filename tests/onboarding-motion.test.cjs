@@ -92,7 +92,7 @@ const { default: Onboarding } = loadTypeScript(
   {
     "@/components/buttons/CustomBtn1": { default: "Next" },
     "@/components/buttons/SkipOnboardingButton": { default: "Skip" },
-    "@/components/ui/GogoWelcomeScreen": { default: "Welcome" },
+    "@/components/gogo/mascot/GogoWelcomeScreen": { default: "Welcome" },
     "@/hooks/useReducedMotionPreference": motionPreference,
     "@/store/onboarding": {
       useOnboardingStore: () => ({
@@ -122,7 +122,7 @@ const { default: Onboarding } = loadTypeScript(
 const { default: Slide } = loadTypeScript("app/(auth)/onboarding/Slide.tsx", {
   "@/components/ui/GgCircleArtwork": { default: "Circle" },
   "@/components/ui/LocalSvgAsset": { default: "Artwork" },
-  "@/components/ui/GogoOnboardingCarpoolArtwork": {
+  "@/components/gogo/mascot/GogoOnboardingCarpoolArtwork": {
     GogoOnboardingCarpoolArtwork: "CarpoolArtwork",
   },
   "@/hooks/useReducedMotionPreference": motionPreference,

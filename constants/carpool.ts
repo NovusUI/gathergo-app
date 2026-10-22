@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { GatherGoMascotVariant } from "@/constants/mascot";
+import type { GatherGoMascotVariant } from "@/components/gogo/mascot/constants";
 import type { ComponentProps } from "react";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];

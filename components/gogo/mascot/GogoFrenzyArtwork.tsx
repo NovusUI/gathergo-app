@@ -2,16 +2,16 @@ import {
   FEED_FRENZY_COLORS,
   type FeedFrenzyLevel,
 } from "@/constants/feedFrenzy";
-import { GOGO_PALETTE } from "@/constants/mascot";
+import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import {
   useGogoEmberMotion,
   useGogoFrenzyMotion,
-} from "@/hooks/useGogoFrenzyMotion";
+} from "@/components/gogo/mascot/motion/useGogoFrenzyMotion";
 import {
   AnimatedGroup,
   GogoArms,
   GogoBody,
-} from "@/components/ui/GogoArtworkParts";
+} from "@/components/gogo/mascot/GogoArtworkParts";
 import { type ComponentProps, useId } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import Svg, {

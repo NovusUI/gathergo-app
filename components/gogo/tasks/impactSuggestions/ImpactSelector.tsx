@@ -1,16 +1,16 @@
 import ActivityIndicator from "@/components/ui/AppLoader";
 import type { EventRegistrationType } from "@/constants/impact";
-import { useImpactSuggestions } from "@/services/queries";
+import { useImpactSuggestions } from "@/components/gogo/tasks/impactSuggestions/useImpactSuggestions";
+import type { ImpactSuggestionPayload } from "@/components/gogo/tasks/impactSuggestions/types";
 import type {
   ImpactSuggestionData,
-  ImpactSuggestionPayload,
   SuggestedImpactCommitment,
 } from "@/types/impact";
 import { useDebounce } from "@/utils/useDebounce";
 import { useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw, { style } from "twrnc";
-import TextArea from "../inputs/CustomTextArea";
+import TextArea from "@/components/inputs/CustomTextArea";
 
 interface ImpactSelectorProps {
   eventTitle: string;

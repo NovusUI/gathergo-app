@@ -39,18 +39,18 @@ const animation = {
   },
 };
 const react = { useEffect: (effect) => effects.push(effect) };
-loadTypeScript("utils/svgMotion.ts", {
+loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "android" } },
   "react-native-reanimated": animation,
 });
-const frenzy = loadTypeScript("hooks/useGogoFrenzyMotion.ts", {
+const frenzy = loadTypeScript("components/gogo/mascot/motion/useGogoFrenzyMotion.ts", {
   react,
   "react-native-reanimated": animation,
 });
-const { useGogoCarMotion: createCarMotion } = loadTypeScript("hooks/useGogoCarMotion.ts", {
+const { useGogoCarMotion: createCarMotion } = loadTypeScript("components/gogo/mascot/motion/useGogoCarMotion.ts", {
   react,
   "react-native-reanimated": animation,
-  "@/hooks/useGogoFrenzyMotion": frenzy,
+  "@/components/gogo/mascot/motion/useGogoFrenzyMotion": frenzy,
 });
 function reset() {
   values = [];

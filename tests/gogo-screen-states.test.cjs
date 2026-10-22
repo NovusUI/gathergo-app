@@ -79,7 +79,7 @@ const { default: Settings } = loadTypeScript("app/(app)/(tabs)/settings.tsx", {
   "@/components/CustomeTopBarNav": { default: "TopBar" },
   "@/components/buttons/SheetCloseButton": { default: "CloseButton" },
   "@/components/ui/AppLoader": { default: "SmallLoader" },
-  "@/components/ui/MascotMoment": { MascotMoment: "GogoMessage" },
+  "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/hooks/usePressGuard": { usePressGuard: (callback) => callback },
   "@/context/AuthContext": {
     useAuth: () => ({
@@ -267,7 +267,7 @@ const { default: MyPassesPage } = loadTypeScript("app/(app)/my-passes.tsx", {
   "@/components/EventImageWithProcessing": {
     EventImageWithProcessing: "EventImage",
   },
-  "@/components/ui/MascotMoment": { MascotMoment: "GogoMessage" },
+  "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
   "@/services/queries": {
     useMyTickets: () => ticketQuery,
@@ -455,7 +455,7 @@ const eventMocks = {
   "@/components/ui/AnimatedNumber": { AnimatedNumber: "Total" },
   "@/components/ui/AppToast": { default: "Toast" },
   "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
-  "@/components/ui/MascotMoment": { MascotMoment: "GogoMessage" },
+  "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/components/ui/SdgGoalIcon": { SdgGoalIcon: "GoalIcon" },
   "@/components/volunteer/EventVolunteering": { default: "Volunteering" },
   "@/components/volunteer/VolunteerRolesSheet": { default: "VolunteerRoles" },

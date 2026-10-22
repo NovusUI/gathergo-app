@@ -5,11 +5,11 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import AppToast from "@/components/ui/AppToast";
-import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { useAuth } from "@/context/AuthContext";
-import type { GatherGoMascotVariant } from "@/constants/mascot";
+import type { GatherGoMascotVariant } from "@/components/gogo/mascot/constants";
 import {
   useResolveWalletPayoutAccount,
   useStartBusinessKyc,

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import PermissionBadge from "@/components/scanner/PermissionBadge";
 import QuickScanCard from "@/components/scanner/QuickScanCard";
 import ScannerStats from "@/components/scanner/ScannerStats";

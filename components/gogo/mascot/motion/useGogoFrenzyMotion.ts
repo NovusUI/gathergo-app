@@ -1,5 +1,5 @@
 import type { FeedFrenzyLevel } from "@/constants/feedFrenzy";
-import { rotationAt, svgTransformAdapter } from "@/utils/svgMotion";
+import { rotationAt, svgTransformAdapter } from "@/components/gogo/mascot/motion/svgMotion";
 import { useEffect } from "react";
 import {
   cancelAnimation,

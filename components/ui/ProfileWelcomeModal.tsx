@@ -1,10 +1,10 @@
 import CustomButton from "@/components/buttons/CustomBtn1";
-import { getProfileWelcomeCopy } from "@/constants/mascot";
+import { getProfileWelcomeCopy } from "@/components/gogo/mascot/constants";
 import type { User } from "@/types/auth";
 import { Modal, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
-import { GatherGoMascot } from "./GatherGoMascot";
-import { MascotMessage } from "./MascotMessage";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
+import { MascotMessage } from "@/components/gogo/mascot/MascotMessage";
 
 type ProfileWelcomeModalProps = {
   profile: Pick<User, "fullName" | "birthDate">;

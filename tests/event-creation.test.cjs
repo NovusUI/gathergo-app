@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { loadTypeScript } = require("./loadTypeScript.cjs");
 const { buildEventCreationDraft, applyEventCreationUpdates } = loadTypeScript(
-  "utils/eventCreation.ts",
+  "components/gogo/tasks/eventCreation/draft.ts",
 );
 const { buildEventDateTimeIso } = loadTypeScript("utils/dateTimeHandler.ts");
 
@@ -116,10 +116,10 @@ let requests;
 let pending;
 let respond;
 const { useGogoEventCreation: runConversationHook } = loadTypeScript(
-  "hooks/useGogoEventCreation.ts",
+  "components/gogo/tasks/eventCreation/useGogoEventCreation.ts",
   {
     react,
-    "@/services/serviceFn": {
+    "@/components/gogo/services/api": {
       getEventCreationReply: async (payload, signal) => {
         requests.push({ payload, signal });
         return respond();
@@ -150,6 +150,8 @@ function reset() {
   form = draft();
   requests = [];
   pending = false;
+  keyboardMetrics = undefined;
+  keyboardListeners.clear();
   respond = async () => ({
     data: {
       reply: "Where should people meet?",
@@ -276,14 +278,23 @@ const native = Object.fromEntries(
     (name) => [name, name],
   ),
 );
+let keyboardMetrics;
+const keyboardListeners = new Map();
+native.Keyboard = {
+  metrics: () => keyboardMetrics,
+  addListener: (name, listener) => {
+    keyboardListeners.set(name, listener);
+    return { remove: () => keyboardListeners.delete(name) };
+  },
+};
 const { default: GogoEventCreator } = loadTypeScript(
-  "components/eventInfo/GogoEventCreator.tsx",
+  "components/gogo/tasks/eventCreation/GogoEventCreator.tsx",
   {
     react,
     "react-native": native,
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },
     "@/components/ui/AppLoader": { default: "SmallGogoLoader" },
-    "@/components/ui/GatherGoMascot": { GatherGoMascot: "WavingGogo" },
+    "@/components/gogo/mascot/GatherGoMascot": { GatherGoMascot: "WavingGogo" },
     "lucide-react-native": { ArrowUp: "Arrow", ArrowUpRight: "Arrow" },
     twrnc: { default: () => ({}) },
   },
@@ -546,7 +557,6 @@ const uiComponents = Object.fromEntries(
     ["eventInfo/EventStoryFields", "StoryEditor"],
     ["eventInfo/VolunteerSetupFields", "VolunteerEditor"],
     ["eventInfo/EventFundraisingFields", "FundraisingEditor"],
-    ["eventInfo/GogoEventCreator", "GogoCreator"],
     ["eventInfo/Location", "LocationEditor"],
     ["eventInfo/Pricing", "PricingEditor"],
     ["inputs/CustomInput1", "Input"],
@@ -565,6 +575,7 @@ const uiConversation = {
 };
 const { default: NewEvent } = loadTypeScript("app/(app)/new-event.tsx", {
   ...uiComponents,
+  "@/components/gogo/tasks/eventCreation/GogoEventCreator": { default: "GogoCreator" },
   react,
   "react-native": {
     ...native,
@@ -575,7 +586,7 @@ const { default: NewEvent } = loadTypeScript("app/(app)/new-event.tsx", {
   twrnc: { default: () => ({}) },
   "lucide-react-native": { CheckCheck: "Check" },
   "expo-router": { useLocalSearchParams: () => ({}) },
-  "@/hooks/useGogoEventCreation": {
+  "@/components/gogo/tasks/eventCreation/useGogoEventCreation": {
     useGogoEventCreation: () => uiConversation,
   },
   "@/utils/navigation": {
@@ -848,7 +859,7 @@ test("the focused Gogo answer stays in view when the keyboard shrinks the viewpo
   });
   const scroll = [...nodes(tree)].find((node) => node.type === "ScrollView");
   const content = [...nodes(tree)].find(
-    (node) => node.type === "View" && node.props.collapsable === false,
+    (node) => node.type === "View" && Array.isArray(node.props.style),
   );
   const input = [...nodes(tree)].find((node) => node.type === "TextInput");
   const host = {};
@@ -862,6 +873,9 @@ test("the focused Gogo answer stays in view when the keyboard shrinks the viewpo
       assert.equal(ancestor, host);
       measured(0, inputTop, 280, 100);
     },
+  };
+  tree.props.ref.current = {
+    measureInWindow: (measured) => measured(0, 100, 320, viewportHeight),
   };
   scroll.props.ref.current = {
     scrollTo: ({ y }) => {
@@ -901,13 +915,18 @@ test("keyboard layout changes do not move a blurred or unmounted Gogo input", ()
   });
   const scroll = [...nodes(tree)].find((node) => node.type === "ScrollView");
   const content = [...nodes(tree)].find(
-    (node) => node.type === "View" && node.props.collapsable === false,
+    (node) => node.type === "View" && Array.isArray(node.props.style),
   );
   const input = [...nodes(tree)].find((node) => node.type === "TextInput");
   let focused = false;
   let measured;
   const offsets = [];
-  scroll.props.ref.current = { scrollTo: (offset) => offsets.push(offset) };
+  tree.props.ref.current = {
+    measureInWindow: (measured) => measured(0, 100, 320, 600),
+  };
+  scroll.props.ref.current = {
+    scrollTo: (offset) => offsets.push(offset),
+  };
   content.props.ref.current = {};
   input.props.ref.current = {
     isFocused: () => focused,
@@ -927,6 +946,155 @@ test("keyboard layout changes do not move a blurred or unmounted Gogo input", ()
   input.props.ref.current = null;
   measured(0, 300, 280, 100);
   assert.deepEqual(offsets, []);
+});
+
+function keyboardAnswer() {
+  const options = {
+    conversation: {
+      messages: [
+        {
+          role: "assistant",
+          content: "What’s your idea?",
+          choices: [],
+          section: null,
+        },
+      ],
+      isPending: false,
+      error: null,
+    },
+  };
+  const render = () => screen(options);
+  const tree = render();
+  const scroll = [...nodes(tree)].find((node) => node.type === "ScrollView");
+  const input = [...nodes(tree)].find((node) => node.type === "TextInput");
+  const content = [...nodes(tree)].find(
+    (node) => node.type === "View" && Array.isArray(node.props.style),
+  );
+  const frame = {
+    top: 100,
+    height: 600,
+    contentHeight: 600,
+    inputTop: 440,
+    offset: 0,
+  };
+  tree.props.ref.current = {
+    measureInWindow: (measured) => measured(0, frame.top, 320, frame.height),
+  };
+  scroll.props.ref.current = {
+    scrollTo: ({ y }) => {
+      const padding = [...nodes(render())].find(
+        (node) => node.type === "ScrollView",
+      ).props.contentContainerStyle.paddingBottom;
+      frame.offset = Math.min(
+        y,
+        Math.max(0, frame.contentHeight + padding - frame.height),
+      );
+    },
+  };
+  content.props.ref.current = {};
+  input.props.ref.current = {
+    isFocused: () => true,
+    measureLayout: (_ancestor, measured) => {
+      const height = [...nodes(render())]
+        .find((node) => node.type === "TextInput")
+        .props.style.at(-1).minHeight;
+      measured(0, frame.inputTop, 280, height);
+    },
+  };
+  const cleanup = hooks.effects[0]();
+  const keyboard = (name, top) => {
+    keyboardMetrics = name === "keyboardDidHide" ? undefined : { screenY: top };
+    keyboardListeners.get(name)({ endCoordinates: keyboardMetrics });
+  };
+  const assertVisible = () => {
+    const style = [...nodes(render())]
+      .find((node) => node.type === "TextInput")
+      .props.style.at(-1);
+    const visibleHeight = Math.min(
+      frame.height,
+      (keyboardMetrics?.screenY ?? frame.top + frame.height) - frame.top,
+    );
+    assert.ok(frame.inputTop - frame.offset >= 0);
+    assert.ok(frame.inputTop - frame.offset + style.minHeight <= visibleHeight);
+  };
+  return {
+    render,
+    get scroll() {
+      return [...nodes(render())].find((node) => node.type === "ScrollView");
+    },
+    viewport: tree,
+    input,
+    content,
+    frame,
+    cleanup,
+    keyboard,
+    assertVisible,
+  };
+}
+
+test("Gogo reserves actual keyboard overlap even when the window does not resize, without doubling resized insets", () => {
+  reset();
+  const ui = keyboardAnswer();
+  ui.input.props.onFocus();
+  ui.keyboard("keyboardDidShow", 420);
+  assert.equal(ui.scroll.props.contentContainerStyle.paddingBottom, 280);
+  ui.scroll.props.onContentSizeChange(320, 880);
+  ui.assertVisible();
+  ui.keyboard("keyboardDidChangeFrame", 360);
+  assert.equal(ui.scroll.props.contentContainerStyle.paddingBottom, 340);
+  ui.assertVisible();
+  ui.frame.height = 260;
+  ui.frame.inputTop = 300;
+  ui.scroll.props.onLayout();
+  assert.equal(ui.scroll.props.contentContainerStyle.paddingBottom, 0);
+  ui.assertVisible();
+  ui.keyboard("keyboardDidHide");
+  assert.equal(ui.scroll.props.contentContainerStyle.paddingBottom, 0);
+  assert.equal(
+    [...nodes(ui.render())]
+      .find((node) => node.type === "TextInput")
+      .props.style.at(-1).maxHeight,
+    160,
+  );
+  ui.cleanup();
+  assert.equal(keyboardListeners.size, 0);
+});
+
+test("the whole multiline Gogo field fits a compact keyboard viewport and repositions as text and layout change", () => {
+  reset();
+  const ui = keyboardAnswer();
+  keyboardMetrics = { screenY: 200 };
+  ui.input.props.onFocus();
+  const input = [...nodes(ui.render())].find(
+    (node) => node.type === "TextInput",
+  );
+  assert.deepEqual(input.props.style.at(-1), { minHeight: 68, maxHeight: 68 });
+  ui.assertVisible();
+  ui.frame.inputTop = 480;
+  input.props.onContentSizeChange();
+  ui.assertVisible();
+  ui.frame.inputTop = 360;
+  ui.content.props.onLayout();
+  ui.assertVisible();
+  ui.frame.inputTop = 410;
+  input.props.onLayout();
+  ui.assertVisible();
+  ui.cleanup();
+});
+
+test("an outstanding viewport measurement cannot scroll or change an unmounted Gogo input", () => {
+  reset();
+  const ui = keyboardAnswer();
+  let finishMeasurement;
+  ui.viewport.props.ref.current.measureInWindow = (callback) => {
+    finishMeasurement = callback;
+  };
+  ui.input.props.onFocus();
+  ui.input.props.ref.current = null;
+  finishMeasurement(0, 100, 320, 100);
+  assert.equal(ui.frame.offset, 0);
+  assert.equal(ui.scroll.props.contentContainerStyle.paddingBottom, 0);
+  ui.cleanup();
 });
 test("event creation enables native keyboard avoidance on Android and iOS", () => {
   reset();

@@ -9,10 +9,6 @@ import {
 } from "@/types/event";
 import { HomeAdCardsResponse } from "@/types/home";
 import {
-  ImpactSuggestionPayload,
-  ImpactSuggestionResponse,
-} from "@/types/impact";
-import {
   WalletBanksResponse,
   WalletKycResponse,
   WalletOnboardingResponse,
@@ -40,7 +36,6 @@ import {
   getDashboardData,
   getHomeAdCards,
   getDashboardEvents,
-  getImpactSuggestions,
   getEventDashboardData,
   getEventDetails,
   getWalletBanksFn,
@@ -368,21 +363,6 @@ export const useEventImageStatus = (eventId: string, options = {}) => {
       const data = query.state.data?.data;
       return data?.isProcessing ? 3000 : false;
     },
-    ...options,
-  });
-};
-
-export const useImpactSuggestions = (
-  payload: ImpactSuggestionPayload,
-  options?: { enabled?: boolean }
-) => {
-  return useQuery<ImpactSuggestionResponse>({
-    queryKey: [...QUERY_KEYS.impactSuggestions, "ai", payload],
-    queryFn: ({ signal }) => getImpactSuggestions(payload, signal),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
     ...options,
   });
 };

@@ -1,4 +1,4 @@
-import { GogoLoadingArtwork } from "@/components/ui/GogoLoadingArtwork";
+import { GogoLoadingArtwork } from "@/components/gogo/mascot/GogoLoadingArtwork";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import tw from "twrnc";

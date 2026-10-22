@@ -1,5 +1,5 @@
-import type { GogoPose } from "@/constants/mascot";
-import { rotationAt, svgTransformAdapter } from "@/utils/svgMotion";
+import type { GogoPose } from "@/components/gogo/mascot/constants";
+import { rotationAt, svgTransformAdapter } from "@/components/gogo/mascot/motion/svgMotion";
 import { useEffect } from "react";
 import {
   cancelAnimation,

@@ -720,7 +720,7 @@ const { default: EventStoryFields } = loadTypeScript(
     "@/utils/globalErrorHandler": {
       showGlobalWarning: (message) => volunteerWarnings.push(message),
     },
-    "./ImpactSelector": { default: "ImpactSelector" },
+    "@/components/gogo/tasks/impactSuggestions/ImpactSelector": { default: "ImpactSelector" },
     "react-hook-form": {
       Controller: "Controller",
       useWatch: ({ name }) => name.map((key) => formValues[key]),
@@ -1088,7 +1088,7 @@ const { default: MyVolunteering } = loadTypeScript(
   "app/(app)/my-volunteering.tsx",
   {
     "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
-    "@/components/ui/MascotMoment": { MascotMoment: "GogoEmptyState" },
+    "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoEmptyState" },
     "@/components/ui/AppRefreshControl": refreshComponents,
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },

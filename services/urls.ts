@@ -27,7 +27,6 @@ export const USER_URL = {
 };
 
 export const EVENT_URL = {
-  creationAssistant: base_url + "/events/creation-assistant",
   createEvent: base_url + "/events",
   updateEvent: (eventId: string) => base_url + `/events/${eventId}`,
   getForyouEvents: base_url + "/events/for-you",
@@ -71,10 +70,6 @@ export const REGISTRATION_URL = {
 
 export const SEARCH_URL = {
   getSearchResult: base_url + "/search",
-};
-
-export const IMPACT_URL = {
-  suggestions: base_url + "/impact/suggestions",
 };
 
 export const CARPOOL_URL = {

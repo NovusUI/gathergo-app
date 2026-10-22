@@ -4,6 +4,7 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
+import { APP_CONTENT_BACKGROUND } from "@/constants/appLaunch";
 import AppToast from "@/components/ui/AppToast";
 import { useAuthStore } from "@/store/auth";
 import { useOnboardingStore } from "@/store/onboarding";
@@ -31,6 +32,7 @@ function AppContent() {
   const { hasHydrated: onboardingHydrated, hydrate } = useOnboardingStore();
   const navigation = useNavigationContainerRef();
   const [laidOut, setLaidOut] = useState(false);
+  const [splashHidden, setSplashHidden] = useState(false);
   const handleLayout = useCallback(() => setLaidOut(true), []);
 
   useEffect(() => {
@@ -38,16 +40,34 @@ function AppContent() {
   }, [hydrate]);
 
   useEffect(() => {
-    if (!laidOut) return;
-    const hideNativeSplash = () => {
-      void SplashScreen.hideAsync();
+    if (!laidOut || splashHidden) return;
+    let frame: number | undefined;
+
+    const hideWhenScreenReady = () => {
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+        frame = undefined;
+      }
+      if (!navigation.isReady()) return;
+      const route = navigation.getCurrentRoute();
+      // Route groups can be focused while an authentication redirect is pending.
+      if (!route || route.name.startsWith("(")) return;
+
+      frame = requestAnimationFrame(() => {
+        setSplashHidden(true);
+        void SplashScreen.hideAsync();
+      });
     };
-    if (navigation.isReady()) {
-      hideNativeSplash();
-      return;
-    }
-    return navigation.addListener("ready", hideNativeSplash);
-  }, [laidOut, navigation]);
+    const removeReadyListener = navigation.addListener("ready", hideWhenScreenReady);
+    const removeStateListener = navigation.addListener("state", hideWhenScreenReady);
+    hideWhenScreenReady();
+
+    return () => {
+      removeReadyListener();
+      removeStateListener();
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, [laidOut, navigation, splashHidden]);
 
   if (loading || !hasHydrated || !onboardingHydrated) return null;
 
@@ -55,7 +75,7 @@ function AppContent() {
     <BottomSheetModalProvider>
       <View
         onLayout={handleLayout}
-        style={{ flex: 1, backgroundColor: "#01082E" }}
+        style={{ flex: 1, backgroundColor: APP_CONTENT_BACKGROUND }}
       >
         <RootNavigator />
       </View>
@@ -82,7 +102,9 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#01082E" }}>
+    <GestureHandlerRootView
+      style={{ flex: 1, backgroundColor: APP_CONTENT_BACKGROUND }}
+    >
       <PersistQueryClientProvider
         client={queryClient}
         persistOptions={{ persister }}

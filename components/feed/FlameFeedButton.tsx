@@ -4,8 +4,8 @@ import {
   type FeedFrenzyLevel
 } from "@/constants/feedFrenzy";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
-import { GogoFrenzyArtwork } from "./GogoFrenzyArtwork";
-import { GogoCarFrenzyArtwork } from "./GogoCarFrenzyArtwork";
+import { GogoFrenzyArtwork } from "@/components/gogo/mascot/GogoFrenzyArtwork";
+import { GogoCarFrenzyArtwork } from "@/components/gogo/mascot/GogoCarFrenzyArtwork";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {

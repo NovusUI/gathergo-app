@@ -82,11 +82,11 @@ const animationMock = {
     return value;
   },
 };
-loadTypeScript("utils/svgMotion.ts", {
+loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "android" } },
   "react-native-reanimated": animationMock,
 });
-const motion = loadTypeScript("hooks/useGogoFrenzyMotion.ts", {
+const motion = loadTypeScript("components/gogo/mascot/motion/useGogoFrenzyMotion.ts", {
   react: { useEffect: (effect) => effects.push(effect) },
   "react-native-reanimated": animationMock,
 });
@@ -189,15 +189,15 @@ const svgMock = {
   RadialGradient: "RadialGradient",
   Stop: "Stop",
 };
-const artworkParts = loadTypeScript("components/ui/GogoArtworkParts.tsx", {
+const artworkParts = loadTypeScript("components/gogo/mascot/GogoArtworkParts.tsx", {
   "react-native-reanimated": animationMock,
   "react-native-svg": svgMock,
 });
 const { GogoFrenzyArtwork } = loadTypeScript(
-  "components/feed/GogoFrenzyArtwork.tsx",
+  "components/gogo/mascot/GogoFrenzyArtwork.tsx",
   {
-    "@/components/ui/GogoArtworkParts": artworkParts,
-    "@/hooks/useGogoFrenzyMotion": motion,
+    "@/components/gogo/mascot/GogoArtworkParts": artworkParts,
+    "@/components/gogo/mascot/motion/useGogoFrenzyMotion": motion,
     react: { useId: () => "test-aura" },
     "react-native-svg": svgMock,
   },
@@ -279,8 +279,8 @@ const { default: FlameFeedButton } = loadTypeScript(
     "@/hooks/useReducedMotionPreference": {
       useReducedMotionPreference: () => reducedMotion,
     },
-    "./GogoFrenzyArtwork": { GogoFrenzyArtwork: "FrenzyArtwork" },
-    "./GogoCarFrenzyArtwork": { GogoCarFrenzyArtwork: "CarFrenzyArtwork" },
+    "@/components/gogo/mascot/GogoFrenzyArtwork": { GogoFrenzyArtwork: "FrenzyArtwork" },
+    "@/components/gogo/mascot/GogoCarFrenzyArtwork": { GogoCarFrenzyArtwork: "CarFrenzyArtwork" },
     "expo-haptics": {
       impactAsync: () => Promise.resolve(),
       ImpactFeedbackStyle: { Medium: "medium" },

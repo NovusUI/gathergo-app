@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
-import FullScreenLoader from "@/components/ui/FullScreenLoader";
+import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import { useAuthStore } from "@/store/auth";
 import { Redirect, Stack, useSegments } from "expo-router";
 
@@ -9,7 +9,7 @@ export default function AppLayout() {
   const segments = useSegments();
 
   if (loading || !hasHydrated) {
-    return <FullScreenLoader />;
+    return <AppLaunchScreen />;
   }
 
   if (!isAuthenticated) {

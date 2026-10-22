@@ -14,7 +14,7 @@ const { Easing } = loadTypeScript(
     ),
   },
 );
-const { rotationAt } = loadTypeScript("utils/svgMotion.ts", {
+const { rotationAt } = loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "android" } },
   "react-native-reanimated": {
     createAnimatedPropAdapter: (adapter) => adapter,
@@ -24,9 +24,9 @@ const {
   useGogoOnboardingCarpoolMotion,
   useGogoOnboardingSparkle,
   useGogoOnboardingSpeed,
-} = loadTypeScript("hooks/useGogoOnboardingCarpoolMotion.ts", {
+} = loadTypeScript("components/gogo/mascot/motion/useGogoOnboardingCarpoolMotion.ts", {
   react: { useEffect: (effect) => effects.push(effect) },
-  "@/utils/svgMotion": { rotationAt, svgTransformAdapter: undefined },
+  "@/components/gogo/mascot/motion/svgMotion": { rotationAt, svgTransformAdapter: undefined },
   "react-native-reanimated": {
     Easing,
     ReduceMotion: { Never: "never" },

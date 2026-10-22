@@ -103,6 +103,24 @@ Registered for an owned place, and block repeat submissions. Registration checks
 must finish successfully before a new free registration can begin. Settings
 scrolls so all destinations and Logout remain reachable on smaller screens.
 
+## Gogo feature
+
+The `components/gogo/` folder owns Gogo's AI tasks and reusable mascot presentation:
+
+- `components/gogo/tasks/eventCreation/`: the anchored event guide, conversation state,
+  draft mapping, and event-creation API types.
+- `components/gogo/tasks/impactSuggestions/`: the impact-map selector, query, and API types.
+- `components/gogo/services/`: authenticated AI requests and their endpoint URLs.
+- `components/gogo/mascot/`: shared artwork, messages, palettes, and native animation hooks.
+
+Screens supply the context for their task: the event creator receives the current
+form and the impact selector receives the current impact draft. Mascot views can
+also be used independently for onboarding, loaders, and status messages. This
+keeps task-specific form state separate from the shared presentation that a future
+floating assistant can use. Global conversation and automatic screen context need
+their own backend contract before being connected. Current AI requests use the
+existing event-drafting and impact-suggestions endpoints.
+
 ## Gogo mascot
 
 The shared GatherGoMascot uses the supplied Gogo artwork, with its mint body,
@@ -158,9 +176,12 @@ with the mark inside the adaptive icon safe area.
 
 ## Startup and first-time welcome
 
-Startup uses the GatherGo logo on the app's navy background and stays visible
-until fonts, saved preferences, and navigation are ready. The logo-to-Gogo
-animation from `assets/mascot/gogo-startup.svg` plays for 5.6 seconds as a
+Startup uses the GatherGo app logo on navy (`#01082E`) and stays visible
+until fonts and saved preferences are restored, navigation has reached a
+destination screen, and its next render frame is ready. Root navigation groups
+switch without a fade during the handoff. Authentication loading screens use
+the same logo, size, and navy background as the native app window and React root.
+The logo-to-Gogo animation from `assets/mascot/gogo-startup.svg` plays for 5.6 seconds as a
 welcome screen with the heading “Impact begins here” before onboarding and
 respects reduced motion. “Let’s get started” opens the three onboarding slides,
 each with an illustration and a short heading: Make an Impact, Go together,

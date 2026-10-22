@@ -1,6 +1,51 @@
 const assert = require("node:assert/strict");
-const { test } = require("node:test");
+const { after, test } = require("node:test");
 const { loadTypeScript } = require("./loadTypeScript.cjs");
+const appConfig = require("../app.json").expo;
+const { APP_LAUNCH_BACKGROUND, APP_LAUNCH_LOGO_SIZE } = loadTypeScript(
+  "constants/appLaunch.ts",
+);
+
+const { default: AppLaunchScreen } = loadTypeScript(
+  "components/ui/AppLaunchScreen.tsx",
+  {
+    "react-native": {
+      Image: "Logo",
+      StatusBar: "StatusBar",
+      StyleSheet: { create: (styles) => styles },
+      View: "View",
+    },
+    "../../assets/images/gglogo.png": "app-logo",
+  },
+);
+test("native splash and startup loading use the same app logo on navy", () => {
+  const splash = appConfig.plugins.find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === "expo-splash-screen",
+  )[1];
+  assert.equal(splash.image, appConfig.icon);
+  assert.equal(splash.image, "./assets/images/gglogo.png");
+  assert.equal(splash.imageWidth, APP_LAUNCH_LOGO_SIZE);
+  assert.equal(splash.resizeMode, "contain");
+  assert.equal(APP_LAUNCH_BACKGROUND, "#01082E");
+  assert.equal(splash.backgroundColor, APP_LAUNCH_BACKGROUND);
+  const screen = AppLaunchScreen();
+  assert.equal(screen.props.style.backgroundColor, APP_LAUNCH_BACKGROUND);
+  assert.equal(screen.props.style.alignItems, "center");
+  assert.equal(screen.props.style.justifyContent, "center");
+  assert.equal(screen.props.accessibilityState.busy, true);
+  const logo = [...nodes(screen)].find((node) => node.type === "Logo");
+  assert.equal(logo.props.source, "app-logo");
+  assert.deepEqual(logo.props.style, {
+    width: APP_LAUNCH_LOGO_SIZE,
+    height: APP_LAUNCH_LOGO_SIZE,
+  });
+  assert.equal(logo.props.resizeMode, "contain");
+  assert.equal(
+    [...nodes(screen)].find((node) => node.type === "StatusBar").props
+      .backgroundColor,
+    APP_LAUNCH_BACKGROUND,
+  );
+});
 
 let effects = [],
   values = [],
@@ -31,14 +76,14 @@ const animation = {
   runOnJS: (fn) => fn,
 };
 const { useGogoStartupMotion, startupValue } = loadTypeScript(
-  "hooks/useGogoStartupMotion.ts",
+  "components/gogo/mascot/motion/useGogoStartupMotion.ts",
   {
     react: {
       useEffect: (effect) => effects.push(effect),
       useRef: (current) => ({ current }),
       useCallback: (fn) => fn,
     },
-    "@/utils/svgMotion": {},
+    "@/components/gogo/mascot/motion/svgMotion": {},
     "react-native-reanimated": animation,
   },
 );
@@ -122,9 +167,30 @@ let state = [],
   hydrated = true,
   onboardingHydrated = true,
   navigationReady = true,
+  currentRoute,
   readyListener,
+  stateListener,
   hidden = 0,
   fontsReady = true;
+const frames = new Map();
+let nextFrame = 0;
+const originalRequestAnimationFrame = global.requestAnimationFrame;
+const originalCancelAnimationFrame = global.cancelAnimationFrame;
+global.requestAnimationFrame = (callback) => {
+  const id = ++nextFrame;
+  frames.set(id, callback);
+  return id;
+};
+global.cancelAnimationFrame = (id) => frames.delete(id);
+after(() => {
+  global.requestAnimationFrame = originalRequestAnimationFrame;
+  global.cancelAnimationFrame = originalCancelAnimationFrame;
+});
+function paintFrame() {
+  const callbacks = [...frames.values()];
+  frames.clear();
+  callbacks.forEach((callback) => callback(0));
+}
 const hooks = {
   useState(initial) {
     const index = cursor++;
@@ -145,11 +211,14 @@ const hooks = {
 };
 const navigation = {
   isReady: () => navigationReady,
+  getCurrentRoute: () => currentRoute,
   addListener: (event, listener) => {
-    assert.equal(event, "ready");
-    readyListener = listener;
+    assert.ok(event === "ready" || event === "state");
+    if (event === "ready") readyListener = listener;
+    else stateListener = listener;
     return () => {
-      readyListener = undefined;
+      if (event === "ready") readyListener = undefined;
+      else stateListener = undefined;
     };
   },
 };
@@ -216,9 +285,12 @@ function resetLayout() {
   hydrated = true;
   onboardingHydrated = true;
   navigationReady = true;
+  currentRoute = { key: "onboarding", name: "onboarding/index" };
   readyListener = undefined;
+  stateListener = undefined;
   hidden = 0;
   fontsReady = true;
+  frames.clear();
 }
 function appContent() {
   resetLayout();
@@ -240,6 +312,14 @@ test("the native logo stays visible during font loading", () => {
   assert.equal(RootLayout(), null);
   assert.equal(hidden, 0);
 });
+test("the post-splash native window and app shell match the navy screens", () => {
+  resetLayout();
+  assert.equal(appConfig.backgroundColor, "#01082E");
+  assert.equal(
+    RootLayout().props.style.backgroundColor,
+    appConfig.backgroundColor,
+  );
+});
 test("the native logo stays visible until auth and welcome preferences are restored", () => {
   const render = appContent();
   loading = true;
@@ -254,7 +334,7 @@ test("the native logo stays visible until auth and welcome preferences are resto
   assert.equal(render().screen.type, "Sheets");
   assert.equal(hidden, 0);
 });
-test("the logo hands off directly to mounted navigation after layout", () => {
+test("the logo waits for the destination render frame after layout", () => {
   const render = appContent();
   const { screen } = render();
   const content = screen.props.children;
@@ -263,6 +343,8 @@ test("the logo hands off directly to mounted navigation after layout", () => {
   assert.equal(hidden, 0);
   content.props.onLayout();
   render();
+  assert.equal(hidden, 0);
+  paintFrame();
   assert.equal(hidden, 1);
 });
 test("layout alone cannot hide the native logo before navigation is ready", () => {
@@ -273,11 +355,124 @@ test("layout alone cannot hide the native logo before navigation is ready", () =
   assert.equal(hidden, 0);
   navigationReady = true;
   readyListener();
+  assert.equal(hidden, 0);
+  paintFrame();
   assert.equal(hidden, 1);
   cleanups
     .filter((fn) => typeof fn === "function")
     .forEach((cleanup) => cleanup());
   assert.equal(readyListener, undefined);
+  assert.equal(stateListener, undefined);
+});
+test("navigation readiness cannot expose an empty route group during a redirect", () => {
+  const render = appContent();
+  currentRoute = undefined;
+  render().screen.props.children.props.onLayout();
+  render();
+  for (const name of [undefined, "(app)", "(auth)", "(tabs)"]) {
+    currentRoute = name ? { key: name, name } : undefined;
+    stateListener();
+    paintFrame();
+    assert.equal(hidden, 0);
+  }
+  currentRoute = { key: "onboarding", name: "onboarding/index" };
+  stateListener();
+  assert.equal(hidden, 0);
+  paintFrame();
+  assert.equal(hidden, 1);
+});
+test("startup can finish on onboarding, home, profile setup, preferences or a deep link", () => {
+  for (const name of [
+    "onboarding/index",
+    "index",
+    "profile-setup/index",
+    "preference/index",
+    "event/[id]",
+    "carpool/[id]",
+  ]) {
+    const render = appContent();
+    currentRoute = { key: name, name };
+    render().screen.props.children.props.onLayout();
+    render();
+    paintFrame();
+    assert.equal(hidden, 1, name);
+  }
+});
+test("a redirect before the pending frame keeps the logo visible", () => {
+  const render = appContent();
+  render().screen.props.children.props.onLayout();
+  render();
+  currentRoute = { key: "auth", name: "(auth)" };
+  stateListener();
+  paintFrame();
+  assert.equal(hidden, 0);
+  currentRoute = { key: "onboarding", name: "onboarding/index" };
+  stateListener();
+  paintFrame();
+  assert.equal(hidden, 1);
+});
+test("unmounting cancels pending splash dismissal and navigation listeners", () => {
+  const render = appContent();
+  render().screen.props.children.props.onLayout();
+  const { cleanups } = render();
+  cleanups
+    .filter((cleanup) => typeof cleanup === "function")
+    .forEach((cleanup) => cleanup());
+  paintFrame();
+  assert.equal(hidden, 0);
+  assert.equal(readyListener, undefined);
+  assert.equal(stateListener, undefined);
+});
+test("later navigation does not dismiss the launch screen again", () => {
+  const render = appContent();
+  render().screen.props.children.props.onLayout();
+  const { cleanups } = render();
+  paintFrame();
+  cleanups
+    .filter((cleanup) => typeof cleanup === "function")
+    .forEach((cleanup) => cleanup());
+  render();
+  paintFrame();
+  assert.equal(hidden, 1);
+  assert.equal(readyListener, undefined);
+  assert.equal(stateListener, undefined);
+});
+
+let authLoading = false,
+  authHydrated = true,
+  authenticated = true;
+const { default: RootNavigator } = loadTypeScript(
+  "navigators/RootNavigators.tsx",
+  {
+    "@/components/ui/AppLaunchScreen": { default: "LaunchScreen" },
+    "@/context/AuthContext": { useAuth: () => ({ loading: authLoading }) },
+    "@/store/auth": {
+      useAuthStore: () => ({
+        isAuthenticated: authenticated,
+        hasHydrated: authHydrated,
+      }),
+    },
+    "expo-router": {
+      Stack: Object.assign(function Stack() {}, { Screen: "Screen" }),
+    },
+  },
+);
+test("startup authentication loading keeps the logo screen until navigation can open", () => {
+  authLoading = true;
+  authHydrated = true;
+  assert.equal(RootNavigator().type, "LaunchScreen");
+  authLoading = false;
+  authHydrated = false;
+  assert.equal(RootNavigator().type, "LaunchScreen");
+  authHydrated = true;
+  for (const value of [true, false]) {
+    authenticated = value;
+    assert.equal(RootNavigator().props.screenOptions.animation, "none");
+    assert.equal(
+      RootNavigator().props.children.props.name,
+      value ? "(app)" : "(auth)",
+    );
+  }
 });
 
 const stored = new Map();
@@ -311,7 +506,7 @@ const slideData = loadTypeScript("app/(auth)/onboarding/slides.ts");
 const { default: Onboarding } = loadTypeScript(
   "app/(auth)/onboarding/index.tsx",
   {
-    "@/components/ui/GogoWelcomeScreen": { default: "Welcome" },
+    "@/components/gogo/mascot/GogoWelcomeScreen": { default: "Welcome" },
     "@/store/onboarding": {
       useOnboardingStore: () => useOnboardingStore.getState(),
     },
@@ -388,14 +583,14 @@ test("unavailable preference storage reports the error and allows the welcome fl
 let reducedMotion = false,
   welcomeMotion;
 const { default: GogoWelcomeScreen } = loadTypeScript(
-  "components/ui/GogoWelcomeScreen.tsx",
+  "components/gogo/mascot/GogoWelcomeScreen.tsx",
   {
     "@/components/buttons/CustomBtn1": { default: "ContinueButton" },
     "@/components/buttons/SkipOnboardingButton": { default: "SkipButton" },
     "@/hooks/useReducedMotionPreference": {
       useReducedMotionPreference: () => reducedMotion,
     },
-    "@/hooks/useGogoStartupMotion": {
+    "@/components/gogo/mascot/motion/useGogoStartupMotion": {
       useGogoStartupMotion: (animated, onComplete, ready) => {
         welcomeMotion = { animated, onComplete, ready };
         return { value: animated ? 0 : 100 };
@@ -410,7 +605,7 @@ const { default: GogoWelcomeScreen } = loadTypeScript(
       StyleSheet: { create: (value) => value },
     },
     "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
-    "./GogoStartupArtwork": { GogoStartupArtwork: "Artwork" },
+    "@/components/gogo/mascot/GogoStartupArtwork": { GogoStartupArtwork: "Artwork" },
   },
 );
 test("the welcome uses navy throughout and Continue is available during the animation", () => {
@@ -543,7 +738,7 @@ const { default: OnboardingSlide } = loadTypeScript(
   {
     "@/components/ui/GgCircleArtwork": { default: "CircleArtwork" },
     "@/components/ui/LocalSvgAsset": { default: "Artwork" },
-    "@/components/ui/GogoOnboardingCarpoolArtwork": {
+    "@/components/gogo/mascot/GogoOnboardingCarpoolArtwork": {
       GogoOnboardingCarpoolArtwork: "CarpoolArtwork",
     },
     "@/hooks/useReducedMotionPreference": {

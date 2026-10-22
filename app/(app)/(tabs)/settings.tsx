@@ -1,6 +1,6 @@
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import AppLoader from "@/components/ui/AppLoader";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { showGlobalError } from "@/utils/globalErrorHandler";
 import { useState } from "react";

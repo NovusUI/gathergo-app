@@ -14,7 +14,7 @@ import PricingCard from "@/components/eventInfo/TicketCard";
 import FlameFeedButton from "@/components/feed/FlameFeedButton";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import AppToast from "@/components/ui/AppToast";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { getEventLinkMeta, normalizeEventLink } from "@/constants/eventLinks";

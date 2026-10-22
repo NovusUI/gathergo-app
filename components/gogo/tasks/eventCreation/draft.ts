@@ -2,7 +2,7 @@ import type { EventFormData } from "@/schemas/event";
 import type {
   EventCreationDraft,
   EventCreationUpdates,
-} from "@/types/eventCreation";
+} from "@/components/gogo/tasks/eventCreation/types";
 import { buildEventDateTimeIso, extractTime } from "@/utils/dateTimeHandler";
 import type { UseFormSetValue } from "react-hook-form";
 

@@ -1,14 +1,14 @@
 import type { EventFormData } from "@/schemas/event";
-import { getEventCreationReply } from "@/services/serviceFn";
+import { getEventCreationReply } from "@/components/gogo/services/api";
 import type {
   EventCreationAssistantReply,
   EventCreationAssistantRequest,
   EventCreationMessage,
-} from "@/types/eventCreation";
+} from "@/components/gogo/tasks/eventCreation/types";
 import {
   applyEventCreationUpdates,
   buildEventCreationDraft,
-} from "@/utils/eventCreation";
+} from "@/components/gogo/tasks/eventCreation/draft";
 import { useMutation } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";

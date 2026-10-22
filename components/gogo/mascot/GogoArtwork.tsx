@@ -1,8 +1,8 @@
-import { GOGO_PALETTE, type GogoPose } from "@/constants/mascot";
-import { useGogoConfetti, useGogoMotion } from "@/hooks/useGogoMotion";
+import { GOGO_PALETTE, type GogoPose } from "@/components/gogo/mascot/constants";
+import { useGogoConfetti, useGogoMotion } from "@/components/gogo/mascot/motion/useGogoMotion";
 import type { SharedValue } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
-import { AnimatedGroup, GogoArms, GogoBody } from "./GogoArtworkParts";
+import { AnimatedGroup, GogoArms, GogoBody } from "@/components/gogo/mascot/GogoArtworkParts";
 
 const CONFETTI = [
   { x: 30, width: 10, color: GOGO_PALETTE.coral, phase: 0, circle: false },

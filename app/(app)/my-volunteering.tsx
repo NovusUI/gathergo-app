@@ -2,7 +2,7 @@ import AppRefreshControl, {
   RefreshIndicator,
 } from "@/components/ui/AppRefreshControl";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import WithdrawApplicationButton from "@/components/volunteer/WithdrawApplicationButton";

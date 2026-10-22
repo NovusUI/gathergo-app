@@ -1,4 +1,3 @@
-import type { EventCreationAssistantRequest, EventCreationAssistantResponse } from "@/types/eventCreation";
 import { checkoutDeadline } from "@/utils/checkout";
 import client from "@/api/client";
 import type {
@@ -49,10 +48,6 @@ import {
 } from "@/types/event";
 import { HomeAdCardsResponse } from "@/types/home";
 import {
-  ImpactSuggestionPayload,
-  ImpactSuggestionResponse,
-} from "@/types/impact";
-import {
   ConfirmWalletPayoutProfileResponse,
   NotifyOnKycResolutionResponse,
   NotifyOnKycResolutionPayload,
@@ -91,7 +86,6 @@ import {
   DASHBOARD_URL,
   DONATION_URL,
   EVENT_URL,
-  IMPACT_URL,
   NOTIFICATION_URL,
   REGISTRATION_URL,
   SCANNER_URL,
@@ -432,30 +426,6 @@ export const createEvent = async (
   // Use fetch client instead of axios
   const data = await uploadClient.upload(EVENT_URL.createEvent, formData);
   return data;
-};
-
-export const getEventCreationReply = async (
-  payload: EventCreationAssistantRequest,
-  signal: AbortSignal
-): Promise<EventCreationAssistantResponse> => {
-  const response = await client.post<EventCreationAssistantResponse>(
-    EVENT_URL.creationAssistant,
-    payload,
-    { signal }
-  );
-  return response.data;
-};
-
-export const getImpactSuggestions = async (
-  payload: ImpactSuggestionPayload,
-  signal?: AbortSignal
-): Promise<ImpactSuggestionResponse> => {
-  const response = await client.post<ImpactSuggestionResponse>(
-    IMPACT_URL.suggestions,
-    payload,
-    { signal }
-  );
-  return response.data;
 };
 
 // export const updateEvent = async (

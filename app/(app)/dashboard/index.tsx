@@ -3,7 +3,7 @@ import EventsOverview from "@/components/EventsOverview";
 import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import Payments from "@/components/ui/Payments";
 import { useDashboardData, useShortcut } from "@/hooks/useDashboard";
 import { useWalletOnboarding } from "@/services/queries";

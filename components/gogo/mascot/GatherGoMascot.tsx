@@ -2,7 +2,7 @@ import {
   GOGO_PALETTE,
   GOGO_POSES,
   type GatherGoMascotVariant,
-} from "@/constants/mascot";
+} from "@/components/gogo/mascot/constants";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import {
   CheckCircle2,
@@ -25,7 +25,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import tw from "twrnc";
-import { GogoArtwork } from "./GogoArtwork";
+import { GogoArtwork } from "@/components/gogo/mascot/GogoArtwork";
 
 type MascotIcon = ComponentType<{ size?: number; color?: string }>;
 export type GatherGoMascotPalette = Partial<{

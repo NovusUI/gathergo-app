@@ -47,12 +47,12 @@ const reanimated = {
   withDelay: (_delay, animation) => animation,
   withSequence: (...animations) => animations.at(-1),
 };
-loadTypeScript("utils/svgMotion.ts", {
+loadTypeScript("components/gogo/mascot/motion/svgMotion.ts", {
   "react-native": { Platform: { OS: "android" } },
   "react-native-reanimated": reanimated,
 });
 const { useGogoLoadingMotion, useGogoLoadingRing } = loadTypeScript(
-  "hooks/useGogoLoadingMotion.ts",
+  "components/gogo/mascot/motion/useGogoLoadingMotion.ts",
   {
     react: { useEffect: (effect) => effects.push(effect) },
     "react-native-reanimated": reanimated,
@@ -144,7 +144,7 @@ test("all loader loops stop on cleanup and disabled motion remains visible and s
 
 let reducedMotion = false;
 const loaderModule = loadTypeScript("components/ui/ImpactPageLoader.tsx", {
-  "@/components/ui/GogoLoadingArtwork": { GogoLoadingArtwork: "Artwork" },
+  "@/components/gogo/mascot/GogoLoadingArtwork": { GogoLoadingArtwork: "Artwork" },
   "@/hooks/useReducedMotionPreference": {
     useReducedMotionPreference: () => reducedMotion,
   },
@@ -197,7 +197,7 @@ test("full-screen and compact loaders retain page text, accessibility and caller
 });
 
 const { useGogoSpinnerMotion } = loadTypeScript(
-  "hooks/useGogoSpinnerMotion.ts",
+  "components/gogo/mascot/motion/useGogoSpinnerMotion.ts",
   {
     react: { useEffect: (effect) => effects.push(effect) },
     "react-native-reanimated": reanimated,
@@ -243,7 +243,7 @@ test("small spinner loops cancel on unmount and reduced motion removes all movem
 });
 
 const appLoaderModule = loadTypeScript("components/ui/AppLoader.tsx", {
-  "./GogoSpinnerArtwork": { GogoSpinnerArtwork: "SpinnerArtwork" },
+  "@/components/gogo/mascot/GogoSpinnerArtwork": { GogoSpinnerArtwork: "SpinnerArtwork" },
   "@/hooks/useReducedMotionPreference": {
     useReducedMotionPreference: () => reducedMotion,
   },
