@@ -27,6 +27,7 @@ export const USER_URL = {
 };
 
 export const EVENT_URL = {
+  creationAssistant: base_url + "/events/creation-assistant",
   createEvent: base_url + "/events",
   updateEvent: (eventId: string) => base_url + `/events/${eventId}`,
   getForyouEvents: base_url + "/events/for-you",

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-30 -40 260 270" width="520" height="540" role="img" aria-labelledby="t d">
+  <title id="t">Gogo building the site on a laptop</title>
+  <desc id="d">Gogo in a yellow hard hat types away at a laptop with the logo ring glowing on its lid, tongue out in concentration, while a bead of sweat drips and code symbols float up.</desc>
+  <style>
+    .fb { transform-box: fill-box; transform-origin: center; }
+    .nod { animation: nod 0.6s ease-in-out infinite alternate; }
+    .armL { transform-box: view-box; transform-origin: 28px 128px; animation: tapL 0.3s ease-in-out infinite alternate; }
+    .armR { transform-box: view-box; transform-origin: 172px 128px; animation: tapR 0.3s ease-in-out infinite alternate; animation-delay: -0.15s; }
+    .gaze { animation: read 2.4s ease-in-out infinite; }
+    .blink { transform-box: view-box; transform-origin: 100px 100px; animation: blink 4.2s linear infinite; }
+    .sweat { animation: sweat 2.6s ease-in infinite; }
+    .glow { animation: glow 1.2s ease-in-out infinite alternate; }
+    .ant { animation: ping 1.6s ease-in-out infinite; }
+    .code { animation: rise 2.6s ease-out infinite; opacity: 0; }
+    .c2 { animation-delay: -0.9s; } .c3 { animation-delay: -1.7s; }
+    @keyframes nod { from { transform: translateY(0); } to { transform: translateY(2px); } }
+    @keyframes tapL { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+    @keyframes tapR { from { transform: rotate(7deg); } to { transform: rotate(-7deg); } }
+    @keyframes read { 0%,100% { transform: translateX(-5px); } 50% { transform: translateX(5px); } }
+    @keyframes blink { 0%,93%,100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
+    @keyframes sweat { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(26px); opacity: 0; } }
+    @keyframes glow { from { opacity: .15; transform: scale(.9); } to { opacity: .45; transform: scale(1.15); } }
+    @keyframes ping { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+    @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-64px); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .nod,.armL,.armR,.gaze,.blink,.sweat,.glow,.ant,.code { animation: none; } .code { opacity: 0; } .sweat { opacity: 1; } }
+  </style>
+
+  <ellipse cx="100" cy="226" rx="96" ry="8" fill="#0B3B35" opacity="0.12"/>
+
+  <g class="nod">
+    <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+    <circle cx="44" cy="136" r="8" fill="#FF8F7E" opacity="0.7"/>
+    <circle cx="156" cy="136" r="8" fill="#FF8F7E" opacity="0.7"/>
+    <g class="blink">
+      <circle cx="70" cy="96" r="25" fill="#fff"/>
+      <circle cx="130" cy="96" r="25" fill="#fff"/>
+      <g class="gaze">
+        <circle cx="70" cy="107" r="11" fill="#0B3B35"/>
+        <circle cx="130" cy="107" r="11" fill="#0B3B35"/>
+        <circle cx="74" cy="102" r="3.5" fill="#fff"/>
+        <circle cx="134" cy="102" r="3.5" fill="#fff"/>
+      </g>
+    </g>
+    <path d="M46 62L90 72" stroke="#0B3B35" stroke-width="7" stroke-linecap="round"/>
+    <path d="M154 62L110 72" stroke="#0B3B35" stroke-width="7" stroke-linecap="round"/>
+    <path d="M110 148Q110 160 119 156Q122 148 114 146Z" fill="#FF7A8A"/>
+    <path d="M84 144Q100 152 116 144" fill="none" stroke="#0B3B35" stroke-width="7" stroke-linecap="round"/>
+
+    <!-- hard hat -->
+    <path d="M44 50C44 8 156 8 156 50Z" fill="#FFD84D"/>
+    <path d="M92 50V22Q100 18 108 22V50Z" fill="#F5B800"/>
+    <path d="M60 38Q68 22 88 17" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="4" stroke-linecap="round"/>
+    <rect x="34" y="44" width="132" height="12" rx="6" fill="#FFC72E"/>
+    <rect x="34" y="52" width="132" height="4" rx="2" fill="#E0A800"/>
+    <path d="M100 20V9" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+    <circle class="ant fb" cx="100" cy="0" r="9" fill="none" stroke="#0FB898" stroke-width="5"/>
+
+    <!-- sweat -->
+    <path class="sweat" d="M162 74C158 82 154 86 162 92C170 86 166 82 162 74Z" fill="#8FD9F7"/>
+  </g>
+
+  <!-- laptop (back of the lid faces us) -->
+  <rect x="4" y="212" width="192" height="10" rx="5" fill="#0B3B35"/>
+  <rect x="14" y="160" width="172" height="54" rx="10" fill="#17524A"/>
+  <rect x="20" y="166" width="160" height="42" rx="6" fill="none" stroke="#1F6D61" stroke-width="2"/>
+  <circle class="glow fb" cx="100" cy="187" r="19" fill="#1EEBC8"/>
+  <circle cx="100" cy="187" r="11" fill="none" stroke="#1EEBC8" stroke-width="5"/>
+
+  <!-- typing arms -->
+  <g class="armL">
+    <path d="M28 128Q10 152 44 158" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="46" cy="158" r="10" fill="#0FB898"/>
+  </g>
+  <g class="armR">
+    <path d="M172 128Q190 152 156 158" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="154" cy="158" r="10" fill="#0FB898"/>
+  </g>
+
+  <!-- floating code symbols -->
+  <g fill="none" stroke="#0FB898" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path class="code" d="M-14 138l-7 6 7 6M-2 138l7 6-7 6M-9 136l2 16"/>
+    <path class="code c2" d="M200 128l-7 6 7 6M212 128l7 6-7 6M205 126l2 16"/>
+    <path class="code c3" d="M-8 112l-7 6 7 6M4 112l7 6-7 6M-3 110l2 16"/>
+  </g>
+</svg>

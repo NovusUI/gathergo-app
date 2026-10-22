@@ -1,6 +1,6 @@
 export const GOGO_STARTUP_DURATION_MS = 5600;
 export const GOGO_STARTUP_SIZE = 240;
-export const GOGO_STARTUP_BACKGROUND = "#FFFFFF";
+export const GOGO_STARTUP_BACKGROUND = "#01082E";
 
 type StartupEase = 0 | 1 | 2 | 3 | 4;
 export type StartupProperty =

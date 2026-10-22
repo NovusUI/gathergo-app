@@ -3,11 +3,13 @@ import type { GatherGoMascotVariant } from "@/constants/mascot";
 import { useEffect, useRef } from "react";
 import { Animated, StyleProp, Text, View, ViewStyle } from "react-native";
 import tw from "twrnc";
+import { GogoComingSoonArtwork } from "./GogoComingSoonArtwork";
 import { GatherGoMascot } from "./GatherGoMascot";
 import { MascotMessage } from "./MascotMessage";
 
 type MascotMomentProps = {
   variant?: GatherGoMascotVariant;
+  artwork?: "comingSoon";
   title: string;
   message: string;
   typing?: boolean;
@@ -54,6 +56,7 @@ const AnimatedView = Animated.createAnimatedComponent(View);
 
 export function MascotMoment({
   variant = "idle",
+  artwork,
   title,
   message,
   typing = true,
@@ -103,12 +106,19 @@ export function MascotMoment({
         },
       ]}
     >
-      <GatherGoMascot
-        variant={variant}
-        size={stacked ? (compact ? 112 : 160) : compact ? 58 : 76}
-        showBadge={!stacked}
-        style={tw`shrink-0`}
-      />
+      {artwork === "comingSoon" ? (
+        <GogoComingSoonArtwork
+          width={stacked ? (compact ? 160 : 220) : compact ? 58 : 76}
+          animated={!reducedMotion}
+        />
+      ) : (
+        <GatherGoMascot
+          variant={variant}
+          size={stacked ? (compact ? 112 : 160) : compact ? 58 : 76}
+          showBadge={!stacked}
+          style={tw`shrink-0`}
+        />
+      )}
       <View style={stacked ? tw`w-full items-center gap-2` : tw`flex-1`}>
         <Text
           accessibilityRole="header"

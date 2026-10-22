@@ -1,7 +1,8 @@
 import AppRefreshControl, {
   RefreshIndicator,
 } from "@/components/ui/AppRefreshControl";
-import ActivityIndicator from "@/components/ui/AppLoader";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import { MascotMoment } from "@/components/ui/MascotMoment";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import WithdrawApplicationButton from "@/components/volunteer/WithdrawApplicationButton";
@@ -10,17 +11,18 @@ import type { VolunteerHistoryEntry } from "@/types/volunteer";
 import { VOLUNTEER_STATUS_LABELS } from "@/utils/volunteer";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
-import {
-  FlatList,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
 export default function MyVolunteering() {
   const query = useVolunteerHistory();
   const router = useLockedRouter();
+  const pageLoader = (
+    <ImpactPageLoader
+      title="Loading your volunteering"
+      message="Finding your applications and volunteer places."
+    />
+  );
   return (
     <View style={tw`flex-1 bg-[#01082E] pt-10`}>
       <View style={tw`px-5`}>
@@ -30,7 +32,7 @@ export default function MyVolunteering() {
         />
       </View>
       {query.isPending ? (
-        <ActivityIndicator color="#0FF1CF" />
+        pageLoader
       ) : query.isError ? (
         <TouchableOpacity
           accessibilityRole="button"
@@ -45,7 +47,10 @@ export default function MyVolunteering() {
         <FlatList
           data={query.data.data}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={tw`gap-4 px-5 pb-16`}
+          contentContainerStyle={[
+            tw`gap-4 px-5 pb-16`,
+            query.data.data.length === 0 && tw`grow`,
+          ]}
           refreshControl={
             <AppRefreshControl
               refreshing={query.isRefetching}
@@ -54,21 +59,36 @@ export default function MyVolunteering() {
           }
           ListHeaderComponent={
             <View style={tw`gap-2 pb-4`}>
-              <RefreshIndicator refreshing={query.isRefetching} />
-              <Text style={tw`text-2xl font-bold text-white`}>
-                Your time makes an impact
-              </Text>
-              <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
-                Track applications, confirmed places and contributions
-                recognised by organisers.
-              </Text>
+              <RefreshIndicator
+                refreshing={query.isRefetching && query.data.data.length > 0}
+              />
+              {query.data.data.length > 0 ? (
+                <>
+                  <Text style={tw`text-2xl font-bold text-white`}>
+                    Your time makes an impact
+                  </Text>
+                  <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
+                    Track applications, confirmed places and contributions
+                    recognised by organisers.
+                  </Text>
+                </>
+              ) : null}
             </View>
           }
           ListEmptyComponent={
-            <Text style={tw`text-[#A8BAE4]`}>
-              You have no volunteer applications yet. Explore physical impact
-              events to find a role.
-            </Text>
+            query.isFetching ? (
+              pageLoader
+            ) : (
+              <View style={tw`flex-1 justify-center`}>
+                <MascotMoment
+                  variant="empty"
+                  layout="stacked"
+                  title="No volunteering yet"
+                  message="Find an impact event and lend a hand. Your volunteer applications will appear here."
+                  typing={false}
+                />
+              </View>
+            )
           }
           renderItem={({ item }) => <VolunteerHistoryCard entry={item} />}
         />

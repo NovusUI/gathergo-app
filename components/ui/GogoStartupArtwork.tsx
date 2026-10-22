@@ -1,5 +1,8 @@
 import { GOGO_PALETTE } from "@/constants/mascot";
-import type { StartupTrackName } from "@/constants/gogoStartup";
+import {
+  GOGO_STARTUP_BACKGROUND,
+  type StartupTrackName,
+} from "@/constants/gogoStartup";
 import {
   useStartupGroup,
   useStartupRing,
@@ -101,7 +104,13 @@ export function GogoStartupArtwork({
       viewBox="-50 -30 300 300"
       accessible={false}
     >
-      <Rect x="-50" y="-30" width="300" height="300" fill="#FFFFFF" />
+      <Rect
+        x="-50"
+        y="-30"
+        width="300"
+        height="300"
+        fill={GOGO_STARTUP_BACKGROUND}
+      />
       <G>
         <StartupGroup motion={motion} name="shadow" originX={100} originY={207}>
           <Ellipse cx="100" cy="207" rx="50" ry="7" fill={GOGO_PALETTE.face} />

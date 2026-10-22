@@ -399,6 +399,7 @@ export default function HomeScreen() {
               activeOpacity={0.85}
             >
               <MascotMoment
+                artwork="comingSoon"
                 layout="stacked"
                 compact
                 title="Circle is coming soon"

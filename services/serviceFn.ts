@@ -1,3 +1,4 @@
+import type { EventCreationAssistantRequest, EventCreationAssistantResponse } from "@/types/eventCreation";
 import { checkoutDeadline } from "@/utils/checkout";
 import client from "@/api/client";
 import type {
@@ -431,6 +432,18 @@ export const createEvent = async (
   // Use fetch client instead of axios
   const data = await uploadClient.upload(EVENT_URL.createEvent, formData);
   return data;
+};
+
+export const getEventCreationReply = async (
+  payload: EventCreationAssistantRequest,
+  signal: AbortSignal
+): Promise<EventCreationAssistantResponse> => {
+  const response = await client.post<EventCreationAssistantResponse>(
+    EVENT_URL.creationAssistant,
+    payload,
+    { signal }
+  );
+  return response.data;
 };
 
 export const getImpactSuggestions = async (

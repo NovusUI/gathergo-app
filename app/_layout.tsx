@@ -5,8 +5,8 @@ import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
 import AppToast from "@/components/ui/AppToast";
-import GogoStartupScreen from "@/components/ui/GogoStartupScreen";
 import { useAuthStore } from "@/store/auth";
+import { useOnboardingStore } from "@/store/onboarding";
 import { applyUrbanistFontDefaults, URBANIST_FONT_ASSETS } from "@/utils/fonts";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,8 +14,10 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useFonts } from "expo-font";
+import { useNavigationContainerRef } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useState } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PaystackProvider } from "react-native-paystack-webview";
 import "../global.css";
@@ -25,35 +27,38 @@ SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
   const { loading } = useAuth();
-
   const { hasHydrated } = useAuthStore();
-  const [startupPhase, setStartupPhase] = useState<
-    "playing" | "waiting" | "ready"
-  >("playing");
-  const completeStartup = useCallback(() => {
-    setStartupPhase((phase) => (phase === "playing" ? "waiting" : phase));
-  }, []);
-  useEffect(() => {
-    if (startupPhase === "waiting" && !loading && hasHydrated) {
-      setStartupPhase("ready");
-    }
-  }, [hasHydrated, loading, startupPhase]);
-  const hideNativeSplash = useCallback(() => {
-    void SplashScreen.hideAsync();
-  }, []);
+  const { hasHydrated: onboardingHydrated, hydrate } = useOnboardingStore();
+  const navigation = useNavigationContainerRef();
+  const [laidOut, setLaidOut] = useState(false);
+  const handleLayout = useCallback(() => setLaidOut(true), []);
 
-  if (startupPhase !== "ready") {
-    return (
-      <GogoStartupScreen
-        onComplete={completeStartup}
-        onLayout={hideNativeSplash}
-      />
-    );
-  }
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (!laidOut) return;
+    const hideNativeSplash = () => {
+      void SplashScreen.hideAsync();
+    };
+    if (navigation.isReady()) {
+      hideNativeSplash();
+      return;
+    }
+    return navigation.addListener("ready", hideNativeSplash);
+  }, [laidOut, navigation]);
+
+  if (loading || !hasHydrated || !onboardingHydrated) return null;
 
   return (
     <BottomSheetModalProvider>
-      <RootNavigator />
+      <View
+        onLayout={handleLayout}
+        style={{ flex: 1, backgroundColor: "#01082E" }}
+      >
+        <RootNavigator />
+      </View>
     </BottomSheetModalProvider>
   );
 }

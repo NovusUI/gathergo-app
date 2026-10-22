@@ -1087,7 +1087,8 @@ test("organisers can open recruitment setup from the icon before publishing any 
 const { default: MyVolunteering } = loadTypeScript(
   "app/(app)/my-volunteering.tsx",
   {
-    "@/components/ui/AppLoader": { default: "Spinner" },
+    "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
+    "@/components/ui/MascotMoment": { MascotMoment: "GogoEmptyState" },
     "@/components/ui/AppRefreshControl": refreshComponents,
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },
@@ -1152,6 +1153,7 @@ test("My volunteering offers the same withdrawal operation for an application", 
     isPending: false,
     isError: false,
     isRefetching: false,
+    isFetching: false,
     data: { data: [entry] },
   };
   const list = [...nodes(MyVolunteering())].find(
@@ -1319,12 +1321,13 @@ test("carpool refresh uses one controlled Gogo and keeps the ride refresh callba
   feedCarpoolsRefreshing = false;
 });
 
-test("volunteer history refresh has one Gogo and no auto-generated list spinner", () => {
+test("empty volunteer history refresh shows the page loader without a second spinner", () => {
   let refreshes = 0;
   state.history = {
     isPending: false,
     isError: false,
     isRefetching: true,
+    isFetching: true,
     data: { data: [] },
     refetch() {
       refreshes++;
@@ -1335,11 +1338,90 @@ test("volunteer history refresh has one Gogo and no auto-generated list spinner"
   );
   assert.equal(list.props.onRefresh, undefined);
   const header = loadingIndicators(list.props.ListHeaderComponent);
-  assert.equal(header.length, 1);
+  assert.equal(header.length, 0);
+  assert.equal(list.props.ListEmptyComponent.type, "PageLoader");
   const control = list.props.refreshControl.type(
     list.props.refreshControl.props,
   );
   assert.equal(control.props.refreshing, true);
   control.props.onRefresh();
   assert.equal(refreshes, 1);
+});
+
+test("volunteer history loads the page before confirming an empty response", () => {
+  state.history = {
+    isPending: true,
+    isFetching: true,
+    isError: false,
+    isRefetching: false,
+    data: undefined,
+  };
+  let screen = MyVolunteering();
+  assert.ok([...nodes(screen)].some((node) => node.type === "PageLoader"));
+  assert.equal(
+    [...nodes(screen)].some(
+      (node) => node.type === "List" || node.type === "GogoEmptyState",
+    ),
+    false,
+  );
+  state.history = {
+    isPending: false,
+    isFetching: true,
+    isError: false,
+    isRefetching: true,
+    data: { data: [] },
+  };
+  let list = [...nodes(MyVolunteering())].find((node) => node.type === "List");
+  assert.equal(list.props.ListEmptyComponent.type, "PageLoader");
+  assert.equal(loadingIndicators(list.props.ListHeaderComponent).length, 0);
+  state.history.isFetching = false;
+  state.history.isRefetching = false;
+  list = [...nodes(MyVolunteering())].find((node) => node.type === "List");
+  assert.equal(
+    [...nodes(list.props.ListEmptyComponent)].find(
+      (node) => node.type === "GogoEmptyState",
+    ).props.variant,
+    "empty",
+  );
+});
+test("a volunteering load failure offers retry without showing an empty state", () => {
+  let retried = 0;
+  state.history = {
+    isPending: false,
+    isFetching: false,
+    isError: true,
+    isRefetching: false,
+    data: undefined,
+    refetch: () => {
+      retried++;
+    },
+  };
+  const screen = MyVolunteering();
+  assert.equal(
+    [...nodes(screen)].some((node) =>
+      ["PageLoader", "List", "GogoEmptyState"].includes(node.type),
+    ),
+    false,
+  );
+  [...nodes(screen)].find((node) => node.type === "Button").props.onPress();
+  assert.equal(retried, 1);
+});
+test("populated volunteer history keeps its list and small refresh indicator", () => {
+  const entry = {
+    ...pendingApplication,
+    event: { ...event, title: "Plant trees", location: "Lagos" },
+    role,
+  };
+  state.history = {
+    isPending: false,
+    isFetching: true,
+    isError: false,
+    isRefetching: true,
+    data: { data: [entry] },
+  };
+  const list = [...nodes(MyVolunteering())].find(
+    (node) => node.type === "List",
+  );
+  assert.deepEqual(list.props.data, [entry]);
+  assert.equal(loadingIndicators(list.props.ListHeaderComponent).length, 1);
 });

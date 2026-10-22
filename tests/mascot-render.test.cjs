@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { test } = require("node:test");
 const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
@@ -242,7 +244,99 @@ test("startup renders its logo-to-Gogo frames through the installed native anima
         }),
       );
       assert.match(markup, /viewBox="-50 -30 300 300"/);
+      assert.match(
+        markup,
+        /x="-50" y="-30" width="300" height="300" fill="#01082E"/,
+      );
       assert.match(markup, /fill="#1EEBC8"/);
     }
+  }
+});
+
+const comingSoonMotion = loadTypeScript("hooks/useGogoComingSoonMotion.ts", {
+  "react-native-reanimated": reanimated,
+});
+const { GogoComingSoonArtwork } = loadTypeScript(
+  "components/ui/GogoComingSoonArtwork.tsx",
+  {
+    "@/hooks/useGogoComingSoonMotion": comingSoonMotion,
+    "./GogoArtworkParts": parts,
+    "react-native-svg": svg,
+  },
+);
+test("the laptop coming-soon artwork renders through the installed native prop filter", () => {
+  for (const animated of [true, false]) {
+    const markup = renderToStaticMarkup(
+      React.createElement(GogoComingSoonArtwork, { width: 220, animated }),
+    );
+    assert.match(markup, /viewBox="-30 -40 260 270"/);
+    assert.match(markup, /d="M44 50C44 8 156 8 156 50Z" fill="#FFD84D"/);
+    assert.match(
+      markup,
+      /x="14" y="160" width="172" height="54" rx="10" fill="#17524A"/,
+    );
+    assert.match(markup, /cx="100" cy="187" r="11"/);
+    assert.doesNotMatch(markup, /animatedProps/);
+  }
+});
+
+const onboardingCarpoolMotion = loadTypeScript(
+  "hooks/useGogoOnboardingCarpoolMotion.ts",
+  {
+    "react-native-reanimated": reanimated,
+  },
+);
+const { GogoOnboardingCarpoolArtwork } = loadTypeScript(
+  "components/ui/GogoOnboardingCarpoolArtwork.tsx",
+  {
+    "@/hooks/useGogoOnboardingCarpoolMotion": onboardingCarpoolMotion,
+    "./GogoArtworkParts": parts,
+    "react-native-reanimated": reanimated,
+    "react-native-svg": svg,
+  },
+);
+
+test("the native onboarding carpool retains the supplied artwork and renders through Reanimated's prop filter", () => {
+  const source = fs.readFileSync(
+    path.resolve("assets/images/onboarding2.svg"),
+    "utf8",
+  );
+  const shapes = (markup) =>
+    [...markup.matchAll(/<(path|circle|ellipse|rect)\b([^>]+)>/g)].map(
+      ([, tag, attributes]) => {
+        const props = Object.fromEntries(
+          [...attributes.matchAll(/([\w-]+)="([^"]*)"/g)].map(
+            ([, key, value]) => [key, value],
+          ),
+        );
+        delete props.class;
+        delete props["stroke-dashoffset"];
+        // These two dash patterns originally lived in CSS rather than SVG attributes.
+        if (props.d === "M34 240H272" || props.d === "M44 122Q140 14 240 80")
+          delete props["stroke-dasharray"];
+        return { tag, props };
+      },
+    );
+  for (const animated of [true, false]) {
+    const markup = renderToStaticMarkup(
+      React.createElement(GogoOnboardingCarpoolArtwork, {
+        width: 280,
+        height: 230,
+        animated,
+      }),
+    );
+    assert.match(markup, /viewBox="0 0 300 315"/);
+    assert.match(markup, /stroke-dasharray="14 12"/);
+    assert.match(markup, /stroke-dasharray="2 8"/);
+    assert.deepEqual(shapes(markup), shapes(source));
+    for (const transform of [
+      "translate(102 95) scale(0.37)",
+      "translate(44 95) scale(0.37)",
+      "translate(168 95) scale(0.37)",
+      "translate(160 22) rotate(-8 32 20)",
+    ]) {
+      assert.ok(markup.includes(`transform="${transform}"`));
+    }
+    assert.doesNotMatch(markup, /animatedProps|<style/);
   }
 });

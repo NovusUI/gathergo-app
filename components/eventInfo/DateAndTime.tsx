@@ -17,7 +17,7 @@ import CustomButton from "../buttons/CustomBtn1";
 
 interface DateAndTimeProps {
   onSave: (data: DateTimeFormData) => void;
-  initialData?: DateTimeFormData | null;
+  initialData?: Partial<DateTimeFormData> | null;
   editMode: boolean;
   allowRecurring?: boolean;
 }

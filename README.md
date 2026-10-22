@@ -115,9 +115,16 @@ vector component and saved as assets/mascot/gogo-lost.svg. Pending and error
 states retain their contextual status badges.
 
 Empty passes and unpublished event tickets use a clean, stacked Gogo message.
+My passes and My volunteering show the page loader while loading or checking
+empty cached results, then show their empty state only after the request finishes.
+Failed requests show retry controls. Existing results remain visible during
+background refreshes; empty volunteer refreshes show one page loader.
 Unpublished ticket sheets omit totals and checkout controls. Scanner guidance,
 wallet setup reminders, logout confirmation and Circle's coming-soon page also
-use Gogo. Event search uses the small loader just below the search bar.
+use Gogo. Circle’s coming-soon page and home-feed card use the supplied
+`gogo-coming-soon-laptop.svg`, with native typing, blinking and floating code
+animation that stops for reduced motion. Event search uses the small loader
+just below the search bar.
 Context palettes style badges and glow while Gogo keeps the supplied colours.
 Mascot motion, loading animation and typed messages respect reduced motion.
 
@@ -149,13 +156,24 @@ The app icon PNG assets are rendered from assets/images/gglogo.svg. The app icon
 uses an opaque mint background; Android uses a separate transparent foreground
 with the mark inside the adaptive icon safe area.
 
-Startup uses assets/mascot/gogo-startup.svg: the three rings become Gogo, who
-pops up and waves. GogoStartupArtwork and useGogoStartupMotion reproduce its
-5.6-second animation natively. It plays once after the startup view lays out;
-navigation waits for the sequence, auth restoration and store hydration. Reduced
-motion shows the finished pose immediately. Later page loaders are unchanged.
+## Startup and first-time welcome
 
-The native launch screen uses a still frame of the same artwork at 240 points
-on white, configured through expo-splash-screen. Native asset changes require
-a new app build and installation; restarting Metro or sending an OTA update
-will not update them.
+Startup uses the GatherGo logo on the app's navy background and stays visible
+until fonts, saved preferences, and navigation are ready. The logo-to-Gogo
+animation from `assets/mascot/gogo-startup.svg` plays for 5.6 seconds as a
+welcome screen with the heading “Impact begins here” before onboarding and
+respects reduced motion. “Let’s get started” opens the three onboarding slides,
+each with an illustration and a short heading: Make an Impact, Go together,
+and Find your people. Headings fade and rise into place. Slides advance every
+five seconds, or with Next or swiping, and stop on the final slide. The timer
+restarts after manual navigation and pauses while dragging, backgrounded or
+unfocused. Reduced motion shows text immediately and changes pages without
+an animation. Get started and the Skip button go to sign-in. Skip is also available
+on the welcome screen. Completing or skipping the welcome is remembered on
+this device. Returning signed-in users go straight into the app.
+
+Splash images and native window backgrounds are configured in `app.json`.
+Native splash changes require rebuilding and reinstalling the app; refreshing
+Metro alone cannot update them. Run `npx expo prebuild` to sync an existing native
+project before the next build. Run `node --test tests/startup.test.cjs` for the
+startup and welcome flow checks.

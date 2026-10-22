@@ -4,6 +4,7 @@
     "slug": "gathergoapp",
     "version": "1.0.0",
     "orientation": "portrait",
+    "backgroundColor": "#01082E",
     "icon": "./assets/images/gglogo.png",
     "scheme": "gathergoapp",
     "userInterfaceStyle": "automatic",
@@ -60,10 +61,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 240,
+          "image": "./assets/images/gglogo.png",
+          "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
+          "backgroundColor": "#01082E"
         }
       ],
       "expo-secure-store",

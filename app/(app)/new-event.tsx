@@ -9,12 +9,18 @@ import EventLinks from "@/components/eventInfo/EventLinks";
 import EventStoryFields from "@/components/eventInfo/EventStoryFields";
 import VolunteerSetupFields from "@/components/eventInfo/VolunteerSetupFields";
 import EventFundraisingFields from "@/components/eventInfo/EventFundraisingFields";
+import GogoEventCreator from "@/components/eventInfo/GogoEventCreator";
+import { useGogoEventCreation } from "@/hooks/useGogoEventCreation";
+import type { EventCreationSection } from "@/types/eventCreation";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import { normalizeEventLink } from "@/constants/eventLinks";
-import { buildEventImpactFormFields, buildEventParticipationFormFields } from "@/utils/eventForm";
+import {
+  buildEventImpactFormFields,
+  buildEventParticipationFormFields,
+} from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -22,6 +28,7 @@ import {
   EventPricing,
   EventTicket,
   eventSchema,
+  dateTimeSchema,
 } from "@/schemas/event";
 import { useCreateEvent } from "@/services/mutations";
 import { buildEventDateTimeIso, extractDate } from "@/utils/dateTimeHandler";
@@ -63,10 +70,9 @@ const NewEvent = () => {
   }`;
   const pricingSectionTitle = isDonationEvent ? "Donation setup" : "Pricing";
 
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
-    null,
-  );
+  const [mode, setMode] = useState<"gogo" | "manual">("gogo");
+  const [activeSection, setActiveSection] =
+    useState<EventCreationSection | null>(null);
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
 
@@ -77,10 +83,6 @@ const NewEvent = () => {
 
     openSheetTicket();
   };
-
-  const openSheet = useCallback((section: string) => {
-    setActiveSection(section);
-  }, []);
 
   const openSheetTicket = useCallback(() => {
     setIsTicketSheetOpen(true);
@@ -96,8 +98,6 @@ const NewEvent = () => {
   }, []);
 
   const handleDateTimeSave = (data: DateTimeFormData) => {
-    setDateTimeData(data);
-
     // Update the main form with date/time data
     setValue("startDate", data.startDate);
     setValue("endDate", data.endDate);
@@ -109,7 +109,7 @@ const NewEvent = () => {
 
     clearErrors(["startDate", "endDate", "startTime", "endTime"]);
 
-    closeSheet();
+    finishSection();
   };
 
   const handlePricingSave = (data: EventPricing) => {
@@ -117,9 +117,10 @@ const NewEvent = () => {
     setValue("registrationType", data.registrationType);
     setValue("registrationAttendees", data.registrationAttendees);
     setValue("registrationFee", data.registrationFee);
-    if (data.registrationType === "donation") setValue("donationTarget", data.donationTarget);
+    if (data.registrationType === "donation")
+      setValue("donationTarget", data.donationTarget);
     setValue("tickets", data.tickets || []);
-    closeSheet();
+    finishSection();
     clearErrors(
       isDonationEvent
         ? ["registrationType", "donationTarget"]
@@ -129,13 +130,53 @@ const NewEvent = () => {
 
   const renderSheetContent = () => {
     switch (activeSection) {
-      case "Date and Time":
+      case "Date and Time": {
+        const values = getValues();
+        const currentDates = {
+          startDate: values.startDate ? new Date(values.startDate) : undefined,
+          endDate: values.endDate ? new Date(values.endDate) : undefined,
+          startTime: values.startTime,
+          endTime: values.endTime,
+          isRecurring: values.isRecurring,
+          repeat: values.repeat,
+          endRepeat: values.endRepeat,
+        };
         return (
           <DateAndTime
-            initialData={dateTimeData}
+            initialData={currentDates}
             onSave={handleDateTimeSave}
             editMode={false}
             allowRecurring={false}
+          />
+        );
+      }
+      case "Story":
+        return <EventStoryFields control={control} setValue={setValue} />;
+      case "Volunteering":
+        return (
+          <View>
+            <VolunteerSetupFields control={control} setValue={setValue} />
+            <EventFundraisingFields control={control} setValue={setValue} />
+          </View>
+        );
+      case "Cover":
+        return (
+          <Controller
+            name="imgUrl"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <CoverImagePicker value={value || null} onChange={onChange} />
+            )}
+          />
+        );
+      case "Links":
+        return (
+          <EventLinks
+            links={watch("links")}
+            onChange={(value) =>
+              setValue("links", value, { shouldValidate: true })
+            }
+            error={errors.links?.message}
           />
         );
       case "Location":
@@ -148,14 +189,21 @@ const NewEvent = () => {
                 <Location
                   isPhysicalEvent={watch("isPhysicalEvent")}
                   onSave={({ location, isPhysicalEvent }) => {
-                    if (!isPhysicalEvent && (watch("registrationType") === "volunteer" || watch("volunteerRoles").length > 0)) {
-                      showGlobalError("Volunteer roles require a physical venue."); return;
+                    if (
+                      !isPhysicalEvent &&
+                      (watch("registrationType") === "volunteer" ||
+                        watch("volunteerRoles").length > 0)
+                    ) {
+                      showGlobalError(
+                        "Volunteer roles require a physical venue.",
+                      );
+                      return;
                     }
                     onChange(location);
                     setValue("isPhysicalEvent", isPhysicalEvent, {
                       shouldValidate: true,
                     });
-                    closeSheet();
+                    finishSection();
                   }}
                   value={value}
                 />
@@ -234,6 +282,21 @@ const NewEvent = () => {
     },
   });
 
+  const conversation = useGogoEventCreation({
+    getValues,
+    setValue,
+    isDonationEvent,
+  });
+  const reviewDraft = () => {
+    conversation.cancel();
+    setMode("manual");
+  };
+
+  const finishSection = () => {
+    closeSheet();
+    if (mode === "gogo") void conversation.continueFromDraft();
+  };
+
   const startDate = watch("startDate");
   const isPhysicalEvent = watch("isPhysicalEvent");
   const location = watch("location");
@@ -280,6 +343,12 @@ const NewEvent = () => {
     },
     [isDonationEvent],
   );
+
+  const openSheet = (section: EventCreationSection) => {
+    conversation.cancel();
+    if (section === "Pricing") setPricingData(buildPricingState(getValues()));
+    setActiveSection(section);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -358,7 +427,9 @@ const NewEvent = () => {
       const hasPaidRegistration =
         createdEventType === "registration" &&
         Number(watch("registrationFee") || 0) > 0;
-      const hasDonationFlow = createdEventType === "donation" || (createdEventType === "volunteer" && watch("donationsEnabled"));
+      const hasDonationFlow =
+        createdEventType === "donation" ||
+        (createdEventType === "volunteer" && watch("donationsEnabled"));
       const hasPaidTickets =
         createdEventType === "ticket" &&
         (watch("tickets") || []).some(
@@ -397,6 +468,12 @@ const NewEvent = () => {
   // };
 
   const onSubmit = async (data: EventFormData) => {
+    const dates = dateTimeSchema.safeParse(data);
+    if (!dates.success) {
+      showGlobalError(dates.error.issues[0].message);
+      openSheet("Date and Time");
+      return;
+    }
     const {
       repeat,
       imgUrl,
@@ -425,13 +502,15 @@ const NewEvent = () => {
       reoccurring: repeat,
       isPhysicalEvent,
       location: isPhysicalEvent ? location : "",
-      ...buildEventParticipationFormFields({ ...data, registrationType: finalRegistrationType }, "create"),
+      ...buildEventParticipationFormFields(
+        { ...data, registrationType: finalRegistrationType },
+        "create",
+      ),
       startDate: buildEventDateTimeIso(startDate, startTime),
       endDate: buildEventDateTimeIso(endDate, endTime, {
         endOfMinute: endTime === "23:59",
       }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
-
     };
     const refinedData = convertUndefinedToNull(correctedData);
     const formData = objectToFormData(refinedData);
@@ -463,7 +542,7 @@ const NewEvent = () => {
   return (
     <KeyboardAvoidingView
       style={tw`flex-1 bg-[#01082E]`}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <View
@@ -479,43 +558,46 @@ const NewEvent = () => {
               onClickBack={() => router.replace("/")}
             />
           </CustomView>
-          <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
-            <CustomView style={tw`px-5`}>
-              <Controller
-                name="imgUrl"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <View>
-                    <CoverImagePicker
-                      value={value || null}
-                      onChange={onChange}
-                    />
-                    {errors.imgUrl && (
-                      <Text style={tw`text-red-500`}>
-                        {errors.imgUrl.message}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              />
-            </CustomView>
-
-            <CustomView style={tw`px-5`}>
-              <CustomView style={tw`gap-2`}>
-                <FormLabel text="event name" />
+          <View style={tw`px-5 flex-row justify-end`}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                if (mode === "gogo") {
+                  reviewDraft();
+                } else {
+                  setMode("gogo");
+                  void conversation.continueFromDraft();
+                }
+              }}
+              style={tw`min-h-[44px] justify-center py-2`}
+            >
+              <Text style={tw`text-sm font-medium text-[#0FF1CF]`}>
+                {mode === "gogo" ? "Use manual form" : "Let Gogo guide me"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {mode === "gogo" ? (
+            <GogoEventCreator
+              conversation={conversation}
+              isDonationEvent={isDonationEvent}
+              onOpenSection={openSheet}
+              onReview={reviewDraft}
+            />
+          ) : (
+            <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
+              <CustomView style={tw`px-5`}>
                 <Controller
-                  name="eventName"
+                  name="imgUrl"
                   control={control}
                   render={({ field: { value, onChange } }) => (
                     <View>
-                      <Input
-                        placeholder="Event name"
-                        onChangeText={onChange}
-                        value={value}
+                      <CoverImagePicker
+                        value={value || null}
+                        onChange={onChange}
                       />
-                      {errors.eventName && (
+                      {errors.imgUrl && (
                         <Text style={tw`text-red-500`}>
-                          {errors.eventName.message}
+                          {errors.imgUrl.message}
                         </Text>
                       )}
                     </View>
@@ -523,116 +605,141 @@ const NewEvent = () => {
                 />
               </CustomView>
 
-              <EventStoryFields control={control} setValue={setValue} />
-            </CustomView>
+              <CustomView style={tw`px-5`}>
+                <CustomView style={tw`gap-2`}>
+                  <FormLabel text="event name" />
+                  <Controller
+                    name="eventName"
+                    control={control}
+                    render={({ field: { value, onChange } }) => (
+                      <View>
+                        <Input
+                          placeholder="Event name"
+                          onChangeText={onChange}
+                          value={value}
+                        />
+                        {errors.eventName && (
+                          <Text style={tw`text-red-500`}>
+                            {errors.eventName.message}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  />
+                </CustomView>
 
-            <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
-
-            {/* Event Information */}
-            <CustomView style={tw`px-5`}>
-              <CustomView>
-                <FormLabel text="event information" />
+                <EventStoryFields control={control} setValue={setValue} />
               </CustomView>
 
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                onPress={() => openSheet("Date and Time")}
-              >
-                <View>
-                  <Text style={tw`text-white text-base`}>Date and Time</Text>
-                  {errors.startDate && (
-                    <Text style={tw`text-red-500`}>
-                      {errors.startDate.message}
-                    </Text>
-                  )}
-                </View>
-                {!errors.startDate && startDate && (
-                  <CheckCheck color="#0FF1CF" />
-                )}
-              </TouchableOpacity>
+              <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
 
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                onPress={() => openSheet("Location")}
-              >
-                <View style={tw`flex-1 pr-3`}>
-                  <Text style={tw`text-white text-base`}>Location</Text>
-                  {errors.location ? (
-                    <Text style={tw`text-red-500`}>
-                      {errors.location.message}
-                    </Text>
-                  ) : (
-                    <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                      {isPhysicalEvent
-                        ? location || "Add the physical venue"
-                        : "No physical meetup"}
-                    </Text>
-                  )}
-                </View>
-                {!errors.location &&
-                  (Boolean(location) || !isPhysicalEvent) && (
-                    <CheckCheck color="#0FF1CF" />
-                  )}
-              </TouchableOpacity>
+              {/* Event Information */}
+              <CustomView style={tw`px-5`}>
+                <CustomView>
+                  <FormLabel text="event information" />
+                </CustomView>
 
-              {registrationType !== "volunteer" ? (
                 <TouchableOpacity
                   style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                  onPress={() => {
-                    setPricingData(buildPricingState(getValues()));
-                    openSheet("Pricing");
-                  }}
+                  onPress={() => openSheet("Date and Time")}
                 >
                   <View>
-                    <Text style={tw`text-white text-base`}>
-                      {pricingSectionTitle}
-                    </Text>
-                    {(isDonationEvent
-                      ? errors.donationTarget
-                      : errors.registrationType) && (
+                    <Text style={tw`text-white text-base`}>Date and Time</Text>
+                    {errors.startDate && (
                       <Text style={tw`text-red-500`}>
-                        {isDonationEvent
-                          ? errors.donationTarget?.message
-                          : errors.registrationType?.message}
+                        {errors.startDate.message}
                       </Text>
                     )}
                   </View>
-                  {!errors.registrationType &&
-                    !errors.donationTarget &&
-                    (isDonationEvent ? donationTarget : registrationType) && (
+                  {!errors.startDate && startDate && (
+                    <CheckCheck color="#0FF1CF" />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                  onPress={() => openSheet("Location")}
+                >
+                  <View style={tw`flex-1 pr-3`}>
+                    <Text style={tw`text-white text-base`}>Location</Text>
+                    {errors.location ? (
+                      <Text style={tw`text-red-500`}>
+                        {errors.location.message}
+                      </Text>
+                    ) : (
+                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                        {isPhysicalEvent
+                          ? location || "Add the physical venue"
+                          : "No physical meetup"}
+                      </Text>
+                    )}
+                  </View>
+                  {!errors.location &&
+                    (Boolean(location) || !isPhysicalEvent) && (
                       <CheckCheck color="#0FF1CF" />
                     )}
                 </TouchableOpacity>
+
+                {registrationType !== "volunteer" ? (
+                  <TouchableOpacity
+                    style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                    onPress={() => openSheet("Pricing")}
+                  >
+                    <View>
+                      <Text style={tw`text-white text-base`}>
+                        {pricingSectionTitle}
+                      </Text>
+                      {(isDonationEvent
+                        ? errors.donationTarget
+                        : errors.registrationType) && (
+                        <Text style={tw`text-red-500`}>
+                          {isDonationEvent
+                            ? errors.donationTarget?.message
+                            : errors.registrationType?.message}
+                        </Text>
+                      )}
+                    </View>
+                    {!errors.registrationType &&
+                      !errors.donationTarget &&
+                      (isDonationEvent ? donationTarget : registrationType) && (
+                        <CheckCheck color="#0FF1CF" />
+                      )}
+                  </TouchableOpacity>
+                ) : null}
+              </CustomView>
+
+              <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+
+              <VolunteerSetupFields control={control} setValue={setValue} />
+              {errors.volunteerRoles?.message ? (
+                <Text style={tw`px-5 text-red-400`}>
+                  {errors.volunteerRoles.message}
+                </Text>
               ) : null}
-            </CustomView>
+              <EventFundraisingFields control={control} setValue={setValue} />
 
-            <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-            <VolunteerSetupFields control={control} setValue={setValue} />
-            {errors.volunteerRoles?.message ? <Text style={tw`px-5 text-red-400`}>{errors.volunteerRoles.message}</Text> : null}
-            <EventFundraisingFields control={control} setValue={setValue} />
-
-            <EventLinks
-              links={watch("links") || []}
-              onChange={(value) =>
-                setValue("links", value, { shouldValidate: true })
-              }
-              error={errors.links?.message}
-            />
-
-            <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-            <CustomView style={tw`items-center px-5`}>
-              <CustomButton
-                disabled={isPending}
-                onPress={handleSubmit(onSubmit, onError)}
-                title={isPending ? "publishing.." : "publish event"}
-                showArrow={false}
-                buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                textClassName="!text-black"
+              <EventLinks
+                links={watch("links") || []}
+                onChange={(value) =>
+                  setValue("links", value, { shouldValidate: true })
+                }
+                error={errors.links?.message}
               />
-            </CustomView>
-          </ScrollView>
+
+              <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+
+              <CustomView style={tw`items-center px-5`}>
+                <CustomButton
+                  disabled={isPending}
+                  onPress={handleSubmit(onSubmit, onError)}
+                  title={isPending ? "publishing.." : "publish event"}
+                  showArrow={false}
+                  buttonClassName="bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-black"
+                />
+              </CustomView>
+            </ScrollView>
+          )}
           <Modal
             visible={Boolean(activeSection)}
             animationType="slide"
@@ -668,6 +775,19 @@ const NewEvent = () => {
                   keyboardShouldPersistTaps="handled"
                 >
                   {renderSheetContent()}
+                  {mode === "gogo" &&
+                  (activeSection === "Story" ||
+                    activeSection === "Volunteering" ||
+                    activeSection === "Cover" ||
+                    activeSection === "Links") ? (
+                    <CustomButton
+                      onPress={finishSection}
+                      title="Continue with Gogo"
+                      showArrow={false}
+                      buttonClassName="bg-[#0FF1CF] w-full !border-none mt-5"
+                      textClassName="!text-black"
+                    />
+                  ) : null}
                 </ScrollView>
               </View>
             </KeyboardAvoidingView>

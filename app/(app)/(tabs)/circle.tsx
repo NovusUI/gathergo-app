@@ -18,6 +18,7 @@ export default function CircleScreen() {
         showsVerticalScrollIndicator={false}
       >
         <MascotMoment
+          artwork="comingSoon"
           layout="stacked"
           title="Your Circle is on its way"
           message="I'm getting this space ready for your communities. Come back soon to find your people."

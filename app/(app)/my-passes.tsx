@@ -431,21 +431,26 @@ const MyPassesPage = () => {
 
   const {
     data: ticketsResponse,
-    isLoading: ticketsLoading,
+    isPending: ticketsPending,
+    isFetching: ticketsFetching,
+    isError: ticketsError,
     refetch: refetchTickets,
     isRefetching: ticketsRefetching,
   } = useMyTickets();
   const {
     data: registrationsResponse,
-    isLoading: registrationsLoading,
+    isPending: registrationsPending,
+    isFetching: registrationsFetching,
+    isError: registrationsError,
     refetch: refetchRegistrations,
     isRefetching: registrationsRefetching,
   } = useMyRegistrations();
 
-  const tickets = Array.isArray(ticketsResponse?.data) ? ticketsResponse.data : [];
-  const registrations = Array.isArray(registrationsResponse?.data)
-    ? registrationsResponse.data
-    : [];
+  const tickets = useMemo(() => ticketsResponse?.data ?? [], [ticketsResponse]);
+  const registrations = useMemo(
+    () => registrationsResponse?.data ?? [],
+    [registrationsResponse]
+  );
 
   const combinedPasses = useMemo(
     () =>
@@ -493,7 +498,12 @@ const MyPassesPage = () => {
   );
   const nextPass = readyPasses[0] || combinedPasses.find((pass) => !isEventEnded(pass));
 
-  const isLoading = ticketsLoading || registrationsLoading;
+  const isLoading =
+    ticketsPending ||
+    registrationsPending ||
+    ticketsFetching ||
+    registrationsFetching;
+  const hasError = ticketsError || registrationsError;
   const isRefreshing = ticketsRefetching || registrationsRefetching;
 
   const handleRefresh = async () => {
@@ -505,7 +515,7 @@ const MyPassesPage = () => {
     router.push(`/event/${pass.eventId}` as any);
   };
 
-  if (isLoading && combinedPasses.length === 0) {
+  if (isLoading && filteredPasses.length === 0) {
     return (
       <ImpactPageLoader
         title="Mapping your passes"
@@ -645,7 +655,20 @@ const MyPassesPage = () => {
         ) : null}
 
         {filteredPasses.length === 0 ? (
-          <EmptyState activeKinds={activeKinds} />
+          hasError ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading passes"
+              onPress={handleRefresh}
+              style={tw`p-5`}
+            >
+              <Text style={tw`text-center text-[#FF8A8A]`}>
+                Could not load your passes. Tap to retry.
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <EmptyState activeKinds={activeKinds} />
+          )
         ) : (
           <>
             {readyPasses.length > 0 ? (

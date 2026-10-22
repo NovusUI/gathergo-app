@@ -285,8 +285,22 @@ const { default: MyPassesPage } = loadTypeScript("app/(app)/my-passes.tsx", {
 function resetPasses() {
   passesHooks.reset();
   routes.length = 0;
-  ticketQuery = { data: { data: [] }, isLoading: false, refetch() {} };
-  registrationQuery = { data: { data: [] }, isLoading: false, refetch() {} };
+  ticketQuery = {
+    data: { data: [] },
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    isRefetching: false,
+    refetch() {},
+  };
+  registrationQuery = {
+    data: { data: [] },
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    isRefetching: false,
+    refetch() {},
+  };
 }
 function passNodes() {
   const screen = passesHooks.render(MyPassesPage);
@@ -314,30 +328,31 @@ test("no owned passes shows lost Gogo without the dashboard, filters or explore 
 });
 test("loading passes keeps the real loading state instead of claiming no tickets", () => {
   resetPasses();
-  ticketQuery.isLoading = true;
+  ticketQuery.isPending = true;
+  ticketQuery.data = undefined;
   assert.equal(passesHooks.render(MyPassesPage).type, "PageLoader");
 });
+const ownedRegistration = {
+  id: "registration-1",
+  qrCode: "qr-1",
+  isUsed: false,
+  createdAt: "2026-10-01T12:00:00Z",
+  transactionId: "transaction-1",
+  eventId: "event-1",
+  event: {
+    id: "event-1",
+    title: "Tree planting",
+    startDate: "2035-10-21T12:00:00Z",
+    endDate: "2035-10-21T14:00:00Z",
+    location: "Lagos",
+    registrationType: "registration",
+    isPhysicalEvent: true,
+  },
+};
+
 test("owned registrations remain accessible when there are no tickets", () => {
   resetPasses();
-  registrationQuery.data.data = [
-    {
-      id: "registration-1",
-      qrCode: "qr-1",
-      isUsed: false,
-      createdAt: "2026-10-01T12:00:00Z",
-      transactionId: "transaction-1",
-      eventId: "event-1",
-      event: {
-        id: "event-1",
-        title: "Tree planting",
-        startDate: "2035-10-21T12:00:00Z",
-        endDate: "2035-10-21T14:00:00Z",
-        location: "Lagos",
-        registrationType: "registration",
-        isPhysicalEvent: true,
-      },
-    },
-  ];
+  registrationQuery.data.data = [ownedRegistration];
   const content = passNodes();
   assert.equal(
     content.some((node) => node.type === "GogoMessage"),
@@ -350,6 +365,73 @@ test("owned registrations remain accessible when there are no tickets", () => {
   );
   card.props.onOpenEvent(card.props.pass);
   assert.deepEqual(routes, ["/event/event-1"]);
+});
+
+test("passes wait for either request and cached empty rechecks before showing the empty state", () => {
+  for (const kind of ["ticket", "registration"]) {
+    for (const pending of [true, false]) {
+      resetPasses();
+      const query = kind === "ticket" ? ticketQuery : registrationQuery;
+      query.isPending = pending;
+      query.isFetching = true;
+      if (pending) query.data = undefined;
+      assert.equal(passesHooks.render(MyPassesPage).type, "PageLoader");
+      assert.equal(
+        passNodes().some((node) => node.type === "GogoMessage"),
+        false,
+      );
+      query.data = { data: [] };
+      query.isPending = false;
+      query.isFetching = false;
+      assert.equal(
+        passNodes().find((node) => node.type === "GogoMessage").props.variant,
+        "empty",
+      );
+    }
+  }
+});
+test("a failed passes request shows retry instead of an empty state and retries both sources", async () => {
+  for (const kind of ["ticket", "registration"]) {
+    resetPasses();
+    const query = kind === "ticket" ? ticketQuery : registrationQuery;
+    query.isError = true;
+    query.data = undefined;
+    const content = passNodes();
+    assert.equal(
+      content.some((node) => node.type === "GogoMessage"),
+      false,
+    );
+    let ticketsRetried = 0,
+      registrationsRetried = 0;
+    ticketQuery.refetch = async () => {
+      ticketsRetried++;
+    };
+    registrationQuery.refetch = async () => {
+      registrationsRetried++;
+    };
+    const retry = passNodes().find(
+      (node) => node.props.accessibilityLabel === "Retry loading passes",
+    );
+    await retry.props.onPress();
+    assert.equal(ticketsRetried, 1);
+    assert.equal(registrationsRetried, 1);
+    query.isFetching = true;
+    assert.equal(passesHooks.render(MyPassesPage).type, "PageLoader");
+  }
+});
+test("owned passes stay visible during a background check", () => {
+  resetPasses();
+  registrationQuery.data.data = [ownedRegistration];
+  registrationQuery.isFetching = true;
+  registrationQuery.isRefetching = true;
+  const content = passNodes();
+  assert.ok(content.some((node) => node.props.children === "Tree planting"));
+  assert.equal(
+    content.some(
+      (node) => node.type === "PageLoader" || node.type === "GogoMessage",
+    ),
+    false,
+  );
 });
 
 const eventHooks = hookState();
