@@ -1,4 +1,9 @@
 export const QUERY_KEYS = {
+  badges: ["badges"] as const,
+  pendingEventFeedback: ["pendingEventFeedback"] as const,
+  interestProfile: ["interestProfile"] as const,
+  interestCatalog: ["interestCatalog"] as const,
+  interestExamples: ["interestExamples"] as const,
   volunteerRoles: ["volunteerRoles"] as const,
   volunteerRoster: ["volunteerRoster"] as const,
   volunteerSummary: ["volunteerSummary"] as const,

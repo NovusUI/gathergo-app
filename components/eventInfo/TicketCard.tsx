@@ -1,3 +1,4 @@
+import { usePressGuard } from "@/hooks/usePressGuard";
 import { showGlobalWarning } from "@/utils/globalErrorHandler";
 import { numberWithCommas } from "@/utils/utils";
 import { ChevronRight, Edit3, Trash } from "lucide-react-native";
@@ -22,6 +23,9 @@ type PricingCardProps = {
   isVisible: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
+  onPublish?: () => void;
+  isPublishing?: boolean;
+  publishDisabled?: boolean;
 };
 
 const PricingCard = ({
@@ -40,7 +44,11 @@ const PricingCard = ({
   isVisible,
   onDelete,
   onEdit,
+  onPublish,
+  isPublishing = false,
+  publishDisabled = false,
 }: PricingCardProps) => {
+  const publish = usePressGuard(onPublish);
   const [showPerk, setShowPerk] = useState(false);
   const [localQuantity, setQuantity] = useState(0);
   const quantity = selectedQuantity ?? localQuantity;
@@ -80,7 +88,29 @@ const PricingCard = ({
         <View
           style={tw`absolute inset-0 bg-black/40 z-10 rounded-2xl flex-row justify-center items-center`}
         >
-          <Text style={tw`text-white text-sm font-bold`}>Not Live</Text>
+          <View style={tw`items-center gap-3`}>
+            <Text style={tw`text-white text-sm font-bold`}>Not Live</Text>
+            {onPublish ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Publish ${title} ticket`}
+                accessibilityState={{
+                  disabled: publishDisabled || isPublishing,
+                  busy: isPublishing,
+                }}
+                disabled={publishDisabled || isPublishing}
+                onPress={publish}
+                style={[
+                  tw`rounded-full bg-[#0FF1CF] px-5 py-3`,
+                  (publishDisabled || isPublishing) && tw`opacity-50`,
+                ]}
+              >
+                <Text style={tw`font-semibold text-[#01082E]`}>
+                  {isPublishing ? "Publishing…" : "Publish ticket"}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       )}
 

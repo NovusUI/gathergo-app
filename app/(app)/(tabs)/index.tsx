@@ -1,4 +1,6 @@
+import { PostEventSurveyPrompt } from "@/components/gogo/tasks/interestMap/PostEventSurveyPrompt";
 import Tab from "@/components/Tab";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import CarpoolCard from "@/components/ui/CarpoolCard";
 import EventCard from "@/components/ui/EventCard";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
@@ -35,7 +37,7 @@ import { Ionicons } from "@expo/vector-icons";
 import tw from "twrnc";
 
 const { width } = Dimensions.get("window");
-const bannerCardWidth = Math.min(width, 500) - layoutSpacing.pageHorizontal * 2;
+const bannerPageWidth = Math.min(width, 500);
 
 const HOME_BANNER_ICON_NAMES = new Set([
   "calendar-outline",
@@ -79,12 +81,12 @@ export default function HomeScreen() {
     requestLocation();
   }, [requestLocation]);
 
-  const tabs = ["For you", "Carpool", "Circle"] as const;
-  const tabsIcons: any[] = [
-    { library: "Ionicons", name: "compass-outline" },
+  const tabs = ["Gogo picks", "Carpool", "Circle"] as const;
+  const tabsIcons = [
+    undefined,
     { library: "Ionicons", name: "car-sport" },
     { library: "FontAwesome5", name: "users" },
-  ];
+  ] as const;
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>(tabs[0]);
   const [bannerIndex, setBannerIndex] = useState(0);
   const { user } = useAuth();
@@ -111,7 +113,7 @@ export default function HomeScreen() {
       onPress: () =>
         featuredEvent
           ? router.replace(`/event/${featuredEvent.id}`)
-          : setActiveTab("For you"),
+          : setActiveTab("Gogo picks"),
     },
     {
       key: "ride",
@@ -158,7 +160,7 @@ export default function HomeScreen() {
             router.push("/circle");
             return;
           }
-          setActiveTab("For you");
+          setActiveTab("Gogo picks");
         },
       }))
     : fallbackBannerCards;
@@ -167,13 +169,13 @@ export default function HomeScreen() {
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
     const nextIndex = Math.round(
-      event.nativeEvent.contentOffset.x / bannerCardWidth,
+      event.nativeEvent.contentOffset.x / bannerPageWidth,
     );
     setBannerIndex(nextIndex);
   };
 
   const renderBannerAccent = (
-    card: HomeAdCard & { key: string; onPress: () => void },
+    card: Pick<HomeAdCard, "key" | "icon" | "accentColor">,
   ) => {
     if (card.key === "circle") {
       return (
@@ -189,7 +191,7 @@ export default function HomeScreen() {
     return (
       <Ionicons
         name={iconName as any}
-        size={28}
+        size={20}
         color={card.accentColor || "#0FF1CF"}
       />
     );
@@ -241,85 +243,98 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Featured Banner */}
-      <View style={styles.bannerWrap}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleBannerScrollEnd}
-        >
-          {bannerCards.map((card) => (
-            <TouchableOpacity
-              key={card.key}
-              activeOpacity={0.92}
-              style={styles.bannerCard}
-              onPress={card.onPress}
-            >
-              {card.variant === "image" ? (
-                card.imageUrl ? (
-                  <Image
-                    source={{ uri: card.imageUrl }}
-                    style={styles.bannerImageCard}
-                  />
-                ) : (
-                  <View style={styles.bannerImageCardFallback}>
-                    <GgCircleArtwork width="100%" height="100%" />
-                  </View>
-                )
-              ) : (
-                <>
-                  <View style={styles.bannerBadge}>
-                    <Text style={styles.bannerBadgeText}>{card.eyebrow}</Text>
-                  </View>
-                  <Text style={styles.bannerTitle}>{card.title}</Text>
-                  <Text style={styles.bannerBody}>{card.body}</Text>
-                  <View style={styles.bannerFooter}>
-                    <Text style={styles.bannerCta}>{card.cta}</Text>
-                    {renderBannerAccent(card as any)}
-                  </View>
-                </>
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <View style={styles.bannerDots}>
-          {bannerCards.map((card, index) => (
-            <View
-              key={card.key}
-              style={[
-                styles.bannerDot,
-                index === bannerIndex && styles.bannerDotActive,
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-      {/* Tabs */}
-      <View
-        style={[tw`flex-row justify-between w-full max-w-[500px]`, styles.tabs]}
-      >
-        {tabs.map((tab, index) => (
-          <Tab
-            key={tab}
-            title={tab}
-            isActive={activeTab === tab}
-            className="w-1/4"
-            onPress={() => setActiveTab(tab)}
-            icon={{
-              library: tabsIcons[index].library,
-              name: tabsIcons[index].name,
-            }}
-          />
-        ))}
-      </View>
-
       <ScrollView
         style={[tw`w-full max-w-[500px]`, styles.scroll]}
         contentContainerStyle={styles.scrollContent}
+        stickyHeaderIndices={[1]}
+        showsVerticalScrollIndicator={false}
       >
+        <View style={styles.bannerWrap}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleBannerScrollEnd}
+          >
+            {bannerCards.map((card) => (
+              <View key={card.key} style={styles.bannerSlide}>
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.bannerCard}
+                  onPress={card.onPress}
+                >
+                  {card.variant === "image" ? (
+                    card.imageUrl ? (
+                      <Image
+                        source={{ uri: card.imageUrl }}
+                        style={styles.bannerImageCard}
+                      />
+                    ) : (
+                      <View style={styles.bannerImageCardFallback}>
+                        <GgCircleArtwork width="100%" height="100%" />
+                      </View>
+                    )
+                  ) : (
+                    <>
+                      <View style={styles.bannerBadge}>
+                        <Text style={styles.bannerBadgeText}>{card.eyebrow}</Text>
+                      </View>
+                      <Text numberOfLines={2} style={styles.bannerTitle}>
+                        {card.title}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.bannerBody}>
+                        {card.body}
+                      </Text>
+                      <View style={styles.bannerFooter}>
+                        <Text style={styles.bannerCta}>{card.cta}</Text>
+                        {renderBannerAccent(card)}
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.bannerDots}>
+            {bannerCards.map((card, index) => (
+              <View
+                key={card.key}
+                style={[
+                  styles.bannerDot,
+                  index === bannerIndex && styles.bannerDotActive,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+        <View>
+          <View
+            style={[tw`flex-row justify-between w-full max-w-[500px]`, styles.tabs]}
+          >
+            {tabs.map((tab, index) => (
+              <Tab
+                key={tab}
+                className="px-1 gap-x-1"
+                title={tab}
+                isActive={activeTab === tab}
+                onPress={() => setActiveTab(tab)}
+                icon={tabsIcons[index]}
+                iconContent={
+                  tab === "Gogo picks" ? (
+                    <GatherGoMascot
+                      size={22}
+                      animated={false}
+                      showBadge={false}
+                      style={tw`rounded-full bg-[#01082E]`}
+                    />
+                  ) : undefined
+                }
+              />
+            ))}
+          </View>
+        </View>
         <View style={styles.listSection}>
-          {activeTab === "For you" &&
+          {activeTab === "Gogo picks" &&
             (loading ? (
               <ImpactPageLoader
                 compact
@@ -409,6 +424,7 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+      <PostEventSurveyPrompt />
     </View>
   );
 }
@@ -446,24 +462,26 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 500,
   },
+  bannerSlide: {
+    width: bannerPageWidth,
+  },
   bannerCard: {
-    width: bannerCardWidth,
     marginHorizontal: layoutSpacing.pageHorizontal,
     backgroundColor: "#07164F",
     borderColor: "#1F3FAD",
     borderWidth: 1,
     borderRadius: 18,
-    padding: spacing.md,
-    minHeight: 136,
+    padding: 10,
+    minHeight: 124,
   },
   bannerImageCard: {
     width: "100%",
-    height: 118,
+    height: 102,
     borderRadius: 12,
   },
   bannerImageCardFallback: {
     width: "100%",
-    height: 118,
+    height: 102,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -472,8 +490,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#0FF1CF",
     borderRadius: 999,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    marginBottom: spacing.sm,
+    paddingVertical: 2,
+    marginBottom: spacing.xs,
   },
   bannerBadgeText: {
     color: "#01082E",
@@ -482,16 +500,16 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     color: "#FFFFFF",
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "800",
-    lineHeight: 22,
+    lineHeight: 18,
     marginBottom: spacing.xs,
   },
   bannerBody: {
     color: "#CBD8FF",
     fontSize: 12,
-    lineHeight: 18,
-    marginBottom: spacing.sm,
+    lineHeight: 16,
+    marginBottom: spacing.xs,
   },
   bannerFooter: {
     flexDirection: "row",
@@ -504,8 +522,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bannerArtwork: {
-    width: 62,
-    height: 34,
+    width: 36,
+    height: 20,
     borderRadius: 12,
   },
   bannerDots: {
@@ -526,18 +544,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#0FF1CF",
   },
   tabs: {
-    paddingVertical: spacing.lg,
+    backgroundColor: "#030A31",
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
     paddingHorizontal: layoutSpacing.pageHorizontal,
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: layoutSpacing.pageHorizontal,
     width: "100%",
   },
   scrollContent: {
     paddingBottom: layoutSpacing.listBottomInset,
   },
-  listSection: {},
+  listSection: {
+    paddingHorizontal: layoutSpacing.pageHorizontal,
+    paddingTop: spacing.sm,
+  },
   listGroup: {
     gap: layoutSpacing.listGap,
   },

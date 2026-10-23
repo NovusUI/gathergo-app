@@ -3,7 +3,7 @@ import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import { getEventLinkMeta, isValidEventLink } from "@/constants/eventLinks";
 import { Ionicons } from "@expo/vector-icons";
-import { Link2Icon, PlusIcon, Trash2Icon } from "lucide-react-native";
+import { PlusIcon, Trash2Icon } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 
@@ -37,12 +37,7 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
   return (
     <CustomView className="px-5">
       <CustomView className="gap-2">
-        <FormLabel text="event links" />
-        <Text style={tw`text-xs text-[#8FA1CB]`}>
-          Optional. Add up to 5 useful links like WhatsApp, Instagram, X, Zoom,
-          Google Meet, TikTok, or Facebook.
-        </Text>
-
+        <FormLabel text="event links (optional)" />
         {links.length > 0 ? (
           <View style={tw`gap-3`}>
             {links.map((link, index) => {
@@ -92,8 +87,8 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
                           {isInvalid
                             ? "Enter a valid link"
                             : link.trim()
-                            ? meta.host || meta.subtitle
-                            : "Paste the link when you're ready"}
+                              ? meta.host || meta.subtitle
+                              : "Paste the link when you're ready"}
                         </Text>
                       </View>
                     </View>
@@ -118,24 +113,7 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
               );
             })}
           </View>
-        ) : (
-          <View
-            style={tw`rounded-3xl border border-dashed border-[#24345A] bg-[#0A173F] p-4`}
-          >
-            <View style={tw`flex-row items-center`}>
-              <View
-                style={tw`mr-3 h-10 w-10 items-center justify-center rounded-2xl bg-[#102247]`}
-              >
-                <Link2Icon size={18} color="#0FF1CF" />
-              </View>
-              <View style={tw`flex-1`}>
-                <Text style={tw`text-sm font-semibold text-white`}>
-                  Add event links when you need them
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
+        ) : null}
 
         <TouchableOpacity
           disabled={!canAddMore}

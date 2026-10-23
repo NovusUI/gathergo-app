@@ -16,8 +16,9 @@ import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
-import { normalizeEventLink } from "@/constants/eventLinks";
+import { normalizeEventLinks } from "@/constants/eventLinks";
 import {
+  DEFAULT_REGISTRATION_CAPACITY,
   buildEventImpactFormFields,
   buildEventParticipationFormFields,
 } from "@/utils/eventForm";
@@ -35,12 +36,23 @@ import { buildEventDateTimeIso, extractDate } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { CHACHE_KEYS } from "@/utils/keys";
 import { useLockedRouter } from "@/utils/navigation";
-import { getItem, removeItem, saveItem } from "@/utils/storage";
+import { removeItem } from "@/utils/storage";
 import { convertUndefinedToNull, objectToFormData } from "@/utils/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import EventDraftPrompt from "@/components/gogo/tasks/eventCreation/EventDraftPrompt";
+import {
+  loadEventDrafts,
+  discardEventDraft,
+  type SavedEventDraft,
+} from "@/components/gogo/tasks/eventCreation/draftStorage";
+import { useEventDraftPersistence } from "@/components/gogo/tasks/eventCreation/useEventDraftPersistence";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
+import EventTypePicker from "@/components/gogo/tasks/eventCreation/EventTypePicker";
+import type { Registration } from "@/types/auth";
 import { CheckCheck } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -54,26 +66,148 @@ import {
 
 import tw from "twrnc";
 
-const normalizeEventLinks = (links?: string[]) =>
-  (links || [])
-    .map((link) => normalizeEventLink(link))
-    .filter(Boolean)
-    .slice(0, 5);
+type CreationScreen =
+  | { kind: "checking" | "picker" | "error" }
+  | { kind: "resume"; draft: SavedEventDraft }
+  | { kind: "editing"; type: Registration; draft: SavedEventDraft | null };
 
 const NewEvent = () => {
   const router = useLockedRouter();
-  const { eventType } = useLocalSearchParams<{ eventType?: string }>();
-  const presetEventType = Array.isArray(eventType) ? eventType[0] : eventType;
-  const isDonationEvent = presetEventType === "donation";
-  const eventFormCacheKey = `${CHACHE_KEYS.eventFormKey}_${
-    isDonationEvent ? "donation" : "general"
-  }`;
-  const pricingSectionTitle = isDonationEvent ? "Donation setup" : "Pricing";
+  const [screen, setScreen] = useState<CreationScreen>({ kind: "checking" });
+  const [drafts, setDrafts] = useState<SavedEventDraft[]>([]);
+  const [discarding, setDiscarding] = useState(false);
+  const loadCycle = useRef(0);
+  const checkDrafts = useCallback(async (offerResume = true) => {
+    const cycle = ++loadCycle.current;
+    setScreen({ kind: "checking" });
+    try {
+      const saved = await loadEventDrafts();
+      if (loadCycle.current !== cycle) return;
+      setDrafts(saved);
+      setScreen(
+        offerResume && saved.length
+          ? { kind: "resume", draft: saved[0] }
+          : { kind: "picker" },
+      );
+    } catch {
+      if (loadCycle.current === cycle) setScreen({ kind: "error" });
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void checkDrafts();
+      return () => {
+        loadCycle.current += 1;
+      };
+    }, [checkDrafts]),
+  );
+  const discardDraft = async (draft: SavedEventDraft) => {
+    if (discarding) return;
+    const cycle = loadCycle.current;
+    setDiscarding(true);
+    try {
+      await discardEventDraft(draft.values.registrationType);
+      if (loadCycle.current !== cycle) return;
+      setDrafts((current) =>
+        current.filter(
+          (item) =>
+            item.values.registrationType !== draft.values.registrationType,
+        ),
+      );
+      setScreen({ kind: "picker" });
+    } catch {
+      showGlobalError("Couldn’t discard your draft. Please try again.");
+    } finally {
+      setDiscarding(false);
+    }
+  };
+  if (screen.kind === "editing") {
+    return (
+      <EventCreationForm
+        key={screen.type}
+        participationType={screen.type}
+        initialDraft={screen.draft}
+        onChangeType={() => void checkDrafts(false)}
+      />
+    );
+  }
+  return (
+    <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+      <View style={tw`px-5`}>
+        <CustomeTopBarNav
+          title="New Event"
+          onClickBack={() => router.replace("/")}
+        />
+      </View>
+      {screen.kind === "checking" ? (
+        <ImpactPageLoader />
+      ) : screen.kind === "error" ? (
+        <View style={tw`flex-1 justify-center gap-4 px-6`}>
+          <MascotMoment
+            layout="stacked"
+            variant="error"
+            title="Couldn’t load your draft"
+            message="Try again to pick up where you left off."
+          />
+          <CustomButton
+            title="Try again"
+            onPress={() => void checkDrafts()}
+            showArrow={false}
+          />
+        </View>
+      ) : screen.kind === "resume" ? (
+        <EventDraftPrompt
+          title={screen.draft.values.eventName}
+          busy={discarding}
+          onContinue={() =>
+            setScreen({
+              kind: "editing",
+              type: screen.draft.values.registrationType,
+              draft: screen.draft,
+            })
+          }
+          onDiscard={() => void discardDraft(screen.draft)}
+        />
+      ) : (
+        <EventTypePicker
+          onSelect={(type) => {
+            const saved = drafts.find(
+              (draft) => draft.values.registrationType === type,
+            );
+            setScreen(
+              saved
+                ? { kind: "resume", draft: saved }
+                : { kind: "editing", type, draft: null },
+            );
+          }}
+        />
+      )}
+    </View>
+  );
+};
 
-  const [mode, setMode] = useState<"gogo" | "manual">("gogo");
+const EventCreationForm = ({
+  participationType,
+  initialDraft,
+  onChangeType,
+}: {
+  participationType: Registration;
+  initialDraft: SavedEventDraft | null;
+  onChangeType: () => void;
+}) => {
+  const router = useLockedRouter();
+  const isDonationEvent = participationType === "donation";
+  const pricingSectionTitle = isDonationEvent
+    ? "Fundraising goal"
+    : participationType === "ticket"
+      ? "Tickets"
+      : "Registration";
+
+  const [mode, setMode] = useState<"gogo" | "manual">(
+    initialDraft?.mode ?? "gogo",
+  );
   const [activeSection, setActiveSection] =
     useState<EventCreationSection | null>(null);
-  const [pricingData, setPricingData] = useState<EventPricing | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
 
   const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null);
@@ -109,27 +243,16 @@ const NewEvent = () => {
 
     clearErrors(["startDate", "endDate", "startTime", "endTime"]);
 
-    finishSection();
+    void finishSection("Date and Time");
   };
 
   const handlePricingSave = (data: EventPricing) => {
-    setPricingData(data);
-    setValue("registrationType", data.registrationType);
-    setValue("registrationAttendees", data.registrationAttendees);
-    setValue("registrationFee", data.registrationFee);
-    if (data.registrationType === "donation")
-      setValue("donationTarget", data.donationTarget);
-    setValue("tickets", data.tickets || []);
-    finishSection();
-    clearErrors(
-      isDonationEvent
-        ? ["registrationType", "donationTarget"]
-        : "registrationType",
-    );
+    handlePricingChange(data);
+    void finishSection("Pricing");
   };
 
-  const renderSheetContent = () => {
-    switch (activeSection) {
+  const renderSectionContent = (section: EventCreationSection | null) => {
+    switch (section) {
       case "Date and Time": {
         const values = getValues();
         const currentDates = {
@@ -151,7 +274,16 @@ const NewEvent = () => {
         );
       }
       case "Story":
-        return <EventStoryFields control={control} setValue={setValue} />;
+      case "Impact story":
+      case "Impact map":
+      case "Interests":
+        return (
+          <EventStoryFields
+            control={control}
+            setValue={setValue}
+            section={section}
+          />
+        );
       case "Volunteering":
         return (
           <View>
@@ -188,7 +320,12 @@ const NewEvent = () => {
               <View>
                 <Location
                   isPhysicalEvent={watch("isPhysicalEvent")}
-                  onSave={({ location, isPhysicalEvent }) => {
+                  physicalOnly={
+                    participationType === "volunteer" ||
+                    watch("volunteerRoles").length > 0
+                  }
+                  submitLabel="Continue"
+                  onChange={({ location, isPhysicalEvent }) => {
                     if (
                       !isPhysicalEvent &&
                       (watch("registrationType") === "volunteer" ||
@@ -203,8 +340,12 @@ const NewEvent = () => {
                     setValue("isPhysicalEvent", isPhysicalEvent, {
                       shouldValidate: true,
                     });
-                    finishSection();
                   }}
+                  onSave={
+                    mode === "gogo"
+                      ? () => void finishSection("Location")
+                      : undefined
+                  }
                   value={value}
                 />
               </View>
@@ -212,16 +353,55 @@ const NewEvent = () => {
           />
         );
       case "Pricing":
+        if (participationType === "volunteer") return null;
+        if (participationType === "donation")
+          return (
+            <View style={tw`gap-4`}>
+              <Controller
+                name="donationTarget"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Input
+                    accessibilityLabel="Fundraising target in naira"
+                    numeric
+                    moneyFormat
+                    placeholder="Target in ₦ (minimum ₦5,000)"
+                    value={
+                      field.value === undefined ? "" : String(field.value / 100)
+                    }
+                    onChangeText={(text) =>
+                      field.onChange(
+                        text === ""
+                          ? undefined
+                          : Math.round(Number(text) * 100),
+                      )
+                    }
+                    error={fieldState.error?.message}
+                  />
+                )}
+              />
+              {mode === "gogo" ? (
+                <CustomButton
+                  onPress={() => void finishSection("Pricing")}
+                  title="Continue"
+                  showArrow={false}
+                  buttonClassName="bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-black"
+                />
+              ) : null}
+            </View>
+          );
         return (
           <Pricing
             onEdit={onEdit}
             initialData={pricingData}
-            onSave={handlePricingSave}
+            onChange={handlePricingChange}
+            onSave={mode === "gogo" ? handlePricingSave : undefined}
             setTicket={(updated: EventTicket[]) => setValue("tickets", updated)}
             tickets={watch("tickets") || []}
-            allowedRegistrationTypes={
-              isDonationEvent ? ["donation"] : ["ticket", "registration"]
-            }
+            allowedRegistrationTypes={[participationType]}
+            compact
+            submitLabel="Continue"
             createTicket={() => {
               setEditingTicket(null);
               openSheetTicket();
@@ -248,7 +428,7 @@ const NewEvent = () => {
     getValues,
     setValue,
     clearErrors,
-    reset,
+    trigger,
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema) as Resolver<EventFormData>,
     defaultValues: {
@@ -270,7 +450,7 @@ const NewEvent = () => {
       location: "",
       links: [],
       tags: [],
-      registrationType: isDonationEvent ? "donation" : undefined,
+      registrationType: participationType,
       description: "",
       isRecurring: false,
       tickets: [],
@@ -279,138 +459,121 @@ const NewEvent = () => {
       donationTarget: undefined,
       donationsEnabled: false,
       volunteerRoles: [],
+      ...initialDraft?.values,
     },
   });
+
+  const handlePricingChange = useCallback(
+    (data: EventPricing) => {
+      setValue("registrationType", data.registrationType);
+      setValue("registrationAttendees", data.registrationAttendees, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue("registrationFee", data.registrationFee, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      if (data.registrationType === "donation")
+        setValue("donationTarget", data.donationTarget, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      setValue("tickets", data.tickets);
+      clearErrors("registrationType");
+    },
+    [clearErrors, setValue],
+  );
 
   const conversation = useGogoEventCreation({
     getValues,
     setValue,
     isDonationEvent,
+    initialState: initialDraft?.conversation,
+  });
+  const { getDraftState } = conversation;
+  const getDraft = useCallback(
+    (): SavedEventDraft => ({
+      values: getValues(),
+      mode,
+      conversation: getDraftState(),
+    }),
+    [getValues, mode, getDraftState],
+  );
+  const draftPersistence = useEventDraftPersistence({
+    watch,
+    getDraft,
+    onLeave: conversation.cancel,
   });
   const reviewDraft = () => {
     conversation.cancel();
     setMode("manual");
   };
+  const changeEventType = async () => {
+    conversation.cancel();
+    try {
+      await draftPersistence.flush();
+      onChangeType();
+    } catch {
+      showGlobalError("Couldn’t keep your draft. Please try again.");
+    }
+  };
 
-  const finishSection = () => {
+  const finishSection = async (
+    section: EventCreationSection | null = activeSection,
+  ) => {
+    const fields =
+      section === "Impact story"
+        ? (["impactDescription"] as const)
+        : section === "Links"
+          ? (["links"] as const)
+          : section === "Story"
+            ? (["eventName", "description"] as const)
+            : section === "Pricing" && isDonationEvent
+              ? (["donationTarget"] as const)
+              : section === "Volunteering"
+                ? (["volunteerRoles", "donationTarget"] as const)
+                : null;
+    if (fields && !(await trigger([...fields]))) return;
+    const completed = section;
     closeSheet();
-    if (mode === "gogo") void conversation.continueFromDraft();
+    if (mode === "gogo")
+      void conversation.continueFromDraft(completed ?? undefined);
   };
 
   const startDate = watch("startDate");
-  const isPhysicalEvent = watch("isPhysicalEvent");
-  const location = watch("location");
+  const registrationFee = watch("registrationFee");
+  const registrationAttendees = watch("registrationAttendees");
+  const tickets = watch("tickets");
   const registrationType = watch("registrationType");
-  const donationTarget = watch("donationTarget");
 
-  const buildPricingState = useCallback(
-    (values: Partial<EventFormData>): EventPricing | null => {
-      const nextRegistrationType = isDonationEvent
-        ? "donation"
-        : values.registrationType;
-
-      if (!nextRegistrationType || nextRegistrationType === "volunteer") {
-        return null;
-      }
-
-      return {
-        registrationType: nextRegistrationType,
-        paid:
-          nextRegistrationType === "registration"
-            ? Number(values.registrationFee || 0) > 0
-            : false,
-        registrationFee:
-          nextRegistrationType === "registration"
-            ? values.registrationFee
-            : undefined,
-        donationTarget:
-          nextRegistrationType === "donation"
-            ? values.donationTarget
-            : undefined,
-        limited:
-          nextRegistrationType === "registration"
-            ? Boolean(
-                values.registrationAttendees &&
-                  Number(values.registrationAttendees) !== 100000,
-              )
-            : false,
-        registrationAttendees:
-          nextRegistrationType === "registration"
-            ? values.registrationAttendees
-            : undefined,
-        tickets: nextRegistrationType === "ticket" ? values.tickets || [] : [],
-      };
-    },
-    [isDonationEvent],
-  );
+  const pricingData = useMemo<EventPricing | null>(() => {
+    if (registrationType === "volunteer" || registrationType === "donation")
+      return null;
+    return {
+      registrationType,
+      paid: registrationType === "registration" && (registrationFee ?? 0) > 0,
+      registrationFee:
+        registrationType === "registration" ? registrationFee : undefined,
+      limited:
+        registrationType === "registration" &&
+        registrationAttendees !== undefined &&
+        registrationAttendees !== DEFAULT_REGISTRATION_CAPACITY,
+      registrationAttendees:
+        registrationType === "registration" ? registrationAttendees : undefined,
+      tickets: registrationType === "ticket" ? (tickets ?? []) : [],
+    };
+  }, [registrationType, registrationFee, registrationAttendees, tickets]);
 
   const openSheet = (section: EventCreationSection) => {
     conversation.cancel();
-    if (section === "Pricing") setPricingData(buildPricingState(getValues()));
+    if (section === "Impact story" && conversation.suggestedImpactStory) {
+      setValue("impactDescription", conversation.suggestedImpactStory, {
+        shouldDirty: true,
+      });
+    }
     setActiveSection(section);
   };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    (async () => {
-      const cached = await getItem(eventFormCacheKey);
-      if (cached) {
-        try {
-          const parsed = {
-            isPhysicalEvent: true,
-            donationsEnabled: false,
-            volunteerRoles: [],
-            ...JSON.parse(cached),
-          };
-          if (!isMounted) {
-            return;
-          }
-          reset(parsed); // restore form state
-          setPricingData(buildPricingState(parsed));
-        } catch (e) {
-          console.log("Error parsing cached event form:", e);
-        }
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [buildPricingState, eventFormCacheKey, reset]);
-
-  useEffect(() => {
-    if (!isDonationEvent) {
-      return;
-    }
-
-    setValue("registrationType", "donation");
-    setPricingData(buildPricingState(getValues()));
-  }, [buildPricingState, getValues, isDonationEvent, setValue]);
-
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    const subscription = watch((value) => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(async () => {
-        try {
-          await saveItem(eventFormCacheKey, JSON.stringify(value));
-        } catch (e) {
-          console.log("Error saving event form progress:", e);
-        }
-      }, 250);
-    });
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      subscription.unsubscribe();
-    };
-  }, [eventFormCacheKey, watch]);
 
   const onError = (errors: any) => {
     const firstErrorMessage = Object.values(errors || {}).find(
@@ -423,33 +586,14 @@ const NewEvent = () => {
 
   const { mutateAsync, isPending } = useCreateEvent({
     onSuccess: async (data) => {
-      const createdEventType = watch("registrationType");
-      const hasPaidRegistration =
-        createdEventType === "registration" &&
-        Number(watch("registrationFee") || 0) > 0;
-      const hasDonationFlow =
-        createdEventType === "donation" ||
-        (createdEventType === "volunteer" && watch("donationsEnabled"));
-      const hasPaidTickets =
-        createdEventType === "ticket" &&
-        (watch("tickets") || []).some(
-          (ticket: any) => Number(ticket?.price || 0) > 0,
-        );
-      const shouldPromptWallet =
-        hasPaidRegistration || hasDonationFlow || hasPaidTickets;
-
       showGlobalSuccess(
         data.data.isImageProcessing
           ? "Event created! Image uploading in background..."
           : "Event created successfully!",
       );
-      await removeItem(eventFormCacheKey);
+      await draftPersistence.clear();
       await removeItem(CHACHE_KEYS.eventFormKey);
-      router.replace(
-        shouldPromptWallet
-          ? `/event/${data.data.id}?openPayoutSetup=1`
-          : `/event/${data.data.id}`,
-      );
+      router.replace(`/event/${data.data.id}`);
     },
     onError: (e) => {
       console.error(e);
@@ -554,11 +698,25 @@ const NewEvent = () => {
         <View style={tw`flex-1 w-full max-w-[500px]`}>
           <CustomView style={tw`px-5`}>
             <CustomeTopBarNav
-              title={isDonationEvent ? "New Fundraiser" : "New Event"}
-              onClickBack={() => router.replace("/")}
+              title={
+                {
+                  donation: "New Fundraiser",
+                  ticket: "New ticket event",
+                  registration: "New registration event",
+                  volunteer: "New volunteer event",
+                }[participationType]
+              }
+              onClickBack={() => void changeEventType()}
             />
           </CustomView>
-          <View style={tw`px-5 flex-row justify-end`}>
+          <View style={tw`px-5 flex-row items-center justify-between`}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => void changeEventType()}
+              style={tw`min-h-[44px] justify-center py-2`}
+            >
+              <Text style={tw`text-sm text-[#AFC0F4]`}>Change event type</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               accessibilityRole="button"
               onPress={() => {
@@ -582,6 +740,13 @@ const NewEvent = () => {
               isDonationEvent={isDonationEvent}
               onOpenSection={openSheet}
               onReview={reviewDraft}
+              draftTitle={watch("eventName")}
+              impactStory={watch("impactDescription")}
+              renderInlineSection={(section) =>
+                section === "Location" || section === "Pricing"
+                  ? renderSectionContent(section)
+                  : null
+              }
             />
           ) : (
             <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
@@ -656,55 +821,24 @@ const NewEvent = () => {
                   )}
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                  onPress={() => openSheet("Location")}
-                >
-                  <View style={tw`flex-1 pr-3`}>
-                    <Text style={tw`text-white text-base`}>Location</Text>
-                    {errors.location ? (
-                      <Text style={tw`text-red-500`}>
-                        {errors.location.message}
-                      </Text>
-                    ) : (
-                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                        {isPhysicalEvent
-                          ? location || "Add the physical venue"
-                          : "No physical meetup"}
-                      </Text>
-                    )}
-                  </View>
-                  {!errors.location &&
-                    (Boolean(location) || !isPhysicalEvent) && (
-                      <CheckCheck color="#0FF1CF" />
-                    )}
-                </TouchableOpacity>
-
+                <View style={tw`mt-5 gap-3`}>
+                  <Text style={tw`text-base font-semibold text-white`}>
+                    Location
+                  </Text>
+                  {renderSectionContent("Location")}
+                  {errors.location ? (
+                    <Text style={tw`text-red-500`}>
+                      {errors.location.message}
+                    </Text>
+                  ) : null}
+                </View>
                 {registrationType !== "volunteer" ? (
-                  <TouchableOpacity
-                    style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                    onPress={() => openSheet("Pricing")}
-                  >
-                    <View>
-                      <Text style={tw`text-white text-base`}>
-                        {pricingSectionTitle}
-                      </Text>
-                      {(isDonationEvent
-                        ? errors.donationTarget
-                        : errors.registrationType) && (
-                        <Text style={tw`text-red-500`}>
-                          {isDonationEvent
-                            ? errors.donationTarget?.message
-                            : errors.registrationType?.message}
-                        </Text>
-                      )}
-                    </View>
-                    {!errors.registrationType &&
-                      !errors.donationTarget &&
-                      (isDonationEvent ? donationTarget : registrationType) && (
-                        <CheckCheck color="#0FF1CF" />
-                      )}
-                  </TouchableOpacity>
+                  <View style={tw`mt-6 gap-3`}>
+                    <Text style={tw`text-base font-semibold text-white`}>
+                      {pricingSectionTitle}
+                    </Text>
+                    {renderSectionContent("Pricing")}
+                  </View>
                 ) : null}
               </CustomView>
 
@@ -741,7 +875,11 @@ const NewEvent = () => {
             </ScrollView>
           )}
           <Modal
-            visible={Boolean(activeSection)}
+            visible={Boolean(
+              activeSection &&
+                activeSection !== "Location" &&
+                activeSection !== "Pricing",
+            )}
             animationType="slide"
             transparent
             onRequestClose={closeSheet}
@@ -774,14 +912,17 @@ const NewEvent = () => {
                   contentContainerStyle={tw`pt-4 pb-6`}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {renderSheetContent()}
+                  {renderSectionContent(activeSection)}
                   {mode === "gogo" &&
                   (activeSection === "Story" ||
+                    activeSection === "Impact story" ||
+                    activeSection === "Impact map" ||
+                    activeSection === "Interests" ||
                     activeSection === "Volunteering" ||
                     activeSection === "Cover" ||
                     activeSection === "Links") ? (
                     <CustomButton
-                      onPress={finishSection}
+                      onPress={() => void finishSection()}
                       title="Continue with Gogo"
                       showArrow={false}
                       buttonClassName="bg-[#0FF1CF] w-full !border-none mt-5"

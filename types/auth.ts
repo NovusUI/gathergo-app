@@ -171,6 +171,7 @@ export interface PhoneFirebaseAuthPayload {
 }
 
 export interface publicProfileData extends User {
+  badges: import("./badge").PublicBadge[];
   bio: string;
   followingCount: number;
   followersCount: number;

@@ -4,44 +4,83 @@ import type {
   EventCreationAssistantReply,
   EventCreationAssistantRequest,
   EventCreationMessage,
+  EventCreationOptionalSection,
+  EventCreationSection,
 } from "@/components/gogo/tasks/eventCreation/types";
 import {
   applyEventCreationUpdates,
   buildEventCreationDraft,
 } from "@/components/gogo/tasks/eventCreation/draft";
+import { EVENT_CREATION_OPTIONAL_SECTIONS } from "@/components/gogo/tasks/eventCreation/types";
 import { useMutation } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
-type ConversationMessage = EventCreationMessage &
+export type ConversationMessage = EventCreationMessage &
   (
     | { role: "user" }
     | ({ role: "assistant" } & Pick<
         EventCreationAssistantReply,
-        "choices" | "section"
+        "choices" | "section" | "suggestedImpactStory"
       >)
   );
+export type EventCreationConversationState = {
+  messages: ConversationMessage[];
+  addressedSections: EventCreationOptionalSection[];
+};
 type Props = Pick<UseFormReturn<EventFormData>, "getValues" | "setValue"> & {
   isDonationEvent: boolean;
+  initialState?: EventCreationConversationState;
 };
 
 export function useGogoEventCreation({
   getValues,
   setValue,
   isDonationEvent,
+  initialState,
 }: Props) {
-  const [messages, setMessages] = useState<ConversationMessage[]>([
-    {
-      role: "assistant",
-      content: isDonationEvent
-        ? "Who or what are we raising support for?"
-        : "What would you like to bring people together for?",
-      choices: [],
-      section: null,
-    },
-  ]);
-  const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ConversationMessage[]>(
+    initialState?.messages ?? [
+      {
+        role: "assistant",
+        content: isDonationEvent
+          ? "What are you raising support for? Include any plans you have."
+          : "What’s your event idea? Add any date, place or price you know.",
+        choices: [],
+        section: null,
+        suggestedImpactStory: null,
+      },
+    ],
+  );
+  const addressedSections = useRef<EventCreationOptionalSection[]>(
+    initialState?.addressedSections ?? [],
+  );
+  const prompt = messages
+    .filter((message) => message.role === "assistant")
+    .slice(-1)[0];
+  const suggestedImpactStory = prompt.suggestedImpactStory;
+  const optionalSection = EVENT_CREATION_OPTIONAL_SECTIONS.find(
+    (section) => section === prompt.section,
+  );
+  const isRequiredVolunteerStep =
+    getValues().registrationType === "volunteer" &&
+    (optionalSection === "Impact story" || optionalSection === "Volunteering");
+  const skippableSection = isRequiredVolunteerStep
+    ? undefined
+    : optionalSection;
+  const addressSection = (section: EventCreationSection) => {
+    const optional = EVENT_CREATION_OPTIONAL_SECTIONS.find(
+      (value) => value === section,
+    );
+    if (optional && !addressedSections.current.includes(optional))
+      addressedSections.current = [...addressedSections.current, optional];
+  };
+  const [error, setError] = useState<string | null>(
+    initialState?.messages.at(-1)?.role === "user"
+      ? "Your last reply was interrupted. Try again to continue."
+      : null,
+  );
   const currentRequest = useRef<AbortController | null>(null);
   const { mutateAsync, isPending, reset } = useMutation({
     mutationFn: ({
@@ -65,14 +104,21 @@ export function useGogoEventCreation({
           eventType: isDonationEvent ? "donation" : "general",
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           draft: buildEventCreationDraft(getValues()),
-          messages: history
-            .slice(-20)
-            .map(({ role, content }) => ({ role, content })),
+          addressedSections: addressedSections.current,
+          messages: history.slice(-20).map((message) => ({
+            role: message.role,
+            content:
+              message.role === "assistant" && message.suggestedImpactStory
+                ? `${message.content}\nSuggested impact story: ${message.suggestedImpactStory}`
+                : message.content,
+          })),
         },
         signal: request.signal,
       });
       if (request.signal.aborted || currentRequest.current !== request) return;
       applyEventCreationUpdates(setValue, response.data.updates);
+      if (response.data.completedSection)
+        addressSection(response.data.completedSection);
       setMessages((previous) => [
         ...previous,
         {
@@ -80,6 +126,7 @@ export function useGogoEventCreation({
           content: response.data.reply,
           choices: response.data.choices,
           section: response.data.section,
+          suggestedImpactStory: response.data.suggestedImpactStory,
         },
       ]);
     } catch (failure) {
@@ -119,12 +166,42 @@ export function useGogoEventCreation({
 
   return {
     messages,
+    getDraftState: (): EventCreationConversationState => {
+      const recent = messages.slice(-20);
+      return {
+        messages: recent.some((message) => message.role === "assistant")
+          ? recent
+          : [prompt, ...recent.slice(-19)],
+        addressedSections: addressedSections.current,
+      };
+    },
     error,
     isPending,
     send,
     retry: () => requestReply(messages),
-    continueFromDraft: () =>
-      send("I’ve updated the draft using the form. What should we add next?"),
+    optionalSection: skippableSection,
+    skipSection: () => {
+      if (!skippableSection || currentRequest.current) return;
+      addressSection(skippableSection);
+      return send(`Skip ${skippableSection} for now. What is next?`);
+    },
+    continueFromDraft: (section?: EventCreationSection) => {
+      if (currentRequest.current) return;
+      if (section) addressSection(section);
+      return send(
+        "I’ve updated the draft using the form. What should we add next?",
+      );
+    },
+    suggestedImpactStory,
+    acceptImpactStory: () => {
+      if (!suggestedImpactStory || currentRequest.current) return;
+      setValue("impactDescription", suggestedImpactStory, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      addressSection("Impact story");
+      return send("Use this impact story. What is next?");
+    },
     cancel,
   };
 }

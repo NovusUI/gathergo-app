@@ -1,4 +1,4 @@
-import ActivityIndicator from "@/components/ui/AppLoader";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import type { EventRegistrationType } from "@/constants/impact";
 import { useImpactSuggestions } from "@/components/gogo/tasks/impactSuggestions/useImpactSuggestions";
 import type { ImpactSuggestionPayload } from "@/components/gogo/tasks/impactSuggestions/types";
@@ -13,6 +13,7 @@ import tw, { style } from "twrnc";
 import TextArea from "@/components/inputs/CustomTextArea";
 
 interface ImpactSelectorProps {
+  section?: "story" | "map";
   eventTitle: string;
   eventDescription: string;
   impactDescription: string;
@@ -44,13 +45,18 @@ function SuggestionGroup<T>({
       [...selected, ...suggestions].map((item) => [itemKey(item), item]),
     ).values(),
   );
+  if (items.length === 0) return null;
   return (
-    <View style={tw`mt-4 gap-2`}>
-      <Text
-        style={tw`text-xs font-semibold uppercase tracking-widest text-[#A7B8DE]`}
-      >
-        {title} (up to {limit})
-      </Text>
+    <View style={tw`gap-3`}>
+      <View style={tw`flex-row items-center justify-between gap-3`}>
+        <Text style={tw`text-sm font-semibold text-[#DDE6FF]`}>{title}</Text>
+        <Text
+          accessibilityLabel={`${selected.length} of ${limit} selected`}
+          style={tw`text-xs text-[#8FA5E2]`}
+        >
+          {selected.length}/{limit}
+        </Text>
+      </View>
       <View style={tw`flex-row flex-wrap gap-2`}>
         {items.map((item) => {
           const key = itemKey(item);
@@ -70,26 +76,26 @@ function SuggestionGroup<T>({
                 )
               }
               style={style(
-                "rounded-full border px-3 py-2",
+                "min-h-[44px] max-w-full justify-center rounded-xl border px-4 py-3",
                 checked
-                  ? "border-[#0FF1CF] bg-[#0FF1CF]/10"
+                  ? "border-[#0FF1CF] bg-[#0FF1CF]"
                   : "border-[#1F335E] bg-[#101C45]",
                 disabled && "opacity-40",
               )}
             >
-              <Text style={tw`text-xs font-semibold text-white`}>
-                {checked ? "✓ " : "+ "}
+              <Text
+                style={style(
+                  "text-sm font-medium",
+                  checked ? "text-[#01082E]" : "text-white",
+                )}
+              >
+                {checked ? "✓ " : ""}
                 {label(item)}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
-      {items.length === 0 && (
-        <Text style={tw`text-xs text-[#8EA0CA]`}>
-          No suggestions yet. A map is optional.
-        </Text>
-      )}
     </View>
   );
 }
@@ -105,6 +111,7 @@ export default function ImpactSelector({
   onImpactDescriptionChange,
   selectedMap,
   onImpactMapChange,
+  section,
 }: ImpactSelectorProps) {
   const suggestionPayload = useMemo<ImpactSuggestionPayload>(
     () => ({
@@ -118,92 +125,106 @@ export default function ImpactSelector({
   const debouncedPayload = useDebounce(suggestionPayload, 1000);
   const hasStory = impactDescription.trim().length >= 3;
   const isDraftCurrent = suggestionPayload === debouncedPayload;
-  const { data, isFetching, isError, refetch } = useImpactSuggestions(
-    debouncedPayload,
-    {
-      enabled: hasStory && isDraftCurrent,
-    },
-  );
+  const { data, isFetching, isPending, isError, refetch } =
+    useImpactSuggestions(debouncedPayload, {
+      enabled: section !== "story" && hasStory && isDraftCurrent,
+    });
   const suggestions =
     hasStory && isDraftCurrent && !isError ? data?.data : undefined;
 
+  const isThinking = hasStory && (isPending || isFetching || !isDraftCurrent);
+  const hasIdeas =
+    suggestions &&
+    suggestions.sdgGoals.length +
+      suggestions.impactPaths.length +
+      suggestions.commitments.length >
+      0;
+  const message = !hasStory
+    ? "Start with a short impact story."
+    : isThinking
+      ? "Finding ideas for your story…"
+      : isError
+        ? "I couldn’t load ideas. Try again?"
+        : hasIdeas
+          ? "Tap the ideas that fit."
+          : "No matching ideas yet. You can skip this.";
+
   return (
     <View style={tw`gap-4`}>
-      <TextArea
-        value={impactDescription}
-        onChange={onImpactDescriptionChange}
-        maxLength={180}
-        placeholder="What does this event contribute to people, culture, or your community?"
-        className="!bg-[#101C45]"
-      />
-      <View style={tw`rounded-2xl border border-[#17305D] bg-[#0A173F] p-4`}>
-        <View style={tw`flex-row items-center justify-between gap-3`}>
-          <Text
-            style={tw`flex-1 text-xs uppercase tracking-widest text-[#7E93C7]`}
+      {section !== "map" && (
+        <TextArea
+          value={impactDescription}
+          onChange={onImpactDescriptionChange}
+          maxLength={180}
+          placeholder="What could this event contribute?"
+          className="!bg-[#101C45]"
+        />
+      )}
+      {section !== "story" && (
+        <View style={tw`gap-5`}>
+          <View
+            accessibilityLiveRegion="polite"
+            accessibilityState={{ busy: isThinking }}
           >
-            AI suggested impact map
-          </Text>
-          {hasStory && (isFetching || !isDraftCurrent) && (
-            <ActivityIndicator size="small" color="#0FF1CF" />
-          )}
-        </View>
-        <Text style={tw`mt-2 text-xs leading-5 text-[#8FA5E2]`}>
-          Choose the suggestions that reflect your intention, or leave the map
-          empty. Only your selections will appear on the event.
-        </Text>
-        {hasStory && isDraftCurrent && isError && (
-          <View style={tw`mt-2 gap-2`}>
-            <Text style={tw`text-xs leading-5 text-[#8FA5E2]`}>
-              AI suggestions are unavailable right now. You can try again or
-              continue without a map. Your selections are kept.
-            </Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              disabled={isFetching}
-              onPress={() => {
-                void refetch();
-              }}
-            >
-              <Text style={tw`text-xs font-semibold text-[#0FF1CF]`}>
-                Try again
-              </Text>
-            </TouchableOpacity>
+            <MascotMoment
+              compact
+              layout="plain"
+              typing={false}
+              title="Gogo"
+              variant={
+                isThinking ? "pending" : isError && hasStory ? "error" : "idle"
+              }
+              message={message}
+            />
+            {hasStory && isDraftCurrent && isError && !isThinking && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => {
+                  void refetch();
+                }}
+                style={tw`min-h-[44px] justify-center self-start px-3`}
+              >
+                <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
+                  Try again
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-        )}
-        <SuggestionGroup
-          title="Global goals"
-          suggestions={suggestions ? suggestions.sdgGoals : []}
-          selected={selectedMap.sdgGoals}
-          itemKey={(item) => item.id}
-          label={(item) => item.shortTitle}
-          limit={3}
-          onChange={(sdgGoals) =>
-            onImpactMapChange({ ...selectedMap, sdgGoals })
-          }
-        />
-        <SuggestionGroup
-          title="Impact paths"
-          suggestions={suggestions ? suggestions.impactPaths : []}
-          selected={selectedMap.impactPaths}
-          itemKey={(item) => item.id}
-          label={(item) => item.summaryLabel}
-          limit={3}
-          onChange={(impactPaths) =>
-            onImpactMapChange({ ...selectedMap, impactPaths })
-          }
-        />
-        <SuggestionGroup
-          title="Commitments"
-          suggestions={suggestions ? suggestions.commitments : []}
-          selected={selectedMap.commitments}
-          itemKey={commitmentKey}
-          label={(item) => item.label}
-          limit={5}
-          onChange={(commitments) =>
-            onImpactMapChange({ ...selectedMap, commitments })
-          }
-        />
-      </View>
+          <SuggestionGroup
+            title="Global goals"
+            suggestions={suggestions ? suggestions.sdgGoals : []}
+            selected={selectedMap.sdgGoals}
+            itemKey={(item) => item.id}
+            label={(item) => item.shortTitle}
+            limit={3}
+            onChange={(sdgGoals) =>
+              onImpactMapChange({ ...selectedMap, sdgGoals })
+            }
+          />
+          <SuggestionGroup
+            title="Impact paths"
+            suggestions={suggestions ? suggestions.impactPaths : []}
+            selected={selectedMap.impactPaths}
+            itemKey={(item) => item.id}
+            label={(item) => item.summaryLabel}
+            limit={3}
+            onChange={(impactPaths) =>
+              onImpactMapChange({ ...selectedMap, impactPaths })
+            }
+          />
+          <SuggestionGroup
+            title="Commitments"
+            suggestions={suggestions ? suggestions.commitments : []}
+            selected={selectedMap.commitments}
+            itemKey={commitmentKey}
+            label={(item) => item.label}
+            limit={5}
+            onChange={(commitments) =>
+              onImpactMapChange({ ...selectedMap, commitments })
+            }
+          />
+        </View>
+      )}
     </View>
   );
 }

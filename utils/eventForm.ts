@@ -1,5 +1,32 @@
 import { buildImpactMapFormFields } from "@/constants/impact";
-import type { EventFormData } from "@/schemas/event";
+import type {
+  EventFormData,
+  EventPricing,
+  EventPricingFormData,
+} from "@/schemas/event";
+
+export const DEFAULT_REGISTRATION_CAPACITY = 100000;
+
+function parsePricingNumber(value: EventPricingFormData["registrationFee"]) {
+  return value === "" || value === undefined ? undefined : Number(value);
+}
+
+export function normalizeEventPricing(
+  data: Omit<EventPricingFormData, "tickets"> & Pick<EventPricing, "tickets">,
+): EventPricing {
+  return {
+    ...data,
+    registrationFee:
+      data.registrationType === "registration" && !data.paid
+        ? 0
+        : parsePricingNumber(data.registrationFee),
+    registrationAttendees:
+      data.registrationType === "registration" && !data.limited
+        ? DEFAULT_REGISTRATION_CAPACITY
+        : parsePricingNumber(data.registrationAttendees),
+    donationTarget: parsePricingNumber(data.donationTarget),
+  };
+}
 
 export function buildEventParticipationFormFields(
   values: Pick<
@@ -24,7 +51,8 @@ export function buildEventParticipationFormFields(
       : {}),
     ...(values.registrationType === "registration"
       ? {
-          registrationAttendees: values.registrationAttendees ?? 100000,
+          registrationAttendees:
+            values.registrationAttendees ?? DEFAULT_REGISTRATION_CAPACITY,
           registrationFee: values.registrationFee ?? 0,
         }
       : {}),
@@ -38,7 +66,8 @@ export function buildEventParticipationFormFields(
     ...(mode === "create"
       ? {
           registrationType: values.registrationType,
-          ...(values.volunteerRoles.length > 0
+          ...(values.registrationType === "volunteer" &&
+          values.volunteerRoles.length > 0
             ? { volunteerRoles: JSON.stringify(values.volunteerRoles) }
             : {}),
         }

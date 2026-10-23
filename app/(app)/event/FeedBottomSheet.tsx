@@ -269,7 +269,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     } = eventData.data;
 
     return (
-      <View style={tw`p-4 bg-[#101C45] mx-4 mt-2 rounded-xl`}>
+      <View style={tw`p-4 bg-[#101C45] mx-4 mt-2 mb-4 rounded-xl`}>
         <Text style={tw`text-white font-bold mb-2`}>
           {eventData.data.title}
         </Text>
@@ -450,30 +450,9 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           <>
             {renderEventInfo()}
 
-            {feed?.pinnedFeeds && feed?.pinnedFeeds.length > 0 && (
-              <View style={tw`px-4 mt-4 `}>
-                <Text style={tw`text-gray-400 mb-3`}>📌 Pinned</Text>
-                {feed.pinnedFeeds.map((pinnedFeed) => (
-                  <View key={`pinned-${pinnedFeed?.id}`}>
-                    {renderFeedItem({ item: pinnedFeed })}
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <Text
-              style={tw`text-gray-400 mb-3 px-4 py-4 ${
-                feed?.pinnedFeeds && feed?.pinnedFeeds?.length > 0
-                  ? "mt-4"
-                  : "mt-0"
-              }`}
-            >
-              📝 Latest Activity
-            </Text>
-
             {!listRefreshing &&
               feed?.loading &&
-              feed?.regularFeeds?.length === 0 && (
+              feed?.allFeeds.length === 0 && (
                 <ActivityIndicator
                   tone="accent"
                   size="large"
@@ -547,7 +526,6 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       requestingCloseToYou,
       onClose,
       onAction,
-      renderFeedItem,
       canUseCarpool,
     ]
   );
@@ -567,8 +545,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         {/* End of Feed Message */}
         {activeTab === "feed" &&
           !feed?.hasMore &&
-          feed?.regularFeeds &&
-          feed?.regularFeeds?.length > 0 && (
+          Boolean(feed?.allFeeds.length) && (
             <View style={tw`py-6 items-center`}>
               <Text style={tw`text-gray-500`}>
                 🎉 You&apos;ve reached the end
@@ -591,7 +568,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       carpoolsLoadingMore,
       feed?.loadingMore,
       feed?.hasMore,
-      feed?.regularFeeds?.length,
+      feed?.allFeeds.length,
       hasMoreCarpools,
     ]
   );
@@ -645,8 +622,9 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     >
       <BottomSheetFlatList
         key={activeTab}
+        style={tw`flex-1`}
         focusHook={useFocusEffect}
-        data={activeTab === "feed" ? feed?.regularFeeds || [] : carpoolList}
+        data={activeTab === "feed" ? feed?.allFeeds ?? [] : carpoolList}
         keyExtractor={(item: any) => item.id}
         renderItem={activeTab === "feed" ? renderFeedItem : renderCarpoolItem}
         ListHeaderComponent={ListHeaderComponent}
@@ -659,8 +637,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         extraData={{
           activeTab,
           eventRegistrationFee,
-          feedCount: feed?.regularFeeds?.length || 0,
-          pinnedCount: feed?.pinnedFeeds?.length || 0,
+          feedCount: feed?.allFeeds.length || 0,
           carpoolCount: carpoolList.length,
           hasEventEnded,
         }}

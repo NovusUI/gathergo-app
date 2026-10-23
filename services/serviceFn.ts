@@ -1,4 +1,17 @@
-import { checkoutDeadline } from "@/utils/checkout";
+import type { BadgeCollectionResponse, BadgeVisibility } from "@/types/badge";
+import type {
+  SaveInterestProfile,
+  PendingEventFeedback,
+  SaveEventFeedback,
+  EventFeedbackResult,
+  InterestProfile,
+  InterestCatalog,
+  InterestExample,
+  InterestExamplesRequest,
+  EventInterestSignal,
+  PreferenceResponse,
+} from '@/types/preferences';
+import { checkoutDeadline, clearCheckoutIntent } from "@/utils/checkout";
 import client from "@/api/client";
 import type {
   SaveVolunteerRole, VolunteerAction, VolunteerApplication, VolunteerHistoryEntry,
@@ -31,6 +44,7 @@ import {
 import {
   DonationResponse,
   EventDetailsResponse,
+  EventTicketResponse,
   EventImpactReport,
   OwnedRegistrationsResponse,
   OwnedTicketsResponse,
@@ -80,6 +94,8 @@ import {
   ValidationResponse,
 } from "@/types/scanner";
 import {
+  BADGE_URL,
+  PREFERENCE_URL,
   VOLUNTEER_URL,
   AUTH_URLS,
   CARPOOL_URL,
@@ -186,12 +202,62 @@ export const resetPasswordFn = async (
 };
 
 export const updatePreference = async (
-  preferences: string[]
-): Promise<StandardResponse> => {
-  const response = await client.patch<StandardResponse>(USER_URL.preference, {
-    interests: preferences,
-    eventTypes: [],
-  });
+  data: SaveInterestProfile,
+): Promise<PreferenceResponse<InterestProfile>> => {
+  const response = await client.patch<PreferenceResponse<InterestProfile>>(
+    PREFERENCE_URL.profile,
+    data,
+  );
+  return response.data;
+};
+export const getInterestProfile = async (): Promise<
+  PreferenceResponse<InterestProfile>
+> => {
+  const response = await client.get<PreferenceResponse<InterestProfile>>(
+    PREFERENCE_URL.profile,
+  );
+  return response.data;
+};
+export const getInterestCatalog = async (): Promise<
+  PreferenceResponse<InterestCatalog>
+> => {
+  const response = await client.get<PreferenceResponse<InterestCatalog>>(
+    PREFERENCE_URL.catalog,
+  );
+  return response.data;
+};
+export const getInterestExamples = async (
+  data: InterestExamplesRequest,
+): Promise<PreferenceResponse<InterestExample[]>> => {
+  const response = await client.get<PreferenceResponse<InterestExample[]>>(
+    PREFERENCE_URL.examples,
+    { params: { interests: data.interests.join(','), city: data.city } },
+  );
+  return response.data;
+};
+export const recordEventInterest = async (
+  data: EventInterestSignal,
+): Promise<PreferenceResponse<{ recorded: boolean }>> => {
+  const response = await client.post<PreferenceResponse<{ recorded: boolean }>>(
+    PREFERENCE_URL.signals,
+    data,
+  );
+  return response.data;
+};
+export const resetInterestLearning = async (): Promise<
+  PreferenceResponse<InterestProfile>
+> => {
+  const response = await client.post<PreferenceResponse<InterestProfile>>(
+    PREFERENCE_URL.reset,
+  );
+  return response.data;
+};
+export const deleteInterestMap = async (): Promise<
+  PreferenceResponse<InterestProfile>
+> => {
+  const response = await client.delete<PreferenceResponse<InterestProfile>>(
+    PREFERENCE_URL.profile,
+  );
   return response.data;
 };
 
@@ -451,6 +517,16 @@ export const updateEvent = async (
     { method: "PATCH" }
   );
   return data;
+};
+
+export const publishEventTicket = async (
+  ticketId: string,
+): Promise<EventTicketResponse> => {
+  const response = await client.patch<EventTicketResponse>(
+    EVENT_URL.updateTicket(ticketId),
+    { isVisible: true },
+  );
+  return response.data;
 };
 
 export const getEventsForYou = async (): Promise<EventsResponse> => {
@@ -1032,6 +1108,17 @@ export const cancelCheckout = async (
   return receiveCheckout(response.data);
 };
 
+// Clear the retry key only after the server has released this checkout.
+export const cancelEventCheckout = async (
+  transactionId: string,
+  userId: string,
+  eventId: string,
+): Promise<GetTicketsResponse> => {
+  const response = await cancelCheckout(transactionId);
+  await clearCheckoutIntent(userId, eventId);
+  return response;
+};
+
 export const getVolunteerRoles = async (eventId: string) =>
   (
     await client.get<VolunteerResponse<VolunteerRoleListing[]>>(
@@ -1102,3 +1189,32 @@ export async function performVolunteerAction(
     )
   ).data;
 }
+
+export const getMyBadges = async (): Promise<BadgeCollectionResponse> => {
+  const response = await client.get<BadgeCollectionResponse>(BADGE_URL.mine);
+  return response.data;
+};
+
+export const updateBadgeVisibility = async ({
+  code,
+  isPublic,
+}: BadgeVisibility): Promise<BadgeCollectionResponse> => {
+  const response = await client.patch<BadgeCollectionResponse>(
+    BADGE_URL.visibility(code),
+    { isPublic },
+  );
+  return response.data;
+};
+
+export const getPendingEventFeedback = async (): Promise<PreferenceResponse<PendingEventFeedback | null>> => {
+  const response = await client.get<PreferenceResponse<PendingEventFeedback | null>>(PREFERENCE_URL.pendingFeedback);
+  return response.data;
+};
+export const saveEventFeedback = async ({ eventId, ...data }: SaveEventFeedback): Promise<PreferenceResponse<EventFeedbackResult>> => {
+  const response = await client.post<PreferenceResponse<EventFeedbackResult>>(PREFERENCE_URL.feedback(eventId), data);
+  return response.data;
+};
+export const deferEventFeedback = async (eventId: string): Promise<PreferenceResponse<{ deferredUntil: string }>> => {
+  const response = await client.post<PreferenceResponse<{ deferredUntil: string }>>(PREFERENCE_URL.deferFeedback(eventId));
+  return response.data;
+};

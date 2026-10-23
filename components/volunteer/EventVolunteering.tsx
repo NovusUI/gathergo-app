@@ -16,7 +16,7 @@ export default function EventVolunteering({
 }) {
   const guardedOnPress = usePressGuard(onPress);
   const visible =
-    event.volunteerRoles.length > 0 || (owner && canRecruitVolunteers(event));
+    canRecruitVolunteers(event) && (owner || event.volunteerRoles.length > 0);
   if (!visible) return null;
   const roleCount = event.volunteerRoles.length;
   return (

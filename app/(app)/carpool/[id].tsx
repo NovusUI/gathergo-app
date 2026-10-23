@@ -374,7 +374,8 @@ const CarpoolPage = () => {
   const rideIconName = selectedVehicle?.iconName ?? "car-outline";
   const rideLabel = selectedVehicle?.label ?? "Shared ride";
   const departureTimeLabel = formatRideDepartureTime(carpool.departureTime);
-  const destinationLabel = carpool.event?.location ?? "Destination not set";
+  const destinationLabel =
+    carpool.destination ?? carpool.event?.location ?? "Destination not set";
   const acceptedPassengerCount = carpool.passengers.filter(
     (passenger: any) => passenger.status === "ACCEPTED"
   ).length;

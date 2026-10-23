@@ -6,7 +6,7 @@ const state = {};
 const { default: ImpactSelector } = loadTypeScript(
   "components/gogo/tasks/impactSuggestions/ImpactSelector.tsx",
   {
-    "@/components/ui/AppLoader": { default: "Spinner" },
+    "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoGuide" },
     "@/components/gogo/tasks/impactSuggestions/useImpactSuggestions": {
       useImpactSuggestions: (payload, options) => {
         state.payload = payload;
@@ -14,6 +14,7 @@ const { default: ImpactSelector } = loadTypeScript(
         return {
           data: state.data,
           isFetching: state.fetching,
+          isPending: state.pending,
           isError: state.error,
           refetch: () => {
             state.retries += 1;
@@ -55,6 +56,7 @@ function reset() {
   Object.assign(state, {
     data: undefined,
     fetching: false,
+    pending: false,
     error: false,
     previousDraft: undefined,
     retries: 0,
@@ -100,7 +102,10 @@ test("loading AI suggestions never substitutes keyword matches", () => {
   const screen = render();
   assert.deepEqual(group(screen, "Global goals").props.suggestions, []);
   assert.deepEqual(group(screen, "Commitments").props.suggestions, []);
-  assert.ok([...nodes(screen)].some((node) => node.type === "Spinner"));
+  const guide = [...nodes(screen)].find((node) => node.type === "GogoGuide");
+  assert.equal(guide.props.variant, "pending");
+  assert.match(guide.props.message, /Finding ideas/);
+  assert.equal([...nodes(screen)].some((node) => node.type === "Spinner"), false);
 });
 
 test("an empty AI map stays empty even when the draft contains familiar keywords", () => {
@@ -165,4 +170,46 @@ test("an organiser can explicitly select and remove an AI suggestion", () => {
   );
   remove.props.onPress();
   assert.deepEqual(state.changes[1], emptyMap);
+});
+
+test("the focused story editor waits to request an impact map until the map step", () => {
+  reset();
+  const story = render({ section: "story" });
+  assert.equal(state.options.enabled, false);
+  assert.ok([...nodes(story)].some(node => node.type === "TextArea"));
+  assert.equal([...nodes(story)].some(node => node.props?.title === "Global goals"), false);
+  const map = render({ section: "map" });
+  assert.equal(state.options.enabled, true);
+  assert.equal([...nodes(map)].some(node => node.type === "TextArea"), false);
+  assert.ok(group(map, "Global goals"));
+});
+
+test("Gogo replaces the information panel with a short guide and empty groups stay hidden", () => {
+  reset(); state.data = { data: { ...emptyMap, source: "ai" } };
+  const screen = render();
+  const guide = [...nodes(screen)].find(node => node.type === "GogoGuide");
+  assert.equal(guide.props.layout, "plain");
+  assert.equal(guide.props.compact, true);
+  assert.match(guide.props.message, /No matching ideas/);
+  for (const title of ["Global goals", "Impact paths", "Commitments"]) {
+    const section = group(screen, title);
+    assert.equal(section.type(section.props), null);
+  }
+});
+test("a paused first request remains a waiting state without claiming there are no suggestions", () => {
+  reset(); state.pending = true;
+  const guide = [...nodes(render())].find(node => node.type === "GogoGuide");
+  assert.equal(guide.props.variant, "pending");
+  assert.match(guide.props.message, /Finding ideas/);
+});
+test("Gogo keeps selected ideas available during an error and retry", () => {
+  reset(); state.error = true;
+  const screen = render({ selectedMap: { ...emptyMap, sdgGoals: [aiGoal] } });
+  const guide = [...nodes(screen)].find(node => node.type === "GogoGuide");
+  assert.equal(guide.props.variant, "error");
+  const goals = group(screen, "Global goals");
+  assert.ok(goals.type(goals.props));
+  retryButton(screen).props.onPress();
+  assert.equal(state.retries, 1);
+  assert.deepEqual(state.changes, []);
 });

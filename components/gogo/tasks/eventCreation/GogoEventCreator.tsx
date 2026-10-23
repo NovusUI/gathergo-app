@@ -3,7 +3,13 @@ import AppLoader from "@/components/ui/AppLoader";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import type { useGogoEventCreation } from "@/components/gogo/tasks/eventCreation/useGogoEventCreation";
 import type { EventCreationSection } from "@/components/gogo/tasks/eventCreation/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Keyboard,
   type KeyboardEvent,
@@ -20,6 +26,9 @@ type Props = {
   isDonationEvent: boolean;
   onOpenSection: (section: EventCreationSection) => void;
   onReview: () => void;
+  draftTitle: string;
+  impactStory: string;
+  renderInlineSection: (section: EventCreationSection) => ReactNode;
 };
 
 const EDITOR_LABELS: Record<EventCreationSection, string> = {
@@ -30,6 +39,9 @@ const EDITOR_LABELS: Record<EventCreationSection, string> = {
   Volunteering: "Add volunteer roles",
   Cover: "Choose a cover image",
   Links: "Add event links",
+  "Impact story": "Shape the impact story",
+  "Impact map": "Explore impact suggestions",
+  Interests: "Choose event interests",
 };
 
 export default function GogoEventCreator({
@@ -37,6 +49,9 @@ export default function GogoEventCreator({
   isDonationEvent,
   onOpenSection,
   onReview,
+  draftTitle,
+  impactStory,
+  renderInlineSection,
 }: Props) {
   const { messages, isPending, error, send, retry } = conversation;
   const viewportRef = useRef<View>(null);
@@ -114,9 +129,14 @@ export default function GogoEventCreator({
   const section = prompt.section;
   const text = answer.turn === messages.length ? answer.text : "";
   const isReview = section === "Review";
+  const proposedStory = conversation.suggestedImpactStory ?? impactStory;
+  const isImpactStory = section === "Impact story";
+  const inlineSection =
+    section && section !== "Review" ? renderInlineSection(section) : null;
   const showComposer =
     customAnswerTurn === messages.length ||
-    (!isReview && !section && prompt.choices.length === 0);
+    (!isReview && !section && prompt.choices.length === 0) ||
+    (isImpactStory && !proposedStory);
 
   const submit = () => {
     if (!text.trim() || isPending) return;
@@ -189,6 +209,21 @@ export default function GogoEventCreator({
                 </View>
               ) : (
                 <>
+                  {draftTitle ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit event name"
+                      onPress={() => onOpenSection("Story")}
+                      style={tw`min-h-[44px] flex-row items-center justify-center gap-3`}
+                    >
+                      <Text
+                        style={tw`shrink text-center text-base font-semibold text-[#0FF1CF]`}
+                      >
+                        {draftTitle}
+                      </Text>
+                      <Text style={tw`text-sm text-[#AFC0F4]`}>Edit</Text>
+                    </TouchableOpacity>
+                  ) : null}
                   <Text
                     accessibilityRole="header"
                     accessibilityLiveRegion="polite"
@@ -196,7 +231,10 @@ export default function GogoEventCreator({
                   >
                     {prompt.content}
                   </Text>
-                  {!showComposer && prompt.choices.length ? (
+                  {!showComposer &&
+                  !inlineSection &&
+                  !isImpactStory &&
+                  prompt.choices.length ? (
                     <View style={tw`gap-3`}>
                       {prompt.choices.map((choice) => (
                         <TouchableOpacity
@@ -214,7 +252,43 @@ export default function GogoEventCreator({
                       ))}
                     </View>
                   ) : null}
-                  {!showComposer && section && section !== "Review" ? (
+                  {!showComposer && inlineSection ? (
+                    <View key={messages.length}>{inlineSection}</View>
+                  ) : null}
+                  {!showComposer && isImpactStory && proposedStory ? (
+                    <View style={tw`gap-4`}>
+                      <Text
+                        style={tw`text-center text-lg leading-7 text-[#DDE6FF]`}
+                      >
+                        {proposedStory}
+                      </Text>
+                      <CustomButton
+                        onPress={() =>
+                          void (conversation.suggestedImpactStory
+                            ? conversation.acceptImpactStory()
+                            : conversation.continueFromDraft("Impact story"))
+                        }
+                        title="Use this story"
+                        showArrow={false}
+                        buttonClassName="bg-[#0FF1CF] w-full !border-none"
+                        textClassName="!text-black"
+                      />
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        onPress={() => onOpenSection("Impact story")}
+                        style={tw`min-h-[44px] items-center justify-center`}
+                      >
+                        <Text style={tw`text-sm font-medium text-[#AFC0F4]`}>
+                          Edit story manually
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                  {!showComposer &&
+                  !inlineSection &&
+                  !isImpactStory &&
+                  section &&
+                  section !== "Review" ? (
                     <CustomButton
                       onPress={() => onOpenSection(section)}
                       title={
@@ -234,6 +308,19 @@ export default function GogoEventCreator({
                       buttonClassName="bg-[#0FF1CF] w-full !border-none"
                       textClassName="!text-black"
                     />
+                  ) : null}
+                  {conversation.optionalSection ? (
+                    <View style={tw`items-center gap-1`}>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        onPress={() => void conversation.skipSection()}
+                        style={tw`min-h-[44px] items-center justify-center px-4`}
+                      >
+                        <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
+                          Skip for now
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   ) : null}
                   {showComposer ? (
                     <View style={tw`gap-4`}>
@@ -281,7 +368,19 @@ export default function GogoEventCreator({
                         buttonClassName="bg-[#0FF1CF] w-full !border-none"
                         textClassName="!text-black"
                       />
-                      {section || prompt.choices.length > 0 ? (
+                      {isImpactStory ? (
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          onPress={() => onOpenSection("Impact story")}
+                          style={tw`min-h-[44px] items-center justify-center`}
+                        >
+                          <Text style={tw`text-sm text-[#AFC0F4]`}>
+                            Write story manually
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      {(section && (!isImpactStory || proposedStory)) ||
+                      prompt.choices.length > 0 ? (
                         <TouchableOpacity
                           accessibilityRole="button"
                           onPress={() => setCustomAnswerTurn(null)}

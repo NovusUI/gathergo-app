@@ -77,11 +77,12 @@ test("free and completed checkouts have no timed hold", () => {
 
 const requests = [];
 let providerResponse;
+let providerFailure;
 const urls = loadTypeScript("services/urls.ts", { "@/constants/network": { API_BASE_URL: "https://api.checkout.test/api/v1" } });
 const api = loadTypeScript("services/serviceFn.ts", {
-  "@/utils/checkout": { checkoutDeadline },
+  "@/utils/checkout": { checkoutDeadline, clearCheckoutIntent },
   "@/api/client": { default: {
-    post: async (...args) => { requests.push(args); return { data: providerResponse }; },
+    post: async (...args) => { requests.push(args); if (providerFailure) throw providerFailure; return { data: providerResponse }; },
     get: async (...args) => { requests.push(args); return { data: providerResponse }; },
   } },
   "@/api/uploadClient": { uploadClient: {} },
@@ -130,4 +131,72 @@ test("status responses derive ticket deadlines and preserve donation responses w
   assert.equal(typeof response.data.checkoutDeadlineMs, "number");
   providerResponse = { status: "success", message: "Request successful", data: { id: "donation-1", status: "PENDING", paymentType: "DONATION", paymentProvider: "PAYSTACK", amount: 100000, metadata: { type: "DONATION", eventId: "event-1", eventTitle: "Live event" } } };
   assert.equal((await api.getTransactionRef({ queryKey: ["transactionRef", "donation-1"] })).data.checkoutDeadlineMs, null);
+});
+
+
+test("cancelling a checkout clears its saved retry key only after the API confirms release", async () => {
+  const original = await checkoutIntentKey("cancel-buyer", "cancel-event", "one-ticket");
+  providerResponse = checkoutResponse();
+  providerResponse.data.checkoutStatus = "EXPIRED";
+  providerResponse.data.reservationStatus = "CANCELLED";
+  providerResponse.data.reservationExpiresAt = null;
+  providerFailure = new Error("Network unavailable");
+  await assert.rejects(api.cancelEventCheckout("checkout-1", "cancel-buyer", "cancel-event"), /Network unavailable/);
+  assert.equal(await checkoutIntentKey("cancel-buyer", "cancel-event", "one-ticket"), original);
+  providerFailure = undefined;
+  await api.cancelEventCheckout("checkout-1", "cancel-buyer", "cancel-event");
+  assert.notEqual(await checkoutIntentKey("cancel-buyer", "cancel-event", "one-ticket"), original);
+});
+
+const wrapperHooks = {
+  useRef: initial => ({ current: initial }),
+  useEffect: callback => callback(),
+};
+const { PaystackWebViewWrapper } = loadTypeScript("components/PaystackWebViewWrapper.tsx", {
+  "@/components/ui/AppLoader": { default: "Loader" },
+  "@/components/ui/CheckoutCountdown": { CheckoutCountdown: "Countdown" },
+  "@/components/ui/AppToast": { default: "Toast" },
+  "@expo/vector-icons": { Ionicons: "Icon" },
+  react: wrapperHooks,
+  "react-native": { Modal: "Modal", View: "View", Text: "Text", TouchableOpacity: "Button" },
+  "react-native-webview": { default: "WebView" },
+  twrnc: { default: () => ({}) },
+});
+function* paymentNodes(node) {
+  if (!node || typeof node !== "object") return;
+  yield node;
+  for (const child of [node.props?.children].flat(Infinity)) yield* paymentNodes(child);
+}
+function paymentWrapper() {
+  const calls = [];
+  const tree = PaystackWebViewWrapper({
+    visible: true, paymentUrl: "https://checkout.paystack.com/test", type: "TICKET",
+    onClose: () => calls.push("close"), onCancel: () => calls.push("cancel"),
+    onSuccess: ref => calls.push(["success", ref]), onError: () => calls.push("error"),
+  });
+  return { calls, tree, web: [...paymentNodes(tree)].find(n => n.type === "WebView"), close: [...paymentNodes(tree)].find(n => n.props?.accessibilityLabel === "Cancel payment") };
+}
+test("Paystack close button and Android back each cancel and close exactly once", () => {
+  for (const action of ["close", "back"]) {
+    const { calls, tree, web, close } = paymentWrapper();
+    assert.ok(close);
+    if (action === "close") close.props.onPress();
+    else tree.props.onRequestClose();
+    web.props.onNavigationStateChange({ url: "https://example.test/cancel", title: "Cancelled" });
+    assert.deepEqual(calls, ["cancel", "close"]);
+  }
+});
+test("Paystack gateway cancellation reaches the same cancellation path once", () => {
+  const { calls, web } = paymentWrapper();
+  web.props.onNavigationStateChange({ url: "https://example.test/cancel", title: "Cancelled" });
+  web.props.onNavigationStateChange({ url: "https://example.test/cancel", title: "Cancelled" });
+  assert.deepEqual(calls, ["cancel", "close"]);
+});
+test("success and errors close checkout without triggering cancellation afterwards", () => {
+  for (const outcome of ["success", "error"]) {
+    const { calls, tree, web } = paymentWrapper();
+    web.props.onNavigationStateChange({ url: outcome === "success" ? "https://example.test/callback?reference=paid-reference" : "https://example.test/error", title: outcome });
+    tree.props.onRequestClose();
+    assert.deepEqual(calls, [outcome === "success" ? ["success", "paid-reference"] : "error", "close"]);
+  }
 });

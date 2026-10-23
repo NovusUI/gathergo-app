@@ -25,10 +25,6 @@ export default function EventFundraisingFields({
           <Text style={tw`text-lg font-semibold text-white`}>
             Optional donations
           </Text>
-          <Text style={tw`mt-1 text-sm leading-5 text-[#A8BAE4]`}>
-            Let people support the event financially. Donating is separate from
-            taking part.
-          </Text>
         </View>
         <CustomSwitcher
           accessibilityLabel="Accept optional donations"

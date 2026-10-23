@@ -31,6 +31,11 @@ export type EventTicket = {
   updatedPrice: number | null;
 };
 
+export interface EventTicketResponse
+  extends Pick<StandardResponse, "status" | "message"> {
+  data: EventTicket;
+}
+
 export interface CheckoutPricingRule {
   percentageBps: number;
   fixedFeeKobo: number;
@@ -131,7 +136,7 @@ export interface UpsertEventImpactReportPayload {
 }
 
 export interface PaginatedEventResponse extends paginatedResponse {
-  data: Event[];
+  data: EventData[];
 }
 
 export interface PaginatedDashboardEventsResponse extends paginatedResponse {

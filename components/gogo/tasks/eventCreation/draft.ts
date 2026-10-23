@@ -1,3 +1,4 @@
+import { normalizeEventLinks } from "@/constants/eventLinks";
 import type { EventFormData } from "@/schemas/event";
 import type {
   EventCreationDraft,
@@ -12,7 +13,6 @@ export function buildEventCreationDraft(
   return {
     title: values.eventName.trim() || undefined,
     description: values.description.trim() || undefined,
-    impactTitle: values.impactTitle.trim() || undefined,
     impactDescription: values.impactDescription.trim() || undefined,
     isPhysicalEvent: values.isPhysicalEvent,
     location: values.location.trim() || undefined,
@@ -21,7 +21,7 @@ export function buildEventCreationDraft(
     registrationAttendees: values.registrationAttendees,
     donationTarget: values.donationTarget,
     donationsEnabled: values.donationsEnabled,
-    links: values.links,
+    links: normalizeEventLinks(values.links),
     tags: values.tags,
     startDate:
       values.startDate && values.startTime
@@ -33,6 +33,13 @@ export function buildEventCreationDraft(
         : undefined,
     ticketCount: values.tickets?.length ?? 0,
     volunteerRoleCount: values.volunteerRoles.length,
+    impactMapCount:
+      (values.impactSdgGoals?.length ?? 0) +
+      (values.impactPaths?.length ?? 0) +
+      (values.impactCommitments?.length ?? 0),
+    hasImpactGoalOrPath: Boolean(
+      values.impactSdgGoals?.length || values.impactPaths?.length,
+    ),
   };
 }
 
@@ -45,8 +52,6 @@ export function applyEventCreationUpdates(
     setValue("eventName", updates.title, options);
   if (updates.description !== undefined)
     setValue("description", updates.description, options);
-  if (updates.impactTitle !== undefined)
-    setValue("impactTitle", updates.impactTitle, options);
   if (updates.impactDescription !== undefined)
     setValue("impactDescription", updates.impactDescription, options);
   if (updates.isPhysicalEvent !== undefined)

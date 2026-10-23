@@ -5,6 +5,7 @@ const { buildEventCreationDraft, applyEventCreationUpdates } = loadTypeScript(
   "components/gogo/tasks/eventCreation/draft.ts",
 );
 const { buildEventDateTimeIso } = loadTypeScript("utils/dateTimeHandler.ts");
+const { eventSchema } = loadTypeScript("schemas/event.ts");
 
 function draft() {
   return {
@@ -24,12 +25,52 @@ function draft() {
     tickets: [],
     repeat: "NONE",
     isRecurring: false,
+    impactSdgGoals: [], impactPaths: [], impactCommitments: [],
     startDate: new Date(2035, 1, 3),
     endDate: new Date(2035, 1, 3),
     startTime: "10:00",
     endTime: "12:00",
   };
 }
+
+test("event submission trims a location entered directly in the draft", () => {
+  assert.equal(eventSchema.parse({ ...draft(), location: "  Community garden  " }).location, "Community garden");
+});
+test("registration cannot publish with a cleared price or capacity after removing Apply setup", () => {
+  for (const field of ["registrationFee", "registrationAttendees"]) {
+    const result = eventSchema.safeParse({ ...draft(), [field]: undefined });
+    assert.equal(result.success, false);
+    assert.ok(result.error.issues.some(issue => issue.path[0] === field));
+  }
+});
+
+test("ticket events still require a ticket when publishing without Apply setup", () => {
+  const result = eventSchema.safeParse({ ...draft(), registrationType: "ticket", tickets: [] });
+  assert.equal(result.success, false);
+  assert.ok(result.error.issues.some(issue => issue.path[0] === "tickets"));
+});
+test("an unlimited ticket retains its numeric quantity through setup and publication validation", () => {
+  const parsed = eventSchema.parse({ ...draft(), registrationType: "ticket", tickets: [{
+    id: "00000000-0000-4000-8000-000000000001", type: "Entry", description: "Event admission", paid: false, limited: false, quantity: 1000000, price: 0,
+  }] });
+  assert.equal(parsed.tickets[0].quantity, 1000000);
+});
+test("Gogo receives the same normalized links as event publication without changing editable input", () => {
+  const values = { ...draft(), links: ["  www.example.com/park  ", "chat.whatsapp.com/invite", "https://meet.google.com/abc", "  ", ""] };
+  const original = [...values.links];
+  const context = buildEventCreationDraft(values);
+  assert.deepEqual(context.links, ["https://www.example.com/park", "https://chat.whatsapp.com/invite", "https://meet.google.com/abc"]);
+  assert.deepEqual(context.links, eventSchema.parse(values).links);
+  assert.deepEqual(values.links, original);
+});
+
+test("normalizing Gogo links does not silently discard invalid addresses", () => {
+  const values = { ...draft(), links: ["not a valid link"] };
+  assert.deepEqual(buildEventCreationDraft(values).links, ["https://not a valid link"]);
+  const parsed = eventSchema.safeParse(values);
+  assert.equal(parsed.success, false);
+  assert.ok(parsed.error.issues.some(issue => issue.path[0] === "links"));
+});
 
 test("Gogo receives the current draft and role counts without uploading private image data", () => {
   const values = {
@@ -57,6 +98,17 @@ test("Gogo receives the current draft and role counts without uploading private 
   assert.equal(context.tickets, undefined);
   assert.equal(context.volunteerRoles, undefined);
 });
+for (const [name, selections, expected] of [
+  ["a global goal", { impactSdgGoals: [{ id: "sdg_15" }] }, true],
+  ["an impact path", { impactPaths: [{ id: "nature" }] }, true],
+  ["a commitment alone", { impactCommitments: [{ id: "plant_trees" }] }, false],
+  ["no impact selections", {}, false],
+]) {
+  test(`Gogo distinguishes ${name} when deciding whether to skip interests`, () => {
+    const context = buildEventCreationDraft({ ...draft(), ...selections });
+    assert.equal(context.hasImpactGoalOrPath, expected);
+  });
+}
 test("a partial reply preserves untouched manual edits and existing impact selections", () => {
   const form = { ...draft(), impactSdgGoals: [{ id: "sdg_15" }] };
   const calls = [];
@@ -109,6 +161,7 @@ const react = {
     return ref;
   },
   useCallback: (callback) => callback,
+  useMemo: (factory) => factory(),
   useEffect: (effect) => hooks.effects.push(effect),
 };
 let form;
@@ -157,11 +210,11 @@ function reset() {
       reply: "Where should people meet?",
       choices: ["In person", "Online"],
       section: null,
-      updates: { title: "Park gathering" },
+      suggestedImpactStory: null, updates: { title: "Park gathering" },
     },
   });
 }
-function renderHook(isDonationEvent = false) {
+function renderHook(isDonationEvent = false, initialState) {
   hooks.cursor = 0;
   return runConversationHook({
     getValues: () => form,
@@ -169,6 +222,7 @@ function renderHook(isDonationEvent = false) {
       form[key] = value;
     },
     isDonationEvent,
+    initialState,
   });
 }
 test("a real reply updates the shared form and offers the server's quick choices", async () => {
@@ -195,7 +249,7 @@ test("switching to manual or opening an editor cancels the reply before it can o
       reply: "Done",
       choices: [],
       section: null,
-      updates: { title: "Stale AI title" },
+      suggestedImpactStory: null, updates: { title: "Stale AI title" },
     },
   });
   await request;
@@ -216,7 +270,7 @@ test("real failures leave the draft intact and retry does not duplicate the user
       reply: "Shall we set a date?",
       choices: [],
       section: null,
-      updates: {},
+      suggestedImpactStory: null, updates: {},
     },
   });
   await renderHook().retry();
@@ -243,7 +297,7 @@ test("only one reply can run at a time and requests include current manual chang
       reply: "Ready for details",
       choices: [],
       section: null,
-      updates: {},
+      suggestedImpactStory: null, updates: {},
     },
   });
   await first;
@@ -261,6 +315,20 @@ test("fundraiser conversations retain the fundraiser entry type", async () => {
   assert.equal(requests[0].payload.eventType, "donation");
   assert.equal(requests[0].payload.draft.registrationType, "donation");
 });
+test("continuing from links and retrying sends normalized links to Gogo", async () => {
+  reset();
+  form.links = ["  www.example.com/event  ", ""];
+  respond = async () => { throw new Error("offline"); };
+  await renderHook().continueFromDraft("Links");
+  assert.deepEqual(requests[0].payload.draft.links, ["https://www.example.com/event"]);
+  respond = async () => ({ data: { reply: "Ready to review your event?", choices: [], section: "Review", completedSection: null, suggestedImpactStory: null, updates: {} } });
+  await renderHook().retry();
+  assert.deepEqual(requests[1].payload.draft.links, ["https://www.example.com/event"]);
+  assert.equal(renderHook().messages.at(-1).section, "Review");
+  assert.equal(renderHook().error, null);
+  assert.deepEqual(form.links, ["  www.example.com/event  ", ""]);
+});
+
 test("validation error arrays are shown as usable text", async () => {
   reset();
   respond = async () => {
@@ -331,6 +399,9 @@ function screen(overrides = {}) {
     onOpenSection: (section) => requests.push(section),
     onReview: () => requests.push("review"),
     isDonationEvent: false,
+    draftTitle: "",
+    impactStory: "",
+    renderInlineSection: () => null,
     ...overrides,
   });
 }
@@ -543,6 +614,11 @@ test("provider failures show a single retry action without pretending the draft 
 });
 
 let published;
+let savedDrafts = [];
+let discardFailure = false;
+let draftLoad;
+const discardedTypes = [];
+const focusCallbacks = [];
 const uiCalls = [];
 const uiComponents = Object.fromEntries(
   [
@@ -561,6 +637,9 @@ const uiComponents = Object.fromEntries(
     ["eventInfo/Pricing", "PricingEditor"],
     ["inputs/CustomInput1", "Input"],
     ["labels/FormLabel", "Label"],
+    ["gogo/tasks/eventCreation/EventTypePicker", "EventTypePicker"],
+    ["gogo/tasks/eventCreation/EventDraftPrompt", "DraftPrompt"],
+    ["ui/ImpactPageLoader", "PageLoader"],
   ].map(([path, component]) => [
     `@/components/${path}`,
     { default: component },
@@ -572,6 +651,22 @@ const uiConversation = {
   continueFromDraft: () => uiCalls.push("continue"),
   messages: [],
   send() {},
+};
+const uiFormHooks = {
+  Controller: "Controller",
+  useForm: () => ({
+    control: {},
+    formState: { errors: {} },
+    watch: (name) => (name ? form[name] : form),
+    getValues: () => form,
+    setValue: (key, value) => {
+      form[key] = value;
+    },
+    clearErrors() {},
+    reset() {},
+    trigger: async () => true,
+    handleSubmit: (submit) => () => submit(form),
+  }),
 };
 const { default: NewEvent } = loadTypeScript("app/(app)/new-event.tsx", {
   ...uiComponents,
@@ -585,7 +680,15 @@ const { default: NewEvent } = loadTypeScript("app/(app)/new-event.tsx", {
   },
   twrnc: { default: () => ({}) },
   "lucide-react-native": { CheckCheck: "Check" },
-  "expo-router": { useLocalSearchParams: () => ({}) },
+  "expo-router": { useFocusEffect: callback => focusCallbacks.push(callback) },
+  "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMoment" },
+  "@/components/gogo/tasks/eventCreation/draftStorage": {
+    loadEventDrafts: () => draftLoad ? draftLoad() : Promise.resolve(savedDrafts),
+    discardEventDraft: async type => { if (discardFailure) throw new Error("storage error"); discardedTypes.push(type); },
+  },
+  "@/components/gogo/tasks/eventCreation/useEventDraftPersistence": {
+    useEventDraftPersistence: () => ({ flush: async () => {}, clear: async () => {} }),
+  },
   "@/components/gogo/tasks/eventCreation/useGogoEventCreation": {
     useGogoEventCreation: () => uiConversation,
   },
@@ -614,25 +717,18 @@ const { default: NewEvent } = loadTypeScript("app/(app)/new-event.tsx", {
     }),
   },
   "@hookform/resolvers/zod": { zodResolver: () => () => {} },
-  "react-hook-form": {
-    Controller: "Controller",
-    useForm: () => ({
-      control: {},
-      formState: { errors: {} },
-      watch: (name) => (name ? form[name] : form),
-      getValues: () => form,
-      setValue: (key, value) => {
-        form[key] = value;
-      },
-      clearErrors() {},
-      reset() {},
-      handleSubmit: (submit) => () => submit(form),
-    }),
-  },
+  "react-hook-form": uiFormHooks,
 });
 function eventScreen() {
+  if (!hooks.values[0]) hooks.values[0] = { kind: "picker" };
   hooks.cursor = 0;
-  return NewEvent();
+  let tree = NewEvent();
+  if (typeof tree.type !== "function") {
+    [...nodes(tree)].find(node => node.type === "EventTypePicker").props.onSelect(form.registrationType);
+    hooks.cursor = 0;
+    tree = NewEvent();
+  }
+  return tree.type(tree.props);
 }
 function manualForm() {
   [...nodes(eventScreen())]
@@ -697,9 +793,8 @@ test("date and pricing shortcuts read the latest shared draft and cancel pending
   );
   form.registrationFee = 2500;
   open("Pricing");
-  const pricing = [...nodes(eventScreen())].find(
-    (node) => node.type === "PricingEditor",
-  );
+  const creator = [...nodes(eventScreen())].find(node => node.type === "GogoCreator");
+  const pricing = creator.props.renderInlineSection("Pricing");
   assert.equal(pricing.props.initialData.registrationFee, 2500);
   assert.equal(pricing.props.initialData.paid, true);
   assert.deepEqual(uiCalls, ["cancel", "cancel"]);
@@ -790,9 +885,8 @@ test("finishing a date or pricing editor advances Gogo using the actual updated 
     false,
   );
   open("Pricing");
-  [...nodes(eventScreen())]
-    .find((node) => node.type === "PricingEditor")
-    .props.onSave({
+  [...nodes(eventScreen())].find(node => node.type === "GogoCreator")
+    .props.renderInlineSection("Pricing").props.onSave({
       registrationType: "registration",
       registrationFee: 1500,
       registrationAttendees: 30,
@@ -801,7 +895,7 @@ test("finishing a date or pricing editor advances Gogo using the actual updated 
   assert.equal(form.registrationFee, 1500);
   assert.deepEqual(uiCalls, ["cancel", "continue", "cancel", "continue"]);
 });
-test("closing an editor does not advance; finishing the story editor does", () => {
+test("closing an editor does not advance; finishing the story editor does", async () => {
   reset();
   uiCalls.length = 0;
   const open = [...nodes(eventScreen())].find(
@@ -817,7 +911,7 @@ test("closing an editor does not advance; finishing the story editor does", () =
     .props.onPress();
   assert.deepEqual(uiCalls, ["cancel"]);
   open("Story");
-  [...nodes(eventScreen())]
+  await [...nodes(eventScreen())]
     .find(
       (node) =>
         node.type === "PublishButton" &&
@@ -1106,4 +1200,298 @@ test("event creation enables native keyboard avoidance on Android and iOS", () =
   } finally {
     eventPlatform.OS = "ios";
   }
+});
+
+
+test("a single opening reply applies suggested copy and all extracted event details", async () => {
+  reset();
+  respond = async () => ({ data: { reply: "How about Park morning?", choices: [], section: "Impact story", completedSection: null,
+    suggestedImpactStory: null, updates: { title: "Park morning", description: "Meet neighbours for a morning in the park.",
+      startDate: "2035-02-03T10:00:00+01:00", endDate: "2035-02-03T12:00:00+01:00",
+      isPhysicalEvent: true, location: "Freedom Park", registrationType: "registration", registrationFee: 1500, registrationAttendees: 25 } } });
+  await renderHook().send("A park morning at Freedom Park on 3 February 2035, 10am to noon, ₦1,500 for 25 people");
+  assert.equal(form.eventName, "Park morning");
+  assert.equal(form.description, "Meet neighbours for a morning in the park.");
+  assert.equal(form.location, "Freedom Park");
+  assert.equal(form.registrationFee, 1500);
+  assert.equal(buildEventDateTimeIso(form.startDate, form.startTime), "2035-02-03T09:00:00.000Z");
+  assert.deepEqual(requests[0].payload.addressedSections, []);
+});
+test("optional skips and retries retain the skip without duplicating it", async () => {
+  reset();
+  respond = async () => ({ data: { reply: "Want an impact story?", choices: [], section: "Impact story", completedSection: null, suggestedImpactStory: null, updates: {} } });
+  await renderHook().send("Next");
+  assert.equal(renderHook().optionalSection, "Impact story");
+  respond = async () => { throw new Error("offline"); };
+  await renderHook().skipSection();
+  assert.deepEqual(requests.at(-1).payload.addressedSections, ["Impact story"]);
+  respond = async () => ({ data: { reply: "Any useful links?", choices: [], section: "Links", completedSection: null, updates: {} } });
+  await renderHook().retry();
+  assert.deepEqual(requests.at(-1).payload.addressedSections, ["Impact story"]);
+  assert.equal(renderHook().optionalSection, "Links");
+  await renderHook().continueFromDraft("Links");
+  assert.deepEqual(requests.at(-1).payload.addressedSections, ["Impact story", "Links"]);
+});
+test("a natural-language skip is retained from the validated model reply", async () => {
+  reset();
+  respond = async () => ({ data: { reply: "Any links?", choices: [], section: "Links", completedSection: "Impact story", suggestedImpactStory: null, updates: {} } });
+  await renderHook().send("No thanks, skip that story");
+  await renderHook().send("Tell me about links");
+  assert.deepEqual(requests[1].payload.addressedSections, ["Impact story"]);
+});
+test("volunteer-only requirements cannot be skipped from the guided screen", async () => {
+  reset(); form.registrationType = "volunteer";
+  respond = async () => ({ data: { reply: "Add roles", choices: [], section: "Volunteering", completedSection: null, updates: {} } });
+  await renderHook().send("Next");
+  assert.equal(renderHook().optionalSection, undefined);
+  await renderHook().skipSection();
+  assert.equal(requests.length, 1);
+});
+test("optional invitations show a working skip action alongside the current editor", () => {
+  reset();
+  const tree = screen({ conversation: { messages: [{ role: "assistant", content: "Choose a few interests", choices: [], section: "Interests" }],
+    isPending: false, error: null, optionalSection: "Interests", skipSection: () => requests.push("skip"), send() {} } });
+  assert.match(text(tree), /Skip for now/);
+  assert.ok([...nodes(tree)].some(node => node.props?.title === "Choose event interests"));
+  [...nodes(tree)].find(node => node.type === "TouchableOpacity" && text(node) === "Skip for now").props.onPress();
+  assert.deepEqual(requests, ["skip"]);
+});
+test("optional steps open only their own existing form editor", () => {
+  for (const section of ["Impact story", "Impact map", "Interests"]) {
+    reset();
+    [...nodes(eventScreen())].find(node => node.type === "GogoCreator").props.onOpenSection(section);
+    const editor = [...nodes(eventScreen())].find(node => node.type === "StoryEditor");
+    assert.equal(editor.props.section, section);
+  }
+});
+
+test("the first page selects participation before mounting the shared creation form", () => {
+  for (const type of ["donation", "ticket", "registration", "volunteer"]) {
+    reset(); hooks.cursor = 0; hooks.values[0] = { kind: "picker" };
+    let entry = NewEvent();
+    assert.equal([...nodes(entry)].some(node => node.type === "GogoCreator"), false);
+    [...nodes(entry)].find(node => node.type === "EventTypePicker").props.onSelect(type);
+    hooks.cursor = 0; entry = NewEvent();
+    assert.equal(entry.props.participationType, type);
+  }
+});
+test("location and participation editors stay inline beneath Gogo without opening a modal", async () => {
+  reset(); uiCalls.length = 0;
+  const creator = [...nodes(eventScreen())].find(node => node.type === "GogoCreator");
+  const controller = creator.props.renderInlineSection("Location");
+  const location = [...nodes(controller.props.render({ field: { value: form.location, onChange: value => { form.location = value; } } }))].find(node => node.type === "LocationEditor");
+  location.props.onChange({ location: "A new venue", isPhysicalEvent: true });
+  assert.deepEqual(uiCalls, []);
+  location.props.onSave();
+  await Promise.resolve();
+  assert.equal(form.location, "A new venue");
+  assert.ok([...nodes(eventScreen())].filter(node => node.type === "Modal").every(node => node.props.visible === false));
+  const pricing = creator.props.renderInlineSection("Pricing");
+  assert.deepEqual(pricing.props.allowedRegistrationTypes, ["registration"]);
+  assert.deepEqual(uiCalls, ["continue"]);
+});
+test("manual location changes update the shared draft without an Apply location action", () => {
+  reset(); uiCalls.length = 0;
+  const tree = manualForm();
+  const controller = [...nodes(tree)].find(node => node.type === "Controller" && node.props.name === "location");
+  const location = [...nodes(controller.props.render({ field: { value: form.location, onChange: value => { form.location = value; } } }))].find(node => node.type === "LocationEditor");
+  assert.equal(location.props.onSave, undefined);
+  location.props.onChange({ location: "Community garden", isPhysicalEvent: true });
+  assert.equal(form.location, "Community garden");
+  location.props.onChange({ location: "", isPhysicalEvent: false });
+  assert.equal(form.location, "");
+  assert.equal(form.isPhysicalEvent, false);
+  assert.equal(uiCalls.includes("continue"), false);
+});
+test("manual registration and ticket setup update the shared draft without advancing Gogo", () => {
+  for (const registrationType of ["registration", "ticket"]) {
+    reset(); form.registrationType = registrationType; uiCalls.length = 0;
+    const pricing = [...nodes(manualForm())].find(node => node.type === "PricingEditor");
+    assert.equal(pricing.props.onSave, undefined);
+    pricing.props.onChange({ registrationType, paid: true, registrationFee: 1500, limited: true, registrationAttendees: 30, tickets: [] });
+    assert.equal(form.registrationFee, 1500);
+    assert.equal(form.registrationAttendees, 30);
+    assert.equal(uiCalls.includes("continue"), false);
+  }
+});
+const { default: EditEvent } = loadTypeScript("app/(app)/event/edit/[id].tsx", {
+  ...uiComponents,
+  react,
+  "react-native": { ...native, Modal: "Modal", KeyboardAvoidingView: "KeyboardAvoidingView", Platform: eventPlatform },
+  twrnc: { default: () => ({}) },
+  "expo-router": { useLocalSearchParams: () => ({ id: "event" }) },
+  "@/utils/navigation": { useLockedRouter: () => ({ replace() {} }) },
+  "@/utils/globalErrorHandler": { showGlobalError() {}, showGlobalSuccess() {}, showGlobalWarning() {} },
+  "@/utils/utils": { objectToFormData: value => value },
+  "@/services/queries": { useEventDetails: () => ({ data: { data: {
+    ...form, id: "event", title: form.eventName, startDate: form.startDate.toISOString(), endDate: form.endDate.toISOString(),
+  } }, isPending: false, isError: false }) },
+  "@/services/mutations": { useUpdateEvent: () => ({ mutateAsync: async () => uiCalls.push("update event"), isPending: false }) },
+  "@hookform/resolvers/zod": { zodResolver: () => () => {} },
+  "react-hook-form": uiFormHooks,
+});
+test("the event-edit sheet cancels staged location edits and commits them only on confirmation", () => {
+  reset(); uiCalls.length = 0;
+  const originalLocation = form.location;
+  const render = () => { hooks.cursor = 0; return EditEvent(); };
+  const open = () => [...nodes(render())].find(node => node.type === "TouchableOpacity" &&
+    [...nodes(node)].some(child => child.type === "Text" && child.props.children === "Location")).props.onPress();
+  const editor = () => {
+    const controller = [...nodes(render())].find(node => node.type === "Controller" && node.props.name === "location");
+    return [...nodes(controller.props.render({ field: { value: form.location, onChange: value => { form.location = value; } } }))].find(node => node.type === "LocationEditor");
+  };
+  open();
+  editor().props.onChange({ location: "Cancelled venue", isPhysicalEvent: true });
+  assert.equal(form.location, originalLocation);
+  [...nodes(render())].find(node => node.type === "Modal" && node.props.visible).props.onRequestClose();
+  open();
+  assert.equal(editor().props.value, originalLocation);
+  editor().props.onChange({ location: "Confirmed venue", isPhysicalEvent: true });
+  editor().props.onSave();
+  assert.equal(form.location, "Confirmed venue");
+  assert.equal([...nodes(render())].some(node => node.type === "Modal" && node.props.visible), false);
+  assert.equal(uiCalls.includes("update event"), false);
+});
+test("the fundraising goal is a direct form input with naira-to-kobo conversion", () => {
+  reset(); form.registrationType = "donation"; form.donationTarget = undefined;
+  const creator = [...nodes(eventScreen())].find(node => node.type === "GogoCreator");
+  const inline = creator.props.renderInlineSection("Pricing");
+  assert.equal([...nodes(inline)].some(node => node.type === "PricingEditor"), false);
+  const field = [...nodes(inline)].find(node => node.type === "Controller");
+  const input = field.props.render({ field: { value: undefined, onChange: value => { form.donationTarget = value; } }, fieldState: {} });
+  input.props.onChangeText("10000");
+  assert.equal(form.donationTarget, 1000000);
+  assert.ok([...nodes(eventScreen())].filter(node => node.type === "Modal").every(node => node.props.visible === false));
+});
+test("an impact-story proposal stays out of the event until accepted", async () => {
+  reset(); form.impactDescription = "";
+  respond = async () => ({ data: { reply: "How does this sound?", choices: [], section: "Impact story", completedSection: null, suggestedImpactStory: "Restore our neighbourhood park together.", updates: {} } });
+  await renderHook().send("Help with our story");
+  assert.equal(form.impactDescription, "");
+  assert.equal(renderHook().suggestedImpactStory, "Restore our neighbourhood park together.");
+  respond = async () => ({ data: { reply: "Let’s explore ideas.", choices: [], section: "Impact map", completedSection: null, suggestedImpactStory: null, updates: {} } });
+  await renderHook().acceptImpactStory();
+  assert.equal(form.impactDescription, "Restore our neighbourhood park together.");
+  assert.equal(requests.at(-1).payload.draft.impactDescription, form.impactDescription);
+  assert.deepEqual(requests.at(-1).payload.addressedSections, ["Impact story"]);
+});
+test("skipping a proposed impact story leaves the event story empty", async () => {
+  reset(); form.impactDescription = "";
+  respond = async () => ({ data: { reply: "How does this sound?", choices: [], section: "Impact story", completedSection: null, suggestedImpactStory: "Restore our park together.", updates: {} } });
+  await renderHook().send("Next");
+  respond = async () => ({ data: { reply: "Any links?", choices: [], section: "Links", completedSection: null, suggestedImpactStory: null, updates: {} } });
+  await renderHook().skipSection();
+  assert.equal(form.impactDescription, "");
+  assert.equal(renderHook().suggestedImpactStory, null);
+});
+test("Gogo shows the proposed impact story with acceptance and an optional manual edit", () => {
+  reset();
+  const tree = screen({ draftTitle: "Park day", conversation: {
+    messages: [{ role: "assistant", content: "How does this sound?", choices: [], section: "Impact story" }],
+    isPending: false, error: null, suggestedImpactStory: "Restore our park together.",
+    acceptImpactStory: () => requests.push("accept"), optionalSection: "Impact story", skipSection() {}, send() {},
+  } });
+  assert.match(text(tree), /Restore our park together/);
+  [...nodes(tree)].find(node => node.props.title === "Use this story").props.onPress();
+  assert.deepEqual(requests, ["accept"]);
+  [...nodes(tree)].find(node => node.type === "TouchableOpacity" && text(node) === "Edit story manually").props.onPress();
+  assert.deepEqual(requests, ["accept", "Impact story"]);
+  [...nodes(tree)].find(node => node.props.accessibilityLabel === "Edit event name").props.onPress();
+  assert.equal(requests.at(-1), "Story");
+});
+test("Gogo renders a location editor inline rather than a sheet-opening button", () => {
+  reset();
+  const tree = screen({ renderInlineSection: () => ({ type: "InlineLocation", props: {} }), conversation: {
+    messages: [{ role: "assistant", content: "Where will people meet?", choices: [], section: "Location" }],
+    isPending: false, error: null, send() {},
+  } });
+  assert.ok([...nodes(tree)].some(node => node.type === "InlineLocation"));
+  assert.equal([...nodes(tree)].some(node => node.props.title === "Choose a location"), false);
+});
+
+test("a proposed story stays in Gogo's conversational context for revisions", async () => {
+  reset();
+  respond = async () => ({ data: { reply: "How does this sound?", choices: [], section: "Impact story", completedSection: null, suggestedImpactStory: "Restore our park together.", updates: {} } });
+  await renderHook().send("Suggest a story");
+  await renderHook().send("Make that more inviting");
+  assert.match(requests.at(-1).payload.messages.find(message => message.role === "assistant" && message.content.includes("Suggested impact story")).content, /Restore our park together/);
+  assert.equal(form.impactDescription, "");
+});
+
+function creationRoot() { hooks.cursor = 0; return NewEvent(); }
+async function focusCreationRoot() {
+  creationRoot();
+  const leave = focusCallbacks.at(-1)();
+  await new Promise(resolve => setImmediate(resolve));
+  return { tree: creationRoot(), leave };
+}
+function savedCreationDraft() { return { values: draft(), mode: "gogo", conversation: { messages: [{ role: "assistant", content: "Where will people meet?", choices: [], section: "Location", suggestedImpactStory: null }], addressedSections: [] } }; }
+test("returning to creation offers the saved draft before restoring any fields", async () => {
+  reset(); savedDrafts = [savedCreationDraft()];
+  const { tree } = await focusCreationRoot();
+  assert.equal([...nodes(tree)].some(node => node.type === "EventTypePicker" || node.type === "GogoCreator"), false);
+  const prompt = [...nodes(tree)].find(node => node.type === "DraftPrompt");
+  assert.equal(prompt.props.title, "Park day");
+  prompt.props.onContinue();
+  const resumed = creationRoot();
+  assert.equal(resumed.props.participationType, "registration");
+  assert.strictEqual(resumed.props.initialDraft, savedDrafts[0]);
+  savedDrafts = [];
+});
+test("the return prompt appears again when the same creation route regains focus", async () => {
+  reset(); savedDrafts = [savedCreationDraft()];
+  let { tree } = await focusCreationRoot();
+  [...nodes(tree)].find(node => node.type === "DraftPrompt").props.onContinue();
+  assert.equal(creationRoot().props.initialDraft.values.eventName, "Park day");
+  tree = (await focusCreationRoot()).tree;
+  assert.ok([...nodes(tree)].some(node => node.type === "DraftPrompt"));
+  savedDrafts = [];
+});
+test("discarding a draft returns to type selection and never restores the old form", async () => {
+  reset(); savedDrafts = [savedCreationDraft()]; discardedTypes.length = 0;
+  const { tree } = await focusCreationRoot();
+  [...nodes(tree)].find(node => node.type === "DraftPrompt").props.onDiscard();
+  await new Promise(resolve => setImmediate(resolve));
+  let next = creationRoot();
+  assert.deepEqual(discardedTypes, ["registration"]);
+  [...nodes(next)].find(node => node.type === "EventTypePicker").props.onSelect("registration");
+  next = creationRoot();
+  assert.equal(next.props.initialDraft, null);
+  savedDrafts = [];
+});
+test("a failed discard keeps the return choice visible and reports the real failure", async () => {
+  reset(); savedDrafts = [savedCreationDraft()]; discardFailure = true; uiCalls.length = 0;
+  const { tree } = await focusCreationRoot();
+  [...nodes(tree)].find(node => node.type === "DraftPrompt").props.onDiscard();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok([...nodes(creationRoot())].some(node => node.type === "DraftPrompt"));
+  assert.match(uiCalls.at(-1), /Couldn’t discard/);
+  discardFailure = false; savedDrafts = [];
+});
+test("an unread draft stays behind the page loader and a stale read cannot reopen it after leaving", async () => {
+  reset(); let resolve; draftLoad = () => new Promise(done => { resolve = done; });
+  creationRoot(); const leave = focusCallbacks.at(-1)();
+  assert.ok([...nodes(creationRoot())].some(node => node.type === "PageLoader"));
+  leave(); resolve([savedCreationDraft()]);
+  await new Promise(done => setImmediate(done));
+  assert.equal([...nodes(creationRoot())].some(node => node.type === "DraftPrompt"), false);
+  draftLoad = undefined;
+});
+test("Gogo resumes its saved question, proposal and skipped sections without an extra model request", async () => {
+  reset();
+  const state = { messages: [{ role: "assistant", content: "How does this sound?", choices: [], section: "Impact story", suggestedImpactStory: "Restore our park together." }], addressedSections: ["Links"] };
+  const restored = renderHook(false, state);
+  assert.equal(restored.messages.at(-1).content, "How does this sound?");
+  assert.equal(restored.suggestedImpactStory, "Restore our park together.");
+  assert.deepEqual(restored.getDraftState().addressedSections, ["Links"]);
+  assert.deepEqual(requests, []);
+});
+test("an interrupted Gogo reply resumes with a real retry instead of losing the last answer", async () => {
+  reset();
+  const state = { messages: [{ role: "assistant", content: "What’s your idea?", choices: [], section: null, suggestedImpactStory: null }, { role: "user", content: "Plant trees at the park" }], addressedSections: [] };
+  const restored = renderHook(false, state);
+  assert.match(restored.error, /interrupted/);
+  await restored.retry();
+  assert.equal(requests[0].payload.messages.at(-1).content, "Plant trees at the park");
+  assert.equal(renderHook(false, state).messages.at(-1).role, "assistant");
 });

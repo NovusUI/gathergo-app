@@ -1,11 +1,10 @@
 import AppLoader from "@/components/ui/AppLoader";
 import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
-// Create a new file: components/PaystackWebViewWrapper.tsx
 import AppToast from "@/components/ui/AppToast";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
-import WebView from "react-native-webview";
+import WebView, { type WebViewNavigation } from "react-native-webview";
 import tw from "twrnc";
 
 interface PaystackWebViewProps {
@@ -39,43 +38,34 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
     }
   }, [visible]);
 
-  const handleNavigationStateChange = (navState: any) => {
-    console.log("WebView URL:", navState.url);
+  const finishPayment = (callback: () => void) => {
+    if (hasNavigatedRef.current) return;
+    hasNavigatedRef.current = true;
+    callback();
+    onClose();
+  };
 
-    // Check for Paystack success/cancel URLs
+  const handleCancel = () => finishPayment(onCancel);
+
+  const handleNavigationStateChange = (navState: WebViewNavigation) => {
     if (navState.url.includes("callback") || navState.url.includes("verify")) {
-      // Extract reference from URL
       const urlParams = new URL(navState.url);
       const reference =
         urlParams.searchParams.get("reference") ||
         urlParams.searchParams.get("trxref");
-
-      if (reference && !hasNavigatedRef.current) {
-        hasNavigatedRef.current = true;
-        onSuccess(reference);
-        onClose();
+      if (reference) {
+        finishPayment(() => onSuccess(reference));
+        return;
       }
     }
 
-    // Check for cancel
-    if (
-      navState.url.includes("cancel") ||
-      navState.title?.includes("Cancelled")
-    ) {
-      if (!hasNavigatedRef.current) {
-        hasNavigatedRef.current = true;
-        onCancel();
-        onClose();
-      }
+    if (navState.url.includes("cancel") || navState.title.includes("Cancelled")) {
+      handleCancel();
+      return;
     }
 
-    // Check for errors
-    if (navState.url.includes("error") || navState.title?.includes("Error")) {
-      if (!hasNavigatedRef.current) {
-        hasNavigatedRef.current = true;
-        onError({ message: "Payment error occurred" });
-        onClose();
-      }
+    if (navState.url.includes("error") || navState.title.includes("Error")) {
+      finishPayment(() => onError({ message: "Payment error occurred" }));
     }
   };
 
@@ -86,6 +76,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      onRequestClose={handleCancel}
     >
       <View style={tw`flex-1 bg-[#01082E]`}>
         {/* Header */}
@@ -95,7 +86,11 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
           <Text style={tw`text-white text-lg font-semibold`}>
             {type === "DONATION" ? " Complete Donation" : "Complete Payment"}
           </Text>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Cancel payment"
+            onPress={handleCancel}
+          >
             <Ionicons name="close" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -122,11 +117,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
             console.error("WebView error:", nativeEvent);
-            if (!hasNavigatedRef.current) {
-              hasNavigatedRef.current = true;
-              onError(nativeEvent);
-              onClose();
-            }
+            finishPayment(() => onError(nativeEvent));
           }}
         />
       </View>

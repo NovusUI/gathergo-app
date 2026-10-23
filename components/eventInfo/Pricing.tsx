@@ -1,9 +1,15 @@
-import { EventPricing, EventTicket, eventPricingSchema } from "@/schemas/event";
+import {
+  EventPricing,
+  EventPricingFormData,
+  EventTicket,
+  eventPricingSchema,
+} from "@/schemas/event";
+import { normalizeEventPricing } from "@/utils/eventForm";
 import { showGlobalError } from "@/utils/globalErrorHandler";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info, PlusCircle } from "lucide-react-native";
-import { useEffect, useMemo } from "react";
-import { Controller, Resolver, useForm } from "react-hook-form";
+import { PlusCircle } from "lucide-react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw, { style as twStyle } from "twrnc";
 import CustomSwitcher from "../CustomSwitcher";
@@ -14,13 +20,16 @@ import PricingCard from "./TicketCard";
 
 interface Props {
   createTicket: () => void;
-  onSave: (data: EventPricing) => void;
+  onSave?: (data: EventPricing) => void;
+  onChange?: (data: EventPricing) => void;
   tickets: EventTicket[] | undefined;
   initialData?: EventPricing | null;
   setTicket: (updated: EventTicket[]) => void;
   onEdit?: (data: EventTicket) => void;
   editMode?: boolean;
   insideBottomSheet?: boolean;
+  compact?: boolean;
+  submitLabel?: string;
   allowedRegistrationTypes?: readonly EventPricing["registrationType"][];
 }
 
@@ -33,16 +42,15 @@ const ALL_REGISTRATION_TYPES = [
 const registrationTypeContent = {
   donation: {
     label: "Donation",
-    helper:
-      "Set a fundraising goal. Donations stay as the financial impact layer.",
+    helper: "Fundraising goal",
   },
   ticket: {
     label: "Ticket",
-    helper: "Offer multiple ticket tiers for the same event.",
+    helper: "Multiple ticket types",
   },
   registration: {
     label: "Registration",
-    helper: "Use a single free or paid entry option.",
+    helper: "Free or paid entry",
   },
 } satisfies Record<
   EventPricing["registrationType"],
@@ -53,11 +61,14 @@ const Pricing = ({
   createTicket,
   tickets,
   onSave,
+  onChange,
   initialData,
   setTicket,
   onEdit,
   editMode = false,
   insideBottomSheet = false,
+  compact = false,
+  submitLabel = "Save and Continue",
   allowedRegistrationTypes = ALL_REGISTRATION_TYPES,
 }: Props) => {
   const allowedTypesKey = allowedRegistrationTypes.join("|");
@@ -66,7 +77,7 @@ const Pricing = ({
       (allowedTypesKey
         ? allowedTypesKey.split("|")
         : [...ALL_REGISTRATION_TYPES]) as EventPricing["registrationType"][],
-    [allowedTypesKey]
+    [allowedTypesKey],
   );
 
   const {
@@ -75,12 +86,12 @@ const Pricing = ({
     setValue,
     reset,
     handleSubmit,
+    getValues,
     formState: { errors },
-  } = useForm<EventPricing>({
-    resolver: zodResolver(eventPricingSchema) as Resolver<EventPricing>,
+  } = useForm<EventPricingFormData, undefined, EventPricing>({
+    resolver: zodResolver(eventPricingSchema),
     defaultValues: initialData || {
-      registrationType:
-        undefined as unknown as EventPricing["registrationType"],
+      registrationType: undefined,
       paid: false,
       registrationFee: undefined,
       donationTarget: undefined,
@@ -90,8 +101,22 @@ const Pricing = ({
     },
   });
 
+  const lastEmitted = useRef<EventPricing | null>(null);
+
   useEffect(() => {
     if (initialData) {
+      const emitted = lastEmitted.current;
+      // A parent echo must not reset unfinished Paid or Limited fields.
+      if (
+        onChange &&
+        emitted &&
+        initialData.registrationType === emitted.registrationType &&
+        initialData.registrationFee === emitted.registrationFee &&
+        initialData.registrationAttendees === emitted.registrationAttendees &&
+        initialData.donationTarget === emitted.donationTarget &&
+        JSON.stringify(initialData.tickets) === JSON.stringify(emitted.tickets)
+      )
+        return;
       reset(initialData);
       return;
     }
@@ -107,7 +132,7 @@ const Pricing = ({
         tickets: [],
       });
     }
-  }, [initialData, normalizedAllowedRegistrationTypes, reset]);
+  }, [initialData, normalizedAllowedRegistrationTypes, onChange, reset]);
 
   const registrationType = watch("registrationType");
   const paid = watch("paid");
@@ -118,7 +143,7 @@ const Pricing = ({
   const ticketsSignature = JSON.stringify(tickets ?? []);
   const syncedTickets = useMemo(
     () => JSON.parse(ticketsSignature) as EventTicket[],
-    [ticketsSignature]
+    [ticketsSignature],
   );
 
   const ErrorText = ({ message }: { message?: string }) =>
@@ -154,8 +179,33 @@ const Pricing = ({
     });
   }, [setValue, syncedTickets]);
 
+  useEffect(() => {
+    if (!onChange) return;
+    const data = normalizeEventPricing({
+      ...getValues(),
+      tickets: syncedTickets,
+    });
+    lastEmitted.current = data;
+    onChange(data);
+  }, [getValues, onChange, syncedTickets]);
+
+  const changeField: typeof setValue = (name, value) => {
+    setValue(name, value, {
+      shouldDirty: true,
+      shouldValidate: Boolean(onChange),
+    });
+    if (onChange) {
+      const data = normalizeEventPricing({
+        ...getValues(),
+        tickets: syncedTickets,
+      });
+      lastEmitted.current = data;
+      onChange(data);
+    }
+  };
+
   const onSubmit = (data: EventPricing) => {
-    onSave(data);
+    onSave?.(normalizeEventPricing(data));
   };
 
   const onDelete = (id: string) => {
@@ -163,10 +213,7 @@ const Pricing = ({
     setTicket(updatedTickets ?? []);
   };
 
-  const changePricing = (
-    type: EventPricing["registrationType"],
-    onChange: (event: EventPricing["registrationType"]) => void
-  ) => {
+  const changePricing = (type: EventPricing["registrationType"]) => {
     if (
       isPricingTypeLocked ||
       !normalizedAllowedRegistrationTypes.includes(type)
@@ -174,23 +221,23 @@ const Pricing = ({
       return;
     }
 
-    onChange(type);
+    changeField("registrationType", type);
   };
 
   return (
     <>
-      <CustomView style={tw`mb-16`}>
+      <CustomView style={compact ? tw`mb-4` : tw`mb-16`}>
         {showTypeSelector ? (
           <Controller
             control={control}
             name="registrationType"
-            render={({ field: { onChange } }) => (
+            render={() => (
               <CustomView style={tw`flex-row justify-between flex-wrap`}>
                 {normalizedAllowedRegistrationTypes.map((type) => (
                   <TouchableOpacity
                     key={type}
                     disabled={isPricingTypeLocked}
-                    onPress={() => changePricing(type, onChange)}
+                    onPress={() => changePricing(type)}
                     style={[
                       tw`mt-3 items-center justify-center rounded-xl p-5`,
                       registrationType === type
@@ -209,10 +256,20 @@ const Pricing = ({
                         "text-center text-sm",
                         registrationType === type
                           ? "text-[#01082E]"
-                          : "text-white"
+                          : "text-white",
                       )}
                     >
                       {registrationTypeContent[type].label}
+                    </Text>
+                    <Text
+                      style={[
+                        tw`mt-1 text-center text-xs`,
+                        registrationType === type
+                          ? tw`text-[#153B47]`
+                          : tw`text-[#8FA5E2]`,
+                      ]}
+                    >
+                      {registrationTypeContent[type].helper}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -225,18 +282,8 @@ const Pricing = ({
 
         {isPricingTypeLocked && (
           <Text style={tw`mt-3 text-xs text-gray-400`}>
-            Pricing type cannot be changed after the event is created.
+            Participation type is fixed after publishing.
           </Text>
-        )}
-
-        {!registrationType && showTypeSelector && (
-          <View style={tw`mt-5 gap-5 flex-row px-5`}>
-            <Info color="white" size={15} />
-            <Text style={tw`text-white text-sm`}>
-              • Ticket: Multiple price options (up to 5 different ticket types)
-              {"\n"}• Registration: Single price tag only
-            </Text>
-          </View>
         )}
 
         {registrationType === "ticket" && (
@@ -264,15 +311,6 @@ const Pricing = ({
                 />
               </CustomView>
             ))}
-
-            <CustomButton
-              onPress={handleSubmit(onSubmit, onError)}
-              disabled={tickets?.length === 0}
-              showArrow={false}
-              buttonClassName="bg-[#0FF1CF] w-full mt-10"
-              textClassName="!text-black"
-              title="Save and Continue"
-            />
           </CustomView>
         )}
 
@@ -286,8 +324,11 @@ const Pricing = ({
                 <Controller
                   name="limited"
                   control={control}
-                  render={({ field: { value, onChange } }) => (
-                    <CustomSwitcher isEnabled={value} setIsEnabled={onChange} />
+                  render={({ field: { value } }) => (
+                    <CustomSwitcher
+                      isEnabled={value}
+                      setIsEnabled={(value) => changeField("limited", value)}
+                    />
                   )}
                 />
               </View>
@@ -296,13 +337,15 @@ const Pricing = ({
                 <Controller
                   name="registrationAttendees"
                   control={control}
-                  render={({ field: { value, onChange } }) => (
+                  render={({ field: { value } }) => (
                     <>
                       <Input
                         insideBottomSheet={insideBottomSheet}
                         numeric
                         moneyFormat
-                        onChangeText={onChange}
+                        onChangeText={(text) =>
+                          changeField("registrationAttendees", text)
+                        }
                         value={value?.toString()}
                         placeholder="Number of attendees"
                       />
@@ -321,8 +364,11 @@ const Pricing = ({
                 <Controller
                   name="paid"
                   control={control}
-                  render={({ field: { value, onChange } }) => (
-                    <CustomSwitcher isEnabled={value} setIsEnabled={onChange} />
+                  render={({ field: { value } }) => (
+                    <CustomSwitcher
+                      isEnabled={value}
+                      setIsEnabled={(value) => changeField("paid", value)}
+                    />
                   )}
                 />
               </View>
@@ -331,11 +377,13 @@ const Pricing = ({
                 <Controller
                   name="registrationFee"
                   control={control}
-                  render={({ field: { value, onChange } }) => (
+                  render={({ field: { value } }) => (
                     <>
                       <Input
                         insideBottomSheet={insideBottomSheet}
-                        onChangeText={onChange}
+                        onChangeText={(text) =>
+                          changeField("registrationFee", text)
+                        }
                         value={value?.toString()}
                         placeholder="Price"
                         moneyFormat
@@ -346,14 +394,6 @@ const Pricing = ({
                 />
               )}
             </CustomView>
-
-            <CustomButton
-              onPress={handleSubmit(onSubmit, onError)}
-              showArrow={false}
-              buttonClassName="bg-[#0FF1CF] w-full mt-10"
-              textClassName="!text-black"
-              title="Save and Continue"
-            />
           </CustomView>
         )}
 
@@ -363,14 +403,25 @@ const Pricing = ({
               <Controller
                 name="donationTarget"
                 control={control}
-                render={({ field: { value, onChange } }) => (
+                render={({ field: { value } }) => (
                   <>
                     <Input
                       insideBottomSheet={insideBottomSheet}
                       numeric
                       moneyFormat
-                      onChangeText={(text) => onChange(text === "" ? undefined : Math.round(Number(text) * 100))}
-                      value={value === undefined ? "" : String(value / 100)}
+                      onChangeText={(text) =>
+                        changeField(
+                          "donationTarget",
+                          text === ""
+                            ? undefined
+                            : Math.round(Number(text) * 100),
+                        )
+                      }
+                      value={
+                        value === undefined || value === ""
+                          ? ""
+                          : String(Number(value) / 100)
+                      }
                       placeholder="Target in ₦ (minimum ₦5,000)"
                     />
                     <ErrorText message={errors.donationTarget?.message} />
@@ -378,16 +429,18 @@ const Pricing = ({
                 )}
               />
             </CustomView>
-
-            <CustomButton
-              onPress={handleSubmit(onSubmit, onError)}
-              showArrow={false}
-              buttonClassName="bg-[#0FF1CF] w-full mt-10"
-              textClassName="!text-black"
-              title="Save and Continue"
-            />
           </CustomView>
         )}
+        {onSave && registrationType ? (
+          <CustomButton
+            onPress={handleSubmit(onSubmit, onError)}
+            disabled={registrationType === "ticket" && tickets?.length === 0}
+            showArrow={false}
+            buttonClassName="bg-[#0FF1CF] w-full mt-10"
+            textClassName="!text-black"
+            title={submitLabel}
+          />
+        ) : null}
       </CustomView>
     </>
   );

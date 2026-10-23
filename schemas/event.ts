@@ -1,4 +1,5 @@
-import { isValidEventLink, normalizeEventLink } from "@/constants/eventLinks";
+import { isValidEventLink, normalizeEventLinks } from "@/constants/eventLinks";
+import { DEFAULT_REGISTRATION_CAPACITY } from "@/utils/eventForm";
 import type {
   SuggestedImpactCommitment,
   SuggestedImpactPath,
@@ -21,7 +22,7 @@ export const eventTicketSchema = z
     quantity: z
       .union([
         z.number().min(5, { message: "Quantity must be at least 5" }),
-        z.string().transform((val) => (val === "" ? null : Number(val))),
+        z.string().transform((val) => (val === "" ? undefined : Number(val))),
       ])
       .optional(),
 
@@ -125,19 +126,16 @@ export const eventSchema = z
     isRecurring: z.boolean(),
 
     isPhysicalEvent: z.boolean().default(true),
-    location: z.string().default(""),
+    location: z.string().trim().default(""),
     links: z.preprocess(
       (value) => {
         if (!Array.isArray(value)) {
           return [];
         }
 
-        return value
-          .map((item) =>
-            normalizeEventLink(typeof item === "string" ? item : ""),
-          )
-          .filter(Boolean)
-          .slice(0, 5);
+        return normalizeEventLinks(
+          value.map((item) => (typeof item === "string" ? item : "")),
+        );
       },
       z
         .array(
@@ -161,13 +159,32 @@ export const eventSchema = z
     volunteerRoles: z.array(volunteerRoleSchema).max(20).default([]),
   })
   .superRefine((data, ctx) => {
+    if (data.registrationType === "registration" || data.registrationType === "ticket") {
+      const pricing = eventPricingSchema.safeParse({
+        ...data,
+        paid: data.registrationFee !== 0,
+        limited: data.registrationAttendees !== DEFAULT_REGISTRATION_CAPACITY,
+      });
+      if (!pricing.success) {
+        for (const issue of pricing.error.issues) {
+          ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
+        }
+      }
+    }
     if (data.registrationType === "donation" && data.donationTarget === undefined) {
       ctx.addIssue({ code: "custom", path: ["donationTarget"], message: "Set a fundraising target" });
     }
     if (data.registrationType === "volunteer" && data.volunteerRoles.length === 0) {
       ctx.addIssue({ code: "custom", path: ["volunteerRoles"], message: "Add at least one volunteer role" });
     }
-    if ((data.registrationType === "volunteer" || data.volunteerRoles.length > 0) && !canRecruitVolunteers(data)) {
+    if (data.registrationType !== "volunteer" && data.volunteerRoles.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["volunteerRoles"],
+        message: "Volunteer roles are only available for Volunteer and donation events",
+      });
+    }
+    if (data.registrationType === "volunteer" && !canRecruitVolunteers(data)) {
       ctx.addIssue({
         code: "custom",
         path: data.isPhysicalEvent ? ["impactDescription"] : ["volunteerRoles"],
@@ -516,6 +533,7 @@ export type Donation = z.infer<typeof donationSchema>;
 export type EventTicket = z.infer<typeof eventTicketSchema>;
 
 export type EventPricing = z.infer<typeof eventPricingSchema>;
+export type EventPricingFormData = z.input<typeof eventPricingSchema>;
 
 export type DateTimeFormData = z.infer<typeof dateTimeSchema>;
 

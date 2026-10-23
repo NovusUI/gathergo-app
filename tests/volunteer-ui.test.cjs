@@ -379,47 +379,33 @@ function roleEditor() {
   );
 }
 
-test("volunteer-only opens a role sheet after adding an impact story", () => {
-  resetForm({ impactDescription: "Restore green spaces together." });
-  volunteerOnlySwitch().props.setIsEnabled(true);
-  assert.equal(formValues.registrationType, "volunteer");
-  assert.equal(formValues.volunteerRoles.length, 0);
+test("a volunteer-only event adds roles without another participation selector", () => {
+  resetForm({ registrationType: "volunteer", impactDescription: "Restore green spaces together." });
+  assert.equal(volunteerOnlySwitch(), undefined);
+  const add = [...nodes(VolunteerSetupFields(formProps))].find(node => node.type === "Button" && [...nodes(node)].some(child => child.props.children === "+ Add volunteer role"));
+  add.props.onPress();
   assert.equal(roleEditor().props.initialValue, undefined);
   roleEditor().props.onSave(roleDraft);
   assert.deepEqual(formValues.volunteerRoles, [roleDraft]);
-  assert.equal(activeRoleEditor, null);
+  assert.equal(formValues.registrationType, "volunteer");
 });
 
-test("leaving volunteer-only restores the selected pricing and removes optional donations", () => {
-  resetForm({
-    registrationType: "ticket",
-    impactDescription: "Restore green spaces together.",
-  });
-  volunteerOnlySwitch().props.setIsEnabled(true);
-  roleEditor().props.onClose();
-  formValues.donationsEnabled = true;
-  formValues.donationTarget = 500000;
-  volunteerOnlySwitch().props.setIsEnabled(false);
-  assert.equal(formValues.registrationType, "ticket");
-  assert.equal(formValues.donationsEnabled, false);
-  assert.equal(formValues.donationTarget, undefined);
-});
 
-test("adding roles to an impact event preserves ticket and registration pricing", () => {
-  for (const registrationType of ["ticket", "registration"]) {
+test("other event types have no volunteer setup, cards or actions even with impact and saved roles", () => {
+  for (const registrationType of ["ticket", "registration", "donation"]) {
     resetForm({
       registrationType,
       impactDescription: "Restore green spaces together.",
+      volunteerRoles: [role],
     });
-    const add = [...nodes(VolunteerSetupFields(formProps))].find(
-      (node) => node.type === "Button" && node.props.accessibilityState,
-    );
-    assert.equal(add.props.disabled, false);
-    add.props.onPress();
-    assert.equal(formValues.registrationType, registrationType);
-    assert.equal(formValues.volunteerRoles.length, 0);
-    roleEditor().props.onSave(roleDraft);
-    assert.deepEqual(formValues.volunteerRoles, [roleDraft]);
+    assert.equal(VolunteerSetupFields(formProps), null);
+    assert.equal(VolunteerSetupFields({ ...formProps, editMode: true }), null);
+    const otherEvent = { ...event, registrationType };
+    assert.equal(EventVolunteering({ event: otherEvent, owner: false, onPress() {} }), null);
+    assert.equal(EventVolunteering({ event: otherEvent, owner: true, onPress() {} }), null);
+    for (const purpose of ["volunteer", "manage"]) {
+      assert.equal(VolunteerButton({ event: otherEvent, purpose, hasEventEnded: false, onPress() {} }), null);
+    }
   }
 });
 
@@ -438,10 +424,9 @@ test("volunteer setup respects physical events and the existing event type when 
     editMode: true,
     onManage() {},
   });
-  assert.equal(
-    [...nodes(edit)].find((node) => node.type === "Switch").props.disabled,
-    true,
-  );
+  assert.equal([...nodes(edit)].some(node => node.type === "Switch"), false);
+  assert.ok([...nodes(edit)].some(node => node.props.children === "Manage volunteer roles and applications"));
+  assert.equal(formValues.registrationType, "volunteer");
 });
 
 const { default: EventFundraisingFields } = loadTypeScript(
@@ -570,7 +555,7 @@ const { default: FeedBottomSheet } = loadTypeScript(
   },
 );
 
-test("the feed sheet puts a compact volunteer action in its header for every participation type", () => {
+test("the feed sheet only shows a volunteer action for Volunteer and donation events", () => {
   for (const registrationType of [
     "ticket",
     "registration",
@@ -597,6 +582,11 @@ test("the feed sheet puts a compact volunteer action in its header for every par
     assert.ok(action);
     assert.equal(action.props.variant, "compact");
     const button = action.type(action.props);
+    if (registrationType !== "volunteer") {
+      assert.equal(button, null);
+      assert.deepEqual(actions, []);
+      continue;
+    }
     assert.equal(button.props.accessibilityLabel, "Volunteer");
     button.props.onPress();
     assert.deepEqual(actions, [{ type: "VOLUNTEER" }]);
@@ -638,34 +628,15 @@ const { default: CreationLayout } = loadTypeScript(
   },
 );
 
-test("the creation chooser offers only an event or a fundraiser", () => {
+test("New Event opens the creation page directly", () => {
   creationRoutes.length = 0;
-  const screen = CreationLayout();
-  const options = [...nodes(screen)].filter(
-    (node) =>
-      node.type === "Button" &&
-      [...nodes(node)].some(
-        (child) =>
-          child.type === "Text" &&
-          typeof child.props.children === "string" &&
-          child.props.children.startsWith("Create a"),
-      ),
-  );
-  assert.equal(options.length, 2);
-  options.forEach((option) => option.props.onPress());
-  assert.deepEqual(creationRoutes, [
-    "/new-event?eventType=general",
-    "/new-event?eventType=donation",
-  ]);
+  const option = [...nodes(CreationLayout())].find(node => node.type === "Button" && [...nodes(node)].some(child => child.props.children === "New Event"));
+  option.props.onPress();
+  assert.deepEqual(creationRoutes, ["/new-event"]);
 });
 
 test("attempting to add volunteers without story text shows a reminder and leaves the form unchanged", () => {
-  for (const registrationType of [
-    "registration",
-    "ticket",
-    "donation",
-    "volunteer",
-  ]) {
+  for (const registrationType of ["volunteer"]) {
     for (const impactDescription of ["", "   "]) {
       resetForm({
         registrationType,
@@ -740,24 +711,31 @@ function removeStoryButton(screen) {
   );
 }
 
-test("a story remains required while volunteer roles or volunteer-only participation are enabled", () => {
-  resetForm({
-    tags: [],
-    registrationType: "volunteer",
-    impactDescription: "Restore green spaces together.",
+for (const [name, participation] of [
+  ["volunteer-only participation", { registrationType: "volunteer" }],
+  ["existing volunteer roles", { registrationType: "registration", volunteerRoles: [role] }],
+]) {
+  test(`a required impact story has no Remove button with ${name}`, () => {
+    resetForm({
+      tags: [],
+      ...participation,
+      impactDescription: "Restore green spaces together.",
+    });
+    for (const section of [undefined, "Impact story"]) {
+      assert.equal(removeStoryButton(EventStoryFields({ ...formProps, section })), undefined);
+      formValues.impactDescription = "";
+      const blankStory = EventStoryFields({ ...formProps, section });
+      assert.equal(removeStoryButton(blankStory), undefined);
+      assert.ok(
+        [...nodes(blankStory)].some(
+          (node) =>
+            node.type === "Controller" && node.props.name === "impactDescription",
+        ),
+      );
+      formValues.impactDescription = "Restore green spaces together.";
+    }
   });
-  removeStoryButton(EventStoryFields(formProps)).props.onPress();
-  assert.equal(formValues.impactDescription, "Restore green spaces together.");
-  assert.match(volunteerWarnings[0], /impact story/);
-  formValues.impactDescription = "";
-  const blankStory = EventStoryFields(formProps);
-  assert.ok(
-    [...nodes(blankStory)].some(
-      (node) =>
-        node.type === "Controller" && node.props.name === "impactDescription",
-    ),
-  );
-});
+}
 
 test("ordinary events can still remove an optional impact story", () => {
   resetForm({ tags: [], impactDescription: "A story without volunteering." });
@@ -767,7 +745,7 @@ test("ordinary events can still remove an optional impact story", () => {
 });
 
 test("cancelling a new role sheet leaves the event draft unchanged", () => {
-  resetForm({ impactDescription: "Restore green spaces together." });
+  resetForm({ registrationType: "volunteer", impactDescription: "Restore green spaces together." });
   const add = [...nodes(VolunteerSetupFields(formProps))].find(
     (node) => node.type === "Button" && node.props.accessibilityState,
   );
@@ -779,6 +757,7 @@ test("cancelling a new role sheet leaves the event draft unchanged", () => {
 
 test("editing a draft role opens its values in a sheet and updates only on save", () => {
   resetForm({
+    registrationType: "volunteer",
     impactDescription: "Restore green spaces together.",
     volunteerRoles: [{ ...roleDraft }],
   });
@@ -1424,4 +1403,46 @@ test("populated volunteer history keeps its list and small refresh indicator", (
   );
   assert.deepEqual(list.props.data, [entry]);
   assert.equal(loadingIndicators(list.props.ListHeaderComponent).length, 1);
+});
+
+
+test("guided story, impact and interest editors stay focused on the selected step", () => {
+  resetForm({ tags: [], impactDescription: "Restore the park." });
+  for (const section of ["Story", "Impact story", "Impact map", "Interests"]) {
+    const tree = EventStoryFields({ ...formProps, section });
+    const fields = [...nodes(tree)].filter(node => node.type === "Controller").map(node => node.props.name);
+    assert.equal(fields.includes("description"), section === "Story");
+    assert.equal(fields.includes("impactTitle"), false);
+    assert.equal(fields.includes("impactDescription"), ["Impact story", "Impact map"].includes(section));
+    assert.equal([...nodes(tree)].some(node => node.type === "TagButton"), section === "Interests");
+    if (["Impact story", "Impact map"].includes(section)) {
+      const field = [...nodes(tree)].find(node => node.type === "Controller" && node.props.name === "impactDescription");
+      const body = field.props.render({ field: { value: formValues.impactDescription, onChange() {} }, fieldState: {} });
+      assert.equal([...nodes(body)].find(node => node.type === "ImpactSelector").props.section, section === "Impact story" ? "story" : "map");
+    }
+  }
+});
+
+test("feed scrolling includes its event header and every pinned and regular update in one list", () => {
+  feedEvent = { ...event, title: 'Community gathering', registrationType: 'ticket' };
+  const pinned = { id: 'pinned', title: 'Donation progress' };
+  const regular = { id: 'purchase', title: 'Ticket purchased' };
+  for (const rows of [[pinned], [pinned, regular]]) {
+    let loaded = 0, opened;
+    const sheet = FeedBottomSheet({ eventId: 'event', isVisible: true, onClose() {}, onAction: action => { opened = action; }, feedData: {
+      pinnedFeeds: [pinned], regularFeeds: rows.slice(1), allFeeds: rows,
+      hasMore: true, loading: false, loadingMore: false, error: null,
+      hideFeed() {}, loadMore() { loaded++; }, refresh() {},
+    } });
+    const list = [...nodes(sheet)].find(node => node.type === 'FeedList');
+    assert.strictEqual(list.props.data, rows);
+    const header = [...nodes(list.props.ListHeaderComponent())];
+    assert.ok(header.some(node => node.props.children === 'Community gathering'));
+    assert.equal(header.some(node => typeof node.props.children === 'string' && /Pinned|Latest Activity/.test(node.props.children)), false);
+    assert.equal(header.some(node => node.type === 'FeedRenderer'), false);
+    const row = list.props.renderItem({ item: pinned });
+    assert.strictEqual(row.props.feed, pinned);
+    row.props.onAction({ type: 'DONATE' }); assert.deepEqual(opened, { type: 'DONATE' });
+    list.props.onEndReached(); assert.equal(loaded, 1);
+  }
 });

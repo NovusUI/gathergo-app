@@ -66,26 +66,24 @@ Run AI suggestion and selection checks with `npm run test:impact-suggestions`.
 
 ## Event volunteering
 
-The creation chooser offers Create an event and Create a fundraiser. In event
-setup, Volunteering unlocks only after a physical event has non-empty impact
-story text. The volunteer-only option then removes ticket and attendee
-registration requirements. Roles can also be added alongside tickets or
-registration. An impact title alone does not unlock volunteering, and fundraisers
-must add a story too. Attempts to add volunteers first show a reminder.
+New Event offers Fundraiser, Ticket, Registration and Volunteer and donation.
+Volunteer roles are exclusive to Volunteer and donation events and unlock after
+adding a physical venue and impact story. Other types have no volunteer setup,
+feed action or event volunteering card. Gogo collects roles as a required step for
+Volunteer and donation and never suggests volunteers for another event type.
+Attempts to add roles before a story show a reminder.
 Role creation and editing open a bottom sheet in the event draft and organiser
 management. Draft roles change only on Save; organiser saves use the role API.
-Each role has its own capacity and organiser approval setting. Optional donations are available only
-for volunteer-only events; fundraisers keep their donation setup. The form
-displays naira and sends donation amounts in kobo.
-The update API keeps an omitted target; switching donations off removes it.
+Each role has its own capacity and organiser approval setting. Donations remain
+optional for Volunteer and donation events; fundraisers keep their donation setup.
+The form displays naira and sends donation amounts in kobo. The update API keeps
+an omitted target; switching donations off removes it. The stored participation
+value remains `volunteer`.
 
-The Give your time card opens volunteer roles for ticket, registration and
-donation events, keeping the main action focused on event participation.
-Volunteer-only events keep a full-width primary Volunteer action. Organisers open
-volunteer management from the people icon beside Edit, and the feed header includes a
-compact Volunteer action. The Give your time card and Volunteer actions open a
-sheet of roles, where participants can apply, join or withdraw. Roles load when
-the sheet opens.
+For Volunteer and donation events, Give your time opens a sheet of roles,
+and participants keep a full-width Volunteer action. Organisers open management
+from the people icon beside Edit. The feed header includes a compact Volunteer
+action. Roles load when the sheet opens.
 Participants apply or join and can withdraw pending applications or confirmed
 places before the event starts, from the roles sheet or My volunteering. They
 track their places in Settings
@@ -119,7 +117,17 @@ also be used independently for onboarding, loaders, and status messages. This
 keeps task-specific form state separate from the shared presentation that a future
 floating assistant can use. Global conversation and automatic screen context need
 their own backend contract before being connected. Current AI requests use the
-existing event-drafting and impact-suggestions endpoints.
+existing event-drafting and impact-suggestions endpoints. Gogo extracts the initial idea into editable
+copy, dates, venue and available pricing details, then collects missing required
+fields. Optional invitations follow impact story, impact map, volunteering, links
+and interests. Each optional step can be skipped; completed and skipped steps stay
+addressed during the conversation, including retries and manual-form switches.
+Impact maps use the existing suggestion API; only organiser-selected entries are
+saved. Physical volunteering still requires an impact story.
+
+The event page shows its essentials once. Creator payout reminders use the same
+Gogo prompt as the dashboard and open Wallet directly, including after creation;
+there is no intermediate payout reminder modal.
 
 ## Gogo mascot
 
@@ -198,3 +206,57 @@ Native splash changes require rebuilding and reinstalling the app; refreshing
 Metro alone cannot update them. Run `npx expo prebuild` to sync an existing native
 project before the next build. Run `node --test tests/startup.test.cjs` for the
 startup and welcome flow checks.
+
+Carpool creation uses an explicit To the event / From the event choice and a
+pickup-to-destination route. The event venue fills the corresponding end; only
+the other end is entered. Both choices use the existing event-linked carpool API
+with actual `origin` and `destination` values. Current-location coordinates are
+used only for the entered pickup on trips to the event. Ride details and chat
+prefer the saved destination so return trips show the route that was created.
+
+Event creation keeps guidance brief and uses field labels, inline choice hints,
+and the Skip for now action instead of explanatory paragraphs. Impact suggestions
+use compact Gogo guidance for loading, ready, empty and error states. Empty groups
+are hidden, and selection counts show each limit. Suggestions still come from
+the existing impact API; only explicit organiser selections change the draft.
+
+New Event opens the creation page directly. Gogo first asks the organiser to
+choose Fundraiser, Ticket, Registration or Volunteer and donation. Each type has its own
+cached draft and stays selected throughout creation; Change event type returns
+to the first page. Location and participation details render inline, and the
+fundraising target binds directly to the shared form. Registration settings,
+ticket changes and location edits update the draft directly, without Apply setup
+or Apply location actions. Gogo keeps Continue to advance the conversation.
+Publishing validates the same setup rules as the pricing editor. Event-edit
+sheets still stage changes until confirmation, so closing them cancels those
+edits. Impact-story proposals appear in the conversation and are applied only
+after acceptance. The manual editor remains available for corrections. The
+optional impact-focus input and second volunteer selector have been removed.
+Gogo skips its interests invitation when an impact story and at least one global
+goal or impact path are selected. Manual interest editing remains available.
+
+When event creation regains focus, it checks saved drafts before opening a form.
+Gogo offers Continue draft or Discard draft and start over for the most recently
+edited event type. Discard clears that draft and returns to type selection; other
+types' saved drafts remain available when selected. Autosave flushes on blur, and
+queued writes finish before reads or deletion so a late save cannot revive a
+discarded or published draft. Drafts retain the form, mode, Gogo question, story
+proposal and addressed optional steps. Existing form-only drafts resume in the
+manual editor. Merely choosing a type does not create a resumable draft.
+Drafts use the existing AsyncStorage dependency because form data and Gogo
+history can exceed SecureStore's 2 KB value limit. The current form-only caches
+remain readable and are removed only after a successful save to the new cache,
+or when the organiser discards that draft.
+
+
+Closing Paystack checkout for tickets or registration releases the checkout hold.
+The app clears its saved retry key only after cancellation is confirmed, so buying
+again starts a fresh checkout. If cancellation cannot be confirmed, payment status
+opens after the selection sheet closes. Closing a donation checkout does not call
+the ticket/registration cancellation endpoint.
+
+When ticket quantities or ticket types change, Pay replaces an existing unpaid
+checkout with the revised selection. The app cancels the previous hold and retries
+the revised request once, retaining its new key for network retries. If the old
+payment has already been processed or cannot be cancelled, it opens payment status
+instead of creating another order.

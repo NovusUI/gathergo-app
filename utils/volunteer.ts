@@ -23,7 +23,11 @@ export function canRecruitVolunteers(
     "registrationType" | "isPhysicalEvent" | "impactTitle" | "impactDescription"
   >,
 ) {
-  return event.isPhysicalEvent && Boolean(event.impactDescription?.trim());
+  return (
+    event.registrationType === "volunteer" &&
+    event.isPhysicalEvent &&
+    Boolean(event.impactDescription?.trim())
+  );
 }
 
 export function hasActiveVolunteerApplication(

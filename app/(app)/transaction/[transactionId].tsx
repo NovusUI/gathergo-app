@@ -1,7 +1,7 @@
 import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
 import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
 import { clearCheckoutIntent } from "@/utils/checkout";
-import { cancelCheckout } from "@/services/serviceFn";
+import { cancelEventCheckout } from "@/services/serviceFn";
 import { PaystackWebViewWrapper } from "@/components/PaystackWebViewWrapper";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import QRCodeGenerator from "@/components/QRCodeGen";
@@ -104,6 +104,7 @@ const TransactionRef = () => {
   const deadlineMs: number | null = data?.data?.checkoutDeadlineMs ?? null;
   const remaining = useCheckoutCountdown(deadlineMs);
   const canPay =
+    !isError &&
     ["PENDING", "AWAITING_TRANSFER"].includes(transactionStatus) &&
     remaining !== 0;
 
@@ -229,6 +230,25 @@ const TransactionRef = () => {
     goToEventFeed();
   }, [eventIdForCta, goToEventFeed, isPhysicalEventForCta, router]);
 
+  const handleCancelCheckout = async () => {
+    if (cancelling || !user || !data) return;
+    setShowPayment(false);
+    if (!hasTickets) return;
+    setCancelling(true);
+    try {
+      await cancelEventCheckout(
+        resolvedTransactionId,
+        user.id,
+        data.data.metadata.eventId
+      );
+    } catch {
+      showGlobalError("Could not cancel this checkout. Check payment status.");
+    } finally {
+      await refetch();
+      setCancelling(false);
+    }
+  };
+
   return (
     <View
       style={tw`flex-1 pt-10 bg-[#01082E] flex flex-col items-center w-full`}
@@ -307,7 +327,7 @@ const TransactionRef = () => {
             <Text style={tw`text-white text-center`}>Check payment status</Text>
           </TouchableOpacity>
         ) : null}
-        {canPay && data?.data?.paymentUrl ? (
+        {canPay && !cancelling && data?.data?.paymentUrl ? (
           <TouchableOpacity
             accessibilityRole="button"
             onPress={() => setShowPayment(true)}
@@ -316,23 +336,11 @@ const TransactionRef = () => {
             <Text style={tw`text-[#01082E] text-center`}>Resume payment</Text>
           </TouchableOpacity>
         ) : null}
-        {canPay ? (
+        {canPay && hasTickets ? (
           <TouchableOpacity
             accessibilityRole="button"
             disabled={cancelling}
-            onPress={async () => {
-              setCancelling(true);
-              try {
-                await cancelCheckout(resolvedTransactionId);
-                await refetch();
-              } catch {
-                showGlobalError(
-                  "Could not cancel this checkout. Check payment status."
-                );
-              } finally {
-                setCancelling(false);
-              }
-            }}
+            onPress={handleCancelCheckout}
             style={tw`mt-3 p-3`}
           >
             <Text style={tw`text-gray-300 text-center`}>
@@ -357,7 +365,7 @@ const TransactionRef = () => {
           </TouchableOpacity>
         ) : null}
         <PaystackWebViewWrapper
-          visible={showPayment && canPay}
+          visible={showPayment && canPay && !cancelling}
           onClose={() => setShowPayment(false)}
           paymentUrl={data?.data?.paymentUrl || ""}
           checkoutDeadlineMs={deadlineMs}
@@ -372,7 +380,9 @@ const TransactionRef = () => {
             setShowPayment(false);
             void refetch();
           }}
-          onCancel={() => setShowPayment(false)}
+          onCancel={() => {
+            void handleCancelCheckout();
+          }}
           onError={() => {
             setShowPayment(false);
             showGlobalError("Check payment status before trying again.");

@@ -1,3 +1,4 @@
+import CarpoolRouteFields from "@/components/carpool/CarpoolRouteFields";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
@@ -18,6 +19,7 @@ import {
   useGetSearchResult,
 } from "@/services/queries";
 import { CarpoolForm } from "@/types/carpool";
+import type { EventData } from "@/types/auth";
 import { extractTime, isEventPastEnd } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
@@ -34,7 +36,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -63,6 +64,11 @@ const isEventEligibleForCarpool = (event?: {
   return !isEventPastEnd(event?.startDate, event?.endDate);
 };
 
+type CarpoolEvent = Pick<
+  EventData,
+  "id" | "title" | "location" | "startDate" | "endDate" | "isPhysicalEvent"
+>;
+
 const NewCarpool = () => {
   const router = useLockedRouter();
   const { eventId: routeEventId, autoOpenEventPicker } = useLocalSearchParams<{
@@ -70,7 +76,7 @@ const NewCarpool = () => {
     autoOpenEventPicker?: string;
   }>();
   const [query, setQuery] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CarpoolEvent | null>(null);
   const [isFormModalVisible, setIsFormModalVisible] = useState(false);
   const [picker, setPicker] = useState<null | string>(null);
   const searchInputRef = useRef<TextInput | null>(null);
@@ -130,7 +136,7 @@ const NewCarpool = () => {
     reset(defaultCarpoolFormValues);
   }, [reset]);
 
-  const openCarpoolForm = useCallback((event: any) => {
+  const openCarpoolForm = useCallback((event: CarpoolEvent) => {
     if (event?.isPhysicalEvent === false) {
       showGlobalError("Carpool is only available for physical events");
       return;
@@ -322,8 +328,16 @@ const NewCarpool = () => {
       return;
     }
 
+    const eventLocation = selectedEvent.location;
+    if (!eventLocation?.trim()) {
+      showGlobalError(
+        "This event needs a venue before you can create a carpool."
+      );
+      return;
+    }
+
     let startPoint: { lng: number; lat: number } | undefined;
-    if (data.useCurrentLocation) {
+    if (data.isToEvent && data.useCurrentLocation) {
       if (coords) {
         startPoint = { lng: coords.lng, lat: coords.lat };
       } else {
@@ -337,9 +351,8 @@ const NewCarpool = () => {
     }
 
     const payload: CarpoolForm = {
-      origin: data.isToEvent
-        ? data.poolLocation || ""
-        : data.poolDestination || "",
+      origin: data.isToEvent ? data.poolLocation : eventLocation,
+      destination: data.isToEvent ? eventLocation : data.poolDestination,
       departureTime: data.departureTime,
       note: data.notes || undefined,
       availableSeats: Number(data.availableSeats || 3),
@@ -414,10 +427,6 @@ const NewCarpool = () => {
                 <Text style={tw`text-xl font-semibold text-white`}>
                   {selectedEvent?.title || "Create carpool"}
                 </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                  {selectedEvent?.location ||
-                    "Set the ride details riders need before they join."}
-                </Text>
               </View>
               <SheetCloseButton
                 accessibilityLabel="Close carpool sheet"
@@ -441,112 +450,11 @@ const NewCarpool = () => {
                 </View>
               )}
 
-              <View style={tw`rounded-2xl bg-[#0A173F] p-4`}>
-                <Text style={tw`text-sm font-semibold text-white`}>
-                  Make the ride plan easy to trust
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
-                  Share where you&apos;re coming from, when you&apos;re leaving,
-                  how many seats are open, and any extra note riders should
-                  know.
-                </Text>
-              </View>
-
-              <View
-                style={tw`mt-5 flex-row items-center justify-between gap-3`}
-              >
-                <Text
-                  style={tw`text-white ${
-                    isToEvent ? "font-bold" : "opacity-50"
-                  }`}
-                >
-                  To Event
-                </Text>
-
-                <Controller
-                  control={control}
-                  name="isToEvent"
-                  render={({ field: { value, onChange } }) => (
-                    <Switch
-                      value={value}
-                      onValueChange={onChange}
-                      thumbColor="#0FF1CF"
-                      trackColor={{ false: "#1A2755", true: "#1A2755" }}
-                    />
-                  )}
-                />
-
-                <Text
-                  style={tw`text-white ${
-                    !isToEvent ? "font-bold" : "opacity-50"
-                  }`}
-                >
-                  From Event
-                </Text>
-              </View>
-
-              {isToEvent ? (
-                <View style={tw`mt-5`}>
-                  <Text style={tw`mb-2 text-white`}>Pool Location</Text>
-                  <Controller
-                    control={control}
-                    name="poolLocation"
-                    render={({ field: { value, onChange } }) => (
-                      <Input
-                        style={tw`h-12`}
-                        placeholderTextColor="#475569"
-                        placeholder="Enter a landmark, bus stop, or area"
-                        onChangeText={onChange}
-                        value={value}
-                      />
-                    )}
-                  />
-                  {errors.poolLocation && (
-                    <Text style={tw`mt-1 text-sm text-red-400`}>
-                      {errors.poolLocation.message}
-                    </Text>
-                  )}
-
-                  <View
-                    style={tw`mt-4 flex-row items-center justify-between gap-5`}
-                  >
-                    <Text style={tw`flex-1 text-white`}>
-                      I am currently close to where I&apos;ll be pooling from
-                    </Text>
-                    <Controller
-                      control={control}
-                      name="useCurrentLocation"
-                      render={({ field: { value, onChange } }) => (
-                        <Switch
-                          value={value}
-                          onValueChange={onChange}
-                          thumbColor={value ? "#0FF1CF" : "#555"}
-                        />
-                      )}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={tw`mt-5`}>
-                  <Text style={tw`mb-2 text-white`}>Pool Destination</Text>
-                  <Controller
-                    control={control}
-                    name="poolDestination"
-                    render={({ field: { value, onChange } }) => (
-                      <Input
-                        placeholder="Enter a landmark, bus stop, or area"
-                        onChangeText={onChange}
-                        value={value}
-                      />
-                    )}
-                  />
-                  {errors.poolDestination && (
-                    <Text style={tw`mt-1 text-sm text-red-400`}>
-                      {errors.poolDestination.message}
-                    </Text>
-                  )}
-                </View>
-              )}
+              <CarpoolRouteFields
+                control={control}
+                setValue={setValue}
+                eventLocation={selectedEvent?.location ?? ""}
+              />
 
               <View style={tw`mt-5`}>
                 <Text style={tw`mb-2 text-white`}>Departure Time</Text>

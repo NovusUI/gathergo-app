@@ -16,7 +16,6 @@ export const AUTH_URLS = {
 };
 
 export const USER_URL = {
-  preference: "/preferences",
   getPublicProfle: (userId: string) => base_url + `/user/public/${userId}`,
   checkUsername: base_url + "/auth/verify-username",
   completeProfile: base_url + "/user/complete-profile",
@@ -31,6 +30,7 @@ export const EVENT_URL = {
   updateEvent: (eventId: string) => base_url + `/events/${eventId}`,
   getForyouEvents: base_url + "/events/for-you",
   getEventDetails: (eventId: string) => base_url + `/events/${eventId}`,
+  updateTicket: (ticketId: string) => base_url + `/event-tickets/${ticketId}`,
   getTickets: base_url + "/transaction-reference/initiate",
   registerEvent: base_url + `/transaction-reference/initiateReg`,
   getUserEvents: base_url + "/events",
@@ -151,4 +151,20 @@ export const SCANNER_URL = {
   searchUsers: base_url + "/scanner-permissions/search-users",
   canScan: (eventId: string) =>
     base_url + `/scanner-permissions/can-scan/${eventId}`,
+};
+
+export const PREFERENCE_URL = {
+  profile: "/preferences",
+  pendingFeedback: "/preferences/event-feedback/pending",
+  feedback: (eventId: string) => `/preferences/event-feedback/${eventId}`,
+  deferFeedback: (eventId: string) => `/preferences/event-feedback/${eventId}/defer`,
+  catalog: "/preferences/catalog",
+  examples: "/preferences/examples",
+  signals: "/preferences/signals",
+  reset: "/preferences/reset-learning",
+};
+export const BADGE_URL = {
+  mine: "/badges/me",
+  visibility: (code: import("@/types/badge").BadgeCode) =>
+    `/badges/me/${code}/visibility`,
 };

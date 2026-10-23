@@ -461,18 +461,19 @@ const ChatPage = () => {
     conversationCarpool?.origin ||
     null;
   const destinationLabel =
-    carpoolDetails?.event?.location ||
-    (fullCarpoolDetails as any)?.event?.location ||
-    fullCarpool?.event?.location ||
-    conversationCarpool?.event?.location ||
-    carpoolDetails?.event?.name ||
-    (fullCarpoolDetails as any)?.event?.name ||
-    (fullCarpoolDetails as any)?.event?.title ||
-    fullCarpool?.event?.name ||
-    fullCarpool?.event?.title ||
-    conversationCarpool?.event?.name ||
-    conversationCarpool?.event?.title ||
-    "Event destination";
+    fullCarpoolDetails?.destination ??
+    (carpoolDetails?.event?.location ||
+      (fullCarpoolDetails as any)?.event?.location ||
+      fullCarpool?.event?.location ||
+      conversationCarpool?.event?.location ||
+      carpoolDetails?.event?.name ||
+      (fullCarpoolDetails as any)?.event?.name ||
+      (fullCarpoolDetails as any)?.event?.title ||
+      fullCarpool?.event?.name ||
+      fullCarpool?.event?.title ||
+      conversationCarpool?.event?.name ||
+      conversationCarpool?.event?.title ||
+      "Event destination");
   const rawDepartureTime =
     carpoolDetails?.departureTime ||
       (fullCarpoolDetails as any)?.departureTime ||

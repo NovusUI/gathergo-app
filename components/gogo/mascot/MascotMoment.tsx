@@ -14,7 +14,7 @@ type MascotMomentProps = {
   message: string;
   typing?: boolean;
   compact?: boolean;
-  layout?: "inline" | "stacked";
+  layout?: "inline" | "stacked" | "plain";
   style?: StyleProp<ViewStyle>;
 };
 
@@ -67,6 +67,7 @@ export function MascotMoment({
   const reducedMotion = useReducedMotionPreference();
   const tone = MOMENT_TONES[variant];
   const stacked = layout === "stacked";
+  const plain = layout === "plain";
   const reveal = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -93,12 +94,14 @@ export function MascotMoment({
   return (
     <AnimatedView
       style={[
-        stacked
-          ? tw`w-full max-w-[360px] self-center items-center gap-5 py-6`
-          : [
-              tw`flex-row items-center gap-3 rounded-2xl border p-3`,
-              { backgroundColor: tone.background, borderColor: tone.border },
-            ],
+        plain
+          ? tw`flex-row items-center gap-3 py-1`
+          : stacked
+            ? tw`w-full max-w-[360px] self-center items-center gap-5 py-6`
+            : [
+                tw`flex-row items-center gap-3 rounded-2xl border p-3`,
+                { backgroundColor: tone.background, borderColor: tone.border },
+              ],
         style,
         {
           opacity: reveal,
@@ -115,7 +118,7 @@ export function MascotMoment({
         <GatherGoMascot
           variant={variant}
           size={stacked ? (compact ? 112 : 160) : compact ? 58 : 76}
-          showBadge={!stacked}
+          showBadge={!stacked && !plain}
           style={tw`shrink-0`}
         />
       )}
@@ -123,16 +126,22 @@ export function MascotMoment({
         <Text
           accessibilityRole="header"
           style={
-            stacked
-              ? tw`text-center text-2xl font-bold text-white`
-              : tw`text-xs font-semibold uppercase tracking-wider text-[#8FA1CB]`
+            plain
+              ? tw`text-sm font-semibold text-white`
+              : stacked
+                ? tw`text-center text-2xl font-bold text-white`
+                : tw`text-xs font-semibold uppercase tracking-wider text-[#8FA1CB]`
           }
         >
           {title}
         </Text>
         <View
           style={
-            stacked ? tw`w-full` : tw`mt-2 rounded-2xl bg-[#0A173F] px-3 py-2`
+            stacked
+              ? tw`w-full`
+              : plain
+                ? tw`mt-1`
+                : tw`mt-2 rounded-2xl bg-[#0A173F] px-3 py-2`
           }
         >
           <MascotMessage
@@ -141,7 +150,9 @@ export function MascotMoment({
             style={
               stacked
                 ? tw`text-center text-base leading-6 text-[#AFC0F4]`
-                : undefined
+                : plain
+                  ? tw`text-sm leading-5 text-[#AFC0F4]`
+                  : undefined
             }
           />
         </View>

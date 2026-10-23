@@ -27,34 +27,32 @@ import tw from "twrnc";
 
 const settingsItems = [
   {
+    label: "Tune my map",
+    route: "/preference",
+    icon: "compass-outline" as const,
+  },
+  {
     label: "My Volunteering",
-    subtitle:
-      "Track volunteer applications, places and confirmed contributions",
     route: "/my-volunteering",
     icon: "people-outline" as const,
   },
   {
     label: "My Passes",
-    subtitle: "Open every ticket and registration you own in one place",
     route: "/my-passes",
     icon: "ticket-outline" as const,
   },
   {
     label: "Dashboard",
-    subtitle: "View event performance and finance metrics",
     route: "/dashboard",
     icon: "bar-chart-outline" as const,
   },
   {
     label: "Scanner",
-    subtitle: "Manage check-ins, scan tickets and registrations",
     route: "/scanner",
     icon: "scan-outline" as const,
   },
   {
     label: "Wallet",
-    subtitle:
-      "Add or edit payout account, complete KYC, and see settlement history ",
     route: "/wallet",
     icon: "wallet" as const,
   },
@@ -147,9 +145,6 @@ const Settings = () => {
               <View style={tw`flex-1`}>
                 <Text style={tw`text-white font-semibold text-base`}>
                   {item.label}
-                </Text>
-                <Text style={tw`text-gray-400 text-xs mt-1`}>
-                  {item.subtitle}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" color="#8FA5E2" size={18} />

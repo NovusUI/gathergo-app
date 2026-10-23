@@ -104,6 +104,10 @@ export default function ManageVolunteers() {
         <Text style={tw`p-5 text-[#A8BAE4]`}>
           Only the event organiser can manage volunteers.
         </Text>
+      ) : eventQuery.data.data.registrationType !== "volunteer" ? (
+        <Text style={tw`p-5 text-[#A8BAE4]`}>
+          Volunteer roles are only available for Volunteer and donation events.
+        </Text>
       ) : (
         <ScrollView
           contentContainerStyle={tw`gap-5 px-5 pb-16`}

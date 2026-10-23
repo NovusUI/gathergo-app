@@ -14,7 +14,8 @@ const eventDraft = {
   eventType: "general",
   timeZone: "Africa/Lagos",
   messages: [{ role: "user", content: "A morning in the park" }],
-  draft: { ticketCount: 0, volunteerRoleCount: 0 },
+  draft: { registrationType: "registration", ticketCount: 0, volunteerRoleCount: 0, impactMapCount: 0, hasImpactGoalOrPath: false },
+  addressedSections: [],
 };
 
 test("Gogo's task requests retain the inspected API routes, draft context and cancellation signal", async () => {
@@ -29,6 +30,8 @@ test("Gogo's task requests retain the inspected API routes, draft context and ca
           reply: "Where will people meet?",
           choices: [],
           section: "Location",
+          completedSection: null,
+          suggestedImpactStory: null,
           updates: {},
         },
       },

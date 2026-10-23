@@ -24,7 +24,7 @@ interface EventCardProps {
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
   registrationType: Registration;
-  registrationFee?: number;
+  registrationFee?: number | null;
   donationTarget?: number | null;
   lowestTicketPrice?: number | null;
   startDate: string;

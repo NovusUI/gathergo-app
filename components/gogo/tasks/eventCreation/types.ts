@@ -5,7 +5,6 @@ export type EventCreationUpdates = Partial<
   Pick<
     EventFormData,
     | "description"
-    | "impactTitle"
     | "impactDescription"
     | "isPhysicalEvent"
     | "location"
@@ -23,10 +22,13 @@ export type EventCreationUpdates = Partial<
   endDate?: string;
 };
 
-export type EventCreationDraft = EventCreationUpdates & {
-  ticketCount: number;
-  volunteerRoleCount: number;
-};
+export type EventCreationDraft = EventCreationUpdates &
+  Pick<EventFormData, "registrationType"> & {
+    ticketCount: number;
+    volunteerRoleCount: number;
+    impactMapCount: number;
+    hasImpactGoalOrPath: boolean;
+  };
 export type EventCreationMessage = {
   role: "user" | "assistant";
   content: string;
@@ -35,6 +37,8 @@ export type EventCreationAssistantReply = {
   reply: string;
   choices: string[];
   section: EventCreationSection | "Review" | null;
+  completedSection: EventCreationOptionalSection | null;
+  suggestedImpactStory: string | null;
   updates: EventCreationUpdates;
 };
 export type EventCreationAssistantRequest = {
@@ -42,6 +46,7 @@ export type EventCreationAssistantRequest = {
   timeZone: string;
   draft: EventCreationDraft;
   messages: EventCreationMessage[];
+  addressedSections: EventCreationOptionalSection[];
 };
 export interface EventCreationAssistantResponse extends StandardResponse {
   data: EventCreationAssistantReply;
@@ -51,6 +56,15 @@ export type EventCreationSection =
   | "Location"
   | "Pricing"
   | "Story"
-  | "Volunteering"
   | "Cover"
-  | "Links";
+  | EventCreationOptionalSection;
+
+export const EVENT_CREATION_OPTIONAL_SECTIONS = [
+  "Impact story",
+  "Impact map",
+  "Volunteering",
+  "Links",
+  "Interests",
+] as const;
+export type EventCreationOptionalSection =
+  (typeof EVENT_CREATION_OPTIONAL_SECTIONS)[number];

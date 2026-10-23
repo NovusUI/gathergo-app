@@ -1,4 +1,5 @@
 // components/feed/FeedCard.tsx
+import type { FeedItem } from "@/hooks/useEventFeed";
 import { Ionicons } from "@expo/vector-icons";
 import { UserRound } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
@@ -13,21 +14,10 @@ import {
 import tw from "twrnc";
 
 export interface FeedCardProps {
-  feed: {
-    id: string;
-    type: string;
-    title: string;
-    content?: string | null;
-    user?: {
-      id: string;
-      username: string | null;
-      profilePicUrlTN: string | null;
-    } | null;
-    metadata: any;
-    actions: any[];
-    isPinned: boolean;
-    createdAt: string;
-  };
+  feed: Pick<
+    FeedItem,
+    "id" | "type" | "title" | "content" | "user" | "metadata" | "actions" | "isPinned" | "createdAt"
+  >;
   onHide?: (feedId: string) => void;
   onAction?: (action: any) => void;
   eventRegistrationFee?: number | null;
@@ -163,15 +153,12 @@ const FeedCard: React.FC<FeedCardProps> = ({
     };
   }, [feed.type, iconRotateAnim, opacityAnim, scaleAnim]);
 
-  // Get theme configuration based on feed type
-  const getThemeConfig = () => {
+  // Keep each activity recognizable within the shared ticket-style card.
+  const getIconConfig = () => {
     const type = feed.type;
 
     if (type.includes("TICKET")) {
       return {
-        bgColor: "#0C1447",
-        borderColor: "#0C7F7F",
-        accentColor: "#0FF1CF",
         icon: "ticket-outline",
         iconColor: "#0FF1CF",
       };
@@ -182,9 +169,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
       const isMilestone = type.includes("PERCENT");
 
       return {
-        bgColor: "#1A0C3C",
-        borderColor: isHighPercentage ? "#FF6B6B" : "#9B51E0",
-        accentColor: isHighPercentage ? "#FF6B6B" : "#9B51E0",
         icon: isMilestone ? "trophy-outline" : "heart-outline",
         iconColor: isHighPercentage ? "#FF6B6B" : "#9B51E0",
       };
@@ -192,9 +176,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     if (type.includes("REGISTRATION")) {
       return {
-        bgColor: "#0C2A47",
-        borderColor: "#2D9CDB",
-        accentColor: "#2D9CDB",
         icon: "person-add-outline",
         iconColor: "#2D9CDB",
       };
@@ -210,9 +191,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
           : "#4CAF50";
 
       return {
-        bgColor: "#3C0C0C",
-        borderColor: frenzyColor,
-        accentColor: frenzyColor,
         icon: "flame-outline",
         iconColor: frenzyColor,
       };
@@ -220,9 +198,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     if (type.includes("MILESTONE")) {
       return {
-        bgColor: "#1C3C0C",
-        borderColor: "#6BFF6B",
-        accentColor: "#6BFF6B",
         icon: "trophy-outline",
         iconColor: "#6BFF6B",
       };
@@ -230,25 +205,23 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     if (type.includes("EVENT_CREATED")) {
       return {
-        bgColor: "#4C0C3C",
-        borderColor: "#E040FB",
-        accentColor: "#E040FB",
         icon: "add-circle-outline",
         iconColor: "#E040FB",
       };
     }
 
-    // Default theme
     return {
-      bgColor: "#101C45",
-      borderColor: "#374151",
-      accentColor: "#0FF1CF",
       icon: "chatbubble-outline",
       iconColor: "#0FF1CF",
     };
   };
 
-  const theme = getThemeConfig();
+  const theme = {
+    bgColor: "#0C1447",
+    borderColor: "#0C7F7F",
+    accentColor: "#0FF1CF",
+    ...getIconConfig(),
+  };
 
   // Icon rotation for frenzy feeds
   const iconRotation = iconRotateAnim.interpolate({
@@ -289,7 +262,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
     displayAmountInNaira
   );
 
-  // Keep progress compact since the card background already carries the fill state.
   const renderProgress = () => {
     const percentage = normalizedPercentage;
     if (percentage === null) return null;
@@ -408,7 +380,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
     return (
       <View
         style={[
-          tw`absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 z-10`,
+          tw`self-start mt-2 rounded-full px-1.5 py-0.5 z-10`,
           { backgroundColor: `${theme.accentColor}20` },
         ]}
       >
@@ -439,39 +411,15 @@ const FeedCard: React.FC<FeedCardProps> = ({
     >
       <Animated.View
         style={[
-          tw`mb-2 mx-4   overflow-hidden rounded-2xl border relative`,
+          tw`mb-2 mx-4 overflow-hidden rounded-2xl border relative`,
           {
             backgroundColor: theme.bgColor,
             borderColor: theme.borderColor,
             transform: [{ scale: scaleAnim }],
             opacity: opacityAnim,
           },
-          feed.isPinned && {
-            borderLeftWidth: 4,
-            borderLeftColor: theme.accentColor,
-          },
         ]}
       >
-        {normalizedPercentage !== null && (
-          <View
-            style={[
-              tw`absolute inset-y-0 left-0`,
-              {
-                width: `${normalizedPercentage}%`,
-                backgroundColor: `${theme.accentColor}22`,
-              },
-            ]}
-          />
-        )}
-
-        {feed.isPinned && (
-          <View style={tw`absolute left-2 top-2`}>
-            <Ionicons name="pin" size={12} color={theme.accentColor} />
-          </View>
-        )}
-
-        {renderCountBadge()}
-
         <View style={tw`flex-row items-start p-3`}>
           <View style={tw`mr-2.5`}>
             <Animated.View
@@ -548,6 +496,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
             )}
 
             <View style={tw`mt-2`}>
+              {renderCountBadge()}
               {renderProgress()}
               {renderFrenzyIntensity()}
               {renderCelebration()}

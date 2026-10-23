@@ -199,3 +199,13 @@ test("the Circle page uses the laptop artwork and retains its coming-soon messag
   assert.equal(moment.props.artwork, "comingSoon");
   assert.equal(moment.props.title, "Your Circle is on its way");
 });
+
+test("plain Gogo guidance stays compact and displays its message without a badge", () => {
+  const screen = MascotMoment({ layout: "plain", compact: true, typing: false, title: "Gogo", message: "Tap the ideas that fit." });
+  const gogo = [...nodes(screen)].find(node => node.type === "RegularGogo");
+  const message = [...nodes(screen)].find(node => node.type === "Message");
+  assert.equal(gogo.props.size, 58);
+  assert.equal(gogo.props.showBadge, false);
+  assert.equal(message.props.animate, false);
+  assert.equal(message.props.message, "Tap the ideas that fit.");
+});

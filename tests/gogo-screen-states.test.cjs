@@ -40,7 +40,11 @@ function hookState() {
           },
         ];
       },
-      useRef: (initial) => ({ current: initial }),
+      useRef(initial) {
+        const index = state.cursor++;
+        if (!(index in state.values)) state.values[index] = { current: initial };
+        return state.values[index];
+      },
       useMemo: (factory) => factory(),
       useEffect() {},
       useCallback: (callback) => callback,
@@ -79,6 +83,7 @@ const { default: Settings } = loadTypeScript("app/(app)/(tabs)/settings.tsx", {
   "@/components/CustomeTopBarNav": { default: "TopBar" },
   "@/components/buttons/SheetCloseButton": { default: "CloseButton" },
   "@/components/ui/AppLoader": { default: "SmallLoader" },
+  "@/components/ui/WalletSetupReminder": { default: "WalletSetupReminder" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/hooks/usePressGuard": { usePressGuard: (callback) => callback },
   "@/context/AuthContext": {
@@ -267,6 +272,7 @@ const { default: MyPassesPage } = loadTypeScript("app/(app)/my-passes.tsx", {
   "@/components/EventImageWithProcessing": {
     EventImageWithProcessing: "EventImage",
   },
+  "@/components/ui/WalletSetupReminder": { default: "WalletSetupReminder" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
   "@/services/queries": {
@@ -436,9 +442,46 @@ test("owned passes stay visible during a background check", () => {
 
 const eventHooks = hookState();
 const checkoutCalls = [];
+const paymentMessages = [];
+let checkoutResult;
+let checkoutFailure;
+let cancellationWait;
+let cancellationFailure;
+let checkoutRequest;
+let cancelRequest;
+const intentStorage = new Map();
+const checkoutUtils = loadTypeScript("utils/checkout.ts", {
+  "react-native-get-random-values": {},
+  uuid: { v4: require("node:crypto").randomUUID },
+  "./storage": {
+    getItem: async key => intentStorage.get(key) ?? null,
+    saveItem: async (key, value) => { intentStorage.set(key, value); },
+    removeItem: async key => { intentStorage.delete(key); },
+  },
+});
 let eventTickets = [];
+let publishPending = false;
+let publishingTicketId;
+let eventEnded = false;
+let eventPaid = false;
+let walletOnboarding = { showPersistentAlert: false };
 const eventMocks = {
-  "@/utils/checkout": { checkoutIntentKey: async () => "checkout-key" },
+  "@/services/serviceFn": {
+    recordEventInterest: async () => ({ data: { recorded: true } }),
+    cancelEventCheckout: async (...args) => {
+      checkoutCalls.push(["cancelEventCheckout", ...args]);
+      if (cancellationWait) await cancellationWait;
+      if (cancellationFailure) throw cancellationFailure;
+      await checkoutUtils.clearCheckoutIntent(args[1], args[2]);
+    },
+    cancelCheckout: async id => {
+      checkoutCalls.push(["cancelCheckout", id]);
+      if (cancellationWait) await cancellationWait;
+      if (cancellationFailure) throw cancellationFailure;
+      if (cancelRequest) await cancelRequest(id);
+    },
+  },
+  "@/utils/checkout": checkoutUtils,
   "@/components/buttons/SheetCloseButton": { default: "CloseButton" },
   "@/components/AvatarWithLabel": { default: "Avatar" },
   "@/components/CustomeTopBarNav": { default: "TopBar" },
@@ -455,6 +498,7 @@ const eventMocks = {
   "@/components/ui/AnimatedNumber": { AnimatedNumber: "Total" },
   "@/components/ui/AppToast": { default: "Toast" },
   "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
+  "@/components/ui/WalletSetupReminder": { default: "WalletSetupReminder" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/components/ui/SdgGoalIcon": { SdgGoalIcon: "GoalIcon" },
   "@/components/volunteer/EventVolunteering": { default: "Volunteering" },
@@ -483,13 +527,22 @@ const eventMocks = {
       "useInitiateDonation",
       "useRegisterEvent",
       "useUpsertEventImpactReport",
+      "usePublishEventTicket",
     ].map((name) => [
       name,
-      () => ({
-        isPending: false,
-        mutate() {},
+      (options) => ({
+        isPending: name === "usePublishEventTicket" ? publishPending : false,
+        variables: name === "usePublishEventTicket" ? publishingTicketId : undefined,
+        mutate(payload) { if (name === "usePublishEventTicket") checkoutCalls.push([name, payload]); },
         mutateAsync: async (payload) => {
           checkoutCalls.push([name, payload]);
+          if (checkoutFailure) throw checkoutFailure;
+          if (name === "useGetTickets" && checkoutRequest) {
+            const response = await checkoutRequest(payload);
+            await options.onSuccess(response);
+            return response;
+          }
+          if (checkoutResult) await options.onSuccess(checkoutResult);
         },
       }),
     ]),
@@ -516,23 +569,23 @@ const eventMocks = {
           volunteers: [],
           paymentOptions: {
             availableProviders: [],
-            requiresPayment: false,
+            requiresPayment: eventPaid,
             maxTicketsPerCheckout: 5,
           },
         },
       },
     }),
-    useWalletOnboarding: () => ({}),
+    useWalletOnboarding: () => ({ data: { data: walletOnboarding } }),
   },
   "@/utils/dateTimeHandler": {
     formatEventDateTime: () => "Tomorrow",
-    isEventPastEnd: () => false,
+    isEventPastEnd: () => eventEnded,
     isEventEditableBeforeStartDay: () => true,
   },
   "@/utils/globalErrorHandler": {
-    showGlobalError() {},
-    showGlobalSuccess() {},
-    showGlobalWarning() {},
+    showGlobalError: message => paymentMessages.push(["error", message]),
+    showGlobalSuccess: message => paymentMessages.push(["success", message]),
+    showGlobalWarning: message => paymentMessages.push(["warning", message]),
   },
   "@/utils/navigation": navigation,
   "@/utils/shareLinks": {
@@ -592,6 +645,47 @@ test("empty and unpublished event tickets show lost Gogo without checkout contro
     assert.ok([...nodes(sheet)].some((node) => node.type === "CloseButton"));
   }
 });
+test("organisers can publish hidden tickets from the ticket sheet without opening Edit", () => {
+  eventHooks.reset(); checkoutCalls.length = 0; routes.length = 0;
+  eventTickets = [ticket, { ...ticket, id: "hidden", isVisible: false }];
+  const originalAuth = eventMocks["@/context/AuthContext"].useAuth;
+  eventMocks["@/context/AuthContext"].useAuth = () => ({ user: { id: "organiser" } });
+  try {
+    let options = [...nodes(ticketSheet())].filter(node => node.type === "TicketOption");
+    assert.equal(options.length, 2);
+    const hidden = options.find(node => node.props.isVisible === false);
+    assert.equal(hidden.props.onQuantityChange, undefined);
+    assert.equal(options.find(node => node.props.isVisible).props.onPublish, undefined);
+    hidden.props.onPublish();
+    assert.deepEqual(checkoutCalls, [["usePublishEventTicket", "hidden"]]);
+    assert.deepEqual(routes, []);
+    assert.equal(eventTickets[1].isVisible, false);
+    publishPending = true; publishingTicketId = "hidden";
+    options = [...nodes(ticketSheet())].filter(node => node.type === "TicketOption");
+    const busy = options.find(node => !node.props.isVisible);
+    assert.equal(busy.props.isPublishing, true);
+    assert.equal(busy.props.publishDisabled, true);
+    busy.props.onPublish();
+    assert.equal(checkoutCalls.length, 1);
+  } finally {
+    eventMocks["@/context/AuthContext"].useAuth = originalAuth;
+    publishPending = false; publishingTicketId = undefined;
+  }
+});
+test("organisers cannot publish hidden tickets from an ended event", () => {
+  eventHooks.reset(); eventTickets = [{ ...ticket, isVisible: false }];
+  const originalAuth = eventMocks["@/context/AuthContext"].useAuth;
+  eventMocks["@/context/AuthContext"].useAuth = () => ({ user: { id: "organiser" } });
+  eventEnded = true;
+  try {
+    const option = [...nodes(ticketSheet())].find(node => node.type === "TicketOption");
+    assert.equal(option.props.onPublish, undefined);
+    assert.equal(option.props.onQuantityChange, undefined);
+  } finally {
+    eventEnded = false;
+    eventMocks["@/context/AuthContext"].useAuth = originalAuth;
+  }
+});
 test("published ticket options still select quantities and enable claiming tickets", () => {
   eventHooks.reset();
   eventTickets = [ticket, { ...ticket, id: "hidden", isVisible: false }];
@@ -617,4 +711,223 @@ test("published ticket options still select quantities and enable claiming ticke
       .disabled,
     false,
   );
+});
+
+
+test("event details keep a single set of essentials and the shared payout reminder opens Wallet directly", () => {
+  eventHooks.reset(); routes.length = 0; eventPaid = true;
+  walletOnboarding = { showPersistentAlert: true, nextAction: "ADD_SETTLEMENT_ACCOUNT" };
+  const originalAuth = eventMocks["@/context/AuthContext"].useAuth;
+  eventMocks["@/context/AuthContext"].useAuth = () => ({ user: { id: "organiser" } });
+  try {
+    const tree = eventHooks.render(EventPage);
+    assert.equal(text(tree).includes("Event essentials"), false);
+    assert.equal(text(tree).includes("Finish payout setup"), false);
+    const reminder = [...nodes(tree)].find(node => node.type === "WalletSetupReminder");
+    assert.ok(reminder);
+    reminder.props.onPress();
+    assert.deepEqual(routes, ["/wallet"]);
+  } finally {
+    eventPaid = false; walletOnboarding = { showPersistentAlert: false };
+    eventMocks["@/context/AuthContext"].useAuth = originalAuth;
+  }
+});
+
+
+function checkoutPage() { return eventHooks.render(EventPage); }
+function checkoutNode(type, page = checkoutPage()) { return [...nodes(page)].find(n => n.type === type); }
+function ticketPayButton(page = checkoutPage()) {
+  return [...nodes(checkoutNode("Sheet", page))].find(n => n.type === "ActionButton");
+}
+async function beginPaidCheckout(quantity = 1) {
+  eventHooks.reset(); checkoutCalls.length = 0; routes.length = 0; paymentMessages.length = 0;
+  Object.assign(walletOnboarding, { showPersistentAlert: false });
+  eventTickets = [{ ...ticket, price: 1000 }]; eventPaid = true; eventEnded = false;
+  checkoutFailure = undefined; cancellationFailure = undefined; cancellationWait = undefined;
+  checkoutRequest = undefined; cancelRequest = undefined; intentStorage.clear();
+  checkoutResult = { data: { transactionId: "pending-ticket", paymentUrl: "https://checkout.paystack.com/test", checkoutDeadlineMs: Date.now() + 300000 } };
+  const page = checkoutPage();
+  const dismissals = [];
+  checkoutNode("Sheet", page).props.ref.current = { dismiss: () => dismissals.push("tickets") };
+  checkoutNode("TicketOption", page).props.onQuantityChange(quantity);
+  await ticketPayButton().props.onPress();
+  assert.equal(checkoutNode("PaymentWebView").props.visible, true);
+  return dismissals;
+}
+test("cancelling Paystack releases the checkout, clears local payment state and allows a ticket retry", async () => {
+  const dismissals = await beginPaidCheckout();
+  let release;
+  cancellationWait = new Promise(resolve => { release = resolve; });
+  checkoutNode("PaymentWebView").props.onCancel();
+  const pendingPage = checkoutPage();
+  assert.equal(checkoutNode("PaymentWebView", pendingPage).props.visible, false);
+  assert.equal(checkoutNode("PaymentWebView", pendingPage).props.checkoutDeadlineMs, null);
+  assert.equal(checkoutNode("PaymentWebView", pendingPage).props.paymentUrl, "");
+  assert.equal(ticketPayButton(pendingPage).props.disabled, true);
+  await ticketPayButton(pendingPage).props.onPress();
+  assert.equal(checkoutCalls.filter(c => c[0] === "useGetTickets").length, 1);
+  assert.deepEqual(checkoutCalls.at(-1), ["cancelEventCheckout", "pending-ticket", "viewer", "event-1"]);
+  release(); await new Promise(setImmediate);
+  assert.equal(ticketPayButton().props.disabled, false);
+  await ticketPayButton().props.onPress();
+  assert.equal(checkoutCalls.filter(c => c[0] === "useGetTickets").length, 2);
+  assert.deepEqual(routes, []);
+  assert.ok(dismissals.length >= 2);
+  checkoutResult = undefined; cancellationWait = undefined; eventPaid = false;
+});
+test("a failed cancellation exposes recovery after dismissing the ticket sheet", async () => {
+  const dismissals = await beginPaidCheckout();
+  const before = dismissals.length;
+  cancellationFailure = new Error("Payment was already processed");
+  checkoutNode("PaymentWebView").props.onCancel();
+  await new Promise(setImmediate);
+  assert.ok(dismissals.length > before);
+  assert.deepEqual(routes, ["/transaction/pending-ticket?type=TICKET"]);
+  assert.ok(paymentMessages.some(([kind, message]) => kind === "error" && message.includes("Check its payment status")));
+  checkoutResult = undefined; cancellationFailure = undefined; eventPaid = false;
+});
+test("a failed checkout replacement dismisses ticket selection before showing payment recovery", async () => {
+  const dismissals = await beginPaidCheckout();
+  unfinishedCheckout(); chooseTicket("General", 1);
+  const before = dismissals.length;
+  cancellationFailure = new Error("The payment has already been processed.");
+  await ticketPayButton().props.onPress();
+  assert.equal(checkoutCalls.filter(c => c[0] === "useGetTickets").length, 2);
+  assert.deepEqual(checkoutCalls.at(-1), ["cancelCheckout", "pending-ticket"]);
+  assert.ok(dismissals.length > before);
+  assert.equal(checkoutNode("PaymentWebView").props.visible, false);
+  assert.deepEqual(routes, ["/transaction/pending-ticket?type=TICKET"]);
+  checkoutResult = undefined; cancellationFailure = undefined; checkoutRequest = undefined; cancelRequest = undefined; eventPaid = false;
+});
+
+test("checkout failures show the API error and do not reject silently from the pay button", async () => {
+  await beginPaidCheckout();
+  checkoutFailure = { isAxiosError: true, response: { data: { message: "This ticket has sold out." } } };
+  await assert.doesNotReject(ticketPayButton().props.onPress());
+  assert.deepEqual(paymentMessages.at(-1), ["error", "This ticket has sold out."]);
+  checkoutResult = undefined; checkoutFailure = undefined; eventPaid = false;
+});
+
+
+function unfinishedCheckout() {
+  const previous = checkoutCalls.find(c => c[0] === "useGetTickets")[1];
+  let active = { id: "pending-ticket", key: previous.idempotencyKey };
+  checkoutRequest = async payload => {
+    if (active && active.key !== payload.idempotencyKey) {
+      throw { isAxiosError: true, response: { status: 409, data: { transactionId: active.id, message: "You already have an active checkout for this event." } } };
+    }
+    active = { id: "updated-ticket", key: payload.idempotencyKey };
+    return { data: { transactionId: active.id, paymentUrl: "https://checkout.paystack.com/updated", checkoutDeadlineMs: Date.now() + 300000 } };
+  };
+  cancelRequest = async id => { assert.equal(id, active.id); active = null; };
+  checkoutNode("PaymentWebView").props.onClose();
+}
+function chooseTicket(id, change) {
+  [...nodes(checkoutPage())].find(n => n.type === "TicketOption" && n.props.title === id).props.onQuantityChange(change);
+}
+for (const change of ["increase", "decrease", "add ticket type", "switch ticket type"]) {
+  test(`revised ticket checkout replaces the held order when users ${change}`, async () => {
+    await beginPaidCheckout(change === "decrease" ? 2 : 1);
+    unfinishedCheckout();
+    eventTickets.push({ ...ticket, id: "ticket-2", type: "VIP", price: 2000 });
+    if (change === "increase") chooseTicket("General", 1);
+    if (change === "decrease" || change === "switch ticket type") chooseTicket("General", -1);
+    if (change === "add ticket type" || change === "switch ticket type") chooseTicket("VIP", 1);
+    const before = checkoutCalls.length;
+    await ticketPayButton().props.onPress();
+    const calls = checkoutCalls.slice(before);
+    assert.deepEqual(calls.map(c => c[0]), ["useGetTickets", "cancelCheckout", "useGetTickets"]);
+    const initial = checkoutCalls[0][1];
+    const revised = calls[0][1];
+    assert.notEqual(revised.idempotencyKey, initial.idempotencyKey);
+    assert.deepEqual(calls[2][1], revised);
+    const expected = change === "increase" ? [["ticket-1", 2]] : change === "decrease" ? [["ticket-1", 1]] : change === "add ticket type" ? [["ticket-1", 1], ["ticket-2", 1]] : [["ticket-2", 1]];
+    assert.deepEqual(revised.items.map(i => [i.id, i.quantity]), expected);
+    assert.equal(checkoutNode("PaymentWebView").props.visible, true);
+    assert.equal(checkoutNode("PaymentWebView").props.paymentUrl, "https://checkout.paystack.com/updated");
+    assert.deepEqual(routes, []);
+    checkoutRequest = undefined; cancelRequest = undefined; checkoutResult = undefined; eventPaid = false;
+  });
+}
+test("replacement keeps one persisted request key across network retries", async () => {
+  await beginPaidCheckout(); unfinishedCheckout(); chooseTicket("General", 1);
+  const acceptedRequest = checkoutRequest;
+  let responses = 0;
+  checkoutRequest = async payload => {
+    const response = await acceptedRequest(payload);
+    if (responses++ === 0) throw new Error("Network response lost after creation");
+    return response;
+  };
+  await ticketPayButton().props.onPress();
+  const revised = checkoutCalls.filter(c => c[0] === "useGetTickets").at(-1)[1];
+  await ticketPayButton().props.onPress();
+  assert.equal(checkoutCalls.filter(c => c[0] === "useGetTickets").at(-1)[1].idempotencyKey, revised.idempotencyKey);
+  assert.equal(checkoutCalls.filter(c => c[0] === "cancelCheckout").length, 1);
+  assert.equal(checkoutNode("PaymentWebView").props.paymentUrl, "https://checkout.paystack.com/updated");
+  checkoutRequest = undefined; cancelRequest = undefined; checkoutResult = undefined; eventPaid = false;
+});
+test("repeated pay taps during replacement do not create overlapping updates", async () => {
+  await beginPaidCheckout(); unfinishedCheckout(); chooseTicket("General", 1);
+  let release;
+  cancellationWait = new Promise(resolve => { release = resolve; });
+  const first = ticketPayButton().props.onPress();
+  await new Promise(setImmediate);
+  assert.equal(ticketPayButton().props.disabled, true);
+  assert.match(ticketPayButton().props.title, /Updating/);
+  await ticketPayButton().props.onPress();
+  assert.equal(checkoutCalls.filter(c => c[0] === "cancelCheckout").length, 1);
+  release(); await first;
+  assert.equal(checkoutCalls.filter(c => c[0] === "useGetTickets").length, 3);
+  assert.deepEqual(routes, []);
+  checkoutRequest = undefined; cancelRequest = undefined; cancellationWait = undefined; checkoutResult = undefined; eventPaid = false;
+});
+
+
+test("quantity and ticket-type changes after confirmed Paystack cancellation start a fresh order", async () => {
+  await beginPaidCheckout();
+  const firstKey = checkoutCalls[0][1].idempotencyKey;
+  checkoutNode("PaymentWebView").props.onCancel();
+  await new Promise(setImmediate);
+  eventTickets.push({ ...ticket, id: "ticket-2", type: "VIP", price: 2000 });
+  chooseTicket("General", 1); chooseTicket("VIP", 1);
+  checkoutResult = { data: { transactionId: "fresh-ticket", paymentUrl: "https://checkout.paystack.com/fresh", checkoutDeadlineMs: Date.now() + 300000 } };
+  await ticketPayButton().props.onPress();
+  const fresh = checkoutCalls.filter(c => c[0] === "useGetTickets").at(-1)[1];
+  assert.notEqual(fresh.idempotencyKey, firstKey);
+  assert.deepEqual(fresh.items.map(i => [i.id, i.quantity]), [["ticket-1", 2], ["ticket-2", 1]]);
+  assert.equal(checkoutCalls.filter(c => c[0] === "cancelCheckout").length, 0);
+  assert.equal(checkoutNode("PaymentWebView").props.paymentUrl, "https://checkout.paystack.com/fresh");
+  assert.deepEqual(routes, []);
+  checkoutResult = undefined; eventPaid = false;
+});
+test("a further active-checkout conflict stops after one replacement attempt", async () => {
+  await beginPaidCheckout(); unfinishedCheckout(); chooseTicket("General", 1);
+  checkoutRequest = async () => {
+    throw { isAxiosError: true, response: { status: 409, data: { transactionId: "other-checkout", message: "You already have an active checkout for this event." } } };
+  };
+  cancelRequest = async () => {};
+  const before = checkoutCalls.length;
+  await ticketPayButton().props.onPress();
+  assert.deepEqual(checkoutCalls.slice(before).map(c => c[0]), ["useGetTickets", "cancelCheckout", "useGetTickets"]);
+  assert.match(paymentMessages.at(-1)[1], /active checkout/);
+  assert.equal(ticketPayButton().props.disabled, false);
+  assert.deepEqual(routes, []);
+  checkoutRequest = undefined; cancelRequest = undefined; checkoutResult = undefined; eventPaid = false;
+});
+
+
+test("a revised request clears the previous checkout timer before waiting for the API", async () => {
+  await beginPaidCheckout(); unfinishedCheckout(); chooseTicket("General", 1);
+  let complete;
+  checkoutRequest = () => new Promise(resolve => { complete = resolve; });
+  const attempt = ticketPayButton().props.onPress();
+  await new Promise(setImmediate);
+  const payment = checkoutNode("PaymentWebView");
+  assert.equal(payment.props.checkoutDeadlineMs, null);
+  assert.equal(payment.props.paymentUrl, "");
+  assert.equal(payment.props.visible, false);
+  complete({ data: { transactionId: "revised", paymentUrl: "https://checkout.paystack.com/revised", checkoutDeadlineMs: Date.now() + 300000 } });
+  await attempt;
+  assert.deepEqual(routes, []);
+  checkoutRequest = undefined; cancelRequest = undefined; checkoutResult = undefined; eventPaid = false;
 });

@@ -1,13 +1,17 @@
-// components/UserEventsTab.tsx
 import ActivityIndicator from "@/components/ui/AppLoader";
+import { layoutSpacing } from "@/constants/spacing";
+import type { EventData } from "@/types/auth";
 import { useLockedRouter } from "@/utils/navigation";
-import { useRouter } from "expo-router";
-import { FlatList, Text, View } from "react-native";
+import { SectionList, type SectionListProps, Text, View } from "react-native";
 import tw from "twrnc";
 import EventCard from "./ui/EventCard";
 
-interface UserEventsTabProps {
-  events: any[];
+interface UserEventsTabProps
+  extends Pick<
+    SectionListProps<EventData>,
+    "ListHeaderComponent" | "renderSectionHeader"
+  > {
+  events: EventData[];
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
   hasNextPage: boolean;
@@ -20,66 +24,42 @@ export default function UserEventsTab({
   fetchNextPage,
   hasNextPage,
   isPending,
+  ListHeaderComponent,
+  renderSectionHeader,
 }: UserEventsTabProps) {
   const router = useLockedRouter();
-
-  if (isPending) {
-    return (
-      <View style={tw`flex-1 justify-center items-center py-10`}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  if (!events.length) {
-    return (
-      <View style={tw`mt-4`}>
-        <Text style={tw`text-white text-base`}>No events yet.</Text>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      data={events}
+    <SectionList<EventData>
+      sections={[{ data: events }]}
       keyExtractor={(item) => item.id}
+      ListHeaderComponent={ListHeaderComponent}
+      renderSectionHeader={renderSectionHeader}
+      stickySectionHeadersEnabled={Boolean(renderSectionHeader)}
+      showsVerticalScrollIndicator={false}
       renderItem={({ item }) => (
-        <EventCard
-          id={item.id}
-          title={item.title}
-          description={item.description}
-          location={item.location}
-          imageUrl={item.imageUrl}
-          thumbnailUrl={item.thumbnailUrl}
-          registrationType={item.registrationType}
-          registrationFee={item.registrationFee}
-          donationTarget={item.donationTarget}
-          lowestTicketPrice={item.lowestTicketPrice}
-          onPress={() => router.push(`/event/${item.id}`)}
-          startDate={item.startDate}
-          impactTitle={item.impactTitle}
-          impactDescription={item.impactDescription}
-          impactSdgGoals={item.impactSdgGoals}
-          impactPaths={item.impactPaths}
-          impactCommitments={item.impactCommitments}
-          impactMapSource={item.impactMapSource}
-          tags={item.tags}
-        />
+        <EventCard {...item} onPress={() => router.push(`/event/${item.id}`)} />
       )}
       onEndReached={() => {
-        console.log("hasNextPage:", hasNextPage);
-        console.log("isFetchingNextPage:", isFetchingNextPage);
-        if (hasNextPage) fetchNextPage();
+        if (!isPending && hasNextPage && !isFetchingNextPage) fetchNextPage();
       }}
       onEndReachedThreshold={0.5}
       ListFooterComponent={
-        isFetchingNextPage ? (
-          <View style={tw`py-4`}>
-            <ActivityIndicator size="small" />
+        isPending || isFetchingNextPage ? (
+          <View style={tw`items-center py-6`}>
+            <ActivityIndicator
+              accessibilityLabel={
+                isPending ? "Loading events" : "Loading more events"
+              }
+            />
           </View>
+        ) : events.length === 0 ? (
+          <Text style={tw`py-4 text-base text-[#AFC0E7]`}>No events yet.</Text>
         ) : null
       }
-      contentContainerStyle={{ gap: 12, paddingVertical: 12 }}
+      contentContainerStyle={[
+        tw`gap-3`,
+        { paddingBottom: layoutSpacing.listBottomInset },
+      ]}
     />
   );
 }

@@ -1,4 +1,5 @@
 import { Feather, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import type { ReactNode } from "react";
 import { Text, TouchableOpacity } from "react-native";
 import { style as twStyle } from "twrnc";
 
@@ -7,13 +8,21 @@ interface Props {
   isActive: boolean;
   className?: string;
   onPress: () => void;
+  iconContent?: ReactNode;
   icon?:
     | { library: "Ionicons"; name: keyof typeof Ionicons.glyphMap }
     | { library: "Feather"; name: keyof typeof Feather.glyphMap }
     | { library: "FontAwesome5"; name: keyof typeof FontAwesome5.glyphMap };
 }
 
-const Tab = ({ isActive, title, className = "", icon, onPress }: Props) => {
+const Tab = ({
+  isActive,
+  title,
+  className = "",
+  icon,
+  iconContent,
+  onPress,
+}: Props) => {
   const renderIcon = () => {
     if (!icon) return null;
 
@@ -51,7 +60,7 @@ const Tab = ({ isActive, title, className = "", icon, onPress }: Props) => {
         className
       )}
     >
-      {renderIcon()}
+      {iconContent ?? renderIcon()}
       <Text
         style={twStyle(
           isActive ? "text-[#01082E] font-medium" : "text-[#0FF1CF]"

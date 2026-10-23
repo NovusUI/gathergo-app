@@ -205,7 +205,7 @@ const EventDashboard = () => {
             <RegistrationEventOverview event={event} />
           )}
 
-          {eventDetails && (eventDetails.volunteerRoles.length > 0 || canRecruitVolunteers(eventDetails)) ? <VolunteerOverview event={eventDetails} /> : null}
+          {eventDetails && canRecruitVolunteers(eventDetails) ? <VolunteerOverview event={eventDetails} /> : null}
 
           {/* Account Info */}
           {/* <AccountInfoCard accountInfo={event.accountInfo} /> */}

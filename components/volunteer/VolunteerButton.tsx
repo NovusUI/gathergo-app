@@ -31,9 +31,8 @@ export default function VolunteerButton({
   const manage = purpose === "manage";
   const title = manage ? "Manage volunteers" : "Volunteer";
   if (
-    manage
-      ? !eligible && event.volunteerRoles.length === 0
-      : hasEventEnded || event.volunteerRoles.length === 0 || !eligible
+    !eligible ||
+    (!manage && (hasEventEnded || event.volunteerRoles.length === 0))
   )
     return null;
 

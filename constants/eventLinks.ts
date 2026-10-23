@@ -97,6 +97,12 @@ export const normalizeEventLink = (url?: string | null) => {
   return `https://${trimmedUrl.replace(/^\/+/, "")}`;
 };
 
+export const normalizeEventLinks = (links: string[] = []) =>
+  links
+    .map((link) => normalizeEventLink(link))
+    .filter(Boolean)
+    .slice(0, 5);
+
 const safeParseUrl = (url: string) => {
   try {
     return new URL(normalizeEventLink(url));

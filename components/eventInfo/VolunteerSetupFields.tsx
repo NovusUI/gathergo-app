@@ -4,9 +4,7 @@ import {
   useWatch,
   type UseFormReturn,
 } from "react-hook-form";
-import { useRef, useState } from "react";
-import CustomSwitcher from "@/components/CustomSwitcher";
-import type { Registration } from "@/types/auth";
+import { useState } from "react";
 import type { EventFormData } from "@/schemas/event";
 import {
   canRecruitVolunteers,
@@ -24,7 +22,6 @@ type Props = Pick<UseFormReturn<EventFormData>, "control" | "setValue"> & {
 
 export default function VolunteerSetupFields({
   control,
-  setValue,
   editMode = false,
   onManage,
 }: Props) {
@@ -56,18 +53,14 @@ export default function VolunteerSetupFields({
   });
   const [editor, setEditor] = useState<number | "new" | null>(null);
   const { errors } = useFormState({ control, name: "volunteerRoles" });
-  const previousPricingType =
-    useRef<Exclude<Registration, "volunteer">>("registration");
-  const volunteerOnly = registrationType === "volunteer";
-  if (!isPhysicalEvent && fields.length === 0 && !volunteerOnly) return null;
+  if (registrationType !== "volunteer") return null;
 
   if (!eligible) {
     return (
       <View style={tw`gap-3 px-5 py-5`}>
         <Text style={tw`text-lg font-semibold text-white`}>Volunteering</Text>
         <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
-          Add an impact story to unlock volunteer roles and volunteer-only
-          events.
+          Add an impact story to enable volunteering.
         </Text>
         <TouchableOpacity
           accessibilityRole="button"
@@ -88,51 +81,9 @@ export default function VolunteerSetupFields({
     );
   }
 
-  const toggleVolunteerOnly = (enabled: boolean) => {
-    if (enabled) {
-      if (registrationType && registrationType !== "volunteer") {
-        previousPricingType.current = registrationType;
-      }
-      setValue("registrationType", "volunteer", { shouldValidate: true });
-      if (fields.length === 0) setEditor("new");
-    } else {
-      setValue("registrationType", previousPricingType.current, {
-        shouldValidate: true,
-      });
-      setValue("donationsEnabled", false, { shouldValidate: true });
-      setValue("donationTarget", undefined, { shouldValidate: true });
-    }
-  };
-
   return (
     <View style={tw`gap-4 px-5 py-5`}>
       <Text style={tw`text-lg font-semibold text-white`}>Volunteering</Text>
-      <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
-        Invite people to contribute their time at the venue. Volunteer places
-        are separate from tickets and attendee registration.
-      </Text>
-      {registrationType !== "donation" ? (
-        <View
-          style={tw`flex-row items-center gap-3 rounded-xl bg-[#101C45] p-4`}
-        >
-          <View style={tw`flex-1`}>
-            <Text style={tw`font-semibold text-white`}>
-              Volunteer-only event
-            </Text>
-            <Text style={tw`mt-1 text-xs leading-5 text-[#A8BAE4]`}>
-              {editMode
-                ? "The event's participation setup is fixed after creation."
-                : "People take part as volunteers, with no tickets or attendee registration."}
-            </Text>
-          </View>
-          <CustomSwitcher
-            accessibilityLabel="Volunteer-only event"
-            isEnabled={volunteerOnly}
-            disabled={editMode || !isPhysicalEvent}
-            setIsEnabled={toggleVolunteerOnly}
-          />
-        </View>
-      ) : null}
       {editMode ? (
         <TouchableOpacity
           accessibilityRole="button"

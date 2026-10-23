@@ -14,7 +14,7 @@ import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { normalizeEventLink } from "@/constants/eventLinks";
+import { normalizeEventLinks } from "@/constants/eventLinks";
 import { buildEventImpactFormFields, buildEventParticipationFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
@@ -53,12 +53,6 @@ import {
 } from "react-native";
 import tw from "twrnc";
 
-const normalizeEventLinks = (links?: string[]) =>
-  (links || [])
-    .map((link) => normalizeEventLink(link))
-    .filter(Boolean)
-    .slice(0, 5);
-
 const getUpdateErrorMessage = (error: unknown) => {
   const data = (error as { data?: { message?: string | string[] } })?.data;
   const message = data?.message || (error as Error)?.message;
@@ -82,6 +76,9 @@ const EditEvent = () => {
     null,
   );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
+  const [locationDraft, setLocationDraft] = useState<
+    Pick<EventFormData, "location" | "isPhysicalEvent">
+  >({ location: "", isPhysicalEvent: true });
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
   const blockedEditRedirectedRef = useRef(false);
 
@@ -325,11 +322,13 @@ const EditEvent = () => {
           <Controller
             name="location"
             control={control}
-            render={({ field: { value, onChange } }) => (
+            render={({ field: { onChange } }) => (
               <View>
                 <Location
-                  isPhysicalEvent={watch("isPhysicalEvent")}
-                  onSave={({ location, isPhysicalEvent }) => {
+                  isPhysicalEvent={locationDraft.isPhysicalEvent}
+                  onChange={setLocationDraft}
+                  onSave={() => {
+                    const { location, isPhysicalEvent } = locationDraft;
                     if (!isPhysicalEvent && watch("volunteerRoles").length > 0) {
                       showGlobalError("Volunteer roles require a physical venue."); return;
                     }
@@ -339,7 +338,7 @@ const EditEvent = () => {
                     });
                     closeSheet();
                   }}
-                  value={value}
+                  value={locationDraft.location}
                 />
               </View>
             )}
@@ -549,7 +548,13 @@ const EditEvent = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
-                onPress={() => openSheet("Location")}
+                onPress={() => {
+                  setLocationDraft({
+                    location: watch("location"),
+                    isPhysicalEvent: watch("isPhysicalEvent"),
+                  });
+                  openSheet("Location");
+                }}
               >
                 <View style={tw`flex-1 pr-3`}>
                   <Text style={tw`text-white text-base`}>Location</Text>

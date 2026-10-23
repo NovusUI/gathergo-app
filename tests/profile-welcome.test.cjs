@@ -133,7 +133,7 @@ test("event discovery still requires preference onboarding", () => {
   assert.equal(screen.props.href, "/preference");
 });
 
-test("saving preferences keeps the welcome mounted on the preference screen", () => {
+test("completed or skipped preference onboarding does not redirect users back", () => {
   layoutState.segments = ["(app)", "preference"];
   layoutState.user.hasPreferences = true;
   assert.equal(AppLayout().type, Stack);
@@ -150,115 +150,36 @@ test("the welcome route does not bypass authentication", () => {
 });
 
 function CustomButton() {}
-function ProfileWelcomeModal() {}
-const preferenceState = {
-  user: null,
-  queryData: undefined,
-  state: [],
-  cursor: 0,
-  saved: [],
-  navigations: [],
-  errors: [],
-  pending: false,
-};
-const { default: PreferencesScreen } = loadTypeScript(
-  "app/(app)/preference/index.tsx",
-  {
-    "@/components/buttons/CustomBtn1": { default: CustomButton },
-    "@/components/ui/ProfileWelcomeModal": { default: ProfileWelcomeModal },
-    "@/context/AuthContext": {
-      useAuth: () => ({
-        user: preferenceState.user,
-        setUser: (user) => {
-          preferenceState.user = user;
-        },
-      }),
-    },
-    "@/services/mutations": {
-      useSavePreferences: (options) => {
-        preferenceState.mutation = options;
-        return {
-          isPending: preferenceState.pending,
-          mutate: (values) => {
-            preferenceState.saved.push(values);
-          },
-        };
-      },
-    },
-    "@/services/queries": {
-      useCurrentUser: (options) => {
-        preferenceState.queryOptions = options;
-        return { data: preferenceState.queryData };
-      },
-    },
-    "@/utils/globalErrorHandler": {
-      showGlobalError: (message) => {
-        preferenceState.errors.push(message);
-      },
-    },
-    "@/utils/navigation": {
-      useLockedRouter: () => ({
-        replace: (route) => {
-          preferenceState.navigations.push(route);
-        },
-      }),
-    },
-    react: {
-      useState: (initial) => {
-        const index = preferenceState.cursor++;
-        if (!(index in preferenceState.state)) {
-          preferenceState.state[index] = initial;
-        }
-        return [
-          preferenceState.state[index],
-          (next) => {
-            preferenceState.state[index] = typeof next === "function"
-              ? next(preferenceState.state[index])
-              : next;
-          },
-        ];
-      },
-    },
-    "react-native": {
-      View: "View",
-      Text: "Text",
-      ScrollView: "ScrollView",
-      TouchableOpacity: "TouchableOpacity",
-    },
-    "react-native-svg": {},
-    "@expo/vector-icons": { Ionicons: "Icon" },
-    twrnc: { default: () => ({}) },
+function GogoInterestSetup() {}
+const onboardingUser = { id: "user-1", fullName: "Ada Example", email: "ada@example.com", isProfileComplete: true, hasPreferences: false };
+const emptyProfile = { interests: [], helpModes: [], city: null, learningEnabled: false, weights: [] };
+const preferenceState = { user: onboardingUser, values: [], cursor: 0, saved: [], navigations: [], errors: [], pending: false, loading: false };
+const { default: PreferencesScreen } = loadTypeScript("app/(app)/preference/index.tsx", {
+  "@/components/gogo/tasks/interestMap/GogoInterestSetup": { GogoInterestSetup },
+  "@/components/gogo/tasks/interestMap/InterestMap": { InterestMap: "InterestMap" },
+  "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
+  "@/components/CustomeTopBarNav": { default: "TopBar" },
+  "@/components/buttons/CustomBtn1": { default: CustomButton },
+  "@/components/CustomSwitcher": { default: "Switch" },
+  "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
+  "@/context/AuthContext": { useAuth: () => ({ user: preferenceState.user, setUser: user => { preferenceState.user = user; } }) },
+  "@/services/queries": {
+    useInterestCatalog: () => ({ isPending: preferenceState.loading, isError: false, data: { data: { topics: [], helpModes: ["attend", "volunteer", "donate"] } } }),
+    useInterestProfile: () => ({ isPending: preferenceState.loading, isError: false, data: { data: emptyProfile } }),
   },
-);
-
-const onboardingUser = {
-  id: "user-1",
-  email: "ada@example.com",
-  fullName: "Ada Example",
-  username: "ada_example",
-  birthDate: "2000-10-17",
-  isProfileComplete: true,
-  hasPreferences: false,
-};
-
-function resetPreferences(user = onboardingUser) {
-  Object.assign(preferenceState, {
-    user: { ...user },
-    queryData: undefined,
-    state: [],
-    cursor: 0,
-    saved: [],
-    navigations: [],
-    errors: [],
-    pending: false,
-  });
-}
-
-function renderPreferences() {
-  preferenceState.cursor = 0;
-  return PreferencesScreen();
-}
-
+  "@/services/mutations": {
+    useSavePreferences: options => { preferenceState.mutation = options; return { isPending: preferenceState.pending, mutate: data => preferenceState.saved.push(data) }; },
+    useResetInterestLearning: () => ({ isPending: false, mutate() {} }),
+    useDeleteInterestMap: () => ({ isPending: false, mutate() {} }),
+  },
+  "@/utils/navigation": { useLockedRouter: () => ({ replace: route => preferenceState.navigations.push(route) }), safeGoBack() {} },
+  "@/utils/globalErrorHandler": { showGlobalError: message => preferenceState.errors.push(message), showGlobalSuccess() {} },
+  react: { useState: initial => { const index = preferenceState.cursor++; if (!(index in preferenceState.values)) preferenceState.values[index] = initial; return [preferenceState.values[index], next => { preferenceState.values[index] = typeof next === "function" ? next(preferenceState.values[index]) : next; }]; } },
+  "react-native": { View: "View", Text: "Text", ScrollView: "ScrollView", TouchableOpacity: "Button" },
+  twrnc: { default: () => ({}) },
+});
+function resetPreferences(user = onboardingUser) { Object.assign(preferenceState, { user: { ...user }, values: [], cursor: 0, saved: [], navigations: [], errors: [], pending: false, loading: false }); }
+function renderPreferences() { preferenceState.cursor = 0; return PreferencesScreen(); }
 function findElement(element, predicate) {
   if (!element || typeof element !== "object") return undefined;
   if (predicate(element)) return element;
@@ -288,50 +209,50 @@ test("birthdays keep their calendar day for both saved and API date formats", ()
   }
 });
 
-function selectAndSavePreferences() {
-  const initial = renderPreferences();
-  const chip = findElement(initial, (element) => typeof element.props?.item === "string");
-  chip.props.onPress();
-  const selected = renderPreferences();
-  findElement(selected, (element) => element.type === CustomButton).props.onPress();
-  return chip.props.item;
-}
 
-test("the welcome follows a successful preference save and continues into the feed", () => {
+test("first signup opens the Gogo setup without the old welcome modal", () => {
   resetPreferences();
-  const selected = selectAndSavePreferences();
-  assert.deepEqual(preferenceState.saved, [[selected]]);
-  assert.equal(findElement(renderPreferences(), (element) => element.type === ProfileWelcomeModal), undefined);
-  assert.equal(preferenceState.user.hasPreferences, false);
-
-  preferenceState.mutation.onSuccess();
-  const screen = renderPreferences();
-  const welcome = findElement(screen, (element) => element.type === ProfileWelcomeModal);
-  assert.equal(preferenceState.user.hasPreferences, true);
-  assert.equal(welcome.props.profile.birthDate, onboardingUser.birthDate);
-  assert.deepEqual(preferenceState.navigations, []);
-  assert.equal(findElement(screen, (element) => element.type === CustomButton).props.disabled, true);
-  welcome.props.onContinue();
-  assert.deepEqual(preferenceState.navigations, ["/"]);
+  const setup = findElement(renderPreferences(), node => node.type === GogoInterestSetup);
+  assert.equal(setup.props.firstTime, true);
+  assert.deepEqual(setup.props.profile, emptyProfile);
 });
-
-test("a failed preference save leaves onboarding open without a welcome", () => {
-  resetPreferences();
-  selectAndSavePreferences();
-  preferenceState.mutation.onError(new Error("Connection failed"));
-  assert.deepEqual(preferenceState.errors, ["Connection failed"]);
-  assert.equal(preferenceState.user.hasPreferences, false);
-  assert.equal(findElement(renderPreferences(), (element) => element.type === ProfileWelcomeModal), undefined);
-  assert.deepEqual(preferenceState.navigations, []);
+test("saving or skipping goes directly to the feed only after the server confirms", () => {
+  for (const data of [
+    { interests: ["Nature"], helpModes: ["volunteer"], city: "Lagos", learningEnabled: true, likedEventIds: [] },
+    { interests: [], helpModes: [], city: "", learningEnabled: false, likedEventIds: [] },
+  ]) {
+    resetPreferences();
+    findElement(renderPreferences(), node => node.type === GogoInterestSetup).props.onSave(data);
+    assert.deepEqual(preferenceState.saved, [data]);
+    assert.equal(preferenceState.user.hasPreferences, false);
+    assert.deepEqual(preferenceState.navigations, []);
+    preferenceState.mutation.onSuccess();
+    assert.equal(preferenceState.user.hasPreferences, true);
+    assert.deepEqual(preferenceState.navigations, ["/"]);
+  }
 });
-
-test("resumed onboarding uses the saved profile from the current-user API", () => {
-  resetPreferences({ id: "user-1", email: "ada@example.com", isProfileComplete: true, hasPreferences: false });
-  preferenceState.queryData = { data: { ...onboardingUser, birthDate: "2000-10-17T00:00:00.000Z" } };
-  selectAndSavePreferences();
-  assert.equal(preferenceState.queryOptions.enabled, true);
-  preferenceState.mutation.onSuccess();
-  const welcome = findElement(renderPreferences(), (element) => element.type === ProfileWelcomeModal);
-  assert.equal(welcome.props.profile.fullName, onboardingUser.fullName);
-  assert.equal(welcome.props.profile.birthDate, "2000-10-17T00:00:00.000Z");
+test("a failed map save leaves onboarding open and does not claim success", () => {
+  resetPreferences(); renderPreferences();
+  preferenceState.mutation.onError(new Error("offline"));
+  assert.equal(preferenceState.user.hasPreferences, false);
+  assert.deepEqual(preferenceState.navigations, []);
+  assert.match(preferenceState.errors[0], /Couldn’t save/);
+});
+test("pending saves block duplicate submissions and the page loads before setup", () => {
+  resetPreferences(); preferenceState.loading = true;
+  assert.ok(findElement(renderPreferences(), node => node.type === "PageLoader"));
+  preferenceState.loading = false; preferenceState.pending = true;
+  const setup = findElement(renderPreferences(), node => node.type === GogoInterestSetup);
+  assert.equal(setup.props.pending, true);
+  setup.props.onSave({});
+  assert.deepEqual(preferenceState.saved, []);
+});
+test("an existing user with an empty or deleted map gets map controls without onboarding again", () => {
+  resetPreferences({ ...onboardingUser, hasPreferences: true });
+  assert.equal(findElement(renderPreferences(), node => node.type === GogoInterestSetup), undefined);
+  findElement(renderPreferences(), node => node.props?.title === "Tune my map").props.onPress();
+  const setup = findElement(renderPreferences(), node => node.type === GogoInterestSetup);
+  assert.equal(setup.props.firstTime, false);
+  setup.props.onCancel();
+  assert.equal(findElement(renderPreferences(), node => node.type === GogoInterestSetup), undefined);
 });

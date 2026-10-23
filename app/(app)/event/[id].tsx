@@ -1,3 +1,10 @@
+import {
+  cancelCheckout,
+  cancelEventCheckout,
+  recordEventInterest,
+} from "@/services/serviceFn";
+import { getApiErrorMessage } from "@/utils/apiError";
+import { isAxiosError } from "axios";
 import { getFeedFrenzyLevel } from "@/utils/feedFrenzy";
 import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
@@ -14,6 +21,7 @@ import PricingCard from "@/components/eventInfo/TicketCard";
 import FlameFeedButton from "@/components/feed/FlameFeedButton";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import AppToast from "@/components/ui/AppToast";
+import WalletSetupReminder from "@/components/ui/WalletSetupReminder";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
@@ -28,7 +36,8 @@ import {
   useGetTickets,
   useInitiateDonation,
   useRegisterEvent,
-  useUpsertEventImpactReport
+  useUpsertEventImpactReport,
+  usePublishEventTicket
 } from "@/services/mutations";
 import { useEventDetails, useWalletOnboarding } from "@/services/queries";
 import { QUERY_KEYS } from "@/services/queryKeys";
@@ -296,63 +305,27 @@ const EventHeroChip = ({
   </View>
 );
 
-const EventInfoTile = ({
+const EventDetailRow = ({
   iconName,
   title,
   subtitle,
-  accent = "#0FF1CF",
-  wide = false,
-  onPress
+  accent = "#0FF1CF"
 }: {
   iconName: IoniconName;
   title: string;
   subtitle: string;
   accent?: string;
-  wide?: boolean;
-  onPress?: () => void;
-}) => {
-  const tileStyle = [
-    tw`rounded-2xl border px-4 py-4`,
-    wide ? tw`w-full` : tw`flex-1 min-w-[145px]`,
-    { backgroundColor: "#0A173F", borderColor: `${accent}26` }
-  ];
-
-  const content = (
-    <>
-      <View
-        style={[
-          tw`h-9 w-9 items-center justify-center rounded-2xl`,
-          { backgroundColor: `${accent}18` }
-        ]}
-      >
-        <Ionicons name={iconName} size={18} color={accent} />
-      </View>
-      <Text style={tw`mt-3 text-xs uppercase text-[#87A0D6]`}>{title}</Text>
-      <Text
-        style={tw`mt-1 text-sm font-semibold leading-5 text-white`}
-        numberOfLines={wide ? 3 : 2}
-      >
+}) => (
+  <View style={tw`flex-row items-start gap-3`}>
+    <Ionicons name={iconName} size={18} color={accent} style={tw`mt-0.5`} />
+    <View style={tw`flex-1 min-w-0`}>
+      <Text style={tw`text-xs text-[#87A0D6]`}>{title}</Text>
+      <Text style={tw`mt-0.5 text-sm font-medium leading-5 text-white`}>
         {subtitle}
       </Text>
-    </>
-  );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity
-        activeOpacity={0.84}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}: ${subtitle}`}
-        onPress={onPress}
-        style={tileStyle}
-      >
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return <View style={tileStyle}>{content}</View>;
-};
+    </View>
+  </View>
+);
 
 const calculatePlatformFeeKobo = (
   baseAmountKobo: number,
@@ -449,11 +422,10 @@ const buildCheckoutPreview = (
 
 const EventPage = () => {
   const queryClient = useQueryClient();
-  const { id, openFeed, feedTab, openPayoutSetup } = useLocalSearchParams<{
+  const { id, openFeed, feedTab } = useLocalSearchParams<{
     id?: string | string[];
     openFeed?: string | string[];
     feedTab?: string | string[];
-    openPayoutSetup?: string | string[];
   }>(); // eventId
   const { user } = useAuth();
 
@@ -463,9 +435,6 @@ const EventPage = () => {
   const initialFeedTab = rawFeedTab === "carpool" ? "carpool" : "feed";
   const shouldOpenFeedFromRoute =
     (Array.isArray(openFeed) ? openFeed[0] : openFeed) === "1";
-  const shouldOpenPayoutSetup =
-    (Array.isArray(openPayoutSetup) ? openPayoutSetup[0] : openPayoutSetup) ===
-    "1";
   const router = useLockedRouter();
 
   const [selectedTickets, setSelectedTickets] = useState<GetTickets[]>([]);
@@ -482,7 +451,6 @@ const EventPage = () => {
     null
   );
   const transferCountdownSeconds = useCheckoutCountdown(checkoutDeadlineMs);
-  const [showCreatorSetupModal, setShowCreatorSetupModal] = useState(false);
   const [showRegistrationCheckout, setShowRegistrationCheckout] =
     useState(false);
   const [showImpactReportModal, setShowImpactReportModal] = useState(false);
@@ -510,6 +478,10 @@ const EventPage = () => {
     [data?.data?.startDate]
   );
 
+  const [updatingCheckout, setUpdatingCheckout] = useState(false);
+  const checkoutSubmittingRef = useRef(false);
+  const [cancellingCheckout, setCancellingCheckout] = useState(false);
+  const cancellingCheckoutRef = useRef(false);
   const [showPaystackWebView, setShowPaystackWebView] = useState(false);
   const [paystackPaymentUrl, setPaystackPaymentUrl] = useState<string>("");
   const [currentTransactionId, setCurrentTransactionId] = useState<string>("");
@@ -569,7 +541,11 @@ const EventPage = () => {
     ticketName: string,
     change: number
   ) => {
-    if (!paymentOptions) return;
+    if (
+      !paymentOptions ||
+      checkoutSubmittingRef.current ||
+      cancellingCheckoutRef.current
+    ) return;
     const maximum = paymentOptions.maxTicketsPerCheckout;
     if (
       change > 0 &&
@@ -622,6 +598,57 @@ const EventPage = () => {
     bottomSheetDonationRef.current?.dismiss?.();
   }, []);
 
+  const clearPaymentState = useCallback(() => {
+    setShowPaystackWebView(false);
+    setShowTransferInstructions(false);
+    setCheckoutDeadlineMs(null);
+    setCurrentTransactionId("");
+    setPaystackPaymentUrl("");
+    setTransferInstructions(null);
+  }, []);
+
+  const openCheckoutStatus = useCallback(
+    (transactionId: string, type: typeof transactionType) => {
+      closePaymentSelectionSurfaces();
+      clearPaymentState();
+      router.push(`/transaction/${transactionId}?type=${type}`);
+    },
+    [clearPaymentState, closePaymentSelectionSurfaces, router],
+  );
+
+  const handlePaymentCancel = useCallback(async () => {
+    if (cancellingCheckoutRef.current) return;
+    closePaymentSelectionSurfaces();
+    clearPaymentState();
+    if (transactionType === "DONATION") {
+      showGlobalWarning("Payment cancelled");
+      return;
+    }
+    if (!user) return;
+    cancellingCheckoutRef.current = true;
+    setCancellingCheckout(true);
+    try {
+      await cancelEventCheckout(currentTransactionId, user.id, resolvedEventId);
+      showGlobalWarning("Checkout cancelled. You can try again.");
+    } catch {
+      showGlobalError(
+        "Could not cancel checkout. Check its payment status before trying again."
+      );
+      openCheckoutStatus(currentTransactionId, transactionType);
+    } finally {
+      cancellingCheckoutRef.current = false;
+      setCancellingCheckout(false);
+    }
+  }, [
+    clearPaymentState,
+    closePaymentSelectionSurfaces,
+    currentTransactionId,
+    openCheckoutStatus,
+    resolvedEventId,
+    transactionType,
+    user,
+  ]);
+
   const closeEndedPaymentFlow = useCallback(() => {
     setShowFeed(false);
     closePaymentSelectionSurfaces();
@@ -651,6 +678,23 @@ const EventPage = () => {
   const onboarding = onboardingData?.data;
   const paymentOptions = data?.data.paymentOptions;
   const isOwner = data?.data.creator.id === user?.id;
+  const recordedInterestEvent = useRef<string | null>(null);
+  useEffect(() => {
+    if (!data || isOwner || recordedInterestEvent.current === resolvedEventId)
+      return;
+    recordedInterestEvent.current = resolvedEventId;
+    void recordEventInterest({ eventId: resolvedEventId, kind: "VIEW" }).catch(
+      () => console.warn("Gogo could not update event activity."),
+    );
+  }, [data, isOwner, resolvedEventId]);
+  const {
+    mutate: publishTicket,
+    isPending: publishingTicket,
+    variables: publishingTicketId,
+  } = usePublishEventTicket(resolvedEventId, {
+    onSuccess: () => showGlobalSuccess("Ticket published"),
+    onError: () => showGlobalError("Couldn’t publish the ticket. Please try again."),
+  });
   const registrationFeeAmount = Number(data?.data.registrationFee || 0);
   const registrationPreview = useMemo(
     () =>
@@ -718,28 +762,14 @@ const EventPage = () => {
   }, [paymentOptions?.availableProviders]);
 
   useEffect(() => {
-    if (
-      shouldOpenPayoutSetup &&
-      isOwner &&
-      (paymentOptions?.requiresPayment || paymentOptions?.acceptsDonations) &&
-      onboarding?.showPersistentAlert
-    ) {
-      setShowCreatorSetupModal(true);
-    }
-  }, [
-    isOwner,
-    onboarding?.showPersistentAlert,
-    paymentOptions?.requiresPayment,
-    paymentOptions?.acceptsDonations,
-    shouldOpenPayoutSetup
-  ]);
-
-  useEffect(() => {
     if (transferCountdownSeconds !== 0 || !currentTransactionId) return;
-    setShowTransferInstructions(false);
-    setShowPaystackWebView(false);
-    router.push(`/transaction/${currentTransactionId}?type=${transactionType}`);
-  }, [transferCountdownSeconds, currentTransactionId, router, transactionType]);
+    openCheckoutStatus(currentTransactionId, transactionType);
+  }, [
+    transferCountdownSeconds,
+    currentTransactionId,
+    openCheckoutStatus,
+    transactionType,
+  ]);
 
   const handleProviderInitSuccess = useCallback(
     (
@@ -893,20 +923,6 @@ const EventPage = () => {
 
       handleProviderInitSuccess(response, "TICKET");
     },
-    onError: (error) => {
-      console.log(error);
-      const details = error.response?.data as
-        | { transactionId?: string; message?: string }
-        | undefined;
-      if (details?.transactionId) {
-        router.push(`/transaction/${details.transactionId}`);
-        return;
-      }
-      showGlobalError(
-        details?.message ||
-          "Could not start checkout. Retry to resume your request."
-      );
-    }
   });
 
   const { mutateAsync: registerEvent, isPending: registeringEvent } =
@@ -915,26 +931,14 @@ const EventPage = () => {
         showGlobalSuccess("Checkout started successfully.");
         handleProviderInitSuccess(response, "REGISTRATION");
       },
-      onError: (error) => {
-        console.log(error);
-        const details = error.response?.data as
-          | { transactionId?: string; message?: string }
-          | undefined;
-        if (details?.transactionId) {
-          router.push(
-            `/transaction/${details.transactionId}?type=REGISTRATION`
-          );
-          return;
-        }
-        showGlobalError(
-          details?.message ||
-            "Could not start checkout. Retry to resume your request."
-        );
-      }
     });
 
   const registrationDisabled =
-    registeringEvent || checkingRegistration || hasFreeRegistration;
+    registeringEvent ||
+    updatingCheckout ||
+    cancellingCheckout ||
+    checkingRegistration ||
+    hasFreeRegistration;
 
   const { mutateAsync: initiateDonation, isPending: initiatingDonation } =
     useInitiateDonation({
@@ -963,6 +967,7 @@ const EventPage = () => {
 
   const handleTransaction = useCallback(
     async (isRegistration?: boolean) => {
+      if (cancellingCheckoutRef.current || checkoutSubmittingRef.current) return;
       if (hasEventEnded) {
         closeEndedPaymentFlow();
         return;
@@ -984,34 +989,81 @@ const EventPage = () => {
               .sort((a, b) => a.id.localeCompare(b.id))
               .map(({ id, quantity }) => ({ id, quantity }))
           });
-      const idempotencyKey = await checkoutIntentKey(
-        user.id,
-        resolvedEventId,
-        intent
-      );
-      if (isRegistration) {
-        await registerEvent({
-          idempotencyKey,
-          eventId: resolvedEventId,
-          provider: selectedProvider,
-          platform: "mobile"
-        });
-        return;
-      }
+      checkoutSubmittingRef.current = true;
+      clearPaymentState();
+      try {
+        const idempotencyKey = await checkoutIntentKey(
+          user.id,
+          resolvedEventId,
+          intent
+        );
+        const submitCheckout = async () => {
+          if (isRegistration) {
+            await registerEvent({
+              idempotencyKey,
+              eventId: resolvedEventId,
+              provider: selectedProvider,
+              platform: "mobile"
+            });
+            return;
+          }
+          await mutateAsync({
+            idempotencyKey,
+            items: selectedTickets,
+            provider: selectedProvider,
+            clientContext: { platform: "mobile" }
+          });
+        };
 
-      await mutateAsync({
-        idempotencyKey,
-        items: selectedTickets,
-        provider: selectedProvider,
-        clientContext: {
-          platform: "mobile"
+        try {
+          await submitCheckout();
+        } catch (error) {
+          const activeCheckoutId =
+            isAxiosError<{ transactionId?: string }>(error) &&
+            error.response?.status === 409
+              ? error.response.data.transactionId
+              : undefined;
+          if (!activeCheckoutId) throw error;
+          if (isRegistration) {
+            showGlobalWarning(
+              "You have an unfinished checkout. Resume or cancel it here."
+            );
+            openCheckoutStatus(activeCheckoutId, "REGISTRATION");
+            return;
+          }
+
+          setUpdatingCheckout(true);
+          try {
+            // This revised order already has a persisted key. Keep it for the retry.
+            await cancelCheckout(activeCheckoutId);
+          } catch {
+            showGlobalError(
+              "Could not update checkout. Check the previous payment before trying again."
+            );
+            openCheckoutStatus(activeCheckoutId, "TICKET");
+            return;
+          }
+          // Replace once per press; a further conflict or network error stays visible.
+          await submitCheckout();
         }
-      });
+      } catch (error) {
+        showGlobalError(
+          getApiErrorMessage(
+            error,
+            "Could not start checkout. Retry to resume your request."
+          )
+        );
+      } finally {
+        checkoutSubmittingRef.current = false;
+        setUpdatingCheckout(false);
+      }
     },
     [
+      clearPaymentState,
       closeEndedPaymentFlow,
       hasEventEnded,
       mutateAsync,
+      openCheckoutStatus,
       registerEvent,
       registrationDisabled,
       registrationCheckFailed,
@@ -1267,6 +1319,7 @@ const EventPage = () => {
   } = data?.data;
 
   const publishedTickets = eventTickets.filter((ticket) => ticket.isVisible);
+  const ticketsToShow = owner ? eventTickets : publishedTickets;
   const eventDateTime = formatEventDateTime(startDate, endDate);
   const impactSummary = impactTitle?.trim() || null;
   const impactNote = impactDescription?.trim() || "";
@@ -1513,14 +1566,14 @@ const EventPage = () => {
                     buttonClassName="w-full border-[#FF6B6B]" textClassName="text-[#FF9D9D]" />
                 ) : null}
 
-                <View style={tw`flex-row flex-wrap gap-3`}>
-                  <EventInfoTile
+                <View style={tw`gap-3`}>
+                  <EventDetailRow
                     iconName="calendar-outline"
                     title="When"
                     subtitle={eventDateTime}
                     accent="#0FF1CF"
                   />
-                  <EventInfoTile
+                  <EventDetailRow
                     iconName={eventTone.iconName}
                     title={
                       data.data.registrationType === "donation"
@@ -1530,7 +1583,7 @@ const EventPage = () => {
                     subtitle={participationSummary}
                     accent={eventTone.accent}
                   />
-                  <EventInfoTile
+                  <EventDetailRow
                     iconName={
                       isPhysicalEvent === false
                         ? "desktop-outline"
@@ -1539,20 +1592,21 @@ const EventPage = () => {
                     title="Where"
                     subtitle={locationLabel}
                     accent="#31C6F6"
-                    wide
                   />
                 </View>
               </View>
             </View>
           </View>
 
-          <View style={tw`px-5 pt-4`}>
-            <EventVolunteering
-              event={data.data}
-              owner={owner}
-              onPress={() => setShowVolunteerRoles(true)}
-            />
-          </View>
+          {registrationType === "volunteer" && (
+            <View style={tw`px-5 pt-4`}>
+              <EventVolunteering
+                event={data.data}
+                owner={owner}
+                onPress={() => setShowVolunteerRoles(true)}
+              />
+            </View>
+          )}
 
           {hasEventEnded && (
             <CustomView style={tw`px-4 pt-4`}>
@@ -1778,64 +1832,6 @@ const EventPage = () => {
               </View>
             </CustomView>
           )}
-          <CustomView style={tw`px-4 pt-4`}>
-            <View
-              style={tw`rounded-[28px] border border-[#1B2A50] bg-[#07143B] p-5`}
-            >
-              <View style={tw`flex-row items-center justify-between gap-3`}>
-                <View style={tw`flex-1 min-w-0 flex-row items-center gap-3`}>
-                  <View
-                    style={tw`h-11 w-11 items-center justify-center rounded-2xl bg-[#0FF1CF]/12`}
-                  >
-                    <Ionicons name="planet-outline" size={22} color="#0FF1CF" />
-                  </View>
-                  <View style={tw`flex-1 min-w-0`}>
-                    <Text
-                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                    >
-                      Event essentials
-                    </Text>
-                    <Text style={tw`mt-1 text-base font-semibold text-white`}>
-                      The quick read before you move.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={tw`mt-4 flex-row flex-wrap gap-3`}>
-                <EventInfoTile
-                  iconName="calendar-outline"
-                  title="Date & time"
-                  subtitle={eventDateTime}
-                  accent="#0FF1CF"
-                />
-                <EventInfoTile
-                  iconName={eventTone.iconName}
-                  title={eventTone.label}
-                  subtitle={participationSummary}
-                  accent={eventTone.accent}
-                />
-                <EventInfoTile
-                  iconName={
-                    isPhysicalEvent === false
-                      ? "desktop-outline"
-                      : "map-outline"
-                  }
-                  title="Location"
-                  subtitle={locationLabel}
-                  accent="#31C6F6"
-                  wide
-                />
-                <EventInfoTile
-                  iconName="share-social-outline"
-                  title="Share"
-                  subtitle="Send this GatherGo link."
-                  accent="#F8D05C"
-                  onPress={handleShare}
-                />
-              </View>
-            </View>
-          </CustomView>
           {eventLinks.length > 0 && (
             <CustomView style={tw`px-4 pt-4`}>
               <View
@@ -1900,30 +1896,7 @@ const EventPage = () => {
             onboarding?.showPersistentAlert &&
             (paymentOptions?.requiresPayment || paymentOptions?.acceptsDonations) && (
               <CustomView style={tw`px-4 pt-4`}>
-                <View
-                  style={tw`rounded-[24px] border border-[#F1D417] bg-[#1B2A50] p-4`}
-                >
-                  <Text style={tw`text-sm font-bold text-[#F1D417]`}>
-                    Payout setup still needs attention
-                  </Text>
-                  <Text style={tw`mt-2 text-sm leading-5 text-white`}>
-                    {onboarding.nextAction === "ADD_SETTLEMENT_ACCOUNT"
-                      ? "Add your settlement account so we know where to pay your earnings."
-                      : onboarding.nextAction === "COMPLETE_KYC"
-                        ? "Complete identity verification so your earnings can be released."
-                        : "We are still preparing ALAT transfer for this creator account."}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setShowCreatorSetupModal(true)}
-                    style={tw`mt-4 rounded-full bg-[#0FF1CF] px-4 py-3`}
-                  >
-                    <Text
-                      style={tw`text-center text-sm font-semibold text-[#01082E]`}
-                    >
-                      Continue setup
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <WalletSetupReminder nextAction={onboarding.nextAction} onPress={() => router.push("/wallet")} />
               </CustomView>
             )}
         </ScrollView>
@@ -2075,7 +2048,7 @@ const EventPage = () => {
       >
         <View style={tw`flex-row justify-between items-center p-5`}>
           <Text style={tw`text-white`}>
-            {publishedTickets.length > 0 ? "BUY TICKET" : "Tickets"}
+            {!owner && publishedTickets.length > 0 ? "BUY TICKET" : "Tickets"}
           </Text>
           <View style={tw`flex-row items-center gap-3`}>
             {publishedTickets.length > 0 ? (
@@ -2091,12 +2064,12 @@ const EventPage = () => {
           style={tw`p-5`}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={
-            publishedTickets.length === 0
+            ticketsToShow.length === 0
               ? tw`grow justify-center pb-10`
               : undefined
           }
         >
-          {publishedTickets.length === 0 ? (
+          {ticketsToShow.length === 0 ? (
             <MascotMoment
               variant="empty"
               layout="stacked"
@@ -2106,7 +2079,7 @@ const EventPage = () => {
             />
           ) : (
             <View style={tw`py-5 gap-5`}>
-              {publishedTickets.map((ticket) => (
+              {ticketsToShow.map((ticket) => (
                 <PricingCard
                   key={ticket.id}
                   selectedQuantity={
@@ -2120,9 +2093,22 @@ const EventPage = () => {
                       0,
                     ) < paymentOptions.maxTicketsPerCheckout
                   }
-                  onQuantityChange={(change) =>
-                    handleTicketSelection(ticket.id, ticket.type, change)
+                  onQuantityChange={
+                    ticket.isVisible
+                      ? (change) => handleTicketSelection(ticket.id, ticket.type, change)
+                      : undefined
                   }
+                  onPublish={
+                    owner && !ticket.isVisible && !hasEventEnded
+                      ? () => {
+                          if (!publishingTicket) publishTicket(ticket.id);
+                        }
+                      : undefined
+                  }
+                  isPublishing={
+                    publishingTicket && publishingTicketId === ticket.id
+                  }
+                  publishDisabled={publishingTicket}
                   title={ticket.type}
                   price={ticket.price}
                   description={ticket.description}
@@ -2143,16 +2129,24 @@ const EventPage = () => {
             <CustomButton
               onPress={() => handleTransaction(false)}
               disabled={
-                hasEventEnded || selectedTickets.length === 0 || gettingTickets
+                hasEventEnded ||
+                selectedTickets.length === 0 ||
+                gettingTickets ||
+                updatingCheckout ||
+                cancellingCheckout
               }
               title={
                 hasEventEnded
                   ? "Event ended"
-                  : gettingTickets
-                    ? "Initiating..."
-                    : ticketTotal > 0
-                      ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
-                      : "Claim tickets"
+                  : updatingCheckout
+                    ? "Updating checkout..."
+                    : cancellingCheckout
+                      ? "Cancelling checkout..."
+                      : gettingTickets
+                        ? "Initiating..."
+                        : ticketTotal > 0
+                          ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
+                          : "Claim tickets"
               }
               buttonClassName="bg-[#0FF1CF] w-full border-0"
               textClassName="!text-black"
@@ -2269,7 +2263,7 @@ const EventPage = () => {
           ₦{numberWithCommas(donationTarget / 100, false, null)}
         </Text>
         <View style={tw`h-2 bg-gray-700 rounded-full overflow-hidden`}>
-          <View 
+          <View
             style={[
               tw`h-full bg-[#0FF1CF] rounded-full`,
               { width: `${Math.min((data.data.totalDonations || 0) / donationTarget * 100, 100)}%` }
@@ -2615,60 +2609,6 @@ const EventPage = () => {
         <AppToast />
       </Modal>
 
-      <Modal visible={showCreatorSetupModal} transparent animationType="fade">
-        <View style={tw`flex-1 items-center justify-center bg-black/65 px-5`}>
-          <View
-            style={tw`w-full max-w-[420px] rounded-[28px] bg-[#041130] p-5`}
-          >
-            <Text style={tw`text-xl font-bold text-white`}>
-              Finish payout setup
-            </Text>
-            <Text style={tw`mt-3 text-sm leading-6 text-[#B7C5E9]`}>
-              {onboarding?.nextAction === "ADD_SETTLEMENT_ACCOUNT"
-                ? "Your paid event is live. Add the settlement account next so we know where to pay your earnings."
-                : onboarding?.nextAction === "COMPLETE_KYC"
-                  ? "Your event can keep collecting payments, but payouts will stay on hold until identity verification is complete."
-                  : "Your monetized event is ready. The next step is finishing the remaining wallet setup so all payout options are available."}
-            </Text>
-
-            <View style={tw`mt-5 rounded-2xl bg-[#0A173F] p-4`}>
-              <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
-                Why this matters
-              </Text>
-              <Text style={tw`mt-2 text-sm leading-5 text-white`}>
-                Buyers can keep paying now. This step is about unlocking
-                settlement and making sure the payout account belongs to the
-                right creator.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => {
-                setShowCreatorSetupModal(false);
-                router.push("/wallet");
-              }}
-              style={tw`mt-5 rounded-full bg-[#0FF1CF] px-4 py-4`}
-            >
-              <Text
-                style={tw`text-center text-sm font-semibold text-[#01082E]`}
-              >
-                Complete in Wallet
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowCreatorSetupModal(false)}
-              style={tw`mt-3 rounded-full border border-[#2A3E6A] px-4 py-4`}
-            >
-              <Text style={tw`text-center text-sm font-semibold text-white`}>
-                Maybe later
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <AppToast />
-      </Modal>
-
       <Modal visible={showImpactReportModal} transparent animationType="slide">
         <View style={tw`flex-1 justify-end bg-black/65 px-5 py-8`}>
           <View style={tw`max-h-[88%] rounded-[28px] bg-[#041130] p-5`}>
@@ -2855,18 +2795,18 @@ const EventPage = () => {
           console.log("✅ Payment successful, reference:", reference);
           showGlobalSuccess("Confirming your payment…");
           closePaymentSelectionSurfaces();
-          setShowPaystackWebView(false);
+          clearPaymentState();
           router.replace(
             `/transaction/${currentTransactionId}?type=${transactionType}`
           );
         }}
         onCancel={() => {
-          console.log("❌ Payment cancelled");
-          showGlobalWarning("Payment cancelled");
+          void handlePaymentCancel();
         }}
         onError={(error) => {
-          console.error("💥 Payment error:", error);
-          showGlobalError("Payment error occurred");
+          console.error("Payment error:", error);
+          showGlobalError("Check payment status before trying again.");
+          openCheckoutStatus(currentTransactionId, transactionType);
         }}
       />
     </View>

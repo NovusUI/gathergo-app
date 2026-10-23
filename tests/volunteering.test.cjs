@@ -14,6 +14,9 @@ const role = {
   capacity: 2,
   requiresApproval: false,
 };
+const ticket = {
+  id: "00000000-0000-4000-8000-000000000001", type: "Entry", description: "Event admission", paid: false, limited: false, quantity: 1000000, price: 0,
+};
 const event = {
   eventName: "Plant trees",
   description: "Plant trees at the community garden.",
@@ -56,24 +59,17 @@ test("a volunteer-only event needs roles and a physical venue, with no ticket or
   );
 });
 
-test("physical ticketed and registered impact events can recruit volunteers", () => {
-  for (const registrationType of ["ticket", "registration"]) {
-    assert.equal(
-      eventSchema.safeParse({
-        ...event,
-        registrationType,
-        impactDescription: "",
-      }).success,
-      false,
-    );
-    assert.equal(
-      eventSchema.safeParse({
-        ...event,
-        registrationType,
-        impactDescription: "Restore green spaces together.",
-      }).success,
-      true,
-    );
+test("ticket, registration and fundraiser events cannot recruit volunteers even with impact", () => {
+  for (const registrationType of ["ticket", "registration", "donation"]) {
+    const result = eventSchema.safeParse({
+      ...event,
+      registrationType,
+      donationTarget: 500000,
+    });
+    assert.equal(result.success, false);
+    assert.ok(result.error.issues.some(issue => issue.path[0] === "volunteerRoles"));
+    const payload = buildEventParticipationFormFields({ ...event, registrationType }, "create");
+    assert.equal("volunteerRoles" in payload, false);
   }
 });
 
@@ -460,6 +456,10 @@ test("ticket and registration payloads do not enable hidden optional donations",
       ...event,
       registrationType,
       impactTitle: "Plant trees",
+      volunteerRoles: [],
+      registrationFee: 0,
+      registrationAttendees: 100000,
+      tickets: registrationType === "ticket" ? [ticket] : [],
       donationsEnabled: true,
       donationTarget: 500000,
     });
@@ -469,38 +469,23 @@ test("ticket and registration payloads do not enable hidden optional donations",
   }
 });
 
-test("all participation modes require story text before recruiting volunteers", () => {
-  for (const registrationType of [
-    "ticket",
-    "registration",
-    "donation",
-    "volunteer",
-  ]) {
-    for (const impactDescription of ["", "   "]) {
-      const result = eventSchema.safeParse({
-        ...event,
-        registrationType,
-        donationTarget: 500000,
-        impactTitle: "Restore green spaces",
-        impactDescription,
-      });
-      assert.equal(result.success, false);
-      assert.ok(
-        result.error.issues.some(
-          (issue) =>
-            issue.path[0] === "impactDescription" &&
-            /impact story/.test(issue.message),
-        ),
-      );
-    }
-    assert.equal(
-      eventSchema.safeParse({
-        ...event,
-        registrationType,
-        donationTarget: 500000,
-      }).success,
-      true,
-    );
+test("Volunteer and donation requires impact story text, while other event types need no story", () => {
+  for (const impactDescription of ["", "   "]) {
+    const result = eventSchema.safeParse({ ...event, impactDescription });
+    assert.equal(result.success, false);
+    assert.ok(result.error.issues.some(issue => issue.path[0] === "impactDescription"));
+  }
+  for (const registrationType of ["ticket", "registration", "donation"]) {
+    assert.equal(eventSchema.safeParse({
+      ...event,
+      registrationType,
+      impactDescription: "",
+      volunteerRoles: [],
+      registrationFee: 0,
+      registrationAttendees: 100000,
+      tickets: registrationType === "ticket" ? [ticket] : [],
+      donationTarget: 500000,
+    }).success, true);
   }
 });
 
@@ -527,4 +512,13 @@ test("registration completion refreshes owned registrations and event details be
     ),
   );
   assert.equal(refreshed, true);
+});
+
+test("creating an event refreshes the wallet setup reminder before the event page uses its cached status", async () => {
+  invalidated.length = 0;
+  let completed = false;
+  mutationHooks.useCreateEvent({ onSuccess: () => { completed = true; } });
+  await mutationConfig.onSuccess({ status: "success", message: "Created", data: { id: "event-1" } }, {});
+  assert.ok(invalidated.some(key => JSON.stringify(key) === JSON.stringify(queryKeys.QUERY_KEYS.walletOnboarding)));
+  assert.equal(completed, true);
 });

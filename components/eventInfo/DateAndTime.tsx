@@ -405,9 +405,6 @@ const DateAndTime = ({
           <Text style={tw`text-xs uppercase tracking-widest text-[#8FA1CB]`}>
             Date
           </Text>
-          <Text style={tw`mt-1 text-sm leading-5 text-[#B7C5E9]`}>
-            Pick the day people should show up.
-          </Text>
 
           <View style={tw`mt-4`}>
             <Controller
@@ -473,13 +470,10 @@ const DateAndTime = ({
             <Text style={tw`text-xs uppercase tracking-widest text-[#8FA1CB]`}>
               Time
             </Text>
-            <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
-              Choose all-day or set the exact time window.
-            </Text>
 
             <View style={tw`mt-4`}>
               <Text style={tw`mb-3 text-sm font-semibold text-white`}>
-                Is this an all-day event?
+                All-day event?
               </Text>
               <View style={tw`flex-row gap-3`}>
                 <ChoicePill
@@ -501,9 +495,9 @@ const DateAndTime = ({
                   All day
                 </Text>
                 <Text style={tw`mt-1 text-xs leading-5 text-[#B7C5E9]`}>
-                  GatherGo will hold the event window from{" "}
-                  {formatTimeLabel(startTime || getAllDayStartTime(startDate))}{" "}
-                  to {formatTimeLabel(endTime || "23:59")}.
+                  {formatTimeLabel(startTime || getAllDayStartTime(startDate))}
+                  {" – "}
+                  {formatTimeLabel(endTime || "23:59")}
                 </Text>
               </View>
             )}
