@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import UserSearchResult from "@/components/scanner/UserSearchResult";
 import ActivityIndicator from "@/components/ui/AppLoader";
@@ -27,9 +28,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const GrantPermission = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const params = useLocalSearchParams();
   const eventId = params.eventId as string;
@@ -154,7 +155,7 @@ const GrantPermission = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {/* Top Navigation */}
@@ -177,19 +178,19 @@ const GrantPermission = () => {
         keyboardShouldPersistTaps="handled"
       >
         {/* Event Info */}
-        <View style={tw`bg-[#1B2A50] rounded-xl p-4 mb-6`}>
-          <Text style={tw`text-white text-lg font-bold mb-2`}>
+        <View style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4 mb-6`}>
+          <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-2`}>
             {eventName || "Event"}
           </Text>
-          <Text style={tw`text-gray-400 text-sm`}>
+          <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
             Grant scanning permission for this event. Users will be able to:
           </Text>
           <View style={tw`mt-2`}>
-            <Text style={tw`text-gray-400 text-sm`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
               • Scan tickets and registrations
             </Text>
-            <Text style={tw`text-gray-400 text-sm`}>• Mark items as used</Text>
-            <Text style={tw`text-gray-400 text-sm`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-sm`}>• Mark items as used</Text>
+            <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
               • View scan history for this event
             </Text>
           </View>
@@ -198,19 +199,19 @@ const GrantPermission = () => {
         {/* Step 1: Search User */}
         {step === "search" ? (
           <>
-            <Text style={tw`text-white text-lg font-bold mb-4`}>
+            <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-4`}>
               Search User
             </Text>
 
             {/* Search Input */}
             <View
-              style={tw`bg-[#1B2A50] rounded-xl px-4 py-3 flex-row items-center mb-6`}
+              style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl px-4 py-3 flex-row items-center mb-6`}
             >
-              <Search size={20} color="#5669FF" />
+              <Search size={20} color={color("#5669FF", "primary")} />
               <TextInput
-                style={tw`flex-1 text-white ml-3`}
+                style={tw`flex-1 text-foreground dark:text-white ml-3`}
                 placeholder="Search by name, username, or email..."
-                placeholderTextColor="#6B7280"
+                placeholderTextColor={color("#6B7280", "muted")}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
@@ -223,23 +224,23 @@ const GrantPermission = () => {
             {/* Quick Grant by Email */}
             {searchQuery.includes("@") && (
               <TouchableOpacity
-                style={tw`bg-[#0FF1CF] rounded-xl p-4 mb-6 flex-row items-center`}
+                style={tw`bg-accentFill dark:bg-[#0FF1CF] rounded-xl p-4 mb-6 flex-row items-center`}
                 onPress={handleGrantByEmail}
                 disabled={isSubmitting}
               >
-                <Mail size={24} color="#01082E" />
+                <Mail size={24} color={color("#01082E", "onAccent")} />
                 <View style={tw`flex-1 ml-4`}>
-                  <Text style={tw`text-[#01082E] font-bold text-base`}>
+                  <Text style={tw`text-onAccent dark:text-[#01082E] font-bold text-base`}>
                     Grant by Email
                   </Text>
-                  <Text style={tw`text-[#01082E] text-sm mt-1`}>
+                  <Text style={tw`text-onAccent dark:text-[#01082E] text-sm mt-1`}>
                     Send invitation to {searchQuery}
                   </Text>
                 </View>
                 {isSubmitting ? (
-                  <ActivityIndicator color="#01082E" />
+                  <ActivityIndicator color={color("#01082E", "onAccent")} />
                 ) : (
-                  <UserPlus size={24} color="#01082E" />
+                  <UserPlus size={24} color={color("#01082E", "onAccent")} />
                 )}
               </TouchableOpacity>
             )}
@@ -247,19 +248,19 @@ const GrantPermission = () => {
             {/* Search Results */}
             {searchQuery.trim().length >= 2 && (
               <>
-                <Text style={tw`text-white font-semibold mb-3`}>
+                <Text style={tw`text-foreground dark:text-white font-semibold mb-3`}>
                   Search Results
                 </Text>
                 {isLoading.search ? (
                   <View style={tw`items-center py-8`}>
                     <ActivityIndicator tone="accent" size="large" />
-                    <Text style={tw`text-gray-400 mt-3`}>
+                    <Text style={tw`text-muted dark:text-gray-400 mt-3`}>
                       Searching users...
                     </Text>
                   </View>
                 ) : errors.search ? (
                   <View style={tw`items-center py-8`}>
-                    <Text style={tw`text-[#FF5757] mb-2`}>
+                    <Text style={tw`text-danger dark:text-[#FF5757] mb-2`}>
                       Failed to search users
                     </Text>
                     <TouchableOpacity
@@ -271,7 +272,7 @@ const GrantPermission = () => {
                         })
                       }
                     >
-                      <Text style={tw`text-[#5669FF]`}>Try Again</Text>
+                      <Text style={tw`text-primary dark:text-[#5669FF]`}>Try Again</Text>
                     </TouchableOpacity>
                   </View>
                 ) : searchResults.length > 0 ? (
@@ -287,25 +288,25 @@ const GrantPermission = () => {
                     </View>
                     {pagination.hasMoreUsers && (
                       <TouchableOpacity
-                        style={tw`mt-4 py-3 rounded-xl border border-gray-700 items-center`}
+                        style={tw`mt-4 py-3 rounded-xl border border-border dark:border-gray-700 items-center`}
                         onPress={() => fetchMoreUsers()}
                         disabled={pagination.isFetchingMoreUsers}
                       >
                         {pagination.isFetchingMoreUsers ? (
                           <ActivityIndicator tone="accent" />
                         ) : (
-                          <Text style={tw`text-white`}>Load More Users</Text>
+                          <Text style={tw`text-foreground dark:text-white`}>Load More Users</Text>
                         )}
                       </TouchableOpacity>
                     )}
                   </>
                 ) : (
                   <View style={tw`items-center py-8`}>
-                    <User size={48} color="#2A3A6A" />
-                    <Text style={tw`text-gray-400 text-lg font-semibold mt-4`}>
+                    <User size={48} color={color("#2A3A6A", "subtle")} />
+                    <Text style={tw`text-muted dark:text-gray-400 text-lg font-semibold mt-4`}>
                       No Users Found
                     </Text>
-                    <Text style={tw`text-gray-500 text-center mt-2 px-10`}>
+                    <Text style={tw`text-muted dark:text-gray-500 text-center mt-2 px-10`}>
                       Try searching with a different name or email address
                     </Text>
                   </View>
@@ -314,11 +315,11 @@ const GrantPermission = () => {
             )}
 
             {/* Instructions */}
-            <View style={tw`mt-6 bg-[#1B2A50] rounded-xl p-4`}>
-              <Text style={tw`text-white font-semibold mb-2`}>
+            <View style={tw`mt-6 bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4`}>
+              <Text style={tw`text-foreground dark:text-white font-semibold mb-2`}>
                 How to grant permissions:
               </Text>
-              <Text style={tw`text-gray-400 text-sm`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
                 1. Search for users by name, username, or email{"\n"}
                 2. Select a user from the search results{"\n"}
                 3. Set optional expiration date{"\n"}
@@ -329,12 +330,12 @@ const GrantPermission = () => {
         ) : (
           /* Step 2: User Details */
           <>
-            <Text style={tw`text-white text-lg font-bold mb-4`}>
+            <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-4`}>
               Confirm Permission
             </Text>
 
             {/* Selected User Info */}
-            <View style={tw`bg-[#1B2A50] rounded-xl p-4 mb-6`}>
+            <View style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4 mb-6`}>
               <View style={tw`flex-row items-center mb-3`}>
                 {selectedUser.profilePicUrl ? (
                   //   <Image
@@ -348,9 +349,9 @@ const GrantPermission = () => {
                   />
                 ) : (
                   <View
-                    style={tw`w-12 h-12 rounded-full bg-[#5669FF] items-center justify-center`}
+                    style={tw`w-12 h-12 rounded-full bg-primary dark:bg-[#5669FF] items-center justify-center`}
                   >
-                    <Text style={tw`text-white text-lg font-bold`}>
+                    <Text style={tw`text-onPrimary dark:text-white text-lg font-bold`}>
                       {selectedUser.fullName?.[0] ||
                         selectedUser.email?.[0] ||
                         "U"}
@@ -358,34 +359,34 @@ const GrantPermission = () => {
                   </View>
                 )}
                 <View style={tw`ml-3 flex-1`}>
-                  <Text style={tw`text-white font-semibold`}>
+                  <Text style={tw`text-foreground dark:text-white font-semibold`}>
                     {selectedUser.fullName || selectedUser.username || "User"}
                   </Text>
-                  <Text style={tw`text-gray-400 text-sm`}>
+                  <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
                     {selectedUser.email}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => setStep("search")}>
-                  <X size={20} color="#6B7280" />
+                  <X size={20} color={color("#6B7280", "muted")} />
                 </TouchableOpacity>
               </View>
-              <Text style={tw`text-gray-400 text-sm`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
                 This user will receive scanning permissions for:{"\n"}
-                <Text style={tw`text-white font-semibold`}>{eventName}</Text>
+                <Text style={tw`text-foreground dark:text-white font-semibold`}>{eventName}</Text>
               </Text>
             </View>
 
             {/* Expiration Date */}
-            <Text style={tw`text-white font-semibold mb-3`}>
+            <Text style={tw`text-foreground dark:text-white font-semibold mb-3`}>
               Expiration Date (Optional)
             </Text>
             <TouchableOpacity
-              style={tw`bg-[#1B2A50] rounded-xl p-4 mb-6 flex-row items-center justify-between`}
+              style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4 mb-6 flex-row items-center justify-between`}
               onPress={() => setShowDatePicker(true)}
             >
               <View style={tw`flex-row items-center`}>
-                <Calendar size={20} color="#5669FF" />
-                <Text style={tw`text-white ml-3`}>
+                <Calendar size={20} color={color("#5669FF", "primary")} />
+                <Text style={tw`text-foreground dark:text-white ml-3`}>
                   {expirationDate
                     ? formatDate(expirationDate)
                     : "No expiration date"}
@@ -393,7 +394,7 @@ const GrantPermission = () => {
               </View>
               {expirationDate && (
                 <TouchableOpacity onPress={() => setExpirationDate(null)}>
-                  <X size={20} color="#FF5757" />
+                  <X size={20} color={color("#FF5757", "danger")} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
@@ -412,32 +413,32 @@ const GrantPermission = () => {
             <View
               style={tw`bg-gradient-to-r from-[#5669FF] to-[#9D4EDD] rounded-xl p-4 mb-6`}
             >
-              <Text style={tw`text-white font-bold text-lg mb-2`}>
+              <Text style={tw`text-foreground dark:text-white font-bold text-lg mb-2`}>
                 Permission Summary
               </Text>
               <View style={tw`gap-2`}>
                 <View style={tw`flex-row items-center`}>
-                  <Check size={16} color="#0FF1CF" />
-                  <Text style={tw`text-white text-sm ml-2`}>
+                  <Check size={16} color={color("#0FF1CF", "accent")} />
+                  <Text style={tw`text-foreground dark:text-white text-sm ml-2`}>
                     Can scan tickets and registrations
                   </Text>
                 </View>
                 <View style={tw`flex-row items-center`}>
-                  <Check size={16} color="#0FF1CF" />
-                  <Text style={tw`text-white text-sm ml-2`}>
+                  <Check size={16} color={color("#0FF1CF", "accent")} />
+                  <Text style={tw`text-foreground dark:text-white text-sm ml-2`}>
                     Can mark items as used
                   </Text>
                 </View>
                 <View style={tw`flex-row items-center`}>
-                  <Check size={16} color="#0FF1CF" />
-                  <Text style={tw`text-white text-sm ml-2`}>
+                  <Check size={16} color={color("#0FF1CF", "accent")} />
+                  <Text style={tw`text-foreground dark:text-white text-sm ml-2`}>
                     Can view scan history for this event
                   </Text>
                 </View>
                 {expirationDate && (
                   <View style={tw`flex-row items-center`}>
-                    <Calendar size={16} color="#FF932E" />
-                    <Text style={tw`text-white text-sm ml-2`}>
+                    <Calendar size={16} color={color("#FF932E", "danger")} />
+                    <Text style={tw`text-foreground dark:text-white text-sm ml-2`}>
                       Expires on {formatDate(expirationDate)}
                     </Text>
                   </View>
@@ -448,27 +449,27 @@ const GrantPermission = () => {
             {/* Action Buttons */}
             <View style={tw`gap-3`}>
               <TouchableOpacity
-                style={tw`bg-[#0FF1CF] py-4 rounded-xl items-center`}
+                style={tw`bg-accentFill dark:bg-[#0FF1CF] py-4 rounded-xl items-center`}
                 onPress={handleGrantPermission}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="#01082E" />
+                  <ActivityIndicator color={color("#01082E", "onAccent")} />
                 ) : (
                   <>
-                    <UserPlus size={24} color="#01082E" />
-                    <Text style={tw`text-[#01082E] font-bold text-lg mt-2`}>
+                    <UserPlus size={24} color={color("#01082E", "onAccent")} />
+                    <Text style={tw`text-onAccent dark:text-[#01082E] font-bold text-lg mt-2`}>
                       Grant Permission
                     </Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={tw`py-4 rounded-xl items-center border border-gray-700`}
+                style={tw`py-4 rounded-xl items-center border border-border dark:border-gray-700`}
                 onPress={() => setStep("search")}
                 disabled={isSubmitting}
               >
-                <Text style={tw`text-white font-medium`}>Back to Search</Text>
+                <Text style={tw`text-foreground dark:text-white font-medium`}>Back to Search</Text>
               </TouchableOpacity>
             </View>
           </>

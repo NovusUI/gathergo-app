@@ -1,9 +1,11 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuth } from "@/context/AuthContext";
 import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import { useAuthStore } from "@/store/auth";
 import { Redirect, Stack, useSegments } from "expo-router";
 
 export default function AppLayout() {
+  const { color } = useAppTheme();
   const { user, loading } = useAuth();
   const { isAuthenticated, hasHydrated } = useAuthStore();
   const segments = useSegments();
@@ -34,7 +36,7 @@ export default function AppLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#01082E" },
+        contentStyle: { backgroundColor: color("#01082E", "background") },
         animation: "fade",
       }}
     />

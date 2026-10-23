@@ -1,7 +1,8 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { GogoLoadingArtwork } from "@/components/gogo/mascot/GogoLoadingArtwork";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
-import tw from "twrnc";
 
 interface ImpactPageLoaderProps {
   title?: string;
@@ -16,6 +17,8 @@ export default function ImpactPageLoader({
   compact = false,
   style,
 }: ImpactPageLoaderProps) {
+  const { tw, color } = useAppTheme();
+  const styles = createStyles(color);
   const reducedMotion = useReducedMotionPreference();
   return (
     <View
@@ -32,11 +35,11 @@ export default function ImpactPageLoader({
         width={compact ? 144 : 180}
         animated={!reducedMotion}
       />
-      <Text style={tw`mt-5 text-center text-xl font-bold text-white`}>
+      <Text style={tw`mt-5 text-center text-xl font-bold text-foreground dark:text-white`}>
         {title}
       </Text>
       <Text
-        style={tw`mt-2 max-w-[280px] text-center text-sm leading-6 text-[#AFC0E7]`}
+        style={tw`mt-2 max-w-[280px] text-center text-sm leading-6 text-secondary dark:text-[#AFC0E7]`}
       >
         {message}
       </Text>
@@ -44,11 +47,11 @@ export default function ImpactPageLoader({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#01082E",
+    backgroundColor: color("#01082E", "background"),
     paddingHorizontal: 28,
   },
   fullContainer: {

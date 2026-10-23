@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import EventsOverview from "@/components/EventsOverview";
 import Shortcut from "@/components/Shortcut";
@@ -11,7 +12,6 @@ import { safeGoBack } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
 import { useEffect } from "react";
 import { ScrollView, Text, View } from "react-native";
-import tw from "twrnc";
 
 const shortcuts = [
   { id: "wallet", title: "Wallet", link: "wallet", iconColor: "#FF932E" },
@@ -42,6 +42,7 @@ const shortcuts = [
 ];
 
 const Dashboard = () => {
+  const { tw } = useAppTheme();
   const router = useLockedRouter();
 
   const { isLoading, data, error } = useDashboardData();
@@ -55,7 +56,7 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
+      <View style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E]`}>
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Dashboard"
@@ -71,7 +72,7 @@ const Dashboard = () => {
   }
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
       {/* Top Navigation */}
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
@@ -105,9 +106,9 @@ const Dashboard = () => {
 
       {/* Quick Access - Always visible at bottom */}
       <View
-        style={tw`absolute bottom-0 left-0 right-0 bg-[#01082E] pt-3 pb-5 px-5 border-t border-gray-800`}
+        style={tw`absolute bottom-0 left-0 right-0 bg-background dark:bg-[#01082E] pt-3 pb-5 px-5 border-t border-border dark:border-gray-800`}
       >
-        <Text style={tw`text-white text-lg font-bold mb-3`}>Quick Access</Text>
+        <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-3`}>Quick Access</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { forwardRef, useState } from "react";
 import { Text, View } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
-import tw from "twrnc";
 
 type IconType = React.ComponentType<{
   size?: number;
@@ -33,6 +33,7 @@ const Dropdown = forwardRef<View, DropdownProps>(
     },
     ref
   ) => {
+  const { tw, color } = useAppTheme();
     const [open, setOpen] = useState(false);
     const [value, setValue] = useState(selectedValue);
     const [items, setItems] = useState(options);
@@ -71,11 +72,11 @@ const Dropdown = forwardRef<View, DropdownProps>(
               flex: 1,
             }}
             textStyle={{
-              color: "#fff",
+              color: color("#fff", "foreground"),
               fontSize: 16,
             }}
             placeholderStyle={{
-              color: "#9CA3AF",
+              color: color("#9CA3AF", "muted"),
             }}
             dropDownContainerStyle={{
               backgroundColor: "rgba(27,42,80,0.9)",
@@ -83,16 +84,16 @@ const Dropdown = forwardRef<View, DropdownProps>(
               borderWidth: 0,
             }}
             listItemLabelStyle={{
-              color: "#fff",
+              color: color("#fff", "foreground"),
             }}
             arrowIconStyle={{
-              tintColor: "#fff",
+              tintColor: color("#fff", "foreground"),
             }}
           />
         </View>
 
         {Boolean(error) && (
-          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+          <Text style={tw`text-danger dark:text-red-500 text-xs mt-1`}>{error}</Text>
         )}
       </View>
     );

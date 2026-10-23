@@ -1,5 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 export const EventDetails = ({
   title,
@@ -8,10 +8,11 @@ export const EventDetails = ({
   title: string;
   subtitle: string;
 }) => {
+  const { tw } = useAppTheme();
   return (
     <View style={tw`gap-2`}>
-      <Text style={tw`capitalize text-[#8E8E8E] text-sm`}>{title}</Text>
-      <Text style={tw`text-white`}>{subtitle}</Text>
+      <Text style={tw`capitalize text-muted dark:text-[#8E8E8E] text-sm`}>{title}</Text>
+      <Text style={tw`text-foreground dark:text-white`}>{subtitle}</Text>
     </View>
   );
 };

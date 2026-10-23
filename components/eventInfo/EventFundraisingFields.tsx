@@ -1,10 +1,10 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomSwitcher from "@/components/CustomSwitcher";
 import Input from "@/components/inputs/CustomInput1";
 import type { EventData } from "@/types/auth";
 import type { EventFormData } from "@/schemas/event";
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 export default function EventFundraisingFields({
   control,
@@ -13,6 +13,7 @@ export default function EventFundraisingFields({
 }: Pick<UseFormReturn<EventFormData>, "control" | "setValue"> & {
   savedTarget?: EventData["donationTarget"];
 }) {
+  const { tw } = useAppTheme();
   const [registrationType, enabled] = useWatch({
     control,
     name: ["registrationType", "donationsEnabled"],
@@ -22,7 +23,7 @@ export default function EventFundraisingFields({
     <View style={tw`gap-3 px-5 py-5`}>
       <View style={tw`flex-row items-center gap-3`}>
         <View style={tw`flex-1`}>
-          <Text style={tw`text-lg font-semibold text-white`}>
+          <Text style={tw`text-lg font-semibold text-foreground dark:text-white`}>
             Optional donations
           </Text>
         </View>
@@ -60,7 +61,7 @@ export default function EventFundraisingFields({
               {field.value === undefined &&
               savedTarget !== undefined &&
               savedTarget !== null ? (
-                <Text style={tw`text-xs leading-5 text-[#A8BAE4]`}>
+                <Text style={tw`text-xs leading-5 text-secondary dark:text-[#A8BAE4]`}>
                   Leaving this blank keeps the saved goal. Turn donations off to
                   remove it.
                 </Text>

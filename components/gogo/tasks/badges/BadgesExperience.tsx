@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import AppRefreshControl, {
   RefreshIndicator,
@@ -14,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import BadgeCard from "./BadgeCard";
 import BadgeDetails from "./BadgeDetails";
 
@@ -27,6 +28,7 @@ export default function BadgesExperience({
   ListHeaderComponent,
   renderSectionHeader,
 }: Props = {}) {
+  const { tw } = useAppTheme();
   const query = useMyBadges();
   const [selectedCode, setSelectedCode] = useState<BadgeCode | null>(null);
   const collection = query.isSuccess ? query.data.data : null;
@@ -42,11 +44,11 @@ export default function BadgesExperience({
       <View style={tw`flex-row items-baseline justify-between gap-3`}>
         <Text
           accessibilityRole="header"
-          style={tw`text-lg font-bold text-white`}
+          style={tw`text-lg font-bold text-foreground dark:text-white`}
         >
           Gather
         </Text>
-        <Text style={tw`text-sm text-[#0FF1CF]`}>
+        <Text style={tw`text-sm text-accent dark:text-[#0FF1CF]`}>
           {collection.earnedCount} / {collection.totalCount} earned
         </Text>
       </View>
@@ -103,9 +105,9 @@ export default function BadgesExperience({
               <TouchableOpacity
                 accessibilityRole="button"
                 onPress={() => void query.refetch()}
-                style={tw`min-h-11 items-center justify-center rounded-2xl bg-[#123557]`}
+                style={tw`min-h-11 items-center justify-center rounded-2xl bg-surface dark:bg-[#123557]`}
               >
-                <Text style={tw`font-semibold text-[#0FF1CF]`}>Try again</Text>
+                <Text style={tw`font-semibold text-accent dark:text-[#0FF1CF]`}>Try again</Text>
               </TouchableOpacity>
             </View>
           ) : null

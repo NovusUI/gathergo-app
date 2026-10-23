@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import VolunteerRoleFields, { emptyVolunteerRole } from "./VolunteerRoleFields";
 import { volunteerRoleSchema } from "@/schemas/volunteer";
@@ -5,7 +6,6 @@ import type { VolunteerRoleInput } from "@/types/volunteer";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 export default function VolunteerRoleForm({
   initialValue,
@@ -18,6 +18,7 @@ export default function VolunteerRoleForm({
   onCancel: () => void;
   pending: boolean;
 }) {
+  const { tw } = useAppTheme();
   const {
     watch,
     setValue,
@@ -56,7 +57,7 @@ export default function VolunteerRoleForm({
         title={pending || isSubmitting ? "Saving…" : "Save role"}
         disabled={pending || isSubmitting}
         onPress={handleSubmit(onSave)}
-        buttonClassName="bg-[#0FF1CF] w-full"
+        buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full"
       />
       <TouchableOpacity
         accessibilityRole="button"
@@ -64,7 +65,7 @@ export default function VolunteerRoleForm({
         onPress={onCancel}
         style={tw`p-2`}
       >
-        <Text style={tw`text-center text-[#A8BAE4]`}>Cancel</Text>
+        <Text style={tw`text-center text-secondary dark:text-[#A8BAE4]`}>Cancel</Text>
       </TouchableOpacity>
     </View>
   );

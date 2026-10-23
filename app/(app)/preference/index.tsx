@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { GogoInterestSetup } from "@/components/gogo/tasks/interestMap/GogoInterestSetup";
 import { InterestMap } from "@/components/gogo/tasks/interestMap/InterestMap";
@@ -18,9 +19,9 @@ import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 export default function PreferencesScreen() {
+  const { tw } = useAppTheme();
   const { user, setUser } = useAuth();
   const router = useLockedRouter();
   const firstTime = !user?.hasPreferences;
@@ -83,21 +84,21 @@ export default function PreferencesScreen() {
       }
       style={tw`min-h-11 items-center justify-center p-4`}
     >
-      <Text style={tw`text-[#AFC0F4]`}>
+      <Text style={tw`text-secondary dark:text-[#AFC0F4]`}>
         {save.isPending ? "Saving…" : "Skip setup"}
       </Text>
     </TouchableOpacity>
   ) : null;
   if (catalog.isPending || profile.isPending)
     return (
-      <View style={tw`flex-1 bg-[#01082E] pt-12`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E] pt-12`}>
         <ImpactPageLoader title="Finding what fits you" />
         {skipSetup}
       </View>
     );
   if (catalog.isError || profile.isError)
     return (
-      <View style={tw`flex-1 bg-[#01082E] px-5 justify-center gap-5`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E] px-5 justify-center gap-5`}>
         <MascotMoment
           variant="error"
           layout="stacked"
@@ -112,13 +113,13 @@ export default function PreferencesScreen() {
             void catalog.refetch();
             void profile.refetch();
           }}
-          buttonClassName="bg-[#0FF1CF] w-full"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full"
         />
         {skipSetup}
       </View>
     );
   return (
-    <View style={tw`flex-1 bg-[#01082E] pt-12`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E] pt-12`}>
       {editing ? (
         <GogoInterestSetup
           catalog={catalog.data.data}
@@ -141,12 +142,12 @@ export default function PreferencesScreen() {
               topics={profile.data.data.weights}
               weights={profile.data.data.weights}
             />
-            <Text style={tw`text-center text-xl font-semibold text-white`}>
+            <Text style={tw`text-center text-xl font-semibold text-foreground dark:text-white`}>
               {profile.data.data.weights.length
                 ? "A little more you."
                 : "A fresh start."}
             </Text>
-            <Text style={tw`text-center text-sm text-[#AFC0F4]`}>
+            <Text style={tw`text-center text-sm text-secondary dark:text-[#AFC0F4]`}>
               {profile.data.data.weights.length
                 ? "Bigger rings show stronger interests."
                 : "Explore freely, or give Gogo a few interests to start with."}
@@ -154,10 +155,10 @@ export default function PreferencesScreen() {
             {profile.data.data.weights.map((weight) => (
               <View
                 key={weight.id}
-                style={tw`flex-row justify-between items-center rounded-2xl bg-[#101C45] p-4`}
+                style={tw`flex-row justify-between items-center rounded-2xl bg-surface dark:bg-[#101C45] p-4`}
               >
-                <Text style={tw`text-white font-semibold`}>{weight.label}</Text>
-                <Text style={tw`text-xs text-[#AFC0F4]`}>
+                <Text style={tw`text-foreground dark:text-white font-semibold`}>{weight.label}</Text>
+                <Text style={tw`text-xs text-secondary dark:text-[#AFC0F4]`}>
                   {weight.source === "chosen"
                     ? "You chose this"
                     : weight.source === "both"
@@ -171,15 +172,15 @@ export default function PreferencesScreen() {
               showArrow={false}
               onPress={() => setEditing(true)}
               disabled={pending}
-              buttonClassName="w-full bg-[#0FF1CF] border-0"
-              textClassName="!text-[#01082E]"
+              buttonClassName="w-full bg-accentFill dark:bg-[#0FF1CF] border-0"
+              textClassName="!text-onAccent dark:text-[#01082E]"
             />
-            <View style={tw`rounded-2xl bg-[#101C45] p-4 gap-3`}>
-              <Text style={tw`text-white font-semibold`}>
+            <View style={tw`rounded-2xl bg-surface dark:bg-[#101C45] p-4 gap-3`}>
+              <Text style={tw`text-foreground dark:text-white font-semibold`}>
                 Learn from event activity
               </Text>
               <View style={tw`flex-row items-center justify-between gap-4`}>
-                <Text style={tw`text-sm text-[#AFC0F4] flex-1`}>
+                <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4] flex-1`}>
                   Use views and participation to tune your feed.
                 </Text>
                 <CustomSwitcher
@@ -203,18 +204,18 @@ export default function PreferencesScreen() {
               onPress={() => reset.mutate()}
               style={tw`p-4 items-center`}
             >
-              <Text style={tw`text-[#AFC0F4]`}>
+              <Text style={tw`text-secondary dark:text-[#AFC0F4]`}>
                 {reset.isPending ? "Resetting…" : "Reset learned interests"}
               </Text>
             </TouchableOpacity>
             {confirmDelete ? (
               <View
-                style={tw`rounded-2xl border border-[#6B2A50] bg-[#241535] p-4 gap-3`}
+                style={tw`rounded-2xl border border-[#6B2A50] bg-surface dark:bg-[#241535] p-4 gap-3`}
               >
-                <Text style={tw`text-white font-semibold`}>
+                <Text style={tw`text-foreground dark:text-white font-semibold`}>
                   Delete your map?
                 </Text>
-                <Text style={tw`text-sm text-[#AFC0F4]`}>
+                <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>
                   This clears your choices and learned interests, and turns off
                   activity learning.
                 </Text>
@@ -225,7 +226,7 @@ export default function PreferencesScreen() {
                     onPress={() => setConfirmDelete(false)}
                     style={tw`p-3`}
                   >
-                    <Text style={tw`text-white`}>Cancel</Text>
+                    <Text style={tw`text-foreground dark:text-white`}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     accessibilityRole="button"
@@ -233,7 +234,7 @@ export default function PreferencesScreen() {
                     onPress={() => remove.mutate()}
                     style={tw`p-3`}
                   >
-                    <Text style={tw`text-[#FF8A8A]`}>
+                    <Text style={tw`text-danger dark:text-[#FF8A8A]`}>
                       {remove.isPending ? "Deleting…" : "Delete map"}
                     </Text>
                   </TouchableOpacity>
@@ -246,7 +247,7 @@ export default function PreferencesScreen() {
                 onPress={() => setConfirmDelete(true)}
                 style={tw`p-4 items-center`}
               >
-                <Text style={tw`text-[#FF8A8A]`}>Delete my map</Text>
+                <Text style={tw`text-danger dark:text-[#FF8A8A]`}>Delete my map</Text>
               </TouchableOpacity>
             )}
           </ScrollView>

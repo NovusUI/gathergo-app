@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Eye, EyeOff } from "lucide-react-native";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import {
@@ -16,7 +17,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 type IconType = ComponentType<{
   size?: number;
@@ -73,6 +73,7 @@ const Input = forwardRef<TextInput, InputProps>(
     },
     ref
   ) => {
+  const { tw, color } = useAppTheme();
     const inputRef = useRef<TextInput | null>(null);
     const [isSecure, setIsSecure] = useState(secureTextEntry);
     const InputComponent = insideBottomSheet ? BottomSheetTextInput : TextInput;
@@ -110,7 +111,7 @@ const Input = forwardRef<TextInput, InputProps>(
     return (
       <Pressable
         onPress={() => inputRef.current?.focus()}
-        style={tw.style("w-full max-w-[500px] bg-[#1B2A50]/40 p-2 rounded-xl")}
+        style={tw.style("w-full max-w-[500px] bg-surface/40 dark:bg-[#1B2A50]/40 p-2 rounded-xl")}
       >
         <View style={tw`flex-row items-center px-5`}>
           {LeftIcon && (
@@ -124,14 +125,14 @@ const Input = forwardRef<TextInput, InputProps>(
             {...restProps}
             ref={setRefs}
             style={tw.style(
-              "flex-1 py-3 text-white",
+              "flex-1 py-3 text-foreground dark:text-white",
               {
                 outlineStyle: "none",
               },
               inputStyle
             )}
             placeholder={placeholder}
-            placeholderTextColor={placeholderTextColor ?? "#9CA3AF"}
+            placeholderTextColor={placeholderTextColor ?? color("#9CA3AF", "muted")}
             value={resolvedValue}
             onChangeText={handleChangeText}
             secureTextEntry={isSecure}
@@ -157,7 +158,7 @@ const Input = forwardRef<TextInput, InputProps>(
         </View>
 
         {Boolean(error) && (
-          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+          <Text style={tw`text-danger dark:text-red-500 text-xs mt-1`}>{error}</Text>
         )}
       </Pressable>
     );

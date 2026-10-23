@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Calendar, Clock, Mail, Power, Shield } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface PermissionCardProps {
   permission: {
@@ -26,6 +26,7 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
   onToggleActive,
   isEventOwner,
 }) => {
+  const { tw, color } = useAppTheme();
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No expiration";
     const date = new Date(dateString);
@@ -64,7 +65,7 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
   };
 
   return (
-    <View style={tw`bg-[#1B2A50] rounded-xl p-4`}>
+    <View style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4`}>
       {/* Header */}
       <View style={tw`flex-row justify-between items-start mb-3`}>
         <View style={tw`flex-row items-center`}>
@@ -86,11 +87,11 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
               <TouchableOpacity onPress={onToggleActive}>
                 <Power
                   size={18}
-                  color={permission.isActive ? "#0FF1CF" : "#6B7280"}
+                  color={permission.isActive ? color("#0FF1CF", "accent") : color("#6B7280", "muted")}
                 />
               </TouchableOpacity>
               <TouchableOpacity onPress={onRevoke}>
-                <Shield size={18} color="#FF932E" />
+                <Shield size={18} color={color("#FF932E", "danger")} />
               </TouchableOpacity>
             </>
           )}
@@ -100,19 +101,19 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
       {/* User Info */}
       <View style={tw`flex-row items-center mb-3`}>
         <View
-          style={tw`w-10 h-10 rounded-full bg-[#5669FF] items-center justify-center`}
+          style={tw`w-10 h-10 rounded-full bg-primary dark:bg-[#5669FF] items-center justify-center`}
         >
-          <Text style={tw`text-white font-bold`}>
+          <Text style={tw`text-onPrimary dark:text-white font-bold`}>
             {permission.scannerName?.[0] || permission.scannerEmail?.[0] || "U"}
           </Text>
         </View>
         <View style={tw`ml-3 flex-1`}>
-          <Text style={tw`text-white font-semibold`}>
+          <Text style={tw`text-onPrimary dark:text-white font-semibold`}>
             {permission.scannerName || "User"}
           </Text>
           <View style={tw`flex-row items-center mt-1`}>
-            <Mail size={12} color="#6B7280" />
-            <Text style={tw`text-gray-400 text-xs ml-1`}>
+            <Mail size={12} color={color("#6B7280", "muted")} />
+            <Text style={tw`text-muted dark:text-gray-400 text-xs ml-1`}>
               {permission.scannerEmail}
             </Text>
           </View>
@@ -121,23 +122,23 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
 
       {/* Event Info */}
       <View style={tw`mb-3`}>
-        <Text style={tw`text-white text-sm font-medium mb-1`}>Event</Text>
-        <Text style={tw`text-gray-400 text-sm`}>{permission.eventName}</Text>
+        <Text style={tw`text-foreground dark:text-white text-sm font-medium mb-1`}>Event</Text>
+        <Text style={tw`text-muted dark:text-gray-400 text-sm`}>{permission.eventName}</Text>
       </View>
 
       {/* Expiration Info */}
       <View style={tw`flex-row justify-between items-center`}>
         <View style={tw`flex-row items-center`}>
-          <Calendar size={14} color="#5669FF" />
-          <Text style={tw`text-gray-400 text-xs ml-2`}>
+          <Calendar size={14} color={color("#5669FF", "primary")} />
+          <Text style={tw`text-muted dark:text-gray-400 text-xs ml-2`}>
             {permission.expiresAt
               ? `Expires: ${formatDate(permission.expiresAt)}`
               : "No expiration"}
           </Text>
         </View>
         <View style={tw`flex-row items-center`}>
-          <Clock size={14} color="#5669FF" />
-          <Text style={tw`text-gray-400 text-xs ml-2`}>
+          <Clock size={14} color={color("#5669FF", "primary")} />
+          <Text style={tw`text-muted dark:text-gray-400 text-xs ml-2`}>
             {new Date(permission.createdAt).toLocaleDateString()}
           </Text>
         </View>

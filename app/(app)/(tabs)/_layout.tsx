@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 // app/_layout.tsx
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { pushWithLock, replaceWithLock } from "@/utils/navigation";
@@ -10,7 +11,6 @@ import BottomSheet, {
 import { Stack, usePathname, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, type ReactNode } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type TabItem = {
   name: string;
@@ -19,6 +19,7 @@ type TabItem = {
 };
 
 export default function RootLayout() {
+  const { tw, color } = useAppTheme();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -73,22 +74,22 @@ export default function RootLayout() {
   ];
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#01082E" },
+          contentStyle: { backgroundColor: color("#01082E", "background") },
           animation: "fade",
         }}
       />
 
       {/* Bottom Nav */}
       <View
-        style={tw`absolute bottom-0 left-0 right-0 flex-row justify-around bg-[#01082E] py-4 border-t border-gray-800`}
+        style={tw`absolute bottom-0 left-0 right-0 flex-row justify-around bg-background dark:bg-[#01082E] py-4 border-t border-border dark:border-gray-800`}
       >
         {tabs.map((tab) => {
           const isActive = pathname === tab.href;
-          const color = isActive ? "#0FF1CF" : "white";
+          const iconColor = isActive ? color("#0FF1CF", "accent") : color("white", "foreground");
 
           if (!tab.href) {
             return (
@@ -97,8 +98,8 @@ export default function RootLayout() {
                 style={tw`items-center`}
                 onPress={guardedOpenSheet}
               >
-                {tab.icon(color)}
-                <Text style={tw`text-xs text-white`}>{tab.name}</Text>
+                {tab.icon(iconColor)}
+                <Text style={tw`text-xs text-foreground dark:text-white`}>{tab.name}</Text>
               </TouchableOpacity>
             );
           }
@@ -109,10 +110,10 @@ export default function RootLayout() {
               style={tw`items-center`}
               onPress={() => replaceWithLock(router, tab.href)}
             >
-              {tab.icon(color)}
+              {tab.icon(iconColor)}
               <Text
                 style={tw`${
-                  isActive ? "text-[#0FF1CF]" : "text-white"
+                  isActive ? "text-accent dark:text-[#0FF1CF]" : "text-foreground dark:text-white"
                 } text-xs`}
               >
                 {tab.name}
@@ -135,63 +136,63 @@ export default function RootLayout() {
             appearsOnIndex={1}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <BottomSheetScrollView style={tw`px-5`}>
           <View style={tw`p-5 gap-4`}>
             <TouchableOpacity
-              style={tw`rounded-3xl bg-[#101C45] p-5`}
+              style={tw`rounded-3xl bg-surface dark:bg-[#101C45] p-5`}
               onPress={guardedCreateEvent}
             >
               <View style={tw`flex-row items-center justify-between`}>
                 <View style={tw`flex-row items-center gap-3`}>
                   <View
-                    style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}
+                    style={tw`h-12 w-12 items-center justify-center rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15`}
                   >
                     <Ionicons
                       name="calendar-outline"
                       size={22}
-                      color="#0FF1CF"
+                      color={color("#0FF1CF", "accent")}
                     />
                   </View>
                   <View>
-                    <Text style={tw`text-base font-semibold text-white`}>
+                    <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                       New Event
                     </Text>
-                    <Text style={tw`mt-1 text-sm text-[#98ABD6]`}>
+                    <Text style={tw`mt-1 text-sm text-secondary dark:text-[#98ABD6]`}>
                       Create with Gogo
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="white" />
+                <Ionicons name="chevron-forward" size={20} color={color("white", "foreground")} />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={tw`rounded-3xl bg-[#0FF1CF] p-5`}
+              style={tw`rounded-3xl bg-accentFill dark:bg-[#0FF1CF] p-5`}
               onPress={guardedCreateCarpool}
             >
               <View style={tw`flex-row items-center justify-between`}>
                 <View style={tw`flex-row items-center gap-3`}>
                   <View
-                    style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#03122F]`}
+                    style={tw`h-12 w-12 items-center justify-center rounded-full bg-background dark:bg-[#03122F]`}
                   >
                     <Ionicons
                       name="car-sport-outline"
                       size={22}
-                      color="#0FF1CF"
+                      color={color("#0FF1CF", "accent")}
                     />
                   </View>
                   <View>
-                    <Text style={tw`text-base font-semibold text-[#01082E]`}>
+                    <Text style={tw`text-base font-semibold text-onAccent dark:text-[#01082E]`}>
                       New Carpool
                     </Text>
-                    <Text style={tw`mt-1 text-sm text-[#194949]`}>
+                    <Text style={tw`mt-1 text-sm text-onAccent dark:text-[#194949]`}>
                       Create a shared ride
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#01082E" />
+                <Ionicons name="chevron-forward" size={20} color={color("#01082E", "onAccent")} />
               </View>
             </TouchableOpacity>
           </View>

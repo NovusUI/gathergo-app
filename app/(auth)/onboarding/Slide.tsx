@@ -1,3 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import type { ThemeColor } from "@/constants/theme";
 import { GogoOnboardingCarpoolArtwork } from "@/components/gogo/mascot/GogoOnboardingCarpoolArtwork";
 import GgCircleArtwork from "@/components/ui/GgCircleArtwork";
 import LocalSvgAsset, {
@@ -28,6 +30,8 @@ export default function OnboardingSlide({
   title,
   active,
 }: OnboardingSlideProps) {
+  const { color } = useAppTheme();
+  const styles = createStyles(color);
   const { height } = useWindowDimensions();
   const reducedMotion = useReducedMotionPreference();
   const reveal = useRef(new Animated.Value(0)).current;
@@ -99,7 +103,7 @@ export default function OnboardingSlide({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   content: {
     flexGrow: 1,
     alignItems: "center",
@@ -117,7 +121,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    color: "#FFFFFF",
+    color: color("#FFFFFF", "foreground"),
     fontSize: 30,
     lineHeight: 38,
     fontWeight: "800",

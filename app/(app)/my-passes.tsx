@@ -1,3 +1,5 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import AppRefreshControl, {
   RefreshIndicator,
 } from "@/components/ui/AppRefreshControl";
@@ -23,7 +25,6 @@ import {
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import tw from "twrnc";
 
 type PassKind = "ticket" | "registration";
 
@@ -144,12 +145,12 @@ const sortPasses = (items: UnifiedPass[]) =>
     );
   });
 
-const getStatusMeta = (pass: UnifiedPass) => {
+const getStatusMeta = (pass: UnifiedPass, color: ThemeColor) => {
   if (pass.isUsed) {
     return {
       label: pass.kind === "registration" ? "Checked in" : "Used",
       backgroundColor: "rgba(32, 201, 99, 0.16)",
-      textColor: "#7AF5A7",
+      textColor: color("#7AF5A7", "info"),
     };
   }
 
@@ -157,14 +158,14 @@ const getStatusMeta = (pass: UnifiedPass) => {
     return {
       label: "Event ended",
       backgroundColor: "rgba(255, 193, 7, 0.16)",
-      textColor: "#FFD76A",
+      textColor: color("#FFD76A", "warning"),
     };
   }
 
   return {
     label: "Ready",
     backgroundColor: "rgba(15, 241, 207, 0.16)",
-    textColor: "#0FF1CF",
+    textColor: color("#0FF1CF", "accent"),
   };
 };
 
@@ -203,7 +204,8 @@ const PassCard = ({
   onOpenQr: (pass: UnifiedPass) => void;
   onOpenEvent: (pass: UnifiedPass) => void;
 }) => {
-  const status = getStatusMeta(pass);
+  const { tw, color } = useAppTheme();
+  const status = getStatusMeta(pass, color);
   const subtitle =
     pass.kind === "ticket"
       ? pass.ticketType
@@ -212,7 +214,7 @@ const PassCard = ({
         : "Registration confirmed";
 
   return (
-    <View style={[tw`overflow-hidden rounded-[28px] border border-[#21336E] bg-[#0B153B]`, styles.passCard]}>
+    <View style={[tw`overflow-hidden rounded-[28px] border border-border dark:border-[#21336E] bg-surface dark:bg-[#0B153B]`, styles.passCard]}>
       <View style={styles.mediaWrap}>
         <EventImageWithProcessing
           imageUrl={pass.thumbnailUrl}
@@ -220,8 +222,8 @@ const PassCard = ({
           height={156}
           registrationType={pass.registrationType}
         />
-        <View style={tw`absolute left-4 top-4 rounded-full bg-[#020B2E]/75 px-3 py-2`}>
-          <Text style={tw`text-[11px] font-semibold uppercase tracking-[1px] text-white`}>
+        <View style={tw`absolute left-4 top-4 rounded-full bg-background/75 dark:bg-[#020B2E]/75 px-3 py-2`}>
+          <Text style={tw`text-[11px] font-semibold uppercase tracking-[1px] text-foreground dark:text-white`}>
             {pass.kind === "ticket" ? "Ticket" : "Registration"}
           </Text>
         </View>
@@ -240,20 +242,20 @@ const PassCard = ({
       <View style={styles.passBody}>
         <View style={tw`flex-row items-start justify-between gap-3`}>
           <View style={tw`flex-1`}>
-            <Text style={tw`text-white text-lg font-bold`} numberOfLines={2}>
+            <Text style={tw`text-foreground dark:text-white text-lg font-bold`} numberOfLines={2}>
               {pass.eventTitle}
             </Text>
-            <Text style={tw`text-[#AFC0F4] mt-1`} numberOfLines={1}>
+            <Text style={tw`text-secondary dark:text-[#AFC0F4] mt-1`} numberOfLines={1}>
               {subtitle}
             </Text>
           </View>
 
           {pass.kind === "ticket" ? (
-            <View style={tw`rounded-2xl border border-[#28408C] bg-[#12245E] px-3 py-2`}>
-              <Text style={tw`text-[#8FA5E2] text-[10px] uppercase tracking-[1px]`}>
+            <View style={tw`rounded-2xl border border-border dark:border-[#28408C] bg-surface dark:bg-[#12245E] px-3 py-2`}>
+              <Text style={tw`text-secondary dark:text-[#8FA5E2] text-[10px] uppercase tracking-[1px]`}>
                 Price
               </Text>
-              <Text style={tw`text-white font-semibold mt-1`}>
+              <Text style={tw`text-foreground dark:text-white font-semibold mt-1`}>
                 {pass.ticketPrice && pass.ticketPrice > 0
                   ? numberWithCommas(pass.ticketPrice, true, null)
                   : "Free"}
@@ -264,33 +266,33 @@ const PassCard = ({
 
         <View style={tw`mt-4 gap-3`}>
           <View style={tw`flex-row items-center`}>
-            <Ionicons name="calendar-outline" size={16} color="#0FF1CF" />
-            <Text style={tw`ml-3 flex-1 text-[#D9E2FF]`}>
+            <Ionicons name="calendar-outline" size={16} color={color("#0FF1CF", "accent")} />
+            <Text style={tw`ml-3 flex-1 text-foreground dark:text-[#D9E2FF]`}>
               {formatEventDateTime(pass.eventStartDate, pass.eventEndDate)}
             </Text>
           </View>
           <View style={tw`flex-row items-center`}>
-            <Ionicons name="location-outline" size={16} color="#8FA5E2" />
-            <Text style={tw`ml-3 flex-1 text-[#AFC0F4]`} numberOfLines={1}>
+            <Ionicons name="location-outline" size={16} color={color("#8FA5E2", "secondary")} />
+            <Text style={tw`ml-3 flex-1 text-secondary dark:text-[#AFC0F4]`} numberOfLines={1}>
               {getLocationCopy(pass)}
             </Text>
           </View>
         </View>
 
-        <View style={[tw`mt-5 rounded-2xl border border-[#1D2E69] bg-[#0E1C49] px-4 py-3`, styles.metaStrip]}>
+        <View style={[tw`mt-5 rounded-2xl border border-border dark:border-[#1D2E69] bg-surface dark:bg-[#0E1C49] px-4 py-3`, styles.metaStrip]}>
           <View>
-            <Text style={tw`text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
+            <Text style={tw`text-muted dark:text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
               Issued
             </Text>
-            <Text style={tw`text-white font-medium mt-1`}>
+            <Text style={tw`text-foreground dark:text-white font-medium mt-1`}>
               {formatIssuedDate(pass.createdAt)}
             </Text>
           </View>
           <View style={tw`items-end`}>
-            <Text style={tw`text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
+            <Text style={tw`text-muted dark:text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
               Pass ID
             </Text>
-            <Text style={tw`text-white font-medium mt-1`} numberOfLines={1}>
+            <Text style={tw`text-foreground dark:text-white font-medium mt-1`} numberOfLines={1}>
               {pass.id.slice(0, 8).toUpperCase()}
             </Text>
           </View>
@@ -299,21 +301,21 @@ const PassCard = ({
         <View style={tw`mt-5 flex-row gap-3`}>
           <TouchableOpacity
             onPress={() => onOpenQr(pass)}
-            style={[tw`flex-1 rounded-2xl border border-[#0FF1CF]/40 bg-[#0FF1CF]/10 px-4 py-3`, styles.actionButton]}
+            style={[tw`flex-1 rounded-2xl border border-accent/40 dark:border-[#0FF1CF]/40 bg-accentFill/10 dark:bg-[#0FF1CF]/10 px-4 py-3`, styles.actionButton]}
           >
             <View style={tw`flex-row items-center justify-center`}>
-              <Ionicons name="qr-code-outline" size={18} color="#0FF1CF" />
-              <Text style={tw`ml-2 font-semibold text-[#0FF1CF]`}>Show QR</Text>
+              <Ionicons name="qr-code-outline" size={18} color={color("#0FF1CF", "accent")} />
+              <Text style={tw`ml-2 font-semibold text-accent dark:text-[#0FF1CF]`}>Show QR</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => onOpenEvent(pass)}
-            style={[tw`flex-1 rounded-2xl border border-[#28408C] bg-[#13255E] px-4 py-3`, styles.actionButton]}
+            style={[tw`flex-1 rounded-2xl border border-border dark:border-[#28408C] bg-surface dark:bg-[#13255E] px-4 py-3`, styles.actionButton]}
           >
             <View style={tw`flex-row items-center justify-center`}>
-              <Ionicons name="open-outline" size={18} color="#D9E2FF" />
-              <Text style={tw`ml-2 font-semibold text-white`}>View event</Text>
+              <Ionicons name="open-outline" size={18} color={color("#D9E2FF", "foreground")} />
+              <Text style={tw`ml-2 font-semibold text-foreground dark:text-white`}>View event</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -333,28 +335,29 @@ const PassQrModal = ({
   onClose: () => void;
   onOpenEvent: (pass: UnifiedPass) => void;
 }) => {
+  const { tw, color } = useAppTheme();
   if (!pass) {
     return null;
   }
 
-  const status = getStatusMeta(pass);
+  const status = getStatusMeta(pass, color);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <TouchableOpacity style={styles.modalDismissArea} activeOpacity={1} onPress={onClose} />
-        <View style={[tw`rounded-[32px] border border-[#233676] bg-[#091336]`, styles.modalCard]}>
+        <View style={[tw`rounded-[32px] border border-border dark:border-[#233676] bg-surface dark:bg-[#091336]`, styles.modalCard]}>
           <View style={tw`flex-row items-start justify-between`}>
             <View style={tw`flex-1 pr-4`}>
-              <Text style={tw`text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
+              <Text style={tw`text-muted dark:text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
                 {pass.kind === "ticket" ? "Ticket pass" : "Registration pass"}
               </Text>
-              <Text style={tw`text-white text-2xl font-bold mt-2`} numberOfLines={2}>
+              <Text style={tw`text-foreground dark:text-white text-2xl font-bold mt-2`} numberOfLines={2}>
                 {pass.eventTitle}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={tw`p-2`}>
-              <Ionicons name="close" size={22} color="#D9E2FF" />
+              <Ionicons name="close" size={22} color={color("#D9E2FF", "foreground")} />
             </TouchableOpacity>
           </View>
 
@@ -369,27 +372,27 @@ const PassQrModal = ({
             </Text>
           </View>
 
-          <View style={[tw`items-center justify-center rounded-[28px] bg-white mt-6`, styles.qrWrap]}>
-            <QRCode value={pass.qrCode} size={214} color="#07164F" backgroundColor="white" />
+          <View style={[tw`items-center justify-center rounded-[28px] bg-surface dark:bg-white mt-6`, styles.qrWrap]}>
+            <QRCode value={pass.qrCode} size={214} color={color("#07164F", "onAccent")} backgroundColor="white" />
           </View>
 
-          <Text style={tw`text-center text-white font-semibold mt-5`}>
+          <Text style={tw`text-center text-foreground dark:text-white font-semibold mt-5`}>
             {pass.kind === "ticket" ? pass.ticketType : "Confirmed registration"}
           </Text>
-          <Text style={tw`text-center text-[#AFC0F4] mt-2`}>
+          <Text style={tw`text-center text-secondary dark:text-[#AFC0F4] mt-2`}>
             Show this code at check-in for quick access.
           </Text>
 
-          <View style={tw`mt-6 rounded-2xl border border-[#1D2E69] bg-[#0E1C49] px-4 py-4`}>
+          <View style={tw`mt-6 rounded-2xl border border-border dark:border-[#1D2E69] bg-surface dark:bg-[#0E1C49] px-4 py-4`}>
             <View style={tw`flex-row items-center`}>
-              <Ionicons name="calendar-outline" size={16} color="#0FF1CF" />
-              <Text style={tw`ml-3 flex-1 text-[#D9E2FF]`}>
+              <Ionicons name="calendar-outline" size={16} color={color("#0FF1CF", "accent")} />
+              <Text style={tw`ml-3 flex-1 text-foreground dark:text-[#D9E2FF]`}>
                 {formatEventDateTime(pass.eventStartDate, pass.eventEndDate)}
               </Text>
             </View>
             <View style={tw`flex-row items-center mt-3`}>
-              <Ionicons name="location-outline" size={16} color="#8FA5E2" />
-              <Text style={tw`ml-3 flex-1 text-[#AFC0F4]`} numberOfLines={1}>
+              <Ionicons name="location-outline" size={16} color={color("#8FA5E2", "secondary")} />
+              <Text style={tw`ml-3 flex-1 text-secondary dark:text-[#AFC0F4]`} numberOfLines={1}>
                 {getLocationCopy(pass)}
               </Text>
             </View>
@@ -398,20 +401,20 @@ const PassQrModal = ({
           <View style={tw`mt-6 flex-row gap-3`}>
             <TouchableOpacity
               onPress={() => onOpenEvent(pass)}
-              style={[tw`flex-1 rounded-2xl border border-[#28408C] bg-[#13255E] px-4 py-4`, styles.actionButton]}
+              style={[tw`flex-1 rounded-2xl border border-border dark:border-[#28408C] bg-surface dark:bg-[#13255E] px-4 py-4`, styles.actionButton]}
             >
               <View style={tw`flex-row items-center justify-center`}>
-                <Ionicons name="open-outline" size={18} color="#D9E2FF" />
-                <Text style={tw`ml-2 font-semibold text-white`}>Open event</Text>
+                <Ionicons name="open-outline" size={18} color={color("#D9E2FF", "foreground")} />
+                <Text style={tw`ml-2 font-semibold text-foreground dark:text-white`}>Open event</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onClose}
-              style={[tw`flex-1 rounded-2xl border border-[#0FF1CF]/40 bg-[#0FF1CF]/10 px-4 py-4`, styles.actionButton]}
+              style={[tw`flex-1 rounded-2xl border border-accent/40 dark:border-[#0FF1CF]/40 bg-accentFill/10 dark:bg-[#0FF1CF]/10 px-4 py-4`, styles.actionButton]}
             >
               <View style={tw`flex-row items-center justify-center`}>
-                <Ionicons name="checkmark-circle-outline" size={18} color="#0FF1CF" />
-                <Text style={tw`ml-2 font-semibold text-[#0FF1CF]`}>Done</Text>
+                <Ionicons name="checkmark-circle-outline" size={18} color={color("#0FF1CF", "accent")} />
+                <Text style={tw`ml-2 font-semibold text-accent dark:text-[#0FF1CF]`}>Done</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -422,6 +425,7 @@ const PassQrModal = ({
 };
 
 const MyPassesPage = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [activeKinds, setActiveKinds] = useState<PassKind[]>([
     "ticket",
@@ -526,7 +530,7 @@ const MyPassesPage = () => {
   }
 
   return (
-    <View style={[tw`flex-1 bg-[#01082E]`, styles.screen]}>
+    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, styles.screen]}>
       <CustomeTopBarNav
         title="my passes"
         onClickBack={() => safeGoBack(router, "/settings")}
@@ -549,53 +553,53 @@ const MyPassesPage = () => {
         <RefreshIndicator refreshing={isRefreshing} />
         {combinedPasses.length > 0 ? (
           <>
-            <View style={[tw`rounded-[32px] border border-[#203370] bg-[#0C1741]`, styles.heroCard]}>
-              <Text style={tw`text-[#7F93CC] text-[12px] uppercase tracking-[1.4px]`}>
+            <View style={[tw`rounded-[32px] border border-border dark:border-[#203370] bg-surface dark:bg-[#0C1741]`, styles.heroCard]}>
+              <Text style={tw`text-muted dark:text-[#7F93CC] text-[12px] uppercase tracking-[1.4px]`}>
                 Your access
               </Text>
-              <Text style={tw`text-white text-[30px] font-bold mt-3`}>
+              <Text style={tw`text-foreground dark:text-white text-[30px] font-bold mt-3`}>
                 Every ticket and registration, in one place.
               </Text>
-              <Text style={tw`text-[#AFC0F4] mt-3 leading-6`}>
+              <Text style={tw`text-secondary dark:text-[#AFC0F4] mt-3 leading-6`}>
                 Quick QR access, event details, and a clean split between what is ready now and what has already been used.
               </Text>
 
               <View style={tw`flex-row gap-3 mt-6`}>
-                <View style={[tw`flex-1 rounded-2xl border border-[#23408A] bg-[#13255E]`, styles.summaryChip]}>
-                  <Text style={tw`text-[#8FA5E2] text-[11px] uppercase tracking-[1px]`}>
+                <View style={[tw`flex-1 rounded-2xl border border-border dark:border-[#23408A] bg-surface dark:bg-[#13255E]`, styles.summaryChip]}>
+                  <Text style={tw`text-secondary dark:text-[#8FA5E2] text-[11px] uppercase tracking-[1px]`}>
                     Total
                   </Text>
-                  <Text style={tw`text-white text-2xl font-bold mt-2`}>
+                  <Text style={tw`text-foreground dark:text-white text-2xl font-bold mt-2`}>
                     {combinedPasses.length}
                   </Text>
                 </View>
-                <View style={[tw`flex-1 rounded-2xl border border-[#214B55] bg-[#0B2A34]`, styles.summaryChip]}>
-                  <Text style={tw`text-[#8FE8E0] text-[11px] uppercase tracking-[1px]`}>
+                <View style={[tw`flex-1 rounded-2xl border border-border dark:border-[#214B55] bg-surface dark:bg-[#0B2A34]`, styles.summaryChip]}>
+                  <Text style={tw`text-info dark:text-[#8FE8E0] text-[11px] uppercase tracking-[1px]`}>
                     Tickets
                   </Text>
-                  <Text style={tw`text-white text-2xl font-bold mt-2`}>
+                  <Text style={tw`text-foreground dark:text-white text-2xl font-bold mt-2`}>
                     {tickets.length}
                   </Text>
                 </View>
-                <View style={[tw`flex-1 rounded-2xl border border-[#50427A] bg-[#201C4F]`, styles.summaryChip]}>
-                  <Text style={tw`text-[#C4B6FF] text-[11px] uppercase tracking-[1px]`}>
+                <View style={[tw`flex-1 rounded-2xl border border-border dark:border-[#50427A] bg-surface dark:bg-[#201C4F]`, styles.summaryChip]}>
+                  <Text style={tw`text-secondary dark:text-[#C4B6FF] text-[11px] uppercase tracking-[1px]`}>
                     Registrations
                   </Text>
-                  <Text style={tw`text-white text-2xl font-bold mt-2`}>
+                  <Text style={tw`text-foreground dark:text-white text-2xl font-bold mt-2`}>
                     {registrations.length}
                   </Text>
                 </View>
               </View>
 
               {nextPass ? (
-                <View style={[tw`mt-6 rounded-2xl border border-[#1D2E69] bg-[#0E1C49]`, styles.nextUpCard]}>
-                  <Text style={tw`text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
+                <View style={[tw`mt-6 rounded-2xl border border-border dark:border-[#1D2E69] bg-surface dark:bg-[#0E1C49]`, styles.nextUpCard]}>
+                  <Text style={tw`text-muted dark:text-[#7F93CC] text-[11px] uppercase tracking-[1px]`}>
                     Next up
                   </Text>
-                  <Text style={tw`text-white text-lg font-semibold mt-2`} numberOfLines={2}>
+                  <Text style={tw`text-foreground dark:text-white text-lg font-semibold mt-2`} numberOfLines={2}>
                     {nextPass.eventTitle}
                   </Text>
-                  <Text style={tw`text-[#AFC0F4] mt-1`}>
+                  <Text style={tw`text-secondary dark:text-[#AFC0F4] mt-1`}>
                     {formatEventDateTime(nextPass.eventStartDate, nextPass.eventEndDate)}
                   </Text>
                 </View>
@@ -619,8 +623,8 @@ const MyPassesPage = () => {
                             borderColor: filter.activeBorder,
                           }
                         : {
-                            backgroundColor: "#081233",
-                            borderColor: "#1A2A62",
+                            backgroundColor: color("#081233", "surface"),
+                            borderColor: color("#1A2A62", "border"),
                           },
                     ]}
                   >
@@ -628,12 +632,12 @@ const MyPassesPage = () => {
                       <Ionicons
                         name={filter.icon}
                         size={18}
-                        color={isActive ? filter.activeText : "#8FA5E2"}
+                        color={isActive ? filter.activeText : color("#8FA5E2", "secondary")}
                       />
                       <Text
                         style={[
                           tw`ml-2 font-semibold`,
-                          { color: isActive ? "#FFFFFF" : "#D9E2FF" },
+                          { color: isActive ? color("#FFFFFF", "foreground") : color("#D9E2FF", "foreground") },
                         ]}
                       >
                         {filter.label}
@@ -642,7 +646,7 @@ const MyPassesPage = () => {
                     <Text
                       style={[
                         tw`text-center text-xs mt-2`,
-                        { color: isActive ? filter.activeText : "#7F93CC" },
+                        { color: isActive ? filter.activeText : color("#7F93CC", "muted") },
                       ]}
                     >
                       {count} owned
@@ -662,7 +666,7 @@ const MyPassesPage = () => {
               onPress={handleRefresh}
               style={tw`p-5`}
             >
-              <Text style={tw`text-center text-[#FF8A8A]`}>
+              <Text style={tw`text-center text-danger dark:text-[#FF8A8A]`}>
                 Could not load your passes. Tap to retry.
               </Text>
             </TouchableOpacity>
@@ -674,8 +678,8 @@ const MyPassesPage = () => {
             {readyPasses.length > 0 ? (
               <View style={styles.sectionWrap}>
                 <View style={styles.sectionHeader}>
-                  <Text style={tw`text-white text-xl font-bold`}>Ready to use</Text>
-                  <Text style={tw`text-[#8FA5E2]`}>{readyPasses.length}</Text>
+                  <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>Ready to use</Text>
+                  <Text style={tw`text-secondary dark:text-[#8FA5E2]`}>{readyPasses.length}</Text>
                 </View>
                 {readyPasses.map((pass) => (
                   <PassCard
@@ -691,8 +695,8 @@ const MyPassesPage = () => {
             {archivePasses.length > 0 ? (
               <View style={styles.sectionWrap}>
                 <View style={styles.sectionHeader}>
-                  <Text style={tw`text-white text-xl font-bold`}>Archive</Text>
-                  <Text style={tw`text-[#8FA5E2]`}>{archivePasses.length}</Text>
+                  <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>Archive</Text>
+                  <Text style={tw`text-secondary dark:text-[#8FA5E2]`}>{archivePasses.length}</Text>
                 </View>
                 {archivePasses.map((pass) => (
                   <PassCard

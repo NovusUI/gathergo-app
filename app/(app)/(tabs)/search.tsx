@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
@@ -16,9 +17,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const SearchScreen = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<TextInput | null>(null);
@@ -40,7 +41,7 @@ const SearchScreen = () => {
     if (query.trim().length === 0) {
       return (
         <View style={tw`mt-5`}>
-          <Text style={tw`text-white text-center`}>
+          <Text style={tw`text-foreground dark:text-white text-center`}>
             Type something to search for events
           </Text>
         </View>
@@ -97,7 +98,7 @@ const SearchScreen = () => {
       />
     ) : (
       <View style={tw`mt-5`}>
-        <Text style={tw`text-white text-center`}>No events found</Text>
+        <Text style={tw`text-foreground dark:text-white text-center`}>No events found</Text>
       </View>
     );
   };
@@ -105,7 +106,7 @@ const SearchScreen = () => {
   return (
     <KeyboardAvoidingView
       style={[
-        tw`flex-1 bg-[#01082E] items-center flex-col overflow-hidden`,
+        tw`flex-1 bg-background dark:bg-[#01082E] items-center flex-col overflow-hidden`,
         styles.screen,
       ]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -115,19 +116,19 @@ const SearchScreen = () => {
       <Pressable
         onPress={() => searchInputRef.current?.focus()}
         style={[
-          tw`flex-row items-center bg-[#1A2755] rounded-full w-full max-w-[500px]`,
+          tw`flex-row items-center bg-surface dark:bg-[#1A2755] rounded-full w-full max-w-[500px]`,
           styles.searchBar,
         ]}
       >
-        <SearchIcon size={20} color="white" />
+        <SearchIcon size={20} color={color("white", "foreground")} />
         <TextInput
           autoCapitalize="none"
           ref={searchInputRef}
           placeholder="Search events"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={color("#94A3B8", "muted")}
           value={query}
           onChangeText={setQuery}
-          style={tw`flex-1 text-white ml-3`}
+          style={tw`flex-1 text-foreground dark:text-white ml-3`}
         />
       </Pressable>
 

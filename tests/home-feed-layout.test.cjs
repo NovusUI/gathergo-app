@@ -66,7 +66,10 @@ test('Home tab changes and event, ride, Circle, notification and message routes 
   for (const button of [...nodes(home())].filter(node => node.type === 'Button' && one(node, 'Icon')).slice(0, 2)) button.props.onPress();
   assert.deepEqual(state.routes, ['/event/event-1', '/carpool/ride-1', '/circle', '/notifications', '/conversations']);
 });
+const { LIGHT_COLORS, resolveThemeColor } = loadTypeScript('constants/theme.ts');
+let feedMode = 'dark';
 const { default: FeedCard } = loadTypeScript('components/feed/FeedCard.tsx', {
+  '@/hooks/useAppTheme': { useAppTheme: () => ({ tw, color: (darkColor, role) => resolveThemeColor(feedMode, darkColor, role) }) },
   '@expo/vector-icons': { Ionicons: 'Icon' }, 'lucide-react-native': { UserRound: 'User' },
   react: { useEffect() {}, useRef: value => ({ current: value }) },
   'react-native': { Animated: { View: 'Card', Value: class { interpolate() { return '0deg'; } } }, View: 'View', Text: 'Text', TouchableOpacity: 'Button', Image: 'Image' },
@@ -90,6 +93,80 @@ test('simplified feed cards keep action payloads, amount normalization and progr
   tree.props.onPress(); assert.strictEqual(opened, action);
   assert.match(text(tree), /Registration ₦5,000/); assert.match(text(tree), /50%/); assert.match(text(tree), /Goal:/);
   assert.equal(FeedCard({ feed: feed('EVENT_CREATED') }).props.disabled, true);
+});
+test('donations restore their purple progress fill inside the shared ticket card and retain actions and messages', () => {
+  const action = { type: 'DONATE', label: 'Support Now', url: '/events/event-1/donate' };
+  let opened;
+  const tree = FeedCard({ feed: feed('DONATION_MADE', {
+    title: 'New Donation', content: 'Ada donated to community tree planting.',
+    metadata: { percentage: 0.5, amountInNaira: 5000, targetInNaira: 10000, supportMessage: 'Let our community grow.' },
+    actions: [action],
+  }), onAction: value => { opened = value; } });
+  const progress = [...nodes(tree)].find(node => node.props.accessibilityRole === 'progressbar');
+  assert.ok(progress, 'donations show their fundraising fill');
+  assert.equal(progress.props.style[1].width, '50%');
+  assert.equal(progress.props.style[1].backgroundColor, '#9B51E022');
+  assert.equal(progress.props.pointerEvents, 'none');
+  assert.deepEqual(progress.props.accessibilityValue, { min: 0, max: 100, now: 50 });
+  assert.equal(one(tree, 'Card').props.style[1].backgroundColor, '#0C1447');
+  assert.equal(one(tree, 'Card').props.style[1].borderColor, '#0C7F7F');
+  assert.equal(one(tree, 'Icon').props.name, 'heart-outline');
+  assert.match(text(tree), /50%/);
+  assert.match(text(tree), /₦5,000/);
+  assert.match(text(tree), /Goal: ₦10,000/);
+  assert.match(text(tree), /Let our community grow/);
+  tree.props.onPress();
+  assert.strictEqual(opened, action);
+});
+test('donation milestones use the original near-target color and cap funded and overfunded goals at full', () => {
+  for (const [type, ratio, percent] of [
+    ['DONATION_PROGRESS_MILESTONE', 0.1, 10],
+    ['DONATION_50_PERCENT', 0.5, 50],
+    ['DONATION_90_PERCENT', 0.9, 90],
+    ['DONATION_95_PERCENT', 0.95, 95],
+    ['DONATION_100_PERCENT', 1, 100],
+    ['DONATION_100_PERCENT', 1.5, 100],
+  ]) {
+    const tree = FeedCard({ feed: feed(type, { metadata: { percentage: ratio } }) });
+    const progress = [...nodes(tree)].find(node => node.props.accessibilityRole === 'progressbar');
+    assert.ok(progress, type);
+    assert.equal(progress.props.style[1].width, `${percent}%`);
+    assert.equal(progress.props.style[1].backgroundColor, ratio >= 0.9 ? '#FF6B6B22' : '#9B51E022');
+    assert.equal(progress.props.accessibilityValue.now, percent);
+    assert.match(text(tree), new RegExp(`${percent}%`));
+  }
+});
+test('zero donation progress stays empty and donation updates without a percentage have no fill', () => {
+  const zero = FeedCard({ feed: feed('DONATION_MADE', { metadata: { percentage: 0 } }) });
+  const progress = [...nodes(zero)].find(node => node.props.accessibilityRole === 'progressbar');
+  assert.ok(progress);
+  assert.equal(progress.props.style[1].width, '0%');
+  assert.equal(progress.props.accessibilityValue.now, 0);
+  for (const percentage of [undefined, null]) {
+    const tree = FeedCard({ feed: feed('DONATION_MADE', { metadata: { percentage } }) });
+    assert.equal([...nodes(tree)].some(node => node.props.accessibilityRole === 'progressbar'), false);
+  }
+});
+test('ticket, registration and other feed cards keep their shared appearance without a donation fill', () => {
+  for (const type of ['TICKET_PURCHASED', 'TICKET_PROGRESS_MILESTONE', 'REGISTRATION_PROGRESS_MILESTONE', 'CURRENT_FRENZY', 'EVENT_CREATED']) {
+    const tree = FeedCard({ feed: feed(type, { metadata: { percentage: 0.5 } }) });
+    assert.equal([...nodes(tree)].some(node => node.props.accessibilityRole === 'progressbar'), false);
+    assert.equal(one(tree, 'Card').props.style[1].backgroundColor, '#0C1447');
+  }
+});
+test('donation progress preserves the ticket surfaces and donation colors in both app appearances', () => {
+  try {
+    for (const mode of ['light', 'dark']) {
+      feedMode = mode;
+      for (const ratio of [0.5, 0.95]) {
+        const tree = FeedCard({ feed: feed('DONATION_MADE', { metadata: { percentage: ratio } }) });
+        const progress = [...nodes(tree)].find(node => node.props.accessibilityRole === 'progressbar');
+        assert.ok(progress);
+        assert.equal(progress.props.style[1].backgroundColor, `${ratio < 0.9 ? '#9B51E0' : mode === 'light' ? LIGHT_COLORS.danger : '#FF6B6B'}22`);
+        assert.equal(one(tree, 'Card').props.style[1].backgroundColor, mode === 'light' ? LIGHT_COLORS.surface : '#0C1447');
+      }
+    }
+  } finally { feedMode = 'dark'; }
 });
 const icons = Object.fromEntries(['Check','Clock3','Gift','Handshake','Heart','LockKeyhole','PartyPopper','Sparkles','Sprout','Tent'].map(icon => [icon, icon]));
 const { BadgeEmblem, default: BadgeCard } = loadTypeScript('components/gogo/tasks/badges/BadgeCard.tsx', {

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomView from "@/components/View";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
@@ -5,7 +6,6 @@ import { getEventLinkMeta, isValidEventLink } from "@/constants/eventLinks";
 import { Ionicons } from "@expo/vector-icons";
 import { PlusIcon, Trash2Icon } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface EventLinksProps {
   links?: string[];
@@ -14,6 +14,7 @@ interface EventLinksProps {
 }
 
 const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
+  const { tw, color } = useAppTheme();
   const canAddMore = links.length < 5;
 
   const handleChange = (index: number, value: string) => {
@@ -51,8 +52,8 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
                   style={[
                     tw`rounded-3xl border p-3`,
                     isInvalid
-                      ? tw`border-[#F87171] bg-[#2B1620]`
-                      : tw`border-[#24345A] bg-[#101C45]`,
+                      ? tw`border-danger dark:border-[#F87171] bg-dangerSoft dark:bg-[#2B1620]`
+                      : tw`border-border dark:border-[#24345A] bg-surface dark:bg-[#101C45]`,
                   ]}
                 >
                   <View style={tw`mb-3 flex-row items-center justify-between`}>
@@ -73,7 +74,7 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
                         <Text
                           style={[
                             tw`text-sm font-semibold`,
-                            isInvalid ? tw`text-[#FCA5A5]` : tw`text-white`,
+                            isInvalid ? tw`text-danger dark:text-[#FCA5A5]` : tw`text-foreground dark:text-white`,
                           ]}
                         >
                           {meta.label}
@@ -81,7 +82,7 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
                         <Text
                           style={[
                             tw`text-xs`,
-                            isInvalid ? tw`text-[#FCA5A5]` : tw`text-[#8FA1CB]`,
+                            isInvalid ? tw`text-danger dark:text-[#FCA5A5]` : tw`text-muted dark:text-[#8FA1CB]`,
                           ]}
                         >
                           {isInvalid
@@ -95,9 +96,9 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
 
                     <TouchableOpacity
                       onPress={() => handleRemove(index)}
-                      style={tw`rounded-full bg-[#1B2A50] p-2`}
+                      style={tw`rounded-full bg-surfaceMuted dark:bg-[#1B2A50] p-2`}
                     >
-                      <Trash2Icon size={16} color="#FCA5A5" />
+                      <Trash2Icon size={16} color={color("#FCA5A5", "danger")} />
                     </TouchableOpacity>
                   </View>
 
@@ -121,16 +122,16 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
           style={[
             tw`mt-1 rounded-2xl border border-dashed px-4 py-4`,
             canAddMore
-              ? tw`border-[#0FF1CF] bg-[#0FF1CF]/8`
-              : tw`border-[#24345A] bg-[#0A173F]`,
+              ? tw`border-accent dark:border-[#0FF1CF] bg-accentFill/8 dark:bg-[#0FF1CF]/8`
+              : tw`border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F]`,
           ]}
         >
           <View style={tw`flex-row items-center justify-center`}>
-            <PlusIcon size={16} color={canAddMore ? "#0FF1CF" : "#6F7FA9"} />
+            <PlusIcon size={16} color={canAddMore ? color("#0FF1CF", "accent") : color("#6F7FA9", "muted")} />
             <Text
               style={[
                 tw`ml-2 text-sm font-semibold`,
-                canAddMore ? tw`text-[#0FF1CF]` : tw`text-[#6F7FA9]`,
+                canAddMore ? tw`text-accent dark:text-[#0FF1CF]` : tw`text-muted dark:text-[#6F7FA9]`,
               ]}
             >
               {canAddMore
@@ -140,7 +141,7 @@ const EventLinks = ({ links = [], onChange, error }: EventLinksProps) => {
           </View>
         </TouchableOpacity>
 
-        {error ? <Text style={tw`text-red-500 text-xs`}>{error}</Text> : null}
+        {error ? <Text style={tw`text-danger dark:text-red-500 text-xs`}>{error}</Text> : null}
       </CustomView>
     </CustomView>
   );

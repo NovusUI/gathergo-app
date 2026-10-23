@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
 import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
 import { clearCheckoutIntent } from "@/utils/checkout";
@@ -30,7 +31,6 @@ import { Calendar, CarFront, Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line } from "react-native-svg";
-import tw, { style as twStyle } from "twrnc";
 
 const DashedLine = () => (
   <Svg height="2" width="100%">
@@ -47,6 +47,8 @@ const DashedLine = () => (
 );
 
 const TransactionRef = () => {
+  const { tw, color } = useAppTheme();
+  const twStyle = tw.style;
   const router = useLockedRouter();
   const { transactionId: id, type: routeType } = useLocalSearchParams<{
     transactionId?: string | string[];
@@ -171,8 +173,8 @@ const TransactionRef = () => {
         : null;
   const mascotMomentContent = recoveryMessage ? (
     <View style={tw`p-4 gap-2`}>
-      <Text style={tw`text-white text-lg font-bold`}>{headlineCopy}</Text>
-      <Text style={tw`text-gray-300`}>{recoveryMessage}</Text>
+      <Text style={tw`text-foreground dark:text-white text-lg font-bold`}>{headlineCopy}</Text>
+      <Text style={tw`text-secondary dark:text-gray-300`}>{recoveryMessage}</Text>
     </View>
   ) : (
     <MascotMoment
@@ -251,7 +253,7 @@ const TransactionRef = () => {
 
   return (
     <View
-      style={tw`flex-1 pt-10 bg-[#01082E] flex flex-col items-center w-full`}
+      style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E] flex flex-col items-center w-full`}
     >
       <CustomView style={tw`px-3`}>
         <CustomeTopBarNav
@@ -263,7 +265,7 @@ const TransactionRef = () => {
         style={tw`w-full max-w-500 py-10 px-5`}
         contentContainerStyle={tw`pb-12`}
       >
-        <View style={tw`px-4 py-8 bg-[#010E3A] rounded-lg gap-8`}>
+        <View style={tw`px-4 py-8 bg-surface dark:bg-[#010E3A] rounded-lg gap-8`}>
           {canOpenPasses ? (
             <TouchableOpacity
               activeOpacity={0.9}
@@ -281,9 +283,9 @@ const TransactionRef = () => {
             mascotMomentContent
           )}
           <View
-            style={tw`border-[1px] border-white rounded-2xl py-5 px-8 gap-3`}
+            style={tw`border-[1px] border-borderStrong dark:border-white rounded-2xl py-5 px-8 gap-3`}
           >
-            <Text style={tw`text-white`}>
+            <Text style={tw`text-foreground dark:text-white`}>
               {transactionType === "DONATION"
                 ? "Donation Details"
                 : transactionType === "REGISTRATION"
@@ -292,19 +294,19 @@ const TransactionRef = () => {
             </Text>
 
             <View style={tw`flex-row justify-between`}>
-              <Text style={tw`text-white`}>
+              <Text style={tw`text-foreground dark:text-white`}>
                 {transactionType === "DONATION"
                   ? "Amount Donated:"
                   : "Amount Paid:"}
               </Text>
-              <Text style={tw`text-white text-ellipsis`}>
+              <Text style={tw`text-foreground dark:text-white text-ellipsis`}>
                 {data
                   ? numberWithCommas(data.data.amount / 100, true, null)
                   : "Checking…"}
               </Text>
             </View>
-            <Text style={tw`text-white`}>{headlineCopy}</Text>
-            <Text style={tw`text-white`}>
+            <Text style={tw`text-foreground dark:text-white`}>{headlineCopy}</Text>
+            <Text style={tw`text-foreground dark:text-white`}>
               {isStatusSuccess
                 ? "Thank you!"
                 : isAwaitingTransfer
@@ -322,18 +324,18 @@ const TransactionRef = () => {
             onPress={() => {
               void refetch();
             }}
-            style={tw`mt-3 p-3 rounded-xl bg-[#172853]`}
+            style={tw`mt-3 p-3 rounded-xl bg-surfaceMuted dark:bg-[#172853]`}
           >
-            <Text style={tw`text-white text-center`}>Check payment status</Text>
+            <Text style={tw`text-foreground dark:text-white text-center`}>Check payment status</Text>
           </TouchableOpacity>
         ) : null}
         {canPay && !cancelling && data?.data?.paymentUrl ? (
           <TouchableOpacity
             accessibilityRole="button"
             onPress={() => setShowPayment(true)}
-            style={tw`mt-3 p-3 rounded-xl bg-[#0FF1CF]`}
+            style={tw`mt-3 p-3 rounded-xl bg-accentFill dark:bg-[#0FF1CF]`}
           >
-            <Text style={tw`text-[#01082E] text-center`}>Resume payment</Text>
+            <Text style={tw`text-onAccent dark:text-[#01082E] text-center`}>Resume payment</Text>
           </TouchableOpacity>
         ) : null}
         {canPay && hasTickets ? (
@@ -343,7 +345,7 @@ const TransactionRef = () => {
             onPress={handleCancelCheckout}
             style={tw`mt-3 p-3`}
           >
-            <Text style={tw`text-gray-300 text-center`}>
+            <Text style={tw`text-secondary dark:text-gray-300 text-center`}>
               {cancelling
                 ? "Cancelling…"
                 : "Cancel checkout and release spaces"}
@@ -359,9 +361,9 @@ const TransactionRef = () => {
               await clearCheckoutIntent(user.id, data.data.metadata.eventId);
               router.replace(`/event/${data.data.metadata.eventId}`);
             }}
-            style={tw`mt-3 p-3 rounded-xl bg-[#172853]`}
+            style={tw`mt-3 p-3 rounded-xl bg-surfaceMuted dark:bg-[#172853]`}
           >
-            <Text style={tw`text-white text-center`}>Start a new checkout</Text>
+            <Text style={tw`text-foreground dark:text-white text-center`}>Start a new checkout</Text>
           </TouchableOpacity>
         ) : null}
         <PaystackWebViewWrapper
@@ -390,102 +392,102 @@ const TransactionRef = () => {
         />
         {canPay && isAlatTransfer ? (
           <View
-            style={tw`mt-5 rounded-2xl border border-[#5A4718] bg-[#2A2209] overflow-hidden`}
+            style={tw`mt-5 rounded-2xl border border-border dark:border-[#5A4718] bg-warningSoft dark:bg-[#2A2209] overflow-hidden`}
           >
-            <View style={tw`px-4 py-2.5 bg-[#FFD76A]`}>
+            <View style={tw`px-4 py-2.5 bg-warningFill dark:bg-[#FFD76A]`}>
               <Text
-                style={tw`text-[#2A2209] text-xs font-bold tracking-widest uppercase`}
+                style={tw`text-onAccent dark:text-[#2A2209] text-xs font-bold tracking-widest uppercase`}
               >
                 Transfer Pending
               </Text>
             </View>
 
             <View style={tw`px-4 py-5 gap-4`}>
-              <Text style={tw`text-white text-lg font-bold`}>
+              <Text style={tw`text-foreground dark:text-white text-lg font-bold`}>
                 Waiting for your bank transfer
               </Text>
-              <Text style={tw`text-[#F4E7B0] text-sm leading-6`}>
+              <Text style={tw`text-secondary dark:text-[#F4E7B0] text-sm leading-6`}>
                 If you’ve already sent the money, stay on this page. We’ll keep
                 checking and update the status automatically.
               </Text>
 
               <View
-                style={tw`flex-row items-center justify-between rounded-2xl bg-[#14102A] px-4 py-3`}
+                style={tw`flex-row items-center justify-between rounded-2xl bg-surface dark:bg-[#14102A] px-4 py-3`}
               >
                 <View style={tw`flex-row items-center gap-2`}>
                   <View
                     style={twStyle("h-2.5 w-2.5 rounded-full", {
-                      backgroundColor: livePulseOn ? "#FFD76A" : "#7A6330"
+                      backgroundColor: livePulseOn ? color("#FFD76A", "warningFill") : color("#7A6330", "warningSoft")
                     })}
                   />
                   <Text
-                    style={tw`text-xs font-semibold uppercase tracking-wider text-[#FFD76A]`}
+                    style={tw`text-xs font-semibold uppercase tracking-wider text-warning dark:text-[#FFD76A]`}
                   >
                     Checking status
                   </Text>
                 </View>
-                <Text style={tw`text-xs font-semibold text-[#F4E7B0]`}>
+                <Text style={tw`text-xs font-semibold text-secondary dark:text-[#F4E7B0]`}>
                   Next check in {nextCheckCountdown}s
                 </Text>
               </View>
 
-              <View style={tw`rounded-2xl bg-[#14102A] p-4 gap-3`}>
+              <View style={tw`rounded-2xl bg-surface dark:bg-[#14102A] p-4 gap-3`}>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>
+                  <Text style={tw`text-warning dark:text-[#B7A979] text-xs uppercase`}>
                     Amount
                   </Text>
-                  <Text style={tw`text-white font-semibold`}>
+                  <Text style={tw`text-foreground dark:text-white font-semibold`}>
                     {data
                       ? numberWithCommas(data.data.amount / 100, true, null)
                       : "Checking…"}
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>Bank</Text>
-                  <Text style={tw`text-white font-semibold`}>
+                  <Text style={tw`text-warning dark:text-[#B7A979] text-xs uppercase`}>Bank</Text>
+                  <Text style={tw`text-foreground dark:text-white font-semibold`}>
                     {providerInstructions?.bankName || "Wema Bank"}
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>
+                  <Text style={tw`text-warning dark:text-[#B7A979] text-xs uppercase`}>
                     Account name
                   </Text>
-                  <Text style={tw`flex-1 text-right text-white font-semibold`}>
+                  <Text style={tw`flex-1 text-right text-foreground dark:text-white font-semibold`}>
                     {providerInstructions?.accountName || "GatherGo"}
                   </Text>
                 </View>
                 <View style={tw`flex-row justify-between gap-4`}>
-                  <Text style={tw`text-[#B7A979] text-xs uppercase`}>
+                  <Text style={tw`text-warning dark:text-[#B7A979] text-xs uppercase`}>
                     Account number
                   </Text>
-                  <Text style={tw`text-white text-base font-bold`}>
+                  <Text style={tw`text-foreground dark:text-white text-base font-bold`}>
                     {providerInstructions?.accountNumber || "-"}
                   </Text>
                 </View>
               </View>
 
-              <View style={tw`rounded-2xl bg-[#14102A] p-4 gap-3`}>
+              <View style={tw`rounded-2xl bg-surface dark:bg-[#14102A] p-4 gap-3`}>
                 <View style={tw`flex-row items-start gap-3`}>
                   <View
-                    style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#FFD76A]`}
+                    style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-warningFill dark:bg-[#FFD76A]`}
                   >
-                    <Text style={tw`text-[11px] font-bold text-[#2A2209]`}>
+                    <Text style={tw`text-[11px] font-bold text-onAccent dark:text-[#2A2209]`}>
                       1
                     </Text>
                   </View>
-                  <Text style={tw`flex-1 text-sm leading-5 text-white`}>
+                  <Text style={tw`flex-1 text-sm leading-5 text-foreground dark:text-white`}>
                     Transfer the exact amount to the account above.
                   </Text>
                 </View>
                 <View style={tw`flex-row items-start gap-3`}>
                   <View
-                    style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#FFD76A]`}
+                    style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-warningFill dark:bg-[#FFD76A]`}
                   >
-                    <Text style={tw`text-[11px] font-bold text-[#2A2209]`}>
+                    <Text style={tw`text-[11px] font-bold text-onAccent dark:text-[#2A2209]`}>
                       2
                     </Text>
                   </View>
-                  <Text style={tw`flex-1 text-sm leading-5 text-white`}>
+                  <Text style={tw`flex-1 text-sm leading-5 text-foreground dark:text-white`}>
                     Keep this screen open or check back here. We refresh every 5
                     seconds until confirmation comes in.
                   </Text>
@@ -497,21 +499,21 @@ const TransactionRef = () => {
         {isStatusSuccess ? (
           <>
             <View
-              style={tw`mt-5 rounded-2xl bg-[#07164F] border border-[#1D3AA4] overflow-hidden`}
+              style={tw`mt-5 rounded-2xl bg-surface dark:bg-[#07164F] border border-border dark:border-[#1D3AA4] overflow-hidden`}
             >
-              <View style={tw`px-4 py-2.5 bg-[#0FF1CF]`}>
+              <View style={tw`px-4 py-2.5 bg-accentFill dark:bg-[#0FF1CF]`}>
                 <Text
-                  style={tw`text-[#01082E] text-xs font-bold tracking-widest uppercase`}
+                  style={tw`text-onAccent dark:text-[#01082E] text-xs font-bold tracking-widest uppercase`}
                 >
                   Next Move
                 </Text>
               </View>
 
               <View style={tw`px-4 py-5 gap-4`}>
-                <Text style={tw`text-white text-xl font-bold`}>
+                <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>
                   {`You're in, ${user?.username || "Explorer"} 👋`}
                 </Text>
-                <Text style={tw`text-[#D9E2FF] text-sm leading-6`}>
+                <Text style={tw`text-foreground dark:text-[#D9E2FF] text-sm leading-6`}>
                   {isPhysicalEventForCta
                     ? `${eventTitleForCta} is active. Catch live moments and lock in your ride plan before things heat up.`
                     : `${eventTitleForCta} is active. Catch live moments, updates, and community buzz as things unfold.`}
@@ -522,12 +524,12 @@ const TransactionRef = () => {
                   accessibilityRole="button"
                   accessibilityLabel="Open live feed"
                   onPress={goToEventFeed}
-                  style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}
+                  style={tw`rounded-xl bg-surface dark:bg-[#0A1E63] border border-border dark:border-[#2848C8] p-3 flex-row items-start gap-3`}
                 >
-                  <Flame size={18} color="#0FF1CF" />
+                  <Flame size={18} color={color("#0FF1CF", "accent")} />
                   <View style={tw`flex-1`}>
-                    <Text style={tw`text-white font-semibold`}>Live Feed</Text>
-                    <Text style={tw`text-[#C8D3FF] text-xs mt-0.5`}>
+                    <Text style={tw`text-foreground dark:text-white font-semibold`}>Live Feed</Text>
+                    <Text style={tw`text-foreground dark:text-[#C8D3FF] text-xs mt-0.5`}>
                       Real-time event updates, reactions, and buzz from
                       attendees.
                     </Text>
@@ -540,14 +542,14 @@ const TransactionRef = () => {
                     accessibilityRole="button"
                     accessibilityLabel="Open carpool tab"
                     onPress={goToEventCarpools}
-                    style={tw`rounded-xl bg-[#0A1E63] border border-[#2848C8] p-3 flex-row items-start gap-3`}
+                    style={tw`rounded-xl bg-surface dark:bg-[#0A1E63] border border-border dark:border-[#2848C8] p-3 flex-row items-start gap-3`}
                   >
-                    <CarFront size={18} color="#0FF1CF" />
+                    <CarFront size={18} color={color("#0FF1CF", "accent")} />
                     <View style={tw`flex-1`}>
-                      <Text style={tw`text-white font-semibold`}>
+                      <Text style={tw`text-foreground dark:text-white font-semibold`}>
                         Carpool Tab
                       </Text>
-                      <Text style={tw`text-[#C8D3FF] text-xs mt-0.5`}>
+                      <Text style={tw`text-foreground dark:text-[#C8D3FF] text-xs mt-0.5`}>
                         Find nearby rides or create one and pull your crew
                         together.
                       </Text>
@@ -565,9 +567,9 @@ const TransactionRef = () => {
                     ? "Join the Buzz, Find Your Ride"
                     : "Join the Buzz"
                 }
-                buttonClassName="bg-[#0FF1CF] w-full border-0"
-                textClassName="!text-black"
-                arrowCircleColor="bg-[#0C7F7F]"
+                buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+                textClassName="!text-onAccent dark:text-black"
+                arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
                 showArrow
               />
             </View>
@@ -588,38 +590,38 @@ const TransactionRef = () => {
               appearsOnIndex={0}
             />
           )}
-          backgroundStyle={{ backgroundColor: "#01082E" }}
+          backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
         >
           <View style={tw`flex flex-row justify-between items-center p-5`}>
-            <Text style={tw`text-white`}>
+            <Text style={tw`text-foreground dark:text-white`}>
               {transactionType === "REGISTRATION"
                 ? "Registration Pass"
                 : "Tickets"}
             </Text>
-            <Text style={tw`text-white text-xs`}>
+            <Text style={tw`text-foreground dark:text-white text-xs`}>
               {tickets.length} available
             </Text>
           </View>
 
           <BottomSheetScrollView style={tw`p-5`}>
             {tickets.length > 0 && (
-              <View style={tw`rounded-2xl bg-[#010E3A] px-5`}>
+              <View style={tw`rounded-2xl bg-surface dark:bg-[#010E3A] px-5`}>
                 <View style={tw`flex flex-row gap-8 p-5 items-center`}>
                   <Image
                     src={tickets[currentIndex]?.event?.thumbnailUrl}
-                    style={tw`w-20 h-20 rounded-md bg-white`}
+                    style={tw`w-20 h-20 rounded-md bg-surface dark:bg-white`}
                   />
                   <View style={tw`py-2 w-2/3`}>
                     <TouchableOpacity
-                      style={tw`px-5 py-2 rounded-3xl bg-[#0FF1CF] self-start`}
+                      style={tw`px-5 py-2 rounded-3xl bg-accentFill dark:bg-[#0FF1CF] self-start`}
                     >
-                      <Text style={tw`capitalize text-[#01082E]`}>
+                      <Text style={tw`capitalize text-onAccent dark:text-[#01082E]`}>
                         {transactionType === "REGISTRATION"
                           ? "Registration"
                           : tickets[currentIndex]?.eventTicketType}
                       </Text>
                     </TouchableOpacity>
-                    <Text style={tw`text-[#fff] text-lg`}>
+                    <Text style={tw`text-foreground dark:text-[#fff] text-lg`}>
                       {tickets[currentIndex]?.event?.title}
                     </Text>
                   </View>
@@ -629,7 +631,7 @@ const TransactionRef = () => {
 
                 <View style={tw`ml-3 my-8 gap-8`}>
                   <View style={tw`flex flex-row gap-5 items-center`}>
-                    <Calendar color={"white"} />
+                    <Calendar color={color("white", "foreground")} />
                     <EventDetails
                       title="date & time"
                       subtitle={formatEventDateTime(
@@ -646,7 +648,7 @@ const TransactionRef = () => {
                   style={tw`max-w-[500px] w-full py-8 flex-row justify-center items-center`}
                 >
                   <View
-                    style={tw`w-48 h-48 rounded-2xl bg-[#FFFDFD] flex-row justify-center items-center`}
+                    style={tw`w-48 h-48 rounded-2xl bg-surface dark:bg-[#FFFDFD] flex-row justify-center items-center`}
                   >
                     <QRCodeGenerator value={tickets[currentIndex]?.qrCode} />
                   </View>
@@ -656,16 +658,16 @@ const TransactionRef = () => {
                   <TouchableOpacity
                     disabled={currentIndex === 0}
                     onPress={handlePrev}
-                    style={tw`px-4 py-2 bg-gray-700 rounded-lg`}
+                    style={tw`px-4 py-2 bg-surfaceMuted dark:bg-gray-700 rounded-lg`}
                   >
-                    <Text style={tw`text-white`}>Prev</Text>
+                    <Text style={tw`text-foreground dark:text-white`}>Prev</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     disabled={currentIndex === tickets.length - 1}
                     onPress={handleNext}
-                    style={tw`px-4 py-2 bg-[#0FF1CF] rounded-lg`}
+                    style={tw`px-4 py-2 bg-accentFill dark:bg-[#0FF1CF] rounded-lg`}
                   >
-                    <Text style={tw`text-[#01082E]`}>Next</Text>
+                    <Text style={tw`text-onAccent dark:text-[#01082E]`}>Next</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -676,8 +678,8 @@ const TransactionRef = () => {
             <CustomButton
               onPress={goToEventFeed}
               title="Jump Into Feed + Carpools"
-              buttonClassName="w-full !border-[#0FF1CF]"
-              textClassName="!text-[#0FF1CF]"
+              buttonClassName="w-full !border-accent dark:border-[#0FF1CF]"
+              textClassName="!text-accent dark:text-[#0FF1CF]"
               showArrow={false}
             />
           </View>

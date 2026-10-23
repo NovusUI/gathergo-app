@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useCarpoolRequestRes, useRemovePassenger } from "@/services/mutations";
 import { QUERY_KEYS } from "@/services/queryKeys";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
@@ -6,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type RequestCardProps = {
   status: string;
@@ -29,6 +29,7 @@ export default function RequestCard({
   requestId,
   carpoolId,
 }: RequestCardProps) {
+  const { tw, color } = useAppTheme();
   const [expanded, setExpanded] = useState(false);
 
   const isAccepted = status === "ACCEPTED";
@@ -112,7 +113,7 @@ export default function RequestCard({
     >
       <View style={tw`flex-row items-start`}>
         <View
-          style={tw`mr-3 h-14 w-14 items-center justify-center overflow-hidden rounded-[20px] bg-[#122451]`}
+          style={tw`mr-3 h-14 w-14 items-center justify-center overflow-hidden rounded-[20px] bg-surface dark:bg-[#122451]`}
         >
           {imageUrl ? (
             <Image source={imageUrl} contentFit="cover" style={tw`h-full w-full`} />
@@ -124,8 +125,8 @@ export default function RequestCard({
         <View style={tw`flex-1`}>
           <View style={tw`flex-row items-start justify-between gap-3`}>
             <View style={tw`flex-1`}>
-              <Text style={tw`text-base font-semibold text-white`}>{name}</Text>
-              <Text style={tw`mt-1 text-xs leading-5 text-[#9FB0D8]`}>
+              <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>{name}</Text>
+              <Text style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#9FB0D8]`}>
                 {statusCopy}
               </Text>
             </View>
@@ -149,18 +150,18 @@ export default function RequestCard({
         </View>
       </View>
 
-      <View style={tw`mt-4 rounded-[24px] border border-[#20355E] bg-[#0D1B44] px-4 py-4`}>
+      <View style={tw`mt-4 rounded-[24px] border border-border dark:border-[#20355E] bg-surface dark:bg-[#0D1B44] px-4 py-4`}>
         <View style={tw`flex-row items-start justify-between gap-3`}>
           <View style={tw`flex-1`}>
             <View style={tw`flex-row items-center`}>
-              <View style={tw`mr-3 h-8 w-8 items-center justify-center rounded-full bg-[#0FF1CF]/14`}>
-                <Ionicons name="location-outline" size={16} color="#0FF1CF" />
+              <View style={tw`mr-3 h-8 w-8 items-center justify-center rounded-full bg-accentFill/14 dark:bg-[#0FF1CF]/14`}>
+                <Ionicons name="location-outline" size={16} color={color("#0FF1CF", "accent")} />
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-[11px] uppercase tracking-[1px] text-[#7387B7]`}>
+                <Text style={tw`text-[11px] uppercase tracking-[1px] text-muted dark:text-[#7387B7]`}>
                   Pickup spot
                 </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-white`}>
+                <Text style={tw`mt-1 text-sm leading-5 text-foreground dark:text-white`}>
                   {locationText}
                 </Text>
               </View>
@@ -168,10 +169,10 @@ export default function RequestCard({
           </View>
 
           {distanceLabel && (
-            <View style={tw`rounded-full bg-white/6 px-3 py-2`}>
+            <View style={tw`rounded-full bg-surface dark:bg-white/6 px-3 py-2`}>
               <View style={tw`flex-row items-center`}>
-                <Ionicons name="navigate-outline" size={13} color="#9FB0D8" />
-                <Text style={tw`ml-1 text-[11px] font-medium text-[#D5E1FF]`}>
+                <Ionicons name="navigate-outline" size={13} color={color("#9FB0D8", "secondary")} />
+                <Text style={tw`ml-1 text-[11px] font-medium text-foreground dark:text-[#D5E1FF]`}>
                   {distanceLabel}
                 </Text>
               </View>
@@ -180,20 +181,20 @@ export default function RequestCard({
         </View>
 
         {trimmedNote ? (
-          <View style={tw`mt-3 rounded-[22px] bg-white/6 px-4 py-3`}>
+          <View style={tw`mt-3 rounded-[22px] bg-surface dark:bg-white/6 px-4 py-3`}>
             <View style={tw`flex-row items-start`}>
-              <View style={tw`mr-3 mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-white/7`}>
+              <View style={tw`mr-3 mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-surface/7 dark:bg-white/7`}>
                 <Ionicons
                   name="chatbubble-ellipses-outline"
                   size={14}
-                  color="#C5D4FF"
+                  color={color("#C5D4FF", "foreground")}
                 />
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-[11px] uppercase tracking-[1px] text-[#7387B7]`}>
+                <Text style={tw`text-[11px] uppercase tracking-[1px] text-muted dark:text-[#7387B7]`}>
                   Passenger note
                 </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-[#E5EDFF]`}>
+                <Text style={tw`mt-1 text-sm leading-5 text-foreground dark:text-[#E5EDFF]`}>
                   {displayNote}
                 </Text>
                 {noteNeedsToggle && (
@@ -201,7 +202,7 @@ export default function RequestCard({
                     onPress={() => setExpanded(!expanded)}
                     style={tw`mt-2 self-start`}
                   >
-                    <Text style={tw`text-xs font-semibold text-[#0FF1CF]`}>
+                    <Text style={tw`text-xs font-semibold text-accent dark:text-[#0FF1CF]`}>
                       {expanded ? "Show less" : "Read more"}
                     </Text>
                   </TouchableOpacity>
@@ -215,11 +216,11 @@ export default function RequestCard({
       <View style={tw`mt-4 flex-row items-center gap-3`}>
         {isAccepted ? (
           <>
-            <View style={tw`flex-1 rounded-[20px] border border-[#1A5A52] bg-[#0D2A28] px-4 py-3`}>
-              <Text style={tw`text-xs uppercase tracking-[1px] text-[#8DE7D1]`}>
+            <View style={tw`flex-1 rounded-[20px] border border-border dark:border-[#1A5A52] bg-surface dark:bg-[#0D2A28] px-4 py-3`}>
+              <Text style={tw`text-xs uppercase tracking-[1px] text-info dark:text-[#8DE7D1]`}>
                 Riding with you
               </Text>
-              <Text style={tw`mt-1 text-sm text-white`}>
+              <Text style={tw`mt-1 text-sm text-foreground dark:text-white`}>
                 This seat is already confirmed.
               </Text>
             </View>
@@ -228,9 +229,9 @@ export default function RequestCard({
               onPress={onRemovePassenger}
               activeOpacity={0.8}
               disabled={removePassengerPending}
-              style={tw`rounded-[20px] border border-[#6B2533] bg-[#2A0F18] px-5 py-3`}
+              style={tw`rounded-[20px] border border-border dark:border-[#6B2533] bg-dangerSoft dark:bg-[#2A0F18] px-5 py-3`}
             >
-              <Text style={tw`text-sm font-semibold text-[#FF9AAF]`}>
+              <Text style={tw`text-sm font-semibold text-danger dark:text-[#FF9AAF]`}>
                 {removePassengerPending ? "Removing..." : "Remove"}
               </Text>
             </TouchableOpacity>
@@ -241,10 +242,10 @@ export default function RequestCard({
               onPress={() => respondToCarpoolReq("ACCEPTED")}
               activeOpacity={0.8}
               disabled={reqResPen}
-              style={tw`flex-1 flex-row items-center justify-center rounded-[20px] bg-[#0FF1CF] px-4 py-3`}
+              style={tw`flex-1 flex-row items-center justify-center rounded-[20px] bg-accentFill dark:bg-[#0FF1CF] px-4 py-3`}
             >
-              <Ionicons name="checkmark" size={16} color="#01082E" />
-              <Text style={tw`ml-2 text-sm font-semibold text-[#01082E]`}>
+              <Ionicons name="checkmark" size={16} color={color("#01082E", "onAccent")} />
+              <Text style={tw`ml-2 text-sm font-semibold text-onAccent dark:text-[#01082E]`}>
                 {reqResPen ? "Accepting..." : "Accept"}
               </Text>
             </TouchableOpacity>
@@ -253,10 +254,10 @@ export default function RequestCard({
               onPress={() => respondToCarpoolReq("DECLINED")}
               activeOpacity={0.8}
               disabled={reqResPen}
-              style={tw`flex-1 flex-row items-center justify-center rounded-[20px] border border-[#6B2533] bg-[#24101A] px-4 py-3`}
+              style={tw`flex-1 flex-row items-center justify-center rounded-[20px] border border-border dark:border-[#6B2533] bg-dangerSoft dark:bg-[#24101A] px-4 py-3`}
             >
-              <Ionicons name="close" size={16} color="#FF9AAF" />
-              <Text style={tw`ml-2 text-sm font-semibold text-[#FF9AAF]`}>
+              <Ionicons name="close" size={16} color={color("#FF9AAF", "danger")} />
+              <Text style={tw`ml-2 text-sm font-semibold text-danger dark:text-[#FF9AAF]`}>
                 {reqResPen ? "Declining..." : "Decline"}
               </Text>
             </TouchableOpacity>

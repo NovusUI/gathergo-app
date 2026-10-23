@@ -1,3 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import type { ThemeColor } from "@/constants/theme";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
@@ -6,6 +8,8 @@ export default function SkipOnboardingButton({
 }: {
   onPress: () => void;
 }) {
+  const { color } = useAppTheme();
+  const styles = createStyles(color);
   const guardedOnPress = usePressGuard(onPress);
 
   return (
@@ -20,7 +24,7 @@ export default function SkipOnboardingButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   button: {
     minHeight: 44,
     minWidth: 64,
@@ -29,7 +33,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   label: {
-    color: "#C5D0F7",
+    color: color("#C5D0F7", "secondary"),
     fontSize: 15,
     fontWeight: "600",
   },

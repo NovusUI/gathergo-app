@@ -1,5 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 export default function StatsCard({
   eventsCount,
@@ -10,6 +10,7 @@ export default function StatsCard({
   followersCount: number;
   followingCount: number;
 }) {
+  const { tw } = useAppTheme();
   const stats = [
     { label: "Events", value: eventsCount },
     { label: "Followers", value: followersCount },
@@ -24,8 +25,8 @@ export default function StatsCard({
           accessibilityLabel={`${value} ${label.toLowerCase()}`}
           style={tw`flex-1 items-center gap-1`}
         >
-          <Text style={tw`text-lg font-bold text-white`}>{value}</Text>
-          <Text style={tw`text-[11px] text-[#AFC0E7]`} numberOfLines={1}>
+          <Text style={tw`text-lg font-bold text-foreground dark:text-white`}>{value}</Text>
+          <Text style={tw`text-[11px] text-secondary dark:text-[#AFC0E7]`} numberOfLines={1}>
             {label}
           </Text>
         </View>

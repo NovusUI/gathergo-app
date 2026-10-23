@@ -304,6 +304,8 @@ const formValues = {};
 const volunteerWarnings = [];
 let previousPricing;
 let activeRoleEditor;
+// Field-array mutations render before useWatch receives its next effect notification.
+let watchedVolunteerRoles;
 const roleDraft = {
   title: role.title,
   description: role.description,
@@ -321,7 +323,11 @@ const { default: VolunteerSetupFields } = loadTypeScript(
     "react-hook-form": {
       useWatch: ({ name }) =>
         Array.isArray(name)
-          ? name.map((key) => formValues[key])
+          ? name.map((key) =>
+              key === "volunteerRoles" && watchedVolunteerRoles !== undefined
+                ? watchedVolunteerRoles
+                : formValues[key],
+            )
           : formValues[name],
       useFormState: () => ({ errors: {} }),
       useFieldArray: () => ({
@@ -366,6 +372,7 @@ function resetForm(overrides = {}) {
   });
   previousPricing = { current: "registration" };
   activeRoleEditor = null;
+  watchedVolunteerRoles = undefined;
 }
 function volunteerOnlySwitch() {
   return [...nodes(VolunteerSetupFields(formProps))].find(
@@ -390,6 +397,80 @@ test("a volunteer-only event adds roles without another participation selector",
   assert.equal(formValues.registrationType, "volunteer");
 });
 
+
+test("a newly saved volunteer role renders before the watched array catches up", () => {
+  resetForm({ registrationType: "volunteer", impactDescription: "Restore green spaces together." });
+  watchedVolunteerRoles = [];
+  const add = [...nodes(VolunteerSetupFields(formProps))].find(
+    (node) => node.type === "Button" && node.props.accessibilityState,
+  );
+  add.props.onPress();
+  roleEditor().props.onSave(roleDraft);
+
+  const content = [...nodes(VolunteerSetupFields(formProps))];
+  assert.ok(content.some((node) => node.props.children === roleDraft.title));
+  assert.ok(content.some((node) => node.props.children === roleDraft.description));
+  assert.ok(content.some((node) => Array.isArray(node.props.children) &&
+    node.props.children[0] === roleDraft.capacity &&
+    node.props.children.includes("Approval required")));
+  content.find((node) => node.props.accessibilityLabel === "Edit volunteer role 1").props.onPress();
+  assert.deepEqual(roleEditor().props.initialValue, roleDraft);
+});
+
+test("an edited volunteer role displays and reopens its latest values before watch catches up", () => {
+  resetForm({
+    registrationType: "volunteer",
+    impactDescription: "Restore green spaces together.",
+    volunteerRoles: [{ ...roleDraft }],
+  });
+  watchedVolunteerRoles = [...formValues.volunteerRoles];
+  const edit = () => [...nodes(VolunteerSetupFields(formProps))].find(
+    (node) => node.props.accessibilityLabel === "Edit volunteer role 1",
+  );
+  edit().props.onPress();
+  const updated = {
+    title: "Welcome team",
+    description: "Help neighbours find their planting group.",
+    capacity: 5,
+    requiresApproval: false,
+  };
+  roleEditor().props.onSave(updated);
+
+  const content = [...nodes(VolunteerSetupFields(formProps))];
+  assert.ok(content.some((node) => node.props.children === updated.title));
+  assert.ok(content.some((node) => node.props.children === updated.description));
+  assert.ok(content.some((node) => Array.isArray(node.props.children) &&
+    node.props.children[0] === updated.capacity &&
+    node.props.children.includes("Automatic acceptance")));
+  edit().props.onPress();
+  assert.deepEqual(roleEditor().props.initialValue, updated);
+});
+
+test("removing a volunteer role keeps the remaining card and editor aligned before watch catches up", () => {
+  const second = { ...roleDraft, title: "Welcome team", capacity: 4 };
+  resetForm({
+    registrationType: "volunteer",
+    impactDescription: "Restore green spaces together.",
+    volunteerRoles: [{ ...roleDraft }, second],
+  });
+  watchedVolunteerRoles = [...formValues.volunteerRoles];
+  const remove = () => [...nodes(VolunteerSetupFields(formProps))].find(
+    (node) => node.props.accessibilityLabel === "Remove volunteer role 1",
+  );
+  remove().props.onPress();
+
+  const content = [...nodes(VolunteerSetupFields(formProps))];
+  assert.ok(content.some((node) => node.props.children === second.title));
+  assert.equal(content.some((node) => node.props.children === roleDraft.title), false);
+  content.find((node) => node.props.accessibilityLabel === "Edit volunteer role 1").props.onPress();
+  assert.deepEqual(roleEditor().props.initialValue, second);
+  roleEditor().props.onClose();
+  remove().props.onPress();
+  assert.deepEqual(formValues.volunteerRoles, []);
+  assert.equal([...nodes(VolunteerSetupFields(formProps))].some(
+    (node) => node.props.accessibilityLabel === "Edit volunteer role 1",
+  ), false);
+});
 
 test("other event types have no volunteer setup, cards or actions even with impact and saved roles", () => {
   for (const registrationType of ["ticket", "registration", "donation"]) {

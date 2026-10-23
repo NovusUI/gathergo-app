@@ -1,9 +1,11 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuth } from "@/context/AuthContext";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import { useAuthStore } from "@/store/auth";
 import { Redirect, Stack } from "expo-router";
 
 export default function AuthLayout() {
+  const { color } = useAppTheme();
   const { loading } = useAuth();
   const { isAuthenticated, hasHydrated } = useAuthStore();
 
@@ -19,7 +21,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#01082E" },
+        contentStyle: { backgroundColor: color("#01082E", "background") },
         animation: "fade",
       }}
     />

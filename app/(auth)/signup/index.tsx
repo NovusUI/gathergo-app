@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Key, Mail, XIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -12,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import * as z from "zod";
 
 import CustomButton from "@/components/buttons/CustomBtn1";
@@ -43,6 +44,7 @@ const signUpSchema = z
 type SignUpFormData = z.infer<typeof signUpSchema>;
 
 const SignUp = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { mutate: signUp, isPending } = useSignUpMutation();
@@ -130,7 +132,7 @@ const SignUp = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -149,7 +151,7 @@ const SignUp = () => {
         style={tw`absolute top-10 left-8`}
         onPress={() => router.replace("/login")}
       >
-        <XIcon color="white" />
+        <XIcon color={color("white", "foreground")} />
       </TouchableOpacity>
 
       {/* Logo */}
@@ -163,7 +165,7 @@ const SignUp = () => {
         <LocalSvgAsset name="gglogo" width={80} height={80} />
       </View>
 
-      <Text style={tw`text-white text-lg font-semibold mt-5`}>Sign Up</Text>
+      <Text style={tw`text-foreground dark:text-white text-lg font-semibold mt-5`}>Sign Up</Text>
 
       {/* Email */}
       <Controller
@@ -179,7 +181,7 @@ const SignUp = () => {
         )}
       />
       {errors.email && (
-        <Text style={tw`text-red-500 self-start`}>{errors.email.message}</Text>
+        <Text style={tw`text-danger dark:text-red-500 self-start`}>{errors.email.message}</Text>
       )}
 
       {/* Password */}
@@ -197,7 +199,7 @@ const SignUp = () => {
         )}
       />
       {errors.password && (
-        <Text style={tw`text-red-500 self-start`}>
+        <Text style={tw`text-danger dark:text-red-500 self-start`}>
           {errors.password.message}
         </Text>
       )}
@@ -217,7 +219,7 @@ const SignUp = () => {
         )}
       />
       {errors.confirmPassword && (
-        <Text style={tw`text-red-500 self-start`}>
+        <Text style={tw`text-danger dark:text-red-500 self-start`}>
           {errors.confirmPassword.message}
         </Text>
       )}
@@ -225,9 +227,9 @@ const SignUp = () => {
       {/* Sign Up Button */}
       <CustomButton
         title={isPending ? "Signing up..." : "Sign Up"}
-        buttonClassName="!w-full bg-[#0FF1CF] border-0"
-        arrowCircleColor="bg-[#0C7F7F]"
-        textClassName="!text-black"
+        buttonClassName="!w-full bg-accentFill dark:bg-[#0FF1CF] border-0"
+        arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
+        textClassName="!text-onAccent dark:text-black"
         onPress={handleSubmit(onSubmit)}
         disabled={isPending}
       />
@@ -237,7 +239,7 @@ const SignUp = () => {
         style={tw`w-full flex-row justify-center mt-5`}
         onPress={() => router.replace("/login")}
       >
-        <Text style={tw`text-white`}>
+        <Text style={tw`text-foreground dark:text-white`}>
           Already have an account?{" "}
           <Text style={tw`font-semibold`}>Sign in</Text>
         </Text>

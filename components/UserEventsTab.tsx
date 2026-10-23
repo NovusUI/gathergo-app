@@ -1,9 +1,10 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import { layoutSpacing } from "@/constants/spacing";
 import type { EventData } from "@/types/auth";
 import { useLockedRouter } from "@/utils/navigation";
 import { SectionList, type SectionListProps, Text, View } from "react-native";
-import tw from "twrnc";
+
 import EventCard from "./ui/EventCard";
 
 interface UserEventsTabProps
@@ -27,6 +28,7 @@ export default function UserEventsTab({
   ListHeaderComponent,
   renderSectionHeader,
 }: UserEventsTabProps) {
+  const { tw } = useAppTheme();
   const router = useLockedRouter();
   return (
     <SectionList<EventData>
@@ -53,7 +55,7 @@ export default function UserEventsTab({
             />
           </View>
         ) : events.length === 0 ? (
-          <Text style={tw`py-4 text-base text-[#AFC0E7]`}>No events yet.</Text>
+          <Text style={tw`py-4 text-base text-secondary dark:text-[#AFC0E7]`}>No events yet.</Text>
         ) : null
       }
       contentContainerStyle={[

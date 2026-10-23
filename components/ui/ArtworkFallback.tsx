@@ -1,8 +1,8 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Registration } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -174,6 +174,7 @@ export const EventArtworkFallback = ({
   borderRadius?: number;
   compact?: boolean;
 }) => {
+  const { tw } = useAppTheme();
   const visual = getEventVisual(registrationType);
 
   return (
@@ -248,6 +249,7 @@ export const NotificationArtworkFallback = ({
   width: number;
   borderRadius?: number;
 }) => {
+  const { tw } = useAppTheme();
   const visual = getNotificationVisual(notificationType);
 
   return (

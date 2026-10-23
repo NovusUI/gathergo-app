@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import type {
@@ -14,7 +15,6 @@ import {
   type ComponentProps,
 } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -68,6 +68,7 @@ const VibeTypingDialog = ({
   speedMs = 22,
   textKey,
 }: VibeTypingDialogProps) => {
+  const { tw } = useAppTheme();
   const [visibleCharacters, setVisibleCharacters] = useState(0);
   const fullText = useMemo(() => getDialogText(parts), [parts]);
   const visibleParts = useMemo(
@@ -102,7 +103,7 @@ const VibeTypingDialog = ({
   }, [fullText, onComplete, visibleCharacters]);
 
   return (
-    <Text style={tw`text-white text-sm leading-5`}>
+    <Text style={tw`text-foreground dark:text-white text-sm leading-5`}>
       {visibleParts.map((part, index) => (
         <Text
           key={`${index}-${part.highlight ? "highlight" : "text"}`}
@@ -133,6 +134,7 @@ export default function RideVibeChatCard({
   safetySignal,
   vibeCheckButtonLabel = "Complete signal",
 }: RideVibeChatCardProps) {
+  const { tw, color } = useAppTheme();
   const safetyCopy = getCarpoolVibeSafetyRoleCopy(
     safetySignal,
     roleLabel,
@@ -243,7 +245,7 @@ export default function RideVibeChatCard({
             </View>
           ) : (
             <Text
-              style={[tw`text-white text-sm leading-5 mt-1`, { minHeight: 40 }]}
+              style={[tw`text-foreground dark:text-white text-sm leading-5 mt-1`, { minHeight: 40 }]}
               numberOfLines={2}
             >
               {dialogText}
@@ -262,10 +264,10 @@ export default function RideVibeChatCard({
           >
             <View style={tw`flex-row items-center justify-between gap-3`}>
               <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-white text-sm font-semibold`}>
+                <Text style={tw`text-foreground dark:text-white text-sm font-semibold`}>
                   Handshake flow
                 </Text>
-                <Text style={tw`text-[#A8BAE4] text-xs mt-1`}>
+                <Text style={tw`text-secondary dark:text-[#A8BAE4] text-xs mt-1`}>
                   {safetySignal.title}
                 </Text>
               </View>
@@ -294,7 +296,7 @@ export default function RideVibeChatCard({
                   },
                 ]}
               >
-                <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+                <Text style={tw`text-secondary dark:text-[#8FA5E2] text-xs`} numberOfLines={1}>
                   {safetyCopy.primarySignalLabel}
                 </Text>
                 <Text
@@ -317,7 +319,7 @@ export default function RideVibeChatCard({
                   },
                 ]}
               >
-                <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+                <Text style={tw`text-secondary dark:text-[#8FA5E2] text-xs`} numberOfLines={1}>
                   {safetyCopy.secondarySignalLabel}
                 </Text>
                 <Text
@@ -348,9 +350,9 @@ export default function RideVibeChatCard({
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={17}
-                  color="#01082E"
+                  color={color("#01082E", "onAccent")}
                 />
-                <Text style={tw`text-[#01082E] text-sm font-semibold`}>
+                <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold`}>
                   {vibeCheckButtonLabel}
                 </Text>
               </TouchableOpacity>

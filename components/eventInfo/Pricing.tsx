@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   EventPricing,
   EventPricingFormData,
@@ -11,7 +12,7 @@ import { PlusCircle } from "lucide-react-native";
 import { useEffect, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw, { style as twStyle } from "twrnc";
+
 import CustomSwitcher from "../CustomSwitcher";
 import CustomView from "../View";
 import CustomButton from "../buttons/CustomBtn1";
@@ -71,6 +72,8 @@ const Pricing = ({
   submitLabel = "Save and Continue",
   allowedRegistrationTypes = ALL_REGISTRATION_TYPES,
 }: Props) => {
+  const { tw, color } = useAppTheme();
+  const twStyle = tw.style;
   const allowedTypesKey = allowedRegistrationTypes.join("|");
   const normalizedAllowedRegistrationTypes = useMemo(
     () =>
@@ -147,7 +150,7 @@ const Pricing = ({
   );
 
   const ErrorText = ({ message }: { message?: string }) =>
-    message ? <Text style={tw`text-red-500`}>{message}</Text> : null;
+    message ? <Text style={tw`text-danger dark:text-red-500`}>{message}</Text> : null;
   const onError = (errors: any) => {
     showGlobalError("Error in form");
     console.log(errors);
@@ -241,8 +244,8 @@ const Pricing = ({
                     style={[
                       tw`mt-3 items-center justify-center rounded-xl p-5`,
                       registrationType === type
-                        ? tw`bg-[#0FF1CF]`
-                        : tw`bg-[#101C45]`,
+                        ? tw`bg-accentFill dark:bg-[#0FF1CF]`
+                        : tw`bg-surface dark:bg-[#101C45]`,
                       {
                         width:
                           normalizedAllowedRegistrationTypes.length === 2
@@ -255,8 +258,8 @@ const Pricing = ({
                       style={twStyle(
                         "text-center text-sm",
                         registrationType === type
-                          ? "text-[#01082E]"
-                          : "text-white",
+                          ? "text-onAccent dark:text-[#01082E]"
+                          : "text-foreground dark:text-white",
                       )}
                     >
                       {registrationTypeContent[type].label}
@@ -265,8 +268,8 @@ const Pricing = ({
                       style={[
                         tw`mt-1 text-center text-xs`,
                         registrationType === type
-                          ? tw`text-[#153B47]`
-                          : tw`text-[#8FA5E2]`,
+                          ? tw`text-onAccent dark:text-[#153B47]`
+                          : tw`text-secondary dark:text-[#8FA5E2]`,
                       ]}
                     >
                       {registrationTypeContent[type].helper}
@@ -281,7 +284,7 @@ const Pricing = ({
         )}
 
         {isPricingTypeLocked && (
-          <Text style={tw`mt-3 text-xs text-gray-400`}>
+          <Text style={tw`mt-3 text-xs text-muted dark:text-gray-400`}>
             Participation type is fixed after publishing.
           </Text>
         )}
@@ -292,8 +295,8 @@ const Pricing = ({
               style={tw`flex-row gap-3 items-center mt-4`}
               onPress={() => createTicket()}
             >
-              <PlusCircle size={15} color="#0FF1CF" />
-              <Text style={tw`text-[#0FF1CF]`}>Add New Ticket</Text>
+              <PlusCircle size={15} color={color("#0FF1CF", "accent")} />
+              <Text style={tw`text-accent dark:text-[#0FF1CF]`}>Add New Ticket</Text>
             </TouchableOpacity>
 
             {tickets?.map((ticket) => (
@@ -318,7 +321,7 @@ const Pricing = ({
           <CustomView>
             <CustomView>
               <View style={tw`flex-row justify-between items-center mb-4`}>
-                <Text style={tw`text-white`}>
+                <Text style={tw`text-foreground dark:text-white`}>
                   {limited ? "Limited" : "Unlimited"}
                 </Text>
                 <Controller
@@ -360,7 +363,7 @@ const Pricing = ({
 
             <CustomView>
               <View style={tw`flex-row justify-between items-center mb-4`}>
-                <Text style={tw`text-white`}>{paid ? "Paid" : "Free"}</Text>
+                <Text style={tw`text-foreground dark:text-white`}>{paid ? "Paid" : "Free"}</Text>
                 <Controller
                   name="paid"
                   control={control}
@@ -436,8 +439,8 @@ const Pricing = ({
             onPress={handleSubmit(onSubmit, onError)}
             disabled={registrationType === "ticket" && tickets?.length === 0}
             showArrow={false}
-            buttonClassName="bg-[#0FF1CF] w-full mt-10"
-            textClassName="!text-black"
+            buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full mt-10"
+            textClassName="!text-onAccent dark:text-black"
             title={submitLabel}
           />
         ) : null}

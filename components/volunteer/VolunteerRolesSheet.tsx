@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import WithdrawApplicationButton from "@/components/volunteer/WithdrawApplicationButton";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
@@ -29,7 +30,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 export default function VolunteerRolesSheet({
   event,
@@ -40,6 +40,7 @@ export default function VolunteerRolesSheet({
   owner: boolean;
   onClose: () => void;
 }) {
+  const { tw, color } = useAppTheme();
   const query = useVolunteerRoles(event.id);
   const router = useLockedRouter();
   const applications =
@@ -54,15 +55,15 @@ export default function VolunteerRolesSheet({
       >
         <View
           accessibilityViewIsModal
-          style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
         >
           <View
-            style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+            style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
           />
           <View style={tw`flex-row items-center justify-between gap-4`}>
             <Text
               accessibilityRole="header"
-              style={tw`flex-1 text-xl font-semibold text-white`}
+              style={tw`flex-1 text-xl font-semibold text-foreground dark:text-white`}
             >
               Volunteer roles
             </Text>
@@ -76,7 +77,7 @@ export default function VolunteerRolesSheet({
             contentContainerStyle={tw`gap-4 pt-4 pb-6`}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
+            <Text style={tw`text-sm leading-5 text-secondary dark:text-[#A8BAE4]`}>
               Volunteer in person. One role per event, with no ticket or
               attendee registration required.
             </Text>
@@ -96,19 +97,19 @@ export default function VolunteerRolesSheet({
               />
             ) : null}
             {query.isPending ? (
-              <ActivityIndicator color="#0FF1CF" />
+              <ActivityIndicator color={color("#0FF1CF", "accent")} />
             ) : query.isError ? (
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="Retry volunteer roles"
                 onPress={() => query.refetch()}
               >
-                <Text style={tw`text-[#FF8A8A]`}>
+                <Text style={tw`text-danger dark:text-[#FF8A8A]`}>
                   Could not load volunteer roles. Tap to retry.
                 </Text>
               </TouchableOpacity>
             ) : query.data.data.length === 0 ? (
-              <Text style={tw`text-sm text-[#A8BAE4]`}>
+              <Text style={tw`text-sm text-secondary dark:text-[#A8BAE4]`}>
                 No volunteer roles have been published yet.
               </Text>
             ) : (
@@ -141,6 +142,7 @@ function VolunteerOpportunity({
   owner: boolean;
   applications: VolunteerApplication[];
 }) {
+  const { tw } = useAppTheme();
   const [note, setNote] = useState("");
   const mutation = useVolunteerAction(event.id);
   const application = role.applications[0];
@@ -149,30 +151,30 @@ function VolunteerOpportunity({
     canRecruitVolunteers(event) &&
     canApplyToRole(role, applications, event.startDate);
   return (
-    <View style={tw`gap-3 rounded-2xl border border-[#24345A] p-4`}>
+    <View style={tw`gap-3 rounded-2xl border border-border dark:border-[#24345A] p-4`}>
       <View style={tw`flex-row items-start justify-between gap-3`}>
-        <Text style={tw`flex-1 text-lg font-semibold text-white`}>
+        <Text style={tw`flex-1 text-lg font-semibold text-foreground dark:text-white`}>
           {role.title}
         </Text>
-        <Text style={tw`text-xs text-[#0FF1CF]`}>
+        <Text style={tw`text-xs text-accent dark:text-[#0FF1CF]`}>
           {role._count.applications}/{role.capacity} confirmed
         </Text>
       </View>
-      <Text style={tw`text-sm leading-5 text-[#C6D5F2]`}>
+      <Text style={tw`text-sm leading-5 text-secondary dark:text-[#C6D5F2]`}>
         {role.description}
       </Text>
-      <Text style={tw`text-xs text-[#A8BAE4]`}>
+      <Text style={tw`text-xs text-secondary dark:text-[#A8BAE4]`}>
         {role.requiresApproval
           ? "Organiser approval required"
           : "Join immediately while places are available"}
       </Text>
       {application ? (
-        <Text style={tw`font-semibold text-[#0FF1CF]`}>
+        <Text style={tw`font-semibold text-accent dark:text-[#0FF1CF]`}>
           {VOLUNTEER_STATUS_LABELS[application.status]}
         </Text>
       ) : null}
       {application && application.confirmedMinutes !== null ? (
-        <Text style={tw`text-sm text-[#A8BAE4]`}>
+        <Text style={tw`text-sm text-secondary dark:text-[#A8BAE4]`}>
           {application.confirmedMinutes} minutes confirmed by the organiser
         </Text>
       ) : null}
@@ -189,7 +191,7 @@ function VolunteerOpportunity({
           <CustomButton
             showArrow={false}
             disabled={mutation.isPending}
-            buttonClassName="w-full bg-[#0FF1CF]"
+            buttonClassName="w-full bg-accentFill dark:bg-[#0FF1CF]"
             title={
               mutation.isPending
                 ? "Sending…"
@@ -219,7 +221,7 @@ function VolunteerOpportunity({
           />
         </>
       ) : !application ? (
-        <Text style={tw`text-xs text-[#A8BAE4]`}>
+        <Text style={tw`text-xs text-secondary dark:text-[#A8BAE4]`}>
           {new Date(event.startDate).getTime() <= Date.now()
             ? "Recruitment has closed"
             : !canRecruitVolunteers(event)

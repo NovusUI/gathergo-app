@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import BadgeProgress from "./BadgeProgress";
 import type { Badge } from "@/types/badge";
 import {
@@ -13,7 +14,7 @@ import {
   Tent,
 } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
+
 import { GatherCardBackground } from "./GatherArtwork";
 
 const ICONS = {
@@ -41,6 +42,7 @@ export function BadgeEmblem({
   badge: Pick<Badge, "icon" | "status">;
   size?: number;
 }) {
+  const { tw, color } = useAppTheme();
   const earned = badge.status === "earned";
   const Icon = ICONS[badge.icon];
   return (
@@ -50,12 +52,12 @@ export function BadgeEmblem({
         {
           width: size,
           height: size,
-          backgroundColor: earned ? "#193744" : "#152342",
-          borderColor: earned ? "#0FF1CF" : "#304164",
+          backgroundColor: earned ? color("#193744", "accentSoft") : color("#152342", "surfaceMuted"),
+          borderColor: earned ? color("#0FF1CF", "accent") : color("#304164", "border"),
         },
       ]}
     >
-      <Icon size={size * 0.46} color={earned ? "#0FF1CF" : "#AFC0E7"} />
+      <Icon size={size * 0.46} color={earned ? color("#0FF1CF", "accent") : color("#AFC0E7", "secondary")} />
     </View>
   );
 }
@@ -67,6 +69,7 @@ export default function BadgeCard({
   badge: Badge;
   onPress: () => void;
 }) {
+  const { tw, color } = useAppTheme();
   const earned = badge.status === "earned";
   return (
     <TouchableOpacity
@@ -74,8 +77,8 @@ export default function BadgeCard({
       accessibilityLabel={`${badge.name}. ${earned ? "Earned" : badge.progress.label}. View requirements`}
       onPress={onPress}
       style={[
-        tw`relative overflow-hidden gap-3 rounded-3xl border bg-[#0A1739] p-4`,
-        { borderColor: earned ? "#1C5C61" : "#24345A" },
+        tw`relative overflow-hidden gap-3 rounded-3xl border bg-surface dark:bg-[#0A1739] p-4`,
+        { borderColor: earned ? color("#1C5C61", "border") : color("#24345A", "border") },
       ]}
     >
       <GatherCardBackground />
@@ -83,27 +86,27 @@ export default function BadgeCard({
         <BadgeEmblem badge={badge} />
         <View style={tw`flex-1 gap-1`}>
           <Text
-            style={tw`text-[10px] font-semibold uppercase tracking-widest text-[#8FA5E2]`}
+            style={tw`text-[10px] font-semibold uppercase tracking-widest text-secondary dark:text-[#8FA5E2]`}
           >
             {CATEGORY_LABELS[badge.category]}
           </Text>
-          <Text style={tw`text-lg font-semibold text-white`}>{badge.name}</Text>
+          <Text style={tw`text-lg font-semibold text-foreground dark:text-white`}>{badge.name}</Text>
         </View>
         {earned ? (
-          <Check size={20} color="#0FF1CF" />
+          <Check size={20} color={color("#0FF1CF", "accent")} />
         ) : badge.status === "locked" ? (
-          <LockKeyhole size={16} color="#8FA5E2" />
+          <LockKeyhole size={16} color={color("#8FA5E2", "secondary")} />
         ) : null}
       </View>
-      <Text style={tw`text-sm leading-5 text-[#AFC0E7]`}>
+      <Text style={tw`text-sm leading-5 text-secondary dark:text-[#AFC0E7]`}>
         {badge.description}
       </Text>
       <BadgeProgress badge={badge} />
       <View style={tw`flex-row justify-between gap-2`}>
-        <Text style={tw`text-xs text-[#C9D5F5]`}>
+        <Text style={tw`text-xs text-secondary dark:text-[#C9D5F5]`}>
           {earned ? "Earned" : badge.progress.label}
         </Text>
-        <Text style={tw`text-xs text-[#0FF1CF]`}>
+        <Text style={tw`text-xs text-accent dark:text-[#0FF1CF]`}>
           {earned
             ? badge.isPublic
               ? "On your profile"

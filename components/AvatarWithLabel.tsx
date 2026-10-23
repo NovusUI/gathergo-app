@@ -1,6 +1,6 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Image } from "expo-image";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 type AvatarWithLabelProps = {
   imageUrl?: string | { uri: string };
@@ -17,6 +17,7 @@ export default function AvatarWithLabel({
   size = 44,
   rounded = false,
 }: AvatarWithLabelProps) {
+  const { tw } = useAppTheme();
   return (
     <View style={tw`flex-row items-center gap-3`}>
       {imageUrl ? (
@@ -34,7 +35,7 @@ export default function AvatarWithLabel({
       ) : (
         <View
           style={[
-            tw`bg-gray-500`,
+            tw`bg-surfaceMuted dark:bg-gray-500`,
             {
               width: size,
               height: size,
@@ -45,8 +46,8 @@ export default function AvatarWithLabel({
       )}
 
       <View style={tw`py-2`}>
-        <Text style={tw`capitalize text-white`}>{username}</Text>
-        <Text style={tw`text-[#8E8E8E] text-sm`}>{role}</Text>
+        <Text style={tw`capitalize text-foreground dark:text-white`}>{username}</Text>
+        <Text style={tw`text-muted dark:text-[#8E8E8E] text-sm`}>{role}</Text>
       </View>
     </View>
   );

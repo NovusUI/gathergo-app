@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   FEED_FRENZY_COLORS,
   FEED_FRENZY_LABELS,
@@ -18,7 +19,6 @@ import {
   useWindowDimensions,
   View
 } from "react-native";
-import tw from "twrnc";
 
 interface FlameFeedButtonProps {
   unreadCount: number;
@@ -46,6 +46,7 @@ export default function FlameFeedButton({
   disabled = false,
   supportsCarpool = false
 }: FlameFeedButtonProps) {
+  const { tw } = useAppTheme();
   const reducedMotion = useReducedMotionPreference();
   const heatColor = FEED_FRENZY_COLORS[frenzyLevel][0];
   const Artwork = supportsCarpool ? GogoCarFrenzyArtwork : GogoFrenzyArtwork;
@@ -249,7 +250,7 @@ export default function FlameFeedButton({
         }}
         accessibilityHint="Tap to open the feed. Drag to move this button."
         style={[
-          tw`relative items-center justify-center rounded-full border bg-[#041130]/90 p-1`,
+          tw`relative items-center justify-center rounded-full border bg-background/90 dark:bg-[#041130]/90 p-1`,
           {
             width: BUTTON_SIZE,
             height: BUTTON_SIZE,
@@ -282,9 +283,9 @@ export default function FlameFeedButton({
 
         {unreadCount > 0 ? (
           <View
-            style={tw`absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[20px] h-5 px-1 items-center justify-center`}
+            style={tw`absolute -top-2 -right-2 bg-danger dark:bg-red-500 rounded-full min-w-[20px] h-5 px-1 items-center justify-center`}
           >
-            <Text style={tw`text-white text-xs font-bold`}>
+            <Text style={tw`text-onPrimary dark:text-white text-xs font-bold`}>
               {unreadCount > 99 ? "99+" : unreadCount}
             </Text>
           </View>

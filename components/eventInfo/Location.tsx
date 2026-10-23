@@ -1,6 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import type { EventFormData } from "@/schemas/event";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw, { style as twStyle } from "twrnc";
+
 import CustomView from "../View";
 import CustomButton from "../buttons/CustomBtn1";
 import Input from "../inputs/CustomInput1";
@@ -26,6 +27,8 @@ const Location = ({
   physicalOnly = false,
   submitLabel = "Save and Continue",
 }: LocationProps) => {
+  const { tw } = useAppTheme();
+  const twStyle = tw.style;
   const physicalEvent = physicalOnly || isPhysicalEvent;
 
   return (
@@ -38,14 +41,14 @@ const Location = ({
             style={twStyle(
               "flex-1 rounded-2xl border px-4 py-4",
               physicalEvent
-                ? "border-[#0FF1CF] bg-[#0FF1CF]/12"
-                : "border-[#24345A] bg-[#0A173F]",
+                ? "border-accent dark:border-[#0FF1CF] bg-accentFill/12 dark:bg-[#0FF1CF]/12"
+                : "border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F]",
             )}
           >
             <Text
               style={twStyle(
                 "text-base font-semibold",
-                physicalEvent ? "text-white" : "text-[#D7E2FF]",
+                physicalEvent ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D7E2FF]",
               )}
             >
               Physical event
@@ -53,7 +56,7 @@ const Location = ({
             <Text
               style={twStyle(
                 "mt-1 text-xs",
-                physicalEvent ? "text-[#B9FFF4]" : "text-[#7F93C2]",
+                physicalEvent ? "text-foreground dark:text-[#B9FFF4]" : "text-muted dark:text-[#7F93C2]",
               )}
             >
               Venue, landmark, or address
@@ -66,14 +69,14 @@ const Location = ({
             style={twStyle(
               "flex-1 rounded-2xl border px-4 py-4",
               !physicalEvent
-                ? "border-[#0FF1CF] bg-[#0FF1CF]/12"
-                : "border-[#24345A] bg-[#0A173F]",
+                ? "border-accent dark:border-[#0FF1CF] bg-accentFill/12 dark:bg-[#0FF1CF]/12"
+                : "border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F]",
             )}
           >
             <Text
               style={twStyle(
                 "text-base font-semibold",
-                !physicalEvent ? "text-white" : "text-[#D7E2FF]",
+                !physicalEvent ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D7E2FF]",
               )}
             >
               No physical meetup
@@ -81,7 +84,7 @@ const Location = ({
             <Text
               style={twStyle(
                 "mt-1 text-xs",
-                !physicalEvent ? "text-[#B9FFF4]" : "text-[#7F93C2]",
+                !physicalEvent ? "text-foreground dark:text-[#B9FFF4]" : "text-muted dark:text-[#7F93C2]",
               )}
             >
               Online, remote, or off-site support
@@ -108,8 +111,8 @@ const Location = ({
           onPress={onSave}
           disabled={physicalEvent && value.trim().length === 0}
           showArrow={false}
-          buttonClassName="bg-[#0FF1CF] w-full"
-          textClassName="!text-black"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full"
+          textClassName="!text-onAccent dark:text-black"
           title={submitLabel}
         />
       ) : null}

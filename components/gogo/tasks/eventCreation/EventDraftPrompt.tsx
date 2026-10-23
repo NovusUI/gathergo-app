@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 export default function EventDraftPrompt({
   title,
@@ -14,6 +14,7 @@ export default function EventDraftPrompt({
   onContinue: () => void;
   onDiscard: () => void;
 }) {
+  const { tw } = useAppTheme();
   return (
     <ScrollView contentContainerStyle={tw`grow justify-center px-6 py-8`}>
       <MascotMoment
@@ -31,8 +32,8 @@ export default function EventDraftPrompt({
           disabled={busy}
           onPress={onContinue}
           showArrow={false}
-          buttonClassName="bg-[#0FF1CF] w-full !border-none"
-          textClassName="!text-black"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+          textClassName="!text-onAccent dark:text-black"
         />
         <TouchableOpacity
           accessibilityRole="button"
@@ -41,7 +42,7 @@ export default function EventDraftPrompt({
           onPress={onDiscard}
           style={tw`min-h-[48px] items-center justify-center px-4 py-3`}
         >
-          <Text style={tw`text-center text-sm font-semibold text-[#FFADAD]`}>
+          <Text style={tw`text-center text-sm font-semibold text-danger dark:text-[#FFADAD]`}>
             {busy ? "Discarding draft…" : "Discard draft and start over"}
           </Text>
         </TouchableOpacity>

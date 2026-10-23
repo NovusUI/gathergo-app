@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
@@ -64,7 +65,6 @@ import {
   View,
 } from "react-native";
 
-import tw from "twrnc";
 
 type CreationScreen =
   | { kind: "checking" | "picker" | "error" }
@@ -72,6 +72,7 @@ type CreationScreen =
   | { kind: "editing"; type: Registration; draft: SavedEventDraft | null };
 
 const NewEvent = () => {
+  const { tw } = useAppTheme();
   const router = useLockedRouter();
   const [screen, setScreen] = useState<CreationScreen>({ kind: "checking" });
   const [drafts, setDrafts] = useState<SavedEventDraft[]>([]);
@@ -132,7 +133,7 @@ const NewEvent = () => {
     );
   }
   return (
-    <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
       <View style={tw`px-5`}>
         <CustomeTopBarNav
           title="New Event"
@@ -195,6 +196,7 @@ const EventCreationForm = ({
   initialDraft: SavedEventDraft | null;
   onChangeType: () => void;
 }) => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const isDonationEvent = participationType === "donation";
   const pricingSectionTitle = isDonationEvent
@@ -385,8 +387,8 @@ const EventCreationForm = ({
                   onPress={() => void finishSection("Pricing")}
                   title="Continue"
                   showArrow={false}
-                  buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                  textClassName="!text-black"
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-onAccent dark:text-black"
                 />
               ) : null}
             </View>
@@ -685,13 +687,13 @@ const EventCreationForm = ({
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <View
         style={[
-          tw`flex-1 pb-10 bg-[#01082E] items-center w-full`,
+          tw`flex-1 pb-10 bg-background dark:bg-[#01082E] items-center w-full`,
           { paddingTop: spacing.xxl },
         ]}
       >
@@ -715,7 +717,7 @@ const EventCreationForm = ({
               onPress={() => void changeEventType()}
               style={tw`min-h-[44px] justify-center py-2`}
             >
-              <Text style={tw`text-sm text-[#AFC0F4]`}>Change event type</Text>
+              <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>Change event type</Text>
             </TouchableOpacity>
             <TouchableOpacity
               accessibilityRole="button"
@@ -729,7 +731,7 @@ const EventCreationForm = ({
               }}
               style={tw`min-h-[44px] justify-center py-2`}
             >
-              <Text style={tw`text-sm font-medium text-[#0FF1CF]`}>
+              <Text style={tw`text-sm font-medium text-accent dark:text-[#0FF1CF]`}>
                 {mode === "gogo" ? "Use manual form" : "Let Gogo guide me"}
               </Text>
             </TouchableOpacity>
@@ -761,7 +763,7 @@ const EventCreationForm = ({
                         onChange={onChange}
                       />
                       {errors.imgUrl && (
-                        <Text style={tw`text-red-500`}>
+                        <Text style={tw`text-danger dark:text-red-500`}>
                           {errors.imgUrl.message}
                         </Text>
                       )}
@@ -784,7 +786,7 @@ const EventCreationForm = ({
                           value={value}
                         />
                         {errors.eventName && (
-                          <Text style={tw`text-red-500`}>
+                          <Text style={tw`text-danger dark:text-red-500`}>
                             {errors.eventName.message}
                           </Text>
                         )}
@@ -796,7 +798,7 @@ const EventCreationForm = ({
                 <EventStoryFields control={control} setValue={setValue} />
               </CustomView>
 
-              <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
+              <CustomView style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2`} />
 
               {/* Event Information */}
               <CustomView style={tw`px-5`}>
@@ -805,36 +807,36 @@ const EventCreationForm = ({
                 </CustomView>
 
                 <TouchableOpacity
-                  style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                  style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
                   onPress={() => openSheet("Date and Time")}
                 >
                   <View>
-                    <Text style={tw`text-white text-base`}>Date and Time</Text>
+                    <Text style={tw`text-foreground dark:text-white text-base`}>Date and Time</Text>
                     {errors.startDate && (
-                      <Text style={tw`text-red-500`}>
+                      <Text style={tw`text-danger dark:text-red-500`}>
                         {errors.startDate.message}
                       </Text>
                     )}
                   </View>
                   {!errors.startDate && startDate && (
-                    <CheckCheck color="#0FF1CF" />
+                    <CheckCheck color={color("#0FF1CF", "accent")} />
                   )}
                 </TouchableOpacity>
 
                 <View style={tw`mt-5 gap-3`}>
-                  <Text style={tw`text-base font-semibold text-white`}>
+                  <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                     Location
                   </Text>
                   {renderSectionContent("Location")}
                   {errors.location ? (
-                    <Text style={tw`text-red-500`}>
+                    <Text style={tw`text-danger dark:text-red-500`}>
                       {errors.location.message}
                     </Text>
                   ) : null}
                 </View>
                 {registrationType !== "volunteer" ? (
                   <View style={tw`mt-6 gap-3`}>
-                    <Text style={tw`text-base font-semibold text-white`}>
+                    <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                       {pricingSectionTitle}
                     </Text>
                     {renderSectionContent("Pricing")}
@@ -842,11 +844,11 @@ const EventCreationForm = ({
                 ) : null}
               </CustomView>
 
-              <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+              <CustomView style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
 
               <VolunteerSetupFields control={control} setValue={setValue} />
               {errors.volunteerRoles?.message ? (
-                <Text style={tw`px-5 text-red-400`}>
+                <Text style={tw`px-5 text-danger dark:text-red-400`}>
                   {errors.volunteerRoles.message}
                 </Text>
               ) : null}
@@ -860,7 +862,7 @@ const EventCreationForm = ({
                 error={errors.links?.message}
               />
 
-              <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+              <CustomView style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
 
               <CustomView style={tw`items-center px-5`}>
                 <CustomButton
@@ -868,8 +870,8 @@ const EventCreationForm = ({
                   onPress={handleSubmit(onSubmit, onError)}
                   title={isPending ? "publishing.." : "publish event"}
                   showArrow={false}
-                  buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                  textClassName="!text-black"
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-onAccent dark:text-black"
                 />
               </CustomView>
             </ScrollView>
@@ -889,15 +891,15 @@ const EventCreationForm = ({
               behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
               <View
-                style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+                style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
               >
                 <View
-                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
                 />
 
                 <View style={tw`flex-row items-start justify-between gap-4`}>
                   <View style={tw`flex-1`}>
-                    <Text style={tw`text-xl font-semibold text-white`}>
+                    <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                       {activeSectionTitle}
                     </Text>
                   </View>
@@ -925,8 +927,8 @@ const EventCreationForm = ({
                       onPress={() => void finishSection()}
                       title="Continue with Gogo"
                       showArrow={false}
-                      buttonClassName="bg-[#0FF1CF] w-full !border-none mt-5"
-                      textClassName="!text-black"
+                      buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none mt-5"
+                      textClassName="!text-onAccent dark:text-black"
                     />
                   ) : null}
                 </ScrollView>
@@ -945,15 +947,15 @@ const EventCreationForm = ({
               behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
               <View
-                style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+                style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
               >
                 <View
-                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
                 />
 
                 <View style={tw`flex-row items-start justify-between gap-4`}>
                   <View style={tw`flex-1`}>
-                    <Text style={tw`text-xl font-semibold text-white`}>
+                    <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                       {editingTicket ? "Edit ticket" : "Create ticket"}
                     </Text>
                   </View>

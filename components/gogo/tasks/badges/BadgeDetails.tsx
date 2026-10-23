@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import AppLoader from "@/components/ui/AppLoader";
@@ -8,7 +9,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { formatShortDate } from "@/utils/dateTimeHandler";
 import { Modal, ScrollView, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import tw from "twrnc";
+
 import { BadgeEmblem } from "./BadgeCard";
 
 export default function BadgeDetails({
@@ -18,6 +19,7 @@ export default function BadgeDetails({
   badge: Badge;
   onClose: () => void;
 }) {
+  const { tw } = useAppTheme();
   const visibility = useBadgeVisibility();
   const insets = useSafeAreaInsets();
   const earned = badge.status === "earned";
@@ -35,14 +37,14 @@ export default function BadgeDetails({
         <View
           accessibilityViewIsModal
           style={[
-            tw`max-h-full rounded-t-[32px] border border-[#24345A] bg-[#07143B] px-5 pt-4`,
+            tw`max-h-full rounded-t-[32px] border border-border dark:border-[#24345A] bg-surface dark:bg-[#07143B] px-5 pt-4`,
             { paddingBottom: Math.max(insets.bottom, 24) },
           ]}
         >
           <View style={tw`flex-row items-center justify-between`}>
             <Text
               accessibilityRole="header"
-              style={tw`text-lg font-semibold text-white`}
+              style={tw`text-lg font-semibold text-foreground dark:text-white`}
             >
               Gather details
             </Text>
@@ -58,14 +60,14 @@ export default function BadgeDetails({
           >
             <View style={tw`items-center gap-3 pt-2`}>
               <BadgeEmblem badge={badge} size={76} />
-              <Text style={tw`text-center text-2xl font-bold text-white`}>
+              <Text style={tw`text-center text-2xl font-bold text-foreground dark:text-white`}>
                 {badge.name}
               </Text>
-              <Text style={tw`text-center text-sm text-[#AFC0E7]`}>
+              <Text style={tw`text-center text-sm text-secondary dark:text-[#AFC0E7]`}>
                 {badge.description}
               </Text>
               {badge.earnedAt !== null ? (
-                <Text style={tw`text-xs text-[#0FF1CF]`}>
+                <Text style={tw`text-xs text-accent dark:text-[#0FF1CF]`}>
                   Earned {formatShortDate(badge.earnedAt)}
                 </Text>
               ) : null}
@@ -85,27 +87,27 @@ export default function BadgeDetails({
               message={badge.gogo.message}
               typing={false}
             />
-            <View style={tw`gap-3 rounded-2xl bg-[#101F46] p-4`}>
+            <View style={tw`gap-3 rounded-2xl bg-surface dark:bg-[#101F46] p-4`}>
               <View style={tw`flex-row justify-between`}>
-                <Text style={tw`text-sm font-semibold text-white`}>
+                <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                   {earned ? "Complete" : "Your progress"}
                 </Text>
-                <Text style={tw`text-sm text-[#0FF1CF]`}>
+                <Text style={tw`text-sm text-accent dark:text-[#0FF1CF]`}>
                   {badge.progress.label}
                 </Text>
               </View>
               <BadgeProgress badge={badge} />
-              <Text style={tw`text-sm font-semibold text-white`}>
+              <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                 What it takes
               </Text>
-              <Text style={tw`text-sm leading-6 text-[#C9D5F5]`}>
+              <Text style={tw`text-sm leading-6 text-secondary dark:text-[#C9D5F5]`}>
                 {badge.requirement}
               </Text>
             </View>
             {earned ? (
-              <View style={tw`gap-3 rounded-2xl border border-[#24345A] p-4`}>
+              <View style={tw`gap-3 rounded-2xl border border-border dark:border-[#24345A] p-4`}>
                 <View style={tw`flex-row items-center gap-3`}>
-                  <Text style={tw`flex-1 text-sm font-semibold text-white`}>
+                  <Text style={tw`flex-1 text-sm font-semibold text-foreground dark:text-white`}>
                     Show on my public profile
                   </Text>
                   {visibility.isPending ? (
@@ -122,7 +124,7 @@ export default function BadgeDetails({
                     thumbColor="#FFFFFF"
                   />
                 </View>
-                <Text style={tw`text-xs leading-5 text-[#AFC0E7]`}>
+                <Text style={tw`text-xs leading-5 text-secondary dark:text-[#AFC0E7]`}>
                   {badge.category === "giving"
                     ? "Giving achievements start private. Sharing an achievement never shows donation amounts or which events you supported."
                     : "Only achievements you choose to share appear on your public profile."}
@@ -130,7 +132,7 @@ export default function BadgeDetails({
                 {visibility.isError ? (
                   <Text
                     accessibilityRole="alert"
-                    style={tw`text-sm text-[#FF9CAA]`}
+                    style={tw`text-sm text-danger dark:text-[#FF9CAA]`}
                   >
                     {getApiErrorMessage(
                       visibility.error,

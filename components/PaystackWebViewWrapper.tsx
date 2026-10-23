@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import AppLoader from "@/components/ui/AppLoader";
 import { CheckoutCountdown } from "@/components/ui/CheckoutCountdown";
 import AppToast from "@/components/ui/AppToast";
@@ -5,7 +6,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
 import WebView, { type WebViewNavigation } from "react-native-webview";
-import tw from "twrnc";
 
 interface PaystackWebViewProps {
   visible: boolean;
@@ -28,6 +28,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
   onError,
   type,
 }) => {
+  const { tw, color } = useAppTheme();
   const webViewRef = useRef<WebView>(null);
   const hasNavigatedRef = useRef(false);
 
@@ -78,12 +79,12 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={handleCancel}
     >
-      <View style={tw`flex-1 bg-[#01082E]`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
         {/* Header */}
         <View
-          style={tw`flex-row items-center justify-between p-4 border-b border-gray-700`}
+          style={tw`flex-row items-center justify-between p-4 border-b border-border dark:border-gray-700`}
         >
-          <Text style={tw`text-white text-lg font-semibold`}>
+          <Text style={tw`text-foreground dark:text-white text-lg font-semibold`}>
             {type === "DONATION" ? " Complete Donation" : "Complete Payment"}
           </Text>
           <TouchableOpacity
@@ -91,7 +92,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
             accessibilityLabel="Cancel payment"
             onPress={handleCancel}
           >
-            <Ionicons name="close" size={24} color="white" />
+            <Ionicons name="close" size={24} color={color("white", "foreground")} />
           </TouchableOpacity>
         </View>
 
@@ -108,7 +109,7 @@ export const PaystackWebViewWrapper: React.FC<PaystackWebViewProps> = ({
               size="large"
               tone="dark"
               accessibilityLabel="Loading checkout"
-              style={tw`absolute inset-0 bg-white`}
+              style={tw`absolute inset-0 bg-surface dark:bg-white`}
             />
           )}
           javaScriptEnabled={true}

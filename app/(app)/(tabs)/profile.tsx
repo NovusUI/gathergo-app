@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { GatherIcon } from "@/components/gogo/tasks/badges/GatherArtwork";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
@@ -20,7 +21,6 @@ import { Settings } from "lucide-react-native";
 import { useCallback, useState, type ComponentProps } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import tw from "twrnc";
 
 const TABS = ["About", "Events", "Gather"] as const;
 const TAB_ICONS: ComponentProps<typeof Tab>["icon"][] = [
@@ -30,6 +30,7 @@ const TAB_ICONS: ComponentProps<typeof Tab>["icon"][] = [
 ];
 
 export default function Profile() {
+  const { tw, color } = useAppTheme();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("About");
   const { user } = useAuth();
   const profileQuery = useUserProfile(user?.id, { enabled: Boolean(user) });
@@ -68,7 +69,7 @@ export default function Profile() {
             onPress={() => void profileQuery.refetch()}
             style={tw`flex-1 min-h-11 items-center justify-center`}
           >
-            <Text style={tw`text-sm text-[#0FF1CF]`}>Retry profile</Text>
+            <Text style={tw`text-sm text-accent dark:text-[#0FF1CF]`}>Retry profile</Text>
           </TouchableOpacity>
         ) : (
           <View style={tw`flex-1 items-center`}>
@@ -79,7 +80,7 @@ export default function Profile() {
       <View style={tw`flex-row items-center justify-between gap-3`}>
         <Text
           numberOfLines={1}
-          style={tw`flex-1 text-base font-semibold text-white`}
+          style={tw`flex-1 text-base font-semibold text-foreground dark:text-white`}
         >
           {user?.fullName || profile?.name || "Your profile"}
         </Text>
@@ -90,7 +91,7 @@ export default function Profile() {
             onPress={() => setActiveTab("Gather")}
             style={tw`min-h-11 justify-center`}
           >
-            <Text style={tw`text-xs text-[#0FF1CF]`}>
+            <Text style={tw`text-xs text-accent dark:text-[#0FF1CF]`}>
               Gather · {badgeCollection.data.earnedCount}
             </Text>
           </TouchableOpacity>
@@ -100,14 +101,14 @@ export default function Profile() {
         onPress={editBio}
         title="Edit bio"
         showArrow={false}
-        buttonClassName="w-full p-0 h-9 bg-[#142344] border-0"
-        textClassName="text-white text-xs normal-case mr-0"
+        buttonClassName="w-full p-0 h-9 bg-surfaceMuted dark:bg-[#142344] border-0"
+        textClassName="text-foreground dark:text-white text-xs normal-case mr-0"
       />
     </View>
   );
   const tabs = (
     <View
-      style={tw`flex-row gap-2 border-b border-[#24345A] bg-[#01082E] py-2`}
+      style={tw`flex-row gap-2 border-b border-border dark:border-[#24345A] bg-background dark:bg-[#01082E] py-2`}
     >
       {TABS.map((tab, index) => (
         <Tab
@@ -119,7 +120,7 @@ export default function Profile() {
           icon={TAB_ICONS[index]}
           iconContent={
             tab === "Gather" ? (
-              <GatherIcon color={activeTab === tab ? "#01082E" : "#0FF1CF"} />
+              <GatherIcon color={activeTab === tab ? color("#01082E", "onAccent") : color("#0FF1CF", "accent")} />
             ) : undefined
           }
         />
@@ -128,7 +129,7 @@ export default function Profile() {
   );
 
   return (
-    <SafeAreaView edges={["top"]} style={tw`flex-1 bg-[#01082E] px-5`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 bg-background dark:bg-[#01082E] px-5`}>
       <View style={tw`w-full max-w-[500px] self-center`}>
         <CustomeTopBarNav
           title={profile?.name ? `@${profile.name}` : "Profile"}
@@ -140,7 +141,7 @@ export default function Profile() {
               onPress={() => router.push("/settings")}
               style={tw`h-11 w-11 items-center justify-center`}
             >
-              <Settings color="white" size={22} />
+              <Settings color={color("white", "foreground")} size={22} />
             </TouchableOpacity>
           }
         />
@@ -157,7 +158,7 @@ export default function Profile() {
             {summary}
             <View>{tabs}</View>
             <View style={tw`py-4`}>
-              <Text style={tw`text-base leading-6 text-[#C9D5F5]`}>
+              <Text style={tw`text-base leading-6 text-secondary dark:text-[#C9D5F5]`}>
                 {profile?.bio || "No bio added yet."}
               </Text>
             </View>

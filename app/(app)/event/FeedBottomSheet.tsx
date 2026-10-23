@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import AppRefreshControl, {
   RefreshIndicator,
   nativeRefreshIndicatorOffset,
@@ -21,7 +22,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
+
 import DontationProgress from "./DontationProgress";
 
 interface FeedBottomSheetProps {
@@ -54,6 +55,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   onAction,
   feedData,
 }) => {
+  const { tw, color } = useAppTheme();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "carpool">(initialTab);
   const [carpoolFilter, setCarpoolFilter] = useState<EventCarpoolFilter>("all");
@@ -188,7 +190,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       <TouchableOpacity
         disabled={hasEventEnded}
         style={[
-          tw`mx-4 mb-3 p-4 bg-[#101C45] rounded-xl border border-[#1B2A50]`,
+          tw`mx-4 mb-3 p-4 bg-surface dark:bg-[#101C45] rounded-xl border border-border dark:border-[#1B2A50]`,
           hasEventEnded ? tw`opacity-50` : null,
         ]}
         onPress={() =>
@@ -197,32 +199,32 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       >
         <View style={tw`flex-row justify-between items-start`}>
           <View style={tw`flex-1 pr-3`}>
-            <Text style={tw`text-white font-semibold`} numberOfLines={1}>
+            <Text style={tw`text-foreground dark:text-white font-semibold`} numberOfLines={1}>
               {item.origin}
               {item.destination ? ` -> ${item.destination}` : ""}
             </Text>
-            <Text style={tw`text-gray-400 text-xs mt-1`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
               Departs {item.departureTime}
             </Text>
           </View>
           <View style={tw`items-end`}>
-            <Text style={tw`text-[#0FF1CF] font-semibold text-xs`}>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-semibold text-xs`}>
               {item.pricePerSeat > 0
                 ? `₦${numberWithCommas(item.pricePerSeat, false, null)}`
                 : "Free"}
             </Text>
-            <Text style={tw`text-gray-400 text-xs mt-1`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
               {item.seatsLeft} seat{item.seatsLeft === 1 ? "" : "s"} left
             </Text>
           </View>
         </View>
 
         <View style={tw`flex-row items-center justify-between mt-3`}>
-          <Text style={tw`text-gray-300 text-xs`}>
+          <Text style={tw`text-secondary dark:text-gray-300 text-xs`}>
             @{item.driver?.username || "driver"}
           </Text>
-          <View style={tw`bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
-            <Text style={tw`text-xs text-[#01082E] font-semibold`}>
+          <View style={tw`bg-accentFill dark:bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
+            <Text style={tw`text-xs text-onAccent dark:text-[#01082E] font-semibold`}>
               {(() => {
                 if (carpoolFilter === "close_to_you") {
                   if (typeof item.distanceKm === "number") {
@@ -252,7 +254,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         </View>
       </TouchableOpacity>
     ),
-    [carpoolFilter, hasEventEnded, onAction]
+    [carpoolFilter, hasEventEnded, onAction, tw]
   );
 
   // Render event info based on type
@@ -269,19 +271,19 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     } = eventData.data;
 
     return (
-      <View style={tw`p-4 bg-[#101C45] mx-4 mt-2 mb-4 rounded-xl`}>
-        <Text style={tw`text-white font-bold mb-2`}>
+      <View style={tw`p-4 bg-surface dark:bg-[#101C45] mx-4 mt-2 mb-4 rounded-xl`}>
+        <Text style={tw`text-foreground dark:text-white font-bold mb-2`}>
           {eventData.data.title}
         </Text>
 
         {hasEventEnded && (
           <View
-            style={tw`mb-3 rounded-xl border border-[#2B3C66] bg-[#1B2A50]/60 p-3`}
+            style={tw`mb-3 rounded-xl border border-border dark:border-[#2B3C66] bg-surface/60 dark:bg-[#1B2A50]/60 p-3`}
           >
-            <Text style={tw`text-sm font-semibold text-[#8FA1CB]`}>
+            <Text style={tw`text-sm font-semibold text-muted dark:text-[#8FA1CB]`}>
               Event ended
             </Text>
-            <Text style={tw`mt-1 text-xs leading-5 text-[#9FB0D8]`}>
+            <Text style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#9FB0D8]`}>
               Ticketing, registration, and donations are closed.
             </Text>
           </View>
@@ -289,20 +291,20 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
         {!hasEventEnded && registrationType === "ticket" && eventTickets && (
           <View style={tw`mb-3`}>
-            <Text style={tw`text-gray-300 mb-2`}>Available Tickets:</Text>
+            <Text style={tw`text-secondary dark:text-gray-300 mb-2`}>Available Tickets:</Text>
             {eventTickets.map((ticket: any, index: number) => (
               <TouchableOpacity
                 key={index}
-                style={tw`px-3 py-2 bg-[#1B2A50] rounded-lg mb-2`}
+                style={tw`px-3 py-2 bg-surfaceMuted dark:bg-[#1B2A50] rounded-lg mb-2`}
                 onPress={() => onAction?.({ type: "BUY_TICKET" })}
               >
                 <View style={tw`flex-row justify-between items-center`}>
-                  <Text style={tw`text-white`}>{ticket.type}</Text>
-                  <Text style={tw`text-[#0FF1CF] font-bold`}>
+                  <Text style={tw`text-foreground dark:text-white`}>{ticket.type}</Text>
+                  <Text style={tw`text-accent dark:text-[#0FF1CF] font-bold`}>
                     ₦{numberWithCommas(ticket.price || 0, false, null)}
                   </Text>
                 </View>
-                <Text style={tw`text-gray-400 text-xs mt-1`}>
+                <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
                   {ticket.quantity - ticket.sold} remaining
                 </Text>
               </TouchableOpacity>
@@ -325,8 +327,8 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
                 : onAction?.({ type: "REGISTER" })
             }
           >
-            <Text style={tw`text-gray-300 mb-1`}>Registration:</Text>
-            <Text style={tw`text-[#0FF1CF] font-bold text-lg`}>
+            <Text style={tw`text-secondary dark:text-gray-300 mb-1`}>Registration:</Text>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-bold text-lg`}>
               {checkingRegistration
                 ? "Checking registration…"
                 : freeRegistration
@@ -365,14 +367,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       style={tw.style(
         "px-3 py-2 rounded-full border",
         carpoolFilter === value
-          ? "bg-[#0FF1CF] border-[#0FF1CF]"
-          : "bg-[#101C45] border-[#1B2A50]"
+          ? "bg-accentFill dark:bg-[#0FF1CF] border-accent dark:border-[#0FF1CF]"
+          : "bg-surface dark:bg-[#101C45] border-border dark:border-[#1B2A50]"
       )}
     >
       <Text
         style={tw.style(
           "text-xs font-semibold",
-          carpoolFilter === value ? "text-[#01082E]" : "text-white"
+          carpoolFilter === value ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
         )}
       >
         {label}
@@ -385,20 +387,20 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       <>
         <RefreshIndicator refreshing={listRefreshing} />
         <View
-          style={tw`flex-row justify-between items-center gap-2 p-5 border-b border-gray-800`}
+          style={tw`flex-row justify-between items-center gap-2 p-5 border-b border-border dark:border-gray-800`}
         >
           <View style={tw`flex-1 flex-row flex-wrap items-center gap-2`}>
             <TouchableOpacity
               style={tw.style(
                 "px-3 py-1.5 rounded-full",
-                activeTab === "feed" ? "bg-[#0FF1CF]" : "bg-[#1B2A50]"
+                activeTab === "feed" ? "bg-accentFill dark:bg-[#0FF1CF]" : "bg-surfaceMuted dark:bg-[#1B2A50]"
               )}
               onPress={() => setActiveTab("feed")}
             >
               <Text
                 style={tw.style(
                   "text-xs font-semibold",
-                  activeTab === "feed" ? "text-[#01082E]" : "text-white"
+                  activeTab === "feed" ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
                 )}
               >
                 Live Feed
@@ -408,14 +410,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               <TouchableOpacity
                 style={tw.style(
                   "px-3 py-1.5 rounded-full",
-                  activeTab === "carpool" ? "bg-[#0FF1CF]" : "bg-[#1B2A50]"
+                  activeTab === "carpool" ? "bg-accentFill dark:bg-[#0FF1CF]" : "bg-surfaceMuted dark:bg-[#1B2A50]"
                 )}
                 onPress={() => setActiveTab("carpool")}
               >
                 <Text
                   style={tw.style(
                     "text-xs font-semibold",
-                    activeTab === "carpool" ? "text-[#01082E]" : "text-white"
+                    activeTab === "carpool" ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
                   )}
                 >
                   Carpool
@@ -438,12 +440,12 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               onPress={onClose}
               hitSlop={8}
             >
-              <Ionicons name="close" size={24} color="white" />
+              <Ionicons name="close" size={24} color={color("white", "foreground")} />
             </TouchableOpacity>
           </View>
         </View>
         {activeTab === "feed" && feed?.error ? (
-          <Text style={tw`px-5 pt-2 text-red-500 text-xs`}>{feed.error}</Text>
+          <Text style={tw`px-5 pt-2 text-danger dark:text-red-500 text-xs`}>{feed.error}</Text>
         ) : null}
 
         {activeTab === "feed" ? (
@@ -463,18 +465,18 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         ) : (
           <View style={tw`px-4 pt-4 gap-3`}>
             <View style={tw`flex-row justify-between items-center`}>
-              <Text style={tw`text-gray-300 text-sm`}>
+              <Text style={tw`text-secondary dark:text-gray-300 text-sm`}>
                 {carpoolTotal} ride{carpoolTotal === 1 ? "" : "s"} available
               </Text>
               <TouchableOpacity
                 disabled={hasEventEnded}
                 onPress={() => onAction?.({ type: "CREATE_CARPOOL" })}
                 style={[
-                  tw`bg-[#0FF1CF]/20 px-3 py-1.5 rounded-full border border-[#0FF1CF]/40`,
+                  tw`bg-accentFill/20 dark:bg-[#0FF1CF]/20 px-3 py-1.5 rounded-full border border-accent/40 dark:border-[#0FF1CF]/40`,
                   hasEventEnded ? tw`opacity-50` : null,
                 ]}
               >
-                <Text style={tw`text-[#0FF1CF] text-xs font-semibold`}>
+                <Text style={tw`text-accent dark:text-[#0FF1CF] text-xs font-semibold`}>
                   {hasEventEnded ? "Event ended" : "Create ride"}
                 </Text>
               </TouchableOpacity>
@@ -488,16 +490,16 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
             {Boolean(locationError) && carpoolFilter === "close_to_you" && (
               <View
-                style={tw`bg-red-500/20 border border-red-500/40 p-3 rounded-lg`}
+                style={tw`bg-danger/20 dark:bg-red-500/20 border border-danger/40 dark:border-red-500/40 p-3 rounded-lg`}
               >
-                <Text style={tw`text-red-300 text-xs mb-2`}>
+                <Text style={tw`text-danger dark:text-red-300 text-xs mb-2`}>
                   {locationError}
                 </Text>
                 <TouchableOpacity
                   onPress={openSettings}
-                  style={tw`self-start bg-red-500/20 px-3 py-1 rounded-full`}
+                  style={tw`self-start bg-danger/20 dark:bg-red-500/20 px-3 py-1 rounded-full`}
                 >
-                  <Text style={tw`text-red-200 text-xs`}>Open Settings</Text>
+                  <Text style={tw`text-danger dark:text-red-200 text-xs`}>Open Settings</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -526,8 +528,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       requestingCloseToYou,
       onClose,
       onAction,
-      canUseCarpool,
-    ]
+      canUseCarpool, tw, color]
   );
 
   // List Footer Component
@@ -547,7 +548,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           !feed?.hasMore &&
           Boolean(feed?.allFeeds.length) && (
             <View style={tw`py-6 items-center`}>
-              <Text style={tw`text-gray-500`}>
+              <Text style={tw`text-muted dark:text-gray-500`}>
                 🎉 You&apos;ve reached the end
               </Text>
             </View>
@@ -556,7 +557,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           !hasMoreCarpools &&
           carpoolList.length > 0 && (
             <View style={tw`py-6 items-center`}>
-              <Text style={tw`text-gray-500`}>No more rides</Text>
+              <Text style={tw`text-muted dark:text-gray-500`}>No more rides</Text>
             </View>
           )}
       </>
@@ -570,6 +571,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       feed?.hasMore,
       feed?.allFeeds.length,
       hasMoreCarpools,
+      tw,
     ]
   );
 
@@ -579,23 +581,23 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       activeTab === "feed" && !feed?.loading ? (
         <View style={tw`py-10 items-center`}>
           <Ionicons name="chatbubble-outline" size={48} color="#666" />
-          <Text style={tw`text-gray-500 mt-4`}>No activity yet</Text>
-          <Text style={tw`text-gray-600 text-sm mt-2`}>
+          <Text style={tw`text-muted dark:text-gray-500 mt-4`}>No activity yet</Text>
+          <Text style={tw`text-muted dark:text-gray-600 text-sm mt-2`}>
             Be the first to interact with this event!
           </Text>
         </View>
       ) : activeTab === "carpool" && !carpoolsLoading ? (
         <View style={tw`py-10 items-center`}>
           <Ionicons name="car-outline" size={48} color="#666" />
-          <Text style={tw`text-gray-500 mt-4`}>No rides found</Text>
-          <Text style={tw`text-gray-600 text-sm mt-2`}>
+          <Text style={tw`text-muted dark:text-gray-500 mt-4`}>No rides found</Text>
+          <Text style={tw`text-muted dark:text-gray-600 text-sm mt-2`}>
             {hasEventEnded
               ? "Ride creation and joining are closed for this event."
               : "Try another filter or create a ride for this event."}
           </Text>
         </View>
       ) : null,
-    [activeTab, carpoolsLoading, feed?.loading, hasEventEnded]
+    [activeTab, carpoolsLoading, feed?.loading, hasEventEnded, tw]
   );
 
   return (
@@ -617,7 +619,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           appearsOnIndex={0}
         />
       )}
-      backgroundStyle={{ backgroundColor: "#01082E" }}
+      backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       handleIndicatorStyle={{ backgroundColor: "#666" }}
     >
       <BottomSheetFlatList

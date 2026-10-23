@@ -260,3 +260,14 @@ checkout with the revised selection. The app cancels the previous hold and retri
 the revised request once, retaining its new key for network retries. If the old
 payment has already been processed or cannot be cancelled, it opens payment status
 instead of creating another order.
+
+## Appearance
+
+Settings → Appearance switches between Light and Dark. The choice is saved on
+this device, restores before the app's first screen, and does not follow the
+phone's theme. Dark is the default.
+
+Shared colors live in `constants/theme.ts`. Use `useAppTheme()` for theme-aware
+`tw` styles and `colors`. Existing styles can preserve their dark utility with
+`dark:`; `color(darkColor, lightRole)` keeps an exact dark color while selecting
+a shared light palette role for inline styles and icons.

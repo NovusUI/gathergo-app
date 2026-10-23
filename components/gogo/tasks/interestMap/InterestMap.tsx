@@ -1,10 +1,10 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type { InterestTopic, InterestWeight } from "@/types/preferences";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import tw from "twrnc";
 
 function Ring({
   topic,
@@ -19,6 +19,7 @@ function Ring({
   size: number;
   center: number;
 }) {
+  const { tw, color } = useAppTheme();
   const reducedMotion = useReducedMotionPreference();
   const scale = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
   const position = useRef(
@@ -61,7 +62,7 @@ function Ring({
           width: size,
           height: size,
           borderColor: topic.accent,
-          backgroundColor: "#101C45",
+          backgroundColor: color("#101C45", "surface"),
           transform: [...position.getTranslateTransform(), { scale }],
         },
       ]}
@@ -88,6 +89,7 @@ export function InterestMap({
   strongerIds?: string[];
   weights?: InterestWeight[];
 }) {
+  const { tw } = useAppTheme();
   const [width, setWidth] = useState(320);
   const reducedMotion = useReducedMotionPreference();
   const reaction = useRef(new Animated.Value(1)).current;

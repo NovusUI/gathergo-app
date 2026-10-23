@@ -1,8 +1,8 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Pressable, Text, View } from "react-native";
-import tw from "twrnc";
 
 interface CoverImagePickerProps {
   value: string | null;
@@ -13,6 +13,7 @@ export default function CoverImagePicker({
   value,
   onChange,
 }: CoverImagePickerProps) {
+  const { tw, color } = useAppTheme();
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -35,7 +36,7 @@ export default function CoverImagePicker({
 
   return (
     <View
-      style={tw`w-full h-72 rounded-2xl overflow-hidden relative bg-gray-200 items-center`}
+      style={tw`w-full h-72 rounded-2xl overflow-hidden relative bg-surfaceMuted dark:bg-gray-200 items-center`}
     >
       {value ? (
         <Image
@@ -48,16 +49,16 @@ export default function CoverImagePicker({
       ) : (
         <View style={tw`flex-1 items-center justify-center`}>
           <Ionicons name="image-outline" size={40} color="gray" />
-          <Text style={tw`text-gray-500 mt-2`}>No cover selected</Text>
+          <Text style={tw`text-muted dark:text-gray-500 mt-2`}>No cover selected</Text>
         </View>
       )}
 
       <Pressable
         onPress={pickImage}
-        style={tw`absolute bottom-5 bg-[#95DFD4] px-4 py-5 rounded-xl flex-row items-center`}
+        style={tw`absolute bottom-5 bg-surfaceMuted dark:bg-[#95DFD4] px-4 py-5 rounded-xl flex-row items-center`}
       >
-        <Ionicons name="image" size={18} color="black" />
-        <Text style={tw`ml-2 text-black font-medium`}>Edit Cover</Text>
+        <Ionicons name="image" size={18} color={color("black", "onAccent")} />
+        <Text style={tw`ml-2 text-onAccent dark:text-black font-medium`}>Edit Cover</Text>
       </Pressable>
     </View>
   );

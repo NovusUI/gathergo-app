@@ -1,8 +1,8 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Plus } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type AvatarGroupProps = {
   avatars?: any[];
@@ -15,6 +15,7 @@ export default function AvatarGroup({
   onAdd,
   owner = false,
 }: AvatarGroupProps) {
+  const { tw, color } = useAppTheme();
   const filtered = avatars.filter((avatar) =>
     ["PENDING", "ACCEPTED"].includes(avatar.status)
   );
@@ -55,7 +56,7 @@ export default function AvatarGroup({
           tw`w-10 h-10 rounded-full border-2 items-center justify-center`,
           poolerRequestUI
             ? tw`bg-teal-400 border-teal-400`
-            : tw`bg-[#030A31] border-teal-400`,
+            : tw`bg-background dark:bg-[#030A31] border-teal-400`,
           {
             marginLeft:
               (avatarToShow.length ? avatarToShow.length : 4) > 0 ? -12 : 0,
@@ -63,11 +64,11 @@ export default function AvatarGroup({
         ]}
       >
         {poolerRequestUI ? (
-          <Text style={tw`text-white text-2xl font-black`}>
+          <Text style={tw`text-foreground dark:text-white text-2xl font-black`}>
             {requests.length}
           </Text>
         ) : (
-          <Plus size={28} color="#2DD4BF" />
+          <Plus size={28} color={color("#2DD4BF", "info")} />
         )}
       </TouchableOpacity>
     </View>

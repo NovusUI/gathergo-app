@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import AppLoader from "@/components/ui/AppLoader";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
@@ -19,7 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 type Props = {
   conversation: ReturnType<typeof useGogoEventCreation>;
@@ -53,6 +53,7 @@ export default function GogoEventCreator({
   impactStory,
   renderInlineSection,
 }: Props) {
+  const { tw, color } = useAppTheme();
   const { messages, isPending, error, send, retry } = conversation;
   const viewportRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -172,7 +173,7 @@ export default function GogoEventCreator({
               <AppLoader size={64} accessibilityLabel="Gogo is replying" />
               <Text
                 accessibilityLiveRegion="polite"
-                style={tw`text-center text-lg text-[#AFC0F4]`}
+                style={tw`text-center text-lg text-secondary dark:text-[#AFC0F4]`}
               >
                 Let me work on that…
               </Text>
@@ -189,13 +190,13 @@ export default function GogoEventCreator({
                 <View style={tw`gap-5`}>
                   <Text
                     accessibilityRole="header"
-                    style={tw`text-center text-2xl font-semibold text-white`}
+                    style={tw`text-center text-2xl font-semibold text-foreground dark:text-white`}
                   >
                     Gogo couldn’t reply
                   </Text>
                   <Text
                     accessibilityLiveRegion="polite"
-                    style={tw`text-center text-base leading-6 text-[#AFC0F4]`}
+                    style={tw`text-center text-base leading-6 text-secondary dark:text-[#AFC0F4]`}
                   >
                     {error}
                   </Text>
@@ -203,8 +204,8 @@ export default function GogoEventCreator({
                     onPress={() => void retry()}
                     title="Try again"
                     showArrow={false}
-                    buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                    textClassName="!text-black"
+                    buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                    textClassName="!text-onAccent dark:text-black"
                   />
                 </View>
               ) : (
@@ -217,17 +218,17 @@ export default function GogoEventCreator({
                       style={tw`min-h-[44px] flex-row items-center justify-center gap-3`}
                     >
                       <Text
-                        style={tw`shrink text-center text-base font-semibold text-[#0FF1CF]`}
+                        style={tw`shrink text-center text-base font-semibold text-accent dark:text-[#0FF1CF]`}
                       >
                         {draftTitle}
                       </Text>
-                      <Text style={tw`text-sm text-[#AFC0F4]`}>Edit</Text>
+                      <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>Edit</Text>
                     </TouchableOpacity>
                   ) : null}
                   <Text
                     accessibilityRole="header"
                     accessibilityLiveRegion="polite"
-                    style={tw`text-center text-2xl font-semibold leading-8 text-white`}
+                    style={tw`text-center text-2xl font-semibold leading-8 text-foreground dark:text-white`}
                   >
                     {prompt.content}
                   </Text>
@@ -241,10 +242,10 @@ export default function GogoEventCreator({
                           key={choice}
                           accessibilityRole="button"
                           onPress={() => void send(choice)}
-                          style={tw`min-h-[52px] items-center justify-center rounded-2xl border border-[#345A70] bg-[#101C45] px-5 py-4`}
+                          style={tw`min-h-[52px] items-center justify-center rounded-2xl border border-border dark:border-[#345A70] bg-surface dark:bg-[#101C45] px-5 py-4`}
                         >
                           <Text
-                            style={tw`text-center text-base font-medium text-white`}
+                            style={tw`text-center text-base font-medium text-foreground dark:text-white`}
                           >
                             {choice}
                           </Text>
@@ -258,7 +259,7 @@ export default function GogoEventCreator({
                   {!showComposer && isImpactStory && proposedStory ? (
                     <View style={tw`gap-4`}>
                       <Text
-                        style={tw`text-center text-lg leading-7 text-[#DDE6FF]`}
+                        style={tw`text-center text-lg leading-7 text-foreground dark:text-[#DDE6FF]`}
                       >
                         {proposedStory}
                       </Text>
@@ -270,15 +271,15 @@ export default function GogoEventCreator({
                         }
                         title="Use this story"
                         showArrow={false}
-                        buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                        textClassName="!text-black"
+                        buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                        textClassName="!text-onAccent dark:text-black"
                       />
                       <TouchableOpacity
                         accessibilityRole="button"
                         onPress={() => onOpenSection("Impact story")}
                         style={tw`min-h-[44px] items-center justify-center`}
                       >
-                        <Text style={tw`text-sm font-medium text-[#AFC0F4]`}>
+                        <Text style={tw`text-sm font-medium text-secondary dark:text-[#AFC0F4]`}>
                           Edit story manually
                         </Text>
                       </TouchableOpacity>
@@ -297,7 +298,7 @@ export default function GogoEventCreator({
                           : EDITOR_LABELS[section]
                       }
                       showArrow={false}
-                      buttonClassName="w-full border-[#345A70] bg-[#101C45]"
+                      buttonClassName="w-full border-border dark:border-[#345A70] bg-surface dark:bg-[#101C45]"
                     />
                   ) : null}
                   {!showComposer && isReview ? (
@@ -305,8 +306,8 @@ export default function GogoEventCreator({
                       onPress={onReview}
                       title="Review event"
                       showArrow={false}
-                      buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                      textClassName="!text-black"
+                      buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                      textClassName="!text-onAccent dark:text-black"
                     />
                   ) : null}
                   {conversation.optionalSection ? (
@@ -316,7 +317,7 @@ export default function GogoEventCreator({
                         onPress={() => void conversation.skipSection()}
                         style={tw`min-h-[44px] items-center justify-center px-4`}
                       >
-                        <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
+                        <Text style={tw`text-sm font-semibold text-accent dark:text-[#0FF1CF]`}>
                           Skip for now
                         </Text>
                       </TouchableOpacity>
@@ -345,12 +346,12 @@ export default function GogoEventCreator({
                               : "e.g. A tree-planting morning in Lagos…"
                             : "Your answer…"
                         }
-                        placeholderTextColor="#8FA1CB"
+                        placeholderTextColor={color("#8FA1CB", "muted")}
                         multiline
                         maxLength={2000}
                         textAlignVertical="top"
                         style={[
-                          tw`rounded-2xl border border-[#34516A] bg-[#0A173F] px-4 py-4 text-base leading-6 text-white`,
+                          tw`rounded-2xl border border-border dark:border-[#34516A] bg-surface dark:bg-[#0A173F] px-4 py-4 text-base leading-6 text-foreground dark:text-white`,
                           {
                             minHeight: Math.min(
                               100,
@@ -365,8 +366,8 @@ export default function GogoEventCreator({
                         title="Continue"
                         disabled={!text.trim()}
                         showArrow={false}
-                        buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                        textClassName="!text-black"
+                        buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                        textClassName="!text-onAccent dark:text-black"
                       />
                       {isImpactStory ? (
                         <TouchableOpacity
@@ -374,7 +375,7 @@ export default function GogoEventCreator({
                           onPress={() => onOpenSection("Impact story")}
                           style={tw`min-h-[44px] items-center justify-center`}
                         >
-                          <Text style={tw`text-sm text-[#AFC0F4]`}>
+                          <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>
                             Write story manually
                           </Text>
                         </TouchableOpacity>
@@ -386,7 +387,7 @@ export default function GogoEventCreator({
                           onPress={() => setCustomAnswerTurn(null)}
                           style={tw`min-h-[44px] items-center justify-center`}
                         >
-                          <Text style={tw`text-sm text-[#AFC0F4]`}>
+                          <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>
                             Use suggested options
                           </Text>
                         </TouchableOpacity>
@@ -398,7 +399,7 @@ export default function GogoEventCreator({
                       onPress={() => setCustomAnswerTurn(messages.length)}
                       style={tw`min-h-[44px] items-center justify-center`}
                     >
-                      <Text style={tw`text-sm text-[#AFC0F4]`}>
+                      <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>
                         {isReview
                           ? "I’d like to change something"
                           : "Answer in my own words"}

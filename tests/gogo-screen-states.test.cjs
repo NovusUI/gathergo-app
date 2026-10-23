@@ -80,6 +80,7 @@ const navigation = {
 const settingsHooks = hookState();
 const logout = { calls: [], token: "push-token", fail: false, pending: null };
 const { default: Settings } = loadTypeScript("app/(app)/(tabs)/settings.tsx", {
+  "@/components/AppearancePreference": { default: "AppearancePreference" },
   "@/components/CustomeTopBarNav": { default: "TopBar" },
   "@/components/buttons/SheetCloseButton": { default: "CloseButton" },
   "@/components/ui/AppLoader": { default: "SmallLoader" },
@@ -713,7 +714,6 @@ test("published ticket options still select quantities and enable claiming ticke
   );
 });
 
-
 test("event details keep a single set of essentials and the shared payout reminder opens Wallet directly", () => {
   eventHooks.reset(); routes.length = 0; eventPaid = true;
   walletOnboarding = { showPersistentAlert: true, nextAction: "ADD_SETTLEMENT_ACCOUNT" };
@@ -732,7 +732,6 @@ test("event details keep a single set of essentials and the shared payout remind
     eventMocks["@/context/AuthContext"].useAuth = originalAuth;
   }
 });
-
 
 function checkoutPage() { return eventHooks.render(EventPage); }
 function checkoutNode(type, page = checkoutPage()) { return [...nodes(page)].find(n => n.type === type); }
@@ -808,7 +807,6 @@ test("checkout failures show the API error and do not reject silently from the p
   checkoutResult = undefined; checkoutFailure = undefined; eventPaid = false;
 });
 
-
 function unfinishedCheckout() {
   const previous = checkoutCalls.find(c => c[0] === "useGetTickets")[1];
   let active = { id: "pending-ticket", key: previous.idempotencyKey };
@@ -882,7 +880,6 @@ test("repeated pay taps during replacement do not create overlapping updates", a
   checkoutRequest = undefined; cancelRequest = undefined; cancellationWait = undefined; checkoutResult = undefined; eventPaid = false;
 });
 
-
 test("quantity and ticket-type changes after confirmed Paystack cancellation start a fresh order", async () => {
   await beginPaidCheckout();
   const firstKey = checkoutCalls[0][1].idempotencyKey;
@@ -914,7 +911,6 @@ test("a further active-checkout conflict stops after one replacement attempt", a
   assert.deepEqual(routes, []);
   checkoutRequest = undefined; cancelRequest = undefined; checkoutResult = undefined; eventPaid = false;
 });
-
 
 test("a revised request clears the previous checkout timer before waiting for the API", async () => {
   await beginPaidCheckout(); unfinishedCheckout(); chooseTicket("General", 1);

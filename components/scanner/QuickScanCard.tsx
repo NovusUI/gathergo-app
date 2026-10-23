@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { pushWithLock } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
@@ -5,7 +6,6 @@ import { useRouter } from "expo-router";
 import { ArrowRight, QrCode, Shield, Zap } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface QuickScanCardProps {
   onPress?: () => void;
@@ -16,6 +16,7 @@ const QuickScanCard: React.FC<QuickScanCardProps> = ({
   onPress,
   compact = false,
 }) => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
 
   const handlePress = () => {
@@ -37,15 +38,15 @@ const QuickScanCard: React.FC<QuickScanCardProps> = ({
       >
         <View style={tw`flex-row items-center justify-between`}>
           <View style={tw`flex-row items-center`}>
-            <View style={tw`bg-white/20 p-2 rounded-full mr-3`}>
-              <QrCode size={20} color="white" />
+            <View style={tw`bg-surface/20 dark:bg-white/20 p-2 rounded-full mr-3`}>
+              <QrCode size={20} color={color("white", "foreground")} />
             </View>
             <View>
-              <Text style={tw`text-white font-bold`}>Quick Scan</Text>
-              <Text style={tw`text-white/80 text-xs`}>Scan tickets</Text>
+              <Text style={tw`text-foreground dark:text-white font-bold`}>Quick Scan</Text>
+              <Text style={tw`text-foreground/80 dark:text-white/80 text-xs`}>Scan tickets</Text>
             </View>
           </View>
-          <Zap size={20} color="white" />
+          <Zap size={20} color={color("white", "foreground")} />
         </View>
       </TouchableOpacity>
     );
@@ -60,33 +61,33 @@ const QuickScanCard: React.FC<QuickScanCardProps> = ({
     >
       <View style={tw`flex-row items-center justify-between mb-4`}>
         <View style={tw`flex-row items-center`}>
-          <View style={tw`bg-white/20 p-3 rounded-full mr-4`}>
-            <QrCode size={24} color="white" />
+          <View style={tw`bg-surface/20 dark:bg-white/20 p-3 rounded-full mr-4`}>
+            <QrCode size={24} color={color("white", "foreground")} />
           </View>
           <View>
-            <Text style={tw`text-white text-xl font-bold`}>Quick Scan</Text>
-            <Text style={tw`text-white/80 text-sm`}>
+            <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>Quick Scan</Text>
+            <Text style={tw`text-foreground/80 dark:text-white/80 text-sm`}>
               Scan tickets and registrations
             </Text>
           </View>
         </View>
-        <Zap size={24} color="white" />
+        <Zap size={24} color={color("white", "foreground")} />
       </View>
 
       <View style={tw`flex-row items-center justify-between`}>
         <View style={tw`flex-row items-center`}>
-          <Shield size={16} color="white" />
-          <Text style={tw`text-white/80 text-sm ml-2`}>
+          <Shield size={16} color={color("white", "foreground")} />
+          <Text style={tw`text-foreground/80 dark:text-white/80 text-sm ml-2`}>
             Permission-based access
           </Text>
         </View>
         <View
-          style={tw`flex-row items-center bg-white/20 px-3 py-1 rounded-full`}
+          style={tw`flex-row items-center bg-surface/20 dark:bg-white/20 px-3 py-1 rounded-full`}
         >
-          <Text style={tw`text-white text-sm font-medium mr-2`}>
+          <Text style={tw`text-foreground dark:text-white text-sm font-medium mr-2`}>
             Open Scanner
           </Text>
-          <ArrowRight size={16} color="white" />
+          <ArrowRight size={16} color={color("white", "foreground")} />
         </View>
       </View>
     </TouchableOpacity>

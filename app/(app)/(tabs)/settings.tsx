@@ -1,3 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppearancePreference from "@/components/AppearancePreference";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import AppLoader from "@/components/ui/AppLoader";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
@@ -23,7 +25,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const settingsItems = [
   {
@@ -59,6 +60,7 @@ const settingsItems = [
 ];
 
 const Settings = () => {
+  const { tw, color } = useAppTheme();
   const { user, setUser } = useAuth();
   const { expoPushToken } = usePushNotification();
   const router = useLockedRouter();
@@ -96,7 +98,7 @@ const Settings = () => {
   });
 
   return (
-    <View style={[tw`flex-1 bg-[#01082E]`, styles.screen]}>
+    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, styles.screen]}>
       <CustomeTopBarNav
         title="settings"
         onClickBack={() => safeGoBack(router, "/")}
@@ -112,42 +114,44 @@ const Settings = () => {
       >
         <View
           style={[
-            tw`bg-[#122255] rounded-2xl border border-[#203370]`,
+            tw`bg-surface dark:bg-[#122255] rounded-2xl border border-border dark:border-[#203370]`,
             styles.accountCard,
           ]}
         >
-          <Text style={tw`text-white text-lg font-bold`}>
+          <Text style={tw`text-foreground dark:text-white text-lg font-bold`}>
             {user?.name || "Account"}
           </Text>
-          <Text style={tw`text-gray-300 mt-1`}>
+          <Text style={tw`text-secondary dark:text-gray-300 mt-1`}>
             {user?.email || "No email"}
           </Text>
         </View>
+
+        <AppearancePreference />
 
         {settingsItems.map((item) => (
           <TouchableOpacity
             key={item.label}
             onPress={() => router.push(item.route as any)}
             style={[
-              tw`bg-[#101C45] rounded-2xl border border-[#1C2A60]`,
+              tw`bg-surface dark:bg-[#101C45] rounded-2xl border border-border dark:border-[#1C2A60]`,
               styles.settingsItem,
             ]}
           >
             <View style={tw`flex-row items-center`}>
               <View
                 style={[
-                  tw`w-10 h-10 rounded-full bg-[#0FF1CF]/15 items-center justify-center`,
+                  tw`w-10 h-10 rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15 items-center justify-center`,
                   styles.settingsIcon,
                 ]}
               >
-                <Ionicons name={item.icon} color="#0FF1CF" size={20} />
+                <Ionicons name={item.icon} color={color("#0FF1CF", "accent")} size={20} />
               </View>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-white font-semibold text-base`}>
+                <Text style={tw`text-foreground dark:text-white font-semibold text-base`}>
                   {item.label}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" color="#8FA5E2" size={18} />
+              <Ionicons name="chevron-forward" color={color("#8FA5E2", "secondary")} size={18} />
             </View>
           </TouchableOpacity>
         ))}
@@ -155,13 +159,13 @@ const Settings = () => {
         <TouchableOpacity
           onPress={() => setShowLogout(true)}
           style={[
-            tw`bg-[#351238] rounded-2xl border border-[#6B2A70]`,
+            tw`bg-dangerSoft dark:bg-[#351238] rounded-2xl border border-[#6B2A70]`,
             styles.logoutButton,
           ]}
         >
           <View style={tw`flex-row items-center justify-center`}>
-            <Ionicons name="log-out-outline" color="#FF6B9D" size={18} />
-            <Text style={tw`text-[#FF6B9D] font-semibold ml-2`}>Logout</Text>
+            <Ionicons name="log-out-outline" color={color("#FF6B9D", "danger")} size={18} />
+            <Text style={tw`text-danger dark:text-[#FF6B9D] font-semibold ml-2`}>Logout</Text>
           </View>
         </TouchableOpacity>
       </ScrollView>
@@ -182,7 +186,7 @@ const Settings = () => {
           />
           <View
             accessibilityViewIsModal
-            style={tw`w-full max-w-[430px] max-h-[90%] rounded-[28px] border border-[#24345A] bg-[#07143B]`}
+            style={tw`w-full max-w-[430px] max-h-[90%] rounded-[28px] border border-border dark:border-[#24345A] bg-surface dark:bg-[#07143B]`}
           >
             <ScrollView contentContainerStyle={tw`px-5 pb-5`}>
               <View style={tw`items-end pt-2`}>
@@ -205,9 +209,9 @@ const Settings = () => {
                   accessibilityState={{ disabled: isLoggingOut }}
                   disabled={isLoggingOut}
                   onPress={closeLogout}
-                  style={tw`flex-1 min-h-12 items-center justify-center rounded-2xl bg-[#1B2A50] px-4 py-3`}
+                  style={tw`flex-1 min-h-12 items-center justify-center rounded-2xl bg-surfaceMuted dark:bg-[#1B2A50] px-4 py-3`}
                 >
-                  <Text style={tw`font-semibold text-white`}>Cancel</Text>
+                  <Text style={tw`font-semibold text-foreground dark:text-white`}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
@@ -218,10 +222,10 @@ const Settings = () => {
                   }}
                   disabled={isLoggingOut}
                   onPress={confirmLogout}
-                  style={tw`flex-1 min-h-12 flex-row gap-2 items-center justify-center rounded-2xl bg-[#FF6B9D] px-4 py-3`}
+                  style={tw`flex-1 min-h-12 flex-row gap-2 items-center justify-center rounded-2xl bg-danger dark:bg-[#FF6B9D] px-4 py-3`}
                 >
                   {isLoggingOut ? <AppLoader tone="dark" /> : null}
-                  <Text style={tw`font-semibold text-[#01082E]`}>
+                  <Text style={tw`font-semibold text-onAccent dark:text-[#01082E]`}>
                     {isLoggingOut ? "Logging out…" : "Logout"}
                   </Text>
                 </TouchableOpacity>

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 // components/EventImageWithProcessing.tsx
 import { EventArtworkFallback } from "@/components/ui/ArtworkFallback";
 import { Registration } from "@/types/auth";
@@ -5,7 +6,6 @@ import AppLoader from "@/components/ui/AppLoader";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 interface EventImageWithProcessingProps {
   imageUrl?: string | null;
@@ -17,6 +17,7 @@ interface EventImageWithProcessingProps {
 export const EventImageWithProcessing: React.FC<
   EventImageWithProcessingProps
 > = ({ imageUrl, isProcessing, height = 240, registrationType }) => {
+  const { tw } = useAppTheme();
   const [showImage, setShowImage] = useState(Boolean(imageUrl));
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export const EventImageWithProcessing: React.FC<
     return (
       <View
         style={[
-          tw`flex-1 items-center justify-center bg-[#1B2A50]`,
+          tw`flex-1 items-center justify-center bg-surfaceMuted dark:bg-[#1B2A50]`,
           { height },
         ]}
       >
@@ -56,10 +57,10 @@ export const EventImageWithProcessing: React.FC<
             />
             <View style={tw`absolute inset-0 items-center justify-center`}>
               <AppLoader size={40} accessibilityLabel="Uploading event image" />
-              <Text style={tw`text-[#0FF1CF] mt-2 font-semibold`}>
+              <Text style={tw`text-accent dark:text-[#0FF1CF] mt-2 font-semibold`}>
                 Uploading image...
               </Text>
-              <Text style={tw`text-gray-400 text-xs mt-1`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
                 This may take a moment
               </Text>
             </View>
@@ -67,10 +68,10 @@ export const EventImageWithProcessing: React.FC<
         ) : (
           <>
             <AppLoader size={40} accessibilityLabel="Uploading event image" />
-            <Text style={tw`text-[#0FF1CF] mt-2 font-semibold`}>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] mt-2 font-semibold`}>
               Image uploading...
             </Text>
-            <Text style={tw`text-gray-400 text-xs mt-1`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
               Your event is ready! Image will appear soon
             </Text>
           </>

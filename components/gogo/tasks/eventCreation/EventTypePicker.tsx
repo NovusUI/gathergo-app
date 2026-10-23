@@ -1,15 +1,16 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import { EVENT_CREATION_OPTIONS } from "@/components/gogo/tasks/eventCreation/options";
 import type { Registration } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 export default function EventTypePicker({
   onSelect,
 }: {
   onSelect: (type: Registration) => void;
 }) {
+  const { tw, color } = useAppTheme();
   return (
     <ScrollView contentContainerStyle={tw`grow justify-center gap-6 px-6 py-8`}>
       <GatherGoMascot
@@ -20,7 +21,7 @@ export default function EventTypePicker({
       />
       <Text
         accessibilityRole="header"
-        style={tw`text-center text-2xl font-semibold leading-8 text-white`}
+        style={tw`text-center text-2xl font-semibold leading-8 text-foreground dark:text-white`}
       >
         How will people take part?
       </Text>
@@ -31,16 +32,16 @@ export default function EventTypePicker({
             accessibilityRole="button"
             accessibilityLabel={option.title}
             onPress={() => onSelect(option.type)}
-            style={tw`min-h-[80px] flex-row items-center gap-4 rounded-2xl border border-[#24345A] bg-[#101C45] p-4`}
+            style={tw`min-h-[80px] flex-row items-center gap-4 rounded-2xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#101C45] p-4`}
           >
-            <Ionicons name={option.icon} size={24} color="#0FF1CF" />
+            <Ionicons name={option.icon} size={24} color={color("#0FF1CF", "accent")} />
             <View style={tw`flex-1 gap-1`}>
-              <Text style={tw`text-base font-semibold text-white`}>
+              <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                 {option.title}
               </Text>
-              <Text style={tw`text-sm text-[#AFC0F4]`}>{option.hint}</Text>
+              <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>{option.hint}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#8FA1CB" />
+            <Ionicons name="chevron-forward" size={18} color={color("#8FA1CB", "muted")} />
           </TouchableOpacity>
         ))}
       </View>

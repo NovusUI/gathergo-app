@@ -1,9 +1,11 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuth } from "@/context/AuthContext";
 import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import { useAuthStore } from "@/store/auth";
 import { Stack } from "expo-router";
 
 export default function RootNavigator() {
+  const { color } = useAppTheme();
   const { loading } = useAuth();
   const { isAuthenticated, hasHydrated } = useAuthStore();
 
@@ -15,7 +17,7 @@ export default function RootNavigator() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#01082E" },
+        contentStyle: { backgroundColor: color("#01082E", "background") },
         animation: "none",
       }}
     >

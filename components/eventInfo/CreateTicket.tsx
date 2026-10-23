@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { EventTicket, eventTicketSchema } from "@/schemas/event";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,7 +6,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import { Text, View } from "react-native";
 import "react-native-get-random-values";
-import tw from "twrnc";
+
 import { v4 as uuidv4 } from "uuid";
 import CustomSwitcher from "../CustomSwitcher";
 import CustomView from "../View";
@@ -31,6 +32,7 @@ const CreateTicket = ({
   editMode = false,
   insideBottomSheet = false,
 }: Props) => {
+  const { tw } = useAppTheme();
   const draftTicketIdRef = useRef(uuidv4());
   const createEmptyTicket = useCallback(
     (ticketId = draftTicketIdRef.current): EventTicket => ({
@@ -69,7 +71,7 @@ const CreateTicket = ({
   }, [createEmptyTicket, editingTicket, reset]);
 
   const ErrorText = ({ message }: { message?: string }) =>
-    message ? <Text style={tw`text-sm text-red-400`}>{message}</Text> : null;
+    message ? <Text style={tw`text-sm text-danger dark:text-red-400`}>{message}</Text> : null;
 
   const limited = watch("limited");
   const paid = watch("paid");
@@ -118,7 +120,7 @@ const CreateTicket = ({
     <CustomView style={tw`gap-7`}>
       <View style={tw`gap-3`}>
         <View style={tw`gap-1`}>
-          <Text style={tw`text-base font-semibold text-white`}>
+          <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
             Ticket name
           </Text>
         </View>
@@ -140,7 +142,7 @@ const CreateTicket = ({
       </View>
       <View style={tw`gap-3`}>
         <View style={tw`gap-1`}>
-          <Text style={tw`text-base font-semibold text-white`}>
+          <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
             Ticket description
           </Text>
         </View>
@@ -163,7 +165,7 @@ const CreateTicket = ({
       </View>
       <CustomView style={tw`gap-3`}>
         <View style={tw`gap-1`}>
-          <Text style={tw`text-base font-semibold text-white`}>Perks</Text>
+          <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>Perks</Text>
         </View>
         <Controller
           control={control}
@@ -180,7 +182,7 @@ const CreateTicket = ({
       </CustomView>
       <View style={tw`gap-3`}>
         <View style={tw`flex flex-row justify-between items-center gap-3`}>
-          <Text style={tw`text-base font-semibold text-white`}>
+          <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
             {limited ? "Limited" : "Unlimited"}
           </Text>
           <Controller
@@ -214,7 +216,7 @@ const CreateTicket = ({
 
       <View style={tw`gap-3`}>
         <View style={tw`flex flex-row justify-between items-center gap-3`}>
-          <Text style={tw`text-base font-semibold text-white`}>
+          <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
             {paid ? "Paid" : "Free"}
           </Text>
           <Controller
@@ -259,7 +261,7 @@ const CreateTicket = ({
       </View>
       <View style={tw`gap-3`}>
         <View style={tw`flex flex-row justify-between items-center gap-3`}>
-          <Text style={tw`text-base font-semibold text-white`}>
+          <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
             {watch("isVisible") ? "Visible" : "Hidden"}
           </Text>
           <Controller
@@ -274,15 +276,15 @@ const CreateTicket = ({
       <CustomView style={tw`gap-5`}>
         <CustomButton
           onPress={handleSubmit(onSubmit, onError)}
-          buttonClassName="bg-[#0FF1CF] w-full"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full"
           showArrow={false}
-          textClassName="!text-black"
+          textClassName="!text-onAccent dark:text-black"
           title="Save ticket"
         />
         <CustomButton
           onPress={handleSubmit(onSubmitAndAddNew, onError)}
-          buttonClassName={"border-[#0FF1CF] w-full"}
-          textClassName="!text-[#0FF1CF]"
+          buttonClassName={"border-accent dark:border-[#0FF1CF] w-full"}
+          textClassName="!text-accent dark:text-[#0FF1CF]"
           showArrow={false}
           title="Save and add new ticket"
         />

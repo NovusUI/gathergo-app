@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Shield } from "lucide-react-native";
 import React from "react";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 interface PermissionBadgeProps {
   eventName: string;
@@ -12,6 +12,7 @@ const PermissionBadge: React.FC<PermissionBadgeProps> = ({
   eventName,
   expiresAt,
 }) => {
+  const { tw } = useAppTheme();
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
   const isExpiringSoon = expiresAt
     ? new Date(expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -58,7 +59,7 @@ const PermissionBadge: React.FC<PermissionBadgeProps> = ({
         >
           {eventName}
         </Text>
-        <Text style={tw`text-gray-400 text-xs`}>{formatExpiration()}</Text>
+        <Text style={tw`text-muted dark:text-gray-400 text-xs`}>{formatExpiration()}</Text>
       </View>
     </View>
   );

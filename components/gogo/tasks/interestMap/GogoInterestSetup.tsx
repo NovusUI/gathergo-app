@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import Input from "@/components/inputs/CustomInput1";
@@ -21,7 +22,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import tw from "twrnc";
+
 import { InterestMap } from "./InterestMap";
 
 const MODES: Record<HelpMode, string> = {
@@ -53,6 +54,7 @@ export function GogoInterestSetup({
   onSave,
   onCancel,
 }: Props) {
+  const { tw, color } = useAppTheme();
   const { height } = useWindowDimensions();
   const [step, setStep] = useState(0);
   const [interests, setInterests] = useState(profile.interests.slice(0, 5));
@@ -140,12 +142,12 @@ export function GogoInterestSetup({
           style={tw`min-h-11 justify-center px-2`}
         >
           <Text
-            style={tw`${step === 0 ? "text-transparent" : "text-[#AFC0F4]"}`}
+            style={tw`${step === 0 ? "text-transparent" : "text-secondary dark:text-[#AFC0F4]"}`}
           >
             Back
           </Text>
         </TouchableOpacity>
-        <Text style={tw`text-xs text-[#8FA5E2]`}>
+        <Text style={tw`text-xs text-secondary dark:text-[#8FA5E2]`}>
           {step < 4 ? `${step + 1} of 4` : "Your starting map"}
         </Text>
         <TouchableOpacity
@@ -154,7 +156,7 @@ export function GogoInterestSetup({
           onPress={firstTime ? skipAll : onCancel}
           style={tw`min-h-11 justify-center px-2`}
         >
-          <Text style={tw`text-[#AFC0F4]`}>
+          <Text style={tw`text-secondary dark:text-[#AFC0F4]`}>
             {firstTime ? "Skip setup" : "Cancel"}
           </Text>
         </TouchableOpacity>
@@ -179,7 +181,7 @@ export function GogoInterestSetup({
         <Text
           accessibilityRole="header"
           accessibilityLiveRegion="polite"
-          style={tw`text-center font-semibold text-white ${
+          style={tw`text-center font-semibold text-foreground dark:text-white ${
             step === 1 ? "text-xl leading-7 mb-3" : "text-2xl mb-4"
           }`}
         >
@@ -206,7 +208,7 @@ export function GogoInterestSetup({
                       borderColor: topic.accent,
                       backgroundColor: interests.includes(topic.id)
                         ? topic.accent
-                        : "#101C45",
+                        : color("#101C45", "surface"),
                     },
                   ]}
                 >
@@ -215,8 +217,8 @@ export function GogoInterestSetup({
                       tw`font-semibold`,
                       {
                         color: interests.includes(topic.id)
-                          ? "#01082E"
-                          : "#fff",
+                          ? color("#01082E", "onAccent")
+                          : color("#fff", "foreground"),
                       },
                     ]}
                   >
@@ -229,7 +231,7 @@ export function GogoInterestSetup({
         )}
         {step === 1 && (
           <>
-            <Text style={tw`text-center text-sm text-[#AFC0F4] mb-4`}>
+            <Text style={tw`text-center text-sm text-secondary dark:text-[#AFC0F4] mb-4`}>
               Choose any that feel like you.
             </Text>
             <View style={tw`flex-row flex-wrap justify-between gap-3`}>
@@ -249,13 +251,13 @@ export function GogoInterestSetup({
                   style={[
                     tw`min-h-14 justify-center rounded-2xl border px-3 py-4 ${
                       helpModes.includes(mode)
-                        ? "border-[#0FF1CF] bg-[#0FF1CF]/15"
-                        : "border-[#24345A] bg-[#101C45]"
+                        ? "border-accent dark:border-[#0FF1CF] bg-accentFill/15 dark:bg-[#0FF1CF]/15"
+                        : "border-border dark:border-[#24345A] bg-surface dark:bg-[#101C45]"
                     }`,
                     { width: "47%" },
                   ]}
                 >
-                  <Text style={tw`text-center font-semibold text-white`}>
+                  <Text style={tw`text-center font-semibold text-foreground dark:text-white`}>
                     {MODES[mode]}
                     {helpModes.includes(mode) ? " ✓" : ""}
                   </Text>
@@ -266,7 +268,7 @@ export function GogoInterestSetup({
         )}
         {step === 2 && (
           <>
-            <Text style={tw`text-center text-sm text-[#AFC0F4] mb-5`}>
+            <Text style={tw`text-center text-sm text-secondary dark:text-[#AFC0F4] mb-5`}>
               Add your city to help me find nearby events.
             </Text>
             <Input
@@ -288,7 +290,7 @@ export function GogoInterestSetup({
             </View>
           ) : examples.isError ? (
             <View style={tw`items-center gap-3`}>
-              <Text style={tw`text-center text-[#AFC0F4]`}>
+              <Text style={tw`text-center text-secondary dark:text-[#AFC0F4]`}>
                 I couldn’t load event examples. You can retry or keep going.
               </Text>
               <TouchableOpacity
@@ -296,12 +298,12 @@ export function GogoInterestSetup({
                 onPress={() => void examples.refetch()}
                 style={tw`p-3`}
               >
-                <Text style={tw`text-[#0FF1CF]`}>Try again</Text>
+                <Text style={tw`text-accent dark:text-[#0FF1CF]`}>Try again</Text>
               </TouchableOpacity>
             </View>
           ) : example ? (
             <View
-              style={tw`rounded-3xl border border-[#24345A] bg-[#101C45] overflow-hidden`}
+              style={tw`rounded-3xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#101C45] overflow-hidden`}
             >
               {example.thumbnailUrl ? (
                 <Image
@@ -311,20 +313,20 @@ export function GogoInterestSetup({
                 />
               ) : null}
               <View style={tw`p-4 gap-2`}>
-                <Text style={tw`text-xs text-[#8FA5E2]`}>
+                <Text style={tw`text-xs text-secondary dark:text-[#8FA5E2]`}>
                   {index + 1} of {cards.length} ·{" "}
                   {formatShortDate(example.startDate)}
                 </Text>
-                <Text style={tw`text-lg font-semibold text-white`}>
+                <Text style={tw`text-lg font-semibold text-foreground dark:text-white`}>
                   {example.title}
                 </Text>
                 {example.description ? (
-                  <Text numberOfLines={2} style={tw`text-sm text-[#AFC0F4]`}>
+                  <Text numberOfLines={2} style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>
                     {example.description}
                   </Text>
                 ) : null}
                 {example.location ? (
-                  <Text numberOfLines={1} style={tw`text-sm text-[#8FA5E2]`}>
+                  <Text numberOfLines={1} style={tw`text-sm text-secondary dark:text-[#8FA5E2]`}>
                     {example.location}
                   </Text>
                 ) : null}
@@ -334,23 +336,23 @@ export function GogoInterestSetup({
                   accessibilityRole="button"
                   accessibilityLabel="Skip this event"
                   onPress={() => reactToEvent(false)}
-                  style={tw`flex-1 items-center rounded-2xl bg-[#1B2A50] p-4`}
+                  style={tw`flex-1 items-center rounded-2xl bg-surfaceMuted dark:bg-[#1B2A50] p-4`}
                 >
-                  <Text style={tw`text-white`}>Skip</Text>
+                  <Text style={tw`text-foreground dark:text-white`}>Skip</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel="Like this event"
                   onPress={() => reactToEvent(true)}
-                  style={tw`flex-1 items-center rounded-2xl bg-[#0FF1CF] p-4`}
+                  style={tw`flex-1 items-center rounded-2xl bg-accentFill dark:bg-[#0FF1CF] p-4`}
                 >
-                  <Text style={tw`font-semibold text-[#01082E]`}>Like ♥</Text>
+                  <Text style={tw`font-semibold text-onAccent dark:text-[#01082E]`}>Like ♥</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : null)}
         {step === 4 && (
-          <Text style={tw`text-center text-sm leading-6 text-[#AFC0F4]`}>
+          <Text style={tw`text-center text-sm leading-6 text-secondary dark:text-[#AFC0F4]`}>
             {mapTopics.length
               ? "A starting point for finding events that fit you. Tune your map anytime."
               : "Your feed can start with discovery. Add interests whenever you’re ready."}
@@ -372,10 +374,10 @@ export function GogoInterestSetup({
                 : "Continue"
             }
             showArrow={false}
-            buttonClassName={`w-full bg-[#0FF1CF] border-0 ${
+            buttonClassName={`w-full bg-accentFill dark:bg-[#0FF1CF] border-0 ${
               step === 1 ? "min-h-11 py-3" : ""
             }`}
-            textClassName="!text-[#01082E]"
+            textClassName="!text-onAccent dark:text-[#01082E]"
           />
         )}
         {step < 4 && (
@@ -391,7 +393,7 @@ export function GogoInterestSetup({
             }}
             style={tw`min-h-11 justify-center items-center`}
           >
-            <Text style={tw`text-sm text-[#8FA5E2]`}>
+            <Text style={tw`text-sm text-secondary dark:text-[#8FA5E2]`}>
               {step === 3 ? "Skip examples" : "Skip this question"}
             </Text>
           </TouchableOpacity>

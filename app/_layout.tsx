@@ -4,7 +4,8 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { PushNotificationProvider } from "@/context/PushNotificationContext";
 import { SocketProvider } from "@/context/SocketContext";
 import RootNavigator from "@/navigators/RootNavigators";
-import { APP_CONTENT_BACKGROUND } from "@/constants/appLaunch";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { useAppearanceStore } from "@/store/appearance";
 import AppToast from "@/components/ui/AppToast";
 import { useAuthStore } from "@/store/auth";
 import { useOnboardingStore } from "@/store/onboarding";
@@ -18,7 +19,7 @@ import { useFonts } from "expo-font";
 import { useNavigationContainerRef } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Appearance, Platform, StatusBar, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PaystackProvider } from "react-native-paystack-webview";
 import "../global.css";
@@ -27,6 +28,8 @@ import "../global.css";
 SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
+  const { colors } = useAppTheme();
+  const { hasHydrated: appearanceHydrated, hydrate: hydrateAppearance } = useAppearanceStore();
   const { loading } = useAuth();
   const { hasHydrated } = useAuthStore();
   const { hasHydrated: onboardingHydrated, hydrate } = useOnboardingStore();
@@ -37,7 +40,8 @@ function AppContent() {
 
   useEffect(() => {
     void hydrate();
-  }, [hydrate]);
+    void hydrateAppearance();
+  }, [hydrate, hydrateAppearance]);
 
   useEffect(() => {
     if (!laidOut || splashHidden) return;
@@ -69,13 +73,13 @@ function AppContent() {
     };
   }, [laidOut, navigation, splashHidden]);
 
-  if (loading || !hasHydrated || !onboardingHydrated) return null;
+  if (loading || !hasHydrated || !onboardingHydrated || !appearanceHydrated) return null;
 
   return (
     <BottomSheetModalProvider>
       <View
         onLayout={handleLayout}
-        style={{ flex: 1, backgroundColor: APP_CONTENT_BACKGROUND }}
+        style={{ flex: 1, backgroundColor: colors.background }}
       >
         <RootNavigator />
       </View>
@@ -84,6 +88,10 @@ function AppContent() {
 }
 
 export default function RootLayout() {
+  const { colors, mode } = useAppTheme();
+  useEffect(() => {
+    if (Platform.OS !== "web") Appearance.setColorScheme(mode);
+  }, [mode]);
   const [fontsLoaded, fontError] = useFonts(URBANIST_FONT_ASSETS);
   const [queryClient] = useState(() => new QueryClient());
   const [persister] = useState(() =>
@@ -103,8 +111,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView
-      style={{ flex: 1, backgroundColor: APP_CONTENT_BACKGROUND }}
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
+      <StatusBar barStyle={mode === "light" ? "dark-content" : "light-content"} backgroundColor={colors.background} />
       <PersistQueryClientProvider
         client={queryClient}
         persistOptions={{ persister }}

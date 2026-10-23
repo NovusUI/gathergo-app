@@ -1,3 +1,5 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import SkipOnboardingButton from "@/components/buttons/SkipOnboardingButton";
 import GogoWelcomeScreen from "@/components/gogo/mascot/GogoWelcomeScreen";
@@ -39,6 +41,8 @@ export default function Onboarding() {
 }
 
 function OnboardingSlides({ onFinish }: { onFinish: () => void }) {
+  const { color, mode } = useAppTheme();
+  const styles = createStyles(color);
   const { width } = useWindowDimensions();
   const reducedMotion = useReducedMotionPreference();
   const listRef = useRef<FlatList<(typeof slides)[number]>>(null);
@@ -75,7 +79,7 @@ function OnboardingSlides({ onFinish }: { onFinish: () => void }) {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <StatusBar barStyle="light-content" backgroundColor="#01082E" />
+      <StatusBar barStyle={mode === "light" ? "dark-content" : "light-content"} backgroundColor={color("#01082E", "background")} />
       <View style={styles.header}>
         <SkipOnboardingButton onPress={onFinish} />
       </View>
@@ -127,8 +131,8 @@ function OnboardingSlides({ onFinish }: { onFinish: () => void }) {
         <CustomButton
           onPress={next}
           title={lastSlide ? "Get started" : "Next"}
-          buttonClassName="w-full self-center bg-[#0FF1CF] border-0"
-          textClassName="text-[#01082E] mr-0"
+          buttonClassName="w-full self-center bg-accentFill dark:bg-[#0FF1CF] border-0"
+          textClassName="text-onAccent dark:text-[#01082E] mr-0"
           showArrow={false}
         />
       </View>
@@ -136,10 +140,10 @@ function OnboardingSlides({ onFinish }: { onFinish: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#01082E",
+    backgroundColor: color("#01082E", "background"),
   },
   header: {
     alignItems: "flex-end",
@@ -168,10 +172,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#455780",
+    backgroundColor: color("#455780", "surfaceRaised"),
   },
   activeDot: {
     width: 20,
-    backgroundColor: "#0FF1CF",
+    backgroundColor: color("#0FF1CF", "accentFill"),
   },
 });

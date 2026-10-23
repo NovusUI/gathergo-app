@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import RequestCard from "@/components/carpool/RequestCard";
 import { buildCarpoolShareLink } from "@/utils/shareLinks";
 import BottomSheet, {
@@ -7,7 +8,6 @@ import BottomSheet, {
 import { CheckCircle2, Clock3, Share2 } from "lucide-react-native";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Share, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type ViewRequestBSProps = {
   carpool: any;
@@ -21,6 +21,7 @@ export type ViewRequestBSRef = {
 
 const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
   ({ carpool, dummy }, ref) => {
+  const { tw, color } = useAppTheme();
     const bottomSheetRef = useRef<any>(null);
     const snapPoints = useMemo(() => ["72%"], []);
 
@@ -63,42 +64,42 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={tw`bg-[#01082E]`}
+        backgroundStyle={tw`bg-background dark:bg-[#01082E]`}
       >
         <BottomSheetScrollView style={tw`p-5`}>
           <View style={tw`py-5 gap-6`}>
             <View
-              style={tw`rounded-[28px] border border-[#1B2A50] bg-[#07122E] px-5 py-5`}
+              style={tw`rounded-[28px] border border-border dark:border-[#1B2A50] bg-background dark:bg-[#07122E] px-5 py-5`}
             >
-              <Text style={tw`text-xl font-semibold text-white`}>
+              <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                 Ride requests
               </Text>
 
               <View style={tw`mt-4 flex-row gap-3`}>
-                <View style={tw`flex-1 rounded-2xl bg-[#0D1B44] px-4 py-3`}>
+                <View style={tw`flex-1 rounded-2xl bg-surface dark:bg-[#0D1B44] px-4 py-3`}>
                   <View style={tw`flex-row items-center`}>
-                    <Clock3 size={16} color="#BFD2FF" />
+                    <Clock3 size={16} color={color("#BFD2FF", "secondary")} />
                     <Text
-                      style={tw`ml-2 text-xs uppercase tracking-[1px] text-[#7F93C0]`}
+                      style={tw`ml-2 text-xs uppercase tracking-[1px] text-muted dark:text-[#7F93C0]`}
                     >
                       Pending
                     </Text>
                   </View>
-                  <Text style={tw`mt-2 text-lg font-semibold text-white`}>
+                  <Text style={tw`mt-2 text-lg font-semibold text-foreground dark:text-white`}>
                     {newRequest.length}
                   </Text>
                 </View>
 
-                <View style={tw`flex-1 rounded-2xl bg-[#0D1B44] px-4 py-3`}>
+                <View style={tw`flex-1 rounded-2xl bg-surface dark:bg-[#0D1B44] px-4 py-3`}>
                   <View style={tw`flex-row items-center`}>
-                    <CheckCircle2 size={16} color="#65F5C7" />
+                    <CheckCircle2 size={16} color={color("#65F5C7", "info")} />
                     <Text
-                      style={tw`ml-2 text-xs uppercase tracking-[1px] text-[#7F93C0]`}
+                      style={tw`ml-2 text-xs uppercase tracking-[1px] text-muted dark:text-[#7F93C0]`}
                     >
                       Approved
                     </Text>
                   </View>
-                  <Text style={tw`mt-2 text-lg font-semibold text-white`}>
+                  <Text style={tw`mt-2 text-lg font-semibold text-foreground dark:text-white`}>
                     {accepted.length}
                   </Text>
                 </View>
@@ -108,7 +109,7 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
             {newRequest.length > 0 && (
               <View style={tw`gap-4`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-[1px] text-[#7F93C0]`}
+                  style={tw`text-xs uppercase tracking-[1px] text-muted dark:text-[#7F93C0]`}
                 >
                   Pending requests
                 </Text>
@@ -131,7 +132,7 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
             {accepted.length > 0 && (
               <View style={tw`gap-4`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-[1px] text-[#7F93C0]`}
+                  style={tw`text-xs uppercase tracking-[1px] text-muted dark:text-[#7F93C0]`}
                 >
                   Approved riders
                 </Text>
@@ -153,13 +154,13 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
 
             {combinedRequest.length === 0 && (
               <View
-                style={tw`items-center rounded-[28px] border border-dashed border-[#24365E] bg-[#07122E] px-5 py-10`}
+                style={tw`items-center rounded-[28px] border border-dashed border-border dark:border-[#24365E] bg-background dark:bg-[#07122E] px-5 py-10`}
               >
-                <Text style={tw`text-base font-semibold text-white`}>
+                <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                   No requests yet
                 </Text>
                 <Text
-                  style={tw`mt-2 text-center text-sm leading-5 text-[#9FB0D8]`}
+                  style={tw`mt-2 text-center text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}
                 >
                   When people ask to join this ride, they will show up here.
                 </Text>
@@ -171,10 +172,10 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
         <View style={tw`w-screen max-w-[500px] p-5 gap-4`}>
           <TouchableOpacity
             onPress={handleShare}
-            style={tw`flex-row justify-center items-center gap-2 rounded-[18px] border border-[#1B2A50] py-3`}
+            style={tw`flex-row justify-center items-center gap-2 rounded-[18px] border border-border dark:border-[#1B2A50] py-3`}
           >
-            <Share2 size={18} color="#0FF1CF" />
-            <Text style={tw`text-[#0FF1CF] font-medium`}>
+            <Share2 size={18} color={color("#0FF1CF", "accent")} />
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-medium`}>
               Share ride with friend
             </Text>
           </TouchableOpacity>

@@ -1,3 +1,5 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { PostEventSurveyPrompt } from "@/components/gogo/tasks/interestMap/PostEventSurveyPrompt";
 import Tab from "@/components/Tab";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
@@ -34,7 +36,6 @@ import { useLocationManager } from "@/hooks/useLocationManager";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUnreadCounts } from "@/hooks/useSocketReactHook";
 import { Ionicons } from "@expo/vector-icons";
-import tw from "twrnc";
 
 const { width } = Dimensions.get("window");
 const bannerPageWidth = Math.min(width, 500);
@@ -75,6 +76,8 @@ const getBannerIconName = (card: Pick<HomeAdCard, "key" | "icon">) => {
 };
 
 export default function HomeScreen() {
+  const { tw, color } = useAppTheme();
+  const styles = createStyles(color);
   const { requestLocation } = useLocationManager();
   const { data } = useUnreadCounts();
   useEffect(() => {
@@ -192,13 +195,13 @@ export default function HomeScreen() {
       <Ionicons
         name={iconName as any}
         size={20}
-        color={card.accentColor || "#0FF1CF"}
+        color={card.accentColor || color("#0FF1CF", "accent")}
       />
     );
   };
 
   return (
-    <View style={[tw`flex-1 bg-[#030A31] items-center`, styles.screen]}>
+    <View style={[tw`flex-1 bg-background dark:bg-[#030A31] items-center`, styles.screen]}>
       {/* Header */}
       <View
         style={[
@@ -206,7 +209,7 @@ export default function HomeScreen() {
           styles.header,
         ]}
       >
-        <Text style={tw`text-white`}>{`Hello ${displayName} 😊`}</Text>
+        <Text style={tw`text-foreground dark:text-white`}>{`Hello ${displayName} 😊`}</Text>
         <View style={tw`flex-row items-center justify-between`}>
           <TouchableOpacity
             style={[tw`relative`, styles.headerIconButton]}
@@ -214,7 +217,7 @@ export default function HomeScreen() {
           >
             <Ionicons
               size={30}
-              color={"white"}
+              color={color("white", "foreground")}
               name={unreadCount > 0 ? "heart" : "heart-outline"}
             />
             {unreadCount > 0 && (
@@ -231,7 +234,7 @@ export default function HomeScreen() {
           >
             <Ionicons
               size={30}
-              color="white"
+              color={color("white", "foreground")}
               name={hasUnreadMessages ? "chatbubble" : "chatbubble-outline"}
             />
             {hasUnreadMessages && (
@@ -325,7 +328,7 @@ export default function HomeScreen() {
                       size={22}
                       animated={false}
                       showBadge={false}
-                      style={tw`rounded-full bg-[#01082E]`}
+                      style={tw`rounded-full bg-background dark:bg-[#01082E]`}
                     />
                   ) : undefined
                 }
@@ -369,7 +372,7 @@ export default function HomeScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={tw`text-gray-400 text-center`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-center`}>
                 No events found.
               </Text>
             ))}
@@ -402,7 +405,7 @@ export default function HomeScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={tw`text-gray-400 text-center`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-center`}>
                 No carpool found for you.
               </Text>
             ))}
@@ -429,7 +432,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   screen: {
     paddingTop: layoutSpacing.pageTop,
     paddingBottom: layoutSpacing.pageBottom,
@@ -444,7 +447,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -4,
     right: -6,
-    backgroundColor: "#0FF1CF",
+    backgroundColor: color("#0FF1CF", "accentFill"),
     borderRadius: 999,
     minWidth: 20,
     height: 20,
@@ -453,7 +456,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerBadgeText: {
-    color: "#01082E",
+    color: color("#01082E", "onAccent"),
     fontSize: 10,
     fontWeight: "800",
   },
@@ -467,8 +470,8 @@ const styles = StyleSheet.create({
   },
   bannerCard: {
     marginHorizontal: layoutSpacing.pageHorizontal,
-    backgroundColor: "#07164F",
-    borderColor: "#1F3FAD",
+    backgroundColor: color("#07164F", "surface"),
+    borderColor: color("#1F3FAD", "border"),
     borderWidth: 1,
     borderRadius: 18,
     padding: 10,
@@ -487,26 +490,26 @@ const styles = StyleSheet.create({
   },
   bannerBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#0FF1CF",
+    backgroundColor: color("#0FF1CF", "accentFill"),
     borderRadius: 999,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     marginBottom: spacing.xs,
   },
   bannerBadgeText: {
-    color: "#01082E",
+    color: color("#01082E", "onAccent"),
     fontSize: 11,
     fontWeight: "800",
   },
   bannerTitle: {
-    color: "#FFFFFF",
+    color: color("#FFFFFF", "foreground"),
     fontSize: 15,
     fontWeight: "800",
     lineHeight: 18,
     marginBottom: spacing.xs,
   },
   bannerBody: {
-    color: "#CBD8FF",
+    color: color("#CBD8FF", "foreground"),
     fontSize: 12,
     lineHeight: 16,
     marginBottom: spacing.xs,
@@ -517,7 +520,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   bannerCta: {
-    color: "#0FF1CF",
+    color: color("#0FF1CF", "accent"),
     fontSize: 13,
     fontWeight: "700",
   },
@@ -537,14 +540,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#3550A7",
+    backgroundColor: color("#3550A7", "surfaceRaised"),
   },
   bannerDotActive: {
     width: 22,
-    backgroundColor: "#0FF1CF",
+    backgroundColor: color("#0FF1CF", "accentFill"),
   },
   tabs: {
-    backgroundColor: "#030A31",
+    backgroundColor: color("#030A31", "background"),
     gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingHorizontal: layoutSpacing.pageHorizontal,
@@ -566,7 +569,7 @@ const styles = StyleSheet.create({
   circleBanner: {
     padding: spacing.lg,
     borderRadius: 16,
-    backgroundColor: "#101C45",
+    backgroundColor: color("#101C45", "surface"),
     alignItems: "center",
   },
 });

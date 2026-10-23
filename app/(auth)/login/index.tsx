@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomSwitcher from "@/components/CustomSwitcher";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import GoogleLoginBtn from "@/components/buttons/GoogleLoginBtn";
@@ -32,7 +33,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import * as z from "zod";
 
 const loginSchema = z.object({
@@ -55,6 +56,7 @@ const REMEMBER_ME_KEY = "remember_me_credentials";
 type GoogleAuthPhase = "idle" | "opening" | "completing";
 
 const LoginScreen = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -263,7 +265,7 @@ const LoginScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -284,7 +286,7 @@ const LoginScreen = () => {
         style={tw.style("absolute top-10 left-8")}
         onPress={() => router.replace("/onboarding")}
       >
-        <XIcon color="white" />
+        <XIcon color={color("white", "foreground")} />
       </TouchableOpacity>
 
       {/* Logo */}
@@ -299,7 +301,7 @@ const LoginScreen = () => {
       </View>
 
       {/* Title */}
-      <Text style={tw`text-white text-2xl font-semibold mt-4`}>Sign in</Text>
+      <Text style={tw`text-foreground dark:text-white text-2xl font-semibold mt-4`}>Sign in</Text>
 
       {/* Google Login Button */}
       <GoogleLoginBtn
@@ -308,9 +310,9 @@ const LoginScreen = () => {
       />
       <CustomButton
         title="Continue with phone"
-        buttonClassName="w-full border border-[#0FF1CF]"
-        textClassName="text-[#0FF1CF]"
-        arrowCircleColor="bg-[#0FF1CF]"
+        buttonClassName="w-full border border-accent dark:border-[#0FF1CF]"
+        textClassName="text-accent dark:text-[#0FF1CF]"
+        arrowCircleColor="bg-accentFill dark:bg-[#0FF1CF]"
         onPress={() => router.push("/phone-login")}
       />
 
@@ -322,11 +324,11 @@ const LoginScreen = () => {
         })}
       >
         <View
-          style={tw.style("bg-white", { flex: 1, height: 1, marginRight: 8 })}
+          style={tw.style("bg-surface dark:bg-white", { flex: 1, height: 1, marginRight: 8 })}
         />
-        <Text style={tw`text-white`}>OR</Text>
+        <Text style={tw`text-foreground dark:text-white`}>OR</Text>
         <View
-          style={tw.style("bg-white", { flex: 1, height: 1, marginLeft: 8 })}
+          style={tw.style("bg-surface dark:bg-white", { flex: 1, height: 1, marginLeft: 8 })}
         />
       </View>
 
@@ -345,7 +347,7 @@ const LoginScreen = () => {
         )}
       />
       {errors.email && (
-        <Text style={tw`text-red-500 self-start`}>{errors.email.message}</Text>
+        <Text style={tw`text-danger dark:text-red-500 self-start`}>{errors.email.message}</Text>
       )}
 
       {/* Password Input */}
@@ -364,7 +366,7 @@ const LoginScreen = () => {
         )}
       />
       {errors.password && (
-        <Text style={tw`text-red-500 self-start`}>
+        <Text style={tw`text-danger dark:text-red-500 self-start`}>
           {errors.password.message}
         </Text>
       )}
@@ -380,19 +382,19 @@ const LoginScreen = () => {
             isEnabled={rememberMe}
             setIsEnabled={handleRememberMeChange}
           />
-          <Text style={tw`text-white`}>Remember me</Text>
+          <Text style={tw`text-foreground dark:text-white`}>Remember me</Text>
         </View>
         <TouchableOpacity onPress={() => router.replace("/password-reset")}>
-          <Text style={tw`text-white`}>Forgot password?</Text>
+          <Text style={tw`text-foreground dark:text-white`}>Forgot password?</Text>
         </TouchableOpacity>
       </View>
 
       {/* Sign In Button */}
       <CustomButton
         title={loginPending ? "Signing in..." : "Sign In"}
-        buttonClassName="bg-[#0FF1CF] w-full border-0"
-        arrowCircleColor="bg-[#0C7F7F]"
-        textClassName="text-black"
+        buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+        arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
+        textClassName="text-onAccent dark:text-black"
         onPress={handleSubmit(onSubmit)}
         disabled={loginPending}
       />
@@ -402,7 +404,7 @@ const LoginScreen = () => {
         onPress={() => router.replace("/signup")}
         style={tw.style("flex-row justify-center w-full", { maxWidth: 500 })}
       >
-        <Text style={tw`text-white`}>
+        <Text style={tw`text-foreground dark:text-white`}>
           Do not have an account? <Text style={tw`font-semibold`}>Sign up</Text>
         </Text>
       </TouchableOpacity>

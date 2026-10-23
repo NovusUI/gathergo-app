@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
@@ -51,7 +52,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const getUpdateErrorMessage = (error: unknown) => {
   const data = (error as { data?: { message?: string | string[] } })?.data;
@@ -65,6 +65,7 @@ const getUpdateErrorMessage = (error: unknown) => {
 };
 
 const EditEvent = () => {
+  const { tw } = useAppTheme();
   const { id } = useLocalSearchParams();
   const eventId = Array.isArray(id) ? id[0] : id;
   const router = useLockedRouter();
@@ -430,7 +431,7 @@ const EditEvent = () => {
   // *********** Loading & Error States ************ //
   if (isPending) {
     return (
-      <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+      <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Edit Event"
@@ -447,15 +448,15 @@ const EditEvent = () => {
 
   if (isError || !eventData) {
     return (
-      <View style={tw`flex-1 bg-[#01082E] items-center justify-center px-5`}>
-        <Text style={tw`text-white text-xl mt-4`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E] items-center justify-center px-5`}>
+        <Text style={tw`text-foreground dark:text-white text-xl mt-4`}>
           Event not found or error loading
         </Text>
         <CustomButton
           title="Go Back"
           onPress={() => router.replace("/")}
-          buttonClassName="bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
-          textClassName="!text-black"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
+          textClassName="!text-onAccent dark:text-black"
         />
       </View>
     );
@@ -469,13 +470,13 @@ const EditEvent = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <View
         style={[
-          tw`flex-1 pb-5 bg-[#01082E] flex flex-col items-center w-full`,
+          tw`flex-1 pb-5 bg-background dark:bg-[#01082E] flex flex-col items-center w-full`,
           { paddingTop: spacing.xxl },
         ]}
       >
@@ -500,7 +501,7 @@ const EditEvent = () => {
                       onChange={onChange}
                     />
                     {errors.imgUrl && (
-                      <Text style={tw`text-red-500`}>
+                      <Text style={tw`text-danger dark:text-red-500`}>
                         {errors.imgUrl.message}
                       </Text>
                     )}
@@ -525,7 +526,7 @@ const EditEvent = () => {
                   )}
                 />
                 {errors.eventName && (
-                  <Text style={tw`text-red-500`}>
+                  <Text style={tw`text-danger dark:text-red-500`}>
                     {errors.eventName.message}
                   </Text>
                 )}
@@ -534,20 +535,20 @@ const EditEvent = () => {
               <EventStoryFields control={control} setValue={setValue} />
             </CustomView>
 
-            <CustomView className="!bg-[#1B2A50]/40 h-2" />
+            <CustomView className="!bg-surface/40 dark:bg-[#1B2A50]/40 h-2" />
 
             {/* Event Info */}
             <CustomView className="px-5">
               <FormLabel text="event information" />
               <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
                 onPress={() => openSheet("Date and Time")}
               >
-                <Text style={tw`text-white text-base`}>Date and Time</Text>
-                {startDateWatch && <Text style={tw`text-[#0FF1CF]`}>✓</Text>}
+                <Text style={tw`text-foreground dark:text-white text-base`}>Date and Time</Text>
+                {startDateWatch && <Text style={tw`text-accent dark:text-[#0FF1CF]`}>✓</Text>}
               </TouchableOpacity>
               <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
                 onPress={() => {
                   setLocationDraft({
                     location: watch("location"),
@@ -557,39 +558,39 @@ const EditEvent = () => {
                 }}
               >
                 <View style={tw`flex-1 pr-3`}>
-                  <Text style={tw`text-white text-base`}>Location</Text>
-                  <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                  <Text style={tw`text-foreground dark:text-white text-base`}>Location</Text>
+                  <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
                     {isPhysicalEventWatch
                       ? locationWatch || "Add the physical venue"
                       : "No physical meetup"}
                   </Text>
                 </View>
                 {(Boolean(locationWatch) || !isPhysicalEventWatch) && (
-                  <Text style={tw`text-[#0FF1CF]`}>✓</Text>
+                  <Text style={tw`text-accent dark:text-[#0FF1CF]`}>✓</Text>
                 )}
               </TouchableOpacity>
               {lockedRegistrationType !== "volunteer" ? (
                 <TouchableOpacity
-                  style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                  style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
                   onPress={() => openSheet("Pricing")}
                 >
-                  <Text style={tw`text-white text-base`}>
+                  <Text style={tw`text-foreground dark:text-white text-base`}>
                     {pricingSectionTitle}
                   </Text>
                   {(isDonationEvent
                     ? donationTargetWatch
                     : registrationTypeWatch) && (
-                    <Text style={tw`text-[#0FF1CF]`}>✓</Text>
+                    <Text style={tw`text-accent dark:text-[#0FF1CF]`}>✓</Text>
                   )}
                 </TouchableOpacity>
               ) : null}
             </CustomView>
 
-            <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
+            <CustomView className="!bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full" />
 
             <VolunteerSetupFields control={control} setValue={setValue} editMode
               onManage={() => router.push({ pathname: "/volunteers/[id]", params: { id: eventId } })} />
-            {errors.volunteerRoles?.message ? <Text style={tw`px-5 text-red-400`}>{errors.volunteerRoles.message}</Text> : null}
+            {errors.volunteerRoles?.message ? <Text style={tw`px-5 text-danger dark:text-red-400`}>{errors.volunteerRoles.message}</Text> : null}
             <EventFundraisingFields control={control} setValue={setValue} savedTarget={eventData.data.donationTarget} />
 
             <EventLinks
@@ -606,8 +607,8 @@ const EditEvent = () => {
                 onPress={handleSubmit(onSubmit)}
                 title={isUpdatePending ? "updating..." : "Update Event"}
                 showArrow={false}
-                buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                textClassName="!text-black"
+                buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                textClassName="!text-onAccent dark:text-black"
               />
             </CustomView>
           </ScrollView>
@@ -625,15 +626,15 @@ const EditEvent = () => {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View
-              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
             >
               <View
-                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
               />
 
               <View style={tw`flex-row items-start justify-between gap-4`}>
                 <View style={tw`flex-1`}>
-                  <Text style={tw`text-xl font-semibold text-white`}>
+                  <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                     {activeSectionTitle}
                   </Text>
                 </View>
@@ -665,15 +666,15 @@ const EditEvent = () => {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View
-              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
             >
               <View
-                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
               />
 
               <View style={tw`flex-row items-start justify-between gap-4`}>
                 <View style={tw`flex-1`}>
-                  <Text style={tw`text-xl font-semibold text-white`}>
+                  <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                     {editingTicket ? "Edit ticket" : "Create ticket"}
                   </Text>
                 </View>

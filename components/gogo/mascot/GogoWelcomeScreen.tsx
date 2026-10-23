@@ -1,3 +1,5 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import SkipOnboardingButton from "@/components/buttons/SkipOnboardingButton";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import {
@@ -18,6 +20,8 @@ export default function GogoWelcomeScreen({
   onContinue: () => void;
   onSkip: () => void;
 }) {
+  const { color, mode } = useAppTheme();
+  const styles = createStyles(color);
   const reducedMotion = useReducedMotionPreference();
   const [laidOut, setLaidOut] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
@@ -32,8 +36,8 @@ export default function GogoWelcomeScreen({
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar
-        barStyle="light-content"
-        backgroundColor={GOGO_STARTUP_BACKGROUND}
+        barStyle={mode === "light" ? "dark-content" : "light-content"}
+        backgroundColor={color(GOGO_STARTUP_BACKGROUND, "background")}
       />
       <View style={styles.header}>
         <SkipOnboardingButton onPress={onSkip} />
@@ -47,6 +51,7 @@ export default function GogoWelcomeScreen({
             onLayout={handleLayout}
           >
             <GogoStartupArtwork
+              backgroundColor={color(GOGO_STARTUP_BACKGROUND, "background")}
               progress={progress}
               animated={!reducedMotion}
               size={GOGO_STARTUP_SIZE}
@@ -61,8 +66,8 @@ export default function GogoWelcomeScreen({
             title="Let’s get started"
             onPress={onContinue}
             showArrow={false}
-            buttonClassName="w-full self-center bg-[#0FF1CF] border-0"
-            textClassName="text-[#01082E] mr-0"
+            buttonClassName="w-full self-center bg-accentFill dark:bg-[#0FF1CF] border-0"
+            textClassName="text-onAccent dark:text-[#01082E] mr-0"
           />
         </View>
       </ScrollView>
@@ -70,10 +75,10 @@ export default function GogoWelcomeScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: GOGO_STARTUP_BACKGROUND,
+    backgroundColor: color(GOGO_STARTUP_BACKGROUND, "background"),
   },
   header: {
     alignItems: "flex-end",
@@ -94,7 +99,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
   },
   title: {
-    color: "#FFFFFF",
+    color: color("#FFFFFF", "foreground"),
     fontSize: 30,
     fontWeight: "800",
     textAlign: "center",

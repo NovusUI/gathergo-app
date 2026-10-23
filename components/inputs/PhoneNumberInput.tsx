@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Picker } from "@react-native-picker/picker";
 import { Phone } from "lucide-react-native";
 import {
@@ -19,6 +20,7 @@ interface PhoneInputProps {
 
 const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
   ({ placeholder = "Enter phone number", value, onChangeText, error }, ref) => {
+  const { tw, color } = useAppTheme();
     const inputRef = useRef<TextInput | null>(null);
     const [selectedCode, setSelectedCode] = useState("+234"); // Default Nigeria
     const [countries, setCountries] = useState<
@@ -65,19 +67,19 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
     return (
       <Pressable
         onPress={() => inputRef.current?.focus()}
-        className="mb-4 w-full max-w-96 bg-[#1B2A50]/40 p-2 rounded-xl"
+        style={tw.style("mb-4 w-full max-w-96 bg-surface/40 dark:bg-[#1B2A50]/40 p-2 rounded-xl")}
       >
-        <View className="flex-row items-center px-2">
+        <View style={tw.style("flex-row items-center px-2")}>
           {/* Phone icon */}
-          <View className="mr-2">
-            <Phone size={20} color="#6B7280" />
+          <View style={tw.style("mr-2")}>
+            <Phone size={20} color={color("#6B7280", "muted")} />
           </View>
 
           {/* Country Code Picker */}
           <Picker
             selectedValue={selectedCode}
             onValueChange={(code) => setSelectedCode(code)}
-            style={{ width: 60, color: "#FFFFFF" }}
+            style={{ width: 60, color: color("#FFFFFF", "foreground") }}
             dropdownIconColor="#FFFFFF"
             className="bg-transparent outline-none"
           >
@@ -86,7 +88,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
                 key={c.value}
                 label={c.label}
                 value={c.value}
-                color="#FFFFFF"
+                color={color("#FFFFFF", "foreground")}
               />
             ))}
           </Picker>
@@ -94,9 +96,9 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
           {/* Phone Number Input */}
           <TextInput
             ref={setRefs}
-            className="flex-1 py-3 text-white outline-none ml-2"
+            style={tw.style("flex-1 py-3 text-foreground dark:text-white outline-none ml-2")}
             placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={color("#9CA3AF", "muted")}
             keyboardType="phone-pad"
             value={value}
             onChangeText={onChangeText}
@@ -105,7 +107,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
 
         {/* Error Message */}
         {Boolean(error) && (
-          <Text className="text-red-500 text-xs mt-1">{error}</Text>
+          <Text style={tw.style("text-danger dark:text-red-500 text-xs mt-1")}>{error}</Text>
         )}
       </Pressable>
     );

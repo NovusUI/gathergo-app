@@ -95,7 +95,8 @@ export function GogoStartupArtwork({
   progress,
   animated,
   size,
-}: StartupMotion & { size: number }) {
+  backgroundColor = GOGO_STARTUP_BACKGROUND,
+}: StartupMotion & { size: number; backgroundColor?: string }) {
   const motion = { progress, animated };
   return (
     <Svg
@@ -109,7 +110,7 @@ export function GogoStartupArtwork({
         y="-30"
         width="300"
         height="300"
-        fill={GOGO_STARTUP_BACKGROUND}
+        fill={backgroundColor}
       />
       <G>
         <StartupGroup motion={motion} name="shadow" originX={100} originY={207}>

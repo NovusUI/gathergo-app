@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   DateTimeFormData,
   dateTimeEditSchema,
@@ -10,7 +11,7 @@ import { useEffect, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import { Text, TouchableOpacity, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import tw, { style as twStyle } from "twrnc";
+
 import CustomEventInfoSelector from "../CustomEventInfoSelector";
 import CustomView from "../View";
 import CustomButton from "../buttons/CustomBtn1";
@@ -137,26 +138,30 @@ const ChoicePill = ({
   label: string;
   selected: boolean;
   onPress: () => void;
-}) => (
+}) => {
+  const { tw } = useAppTheme();
+  const twStyle = tw.style;
+  return ((
   <TouchableOpacity
     onPress={onPress}
     style={twStyle(
       "flex-1 rounded-full border px-4 py-3",
       selected
-        ? "border-[#0FF1CF] bg-[#0FF1CF]"
-        : "border-[#223B68] bg-[#101C45]"
+        ? "border-accent dark:border-[#0FF1CF] bg-accentFill dark:bg-[#0FF1CF]"
+        : "border-border dark:border-[#223B68] bg-surface dark:bg-[#101C45]"
     )}
   >
     <Text
       style={twStyle(
         "text-center text-sm font-semibold",
-        selected ? "text-[#01082E]" : "text-white"
+        selected ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
       )}
     >
       {label}
     </Text>
   </TouchableOpacity>
-);
+));
+};
 
 const DateAndTime = ({
   onSave,
@@ -164,6 +169,8 @@ const DateAndTime = ({
   editMode = false,
   allowRecurring = false,
 }: DateAndTimeProps) => {
+  const { tw } = useAppTheme();
+
   const [picker, setPicker] = useState<PickerType | null>(null);
   const [sameEndDate, setSameEndDate] = useState(
     initialData?.startDate && initialData?.endDate
@@ -248,7 +255,7 @@ const DateAndTime = ({
   };
 
   const ErrorText = ({ message }: { message?: string }) =>
-    message ? <Text className="text-red-500">{message}</Text> : null;
+    message ? <Text style={tw.style("text-danger dark:text-red-500")}>{message}</Text> : null;
 
   const repeatOptions = [
     { label: "Daily", value: "DAILY" },
@@ -375,11 +382,11 @@ const DateAndTime = ({
               <TouchableOpacity
                 onPress={() => onChange(false)}
                 style={tw`
-                  ${!value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
+                  ${!value ? "bg-accentFill dark:bg-[#0FF1CF]" : "bg-surface dark:bg-[#101C45]"}
                   p-5 rounded-xl mt-3 w-[45%] justify-center items-center
                 `}
               >
-                <Text style={tw`${!value ? "text-[#01082E]" : "text-white"}`}>
+                <Text style={tw`${!value ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"}`}>
                   One off event
                 </Text>
               </TouchableOpacity>
@@ -387,11 +394,11 @@ const DateAndTime = ({
               <TouchableOpacity
                 onPress={() => onChange(true)}
                 style={tw`
-                  ${value ? "bg-[#0FF1CF]" : "bg-[#101C45]"}
+                  ${value ? "bg-accentFill dark:bg-[#0FF1CF]" : "bg-surface dark:bg-[#101C45]"}
                   p-5 rounded-xl mt-3 w-[45%] justify-center items-center
                 `}
               >
-                <Text style={tw`${value ? "text-[#01082E]" : "text-white"}`}>
+                <Text style={tw`${value ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"}`}>
                   Recurring Event
                 </Text>
               </TouchableOpacity>
@@ -401,8 +408,8 @@ const DateAndTime = ({
       ) : null}
 
       <CustomView style={tw`gap-5 mb-5`}>
-        <View style={tw`rounded-3xl bg-[#08143B] p-4`}>
-          <Text style={tw`text-xs uppercase tracking-widest text-[#8FA1CB]`}>
+        <View style={tw`rounded-3xl bg-surface dark:bg-[#08143B] p-4`}>
+          <Text style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#8FA1CB]`}>
             Date
           </Text>
 
@@ -426,7 +433,7 @@ const DateAndTime = ({
 
           {startDate && (
             <View style={tw`mt-4`}>
-              <Text style={tw`mb-3 text-sm font-semibold text-white`}>
+              <Text style={tw`mb-3 text-sm font-semibold text-foreground dark:text-white`}>
                 Does it end the same day?
               </Text>
               <View style={tw`flex-row gap-3`}>
@@ -466,13 +473,13 @@ const DateAndTime = ({
         </View>
 
         {startDate && (
-          <View style={tw`rounded-3xl bg-[#08143B] p-4`}>
-            <Text style={tw`text-xs uppercase tracking-widest text-[#8FA1CB]`}>
+          <View style={tw`rounded-3xl bg-surface dark:bg-[#08143B] p-4`}>
+            <Text style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#8FA1CB]`}>
               Time
             </Text>
 
             <View style={tw`mt-4`}>
-              <Text style={tw`mb-3 text-sm font-semibold text-white`}>
+              <Text style={tw`mb-3 text-sm font-semibold text-foreground dark:text-white`}>
                 All-day event?
               </Text>
               <View style={tw`flex-row gap-3`}>
@@ -490,11 +497,11 @@ const DateAndTime = ({
             </View>
 
             {isAllDay === true && (
-              <View style={tw`mt-4 rounded-2xl bg-[#101C45] p-4`}>
-                <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
+              <View style={tw`mt-4 rounded-2xl bg-surface dark:bg-[#101C45] p-4`}>
+                <Text style={tw`text-sm font-semibold text-accent dark:text-[#0FF1CF]`}>
                   All day
                 </Text>
-                <Text style={tw`mt-1 text-xs leading-5 text-[#B7C5E9]`}>
+                <Text style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#B7C5E9]`}>
                   {formatTimeLabel(startTime || getAllDayStartTime(startDate))}
                   {" – "}
                   {formatTimeLabel(endTime || "23:59")}
@@ -564,7 +571,7 @@ const DateAndTime = ({
                   <ErrorText message={errors.repeat?.message} />
 
                   {picker === "repeat" && (
-                    <CustomView style={tw`bg-white p-4 rounded-xl shadow-lg`}>
+                    <CustomView style={tw`bg-surface dark:bg-white p-4 rounded-xl shadow-lg`}>
                       {repeatOptions.map((option) => (
                         <TouchableOpacity
                           key={option.value}
@@ -577,7 +584,7 @@ const DateAndTime = ({
                           }}
                           style={tw`p-3`}
                         >
-                          <Text style={tw`text-black`}>{option.label}</Text>
+                          <Text style={tw`text-onAccent dark:text-black`}>{option.label}</Text>
                         </TouchableOpacity>
                       ))}
 
@@ -585,7 +592,7 @@ const DateAndTime = ({
                         onPress={() => setPicker(null)}
                         style={tw`p-3`}
                       >
-                        <Text style={tw`text-red-500`}>Cancel</Text>
+                        <Text style={tw`text-danger dark:text-red-500`}>Cancel</Text>
                       </TouchableOpacity>
                     </CustomView>
                   )}
@@ -616,8 +623,8 @@ const DateAndTime = ({
         onPress={handleSubmit(onSubmit, onError)}
         disabled={isSubmitting}
         showArrow={false}
-        buttonClassName="bg-[#0FF1CF] w-full"
-        textClassName="!text-black"
+        buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full"
+        textClassName="!text-onAccent dark:text-black"
         title={isSubmitting ? "Saving..." : "Save and Continue"}
       />
     </CustomView>

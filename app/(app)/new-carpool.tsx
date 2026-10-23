@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CarpoolRouteFields from "@/components/carpool/CarpoolRouteFields";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
@@ -43,7 +44,6 @@ import {
 } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import tw from "twrnc";
 
 const defaultCarpoolFormValues: CarpoolFormValues = {
   isToEvent: true,
@@ -70,6 +70,7 @@ type CarpoolEvent = Pick<
 >;
 
 const NewCarpool = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const { eventId: routeEventId, autoOpenEventPicker } = useLocalSearchParams<{
     eventId?: string;
@@ -244,7 +245,7 @@ const NewCarpool = () => {
         />
       ) : (
         <View style={tw`mt-5`}>
-          <Text style={tw`text-center text-white`}>
+          <Text style={tw`text-center text-foreground dark:text-white`}>
             No physical events found
           </Text>
         </View>
@@ -253,7 +254,7 @@ const NewCarpool = () => {
 
     return suggestedEvents.length ? (
       <View>
-        <Text style={tw`text-left text-white`}>Suggestions</Text>
+        <Text style={tw`text-left text-foreground dark:text-white`}>Suggestions</Text>
         <FlatList
           data={suggestedEvents}
           keyExtractor={(item) => item.id}
@@ -285,7 +286,7 @@ const NewCarpool = () => {
       </View>
     ) : (
       <View style={tw`mt-5`}>
-        <Text style={tw`text-center text-white`}>
+        <Text style={tw`text-center text-foreground dark:text-white`}>
           No physical event suggestions right now
         </Text>
       </View>
@@ -375,7 +376,7 @@ const NewCarpool = () => {
 
   return (
     <View
-      style={[tw`flex-1 w-full items-center bg-[#01082E] pb-10`, styles.screen]}
+      style={[tw`flex-1 w-full items-center bg-background dark:bg-[#01082E] pb-10`, styles.screen]}
     >
       <View style={tw`flex-1 w-full max-w-[500px] px-5`}>
         <CustomeTopBarNav
@@ -386,19 +387,19 @@ const NewCarpool = () => {
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           style={[
-            tw`flex-row items-center rounded-full bg-[#1A2755]`,
+            tw`flex-row items-center rounded-full bg-surface dark:bg-[#1A2755]`,
             styles.searchBar,
           ]}
         >
-          <SearchIcon size={20} color="white" />
+          <SearchIcon size={20} color={color("white", "foreground")} />
           <TextInput
             autoCapitalize="none"
             ref={searchInputRef}
             placeholder="Search a physical event to carpool"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={color("#94A3B8", "muted")}
             value={query}
             onChangeText={setQuery}
-            style={tw`ml-3 flex-1 text-white`}
+            style={tw`ml-3 flex-1 text-foreground dark:text-white`}
           />
         </Pressable>
 
@@ -416,15 +417,15 @@ const NewCarpool = () => {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+            style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
           >
             <View
-              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
             />
 
             <View style={tw`flex-row items-start justify-between gap-4`}>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-semibold text-white`}>
+                <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                   {selectedEvent?.title || "Create carpool"}
                 </Text>
               </View>
@@ -440,10 +441,10 @@ const NewCarpool = () => {
               keyboardShouldPersistTaps="handled"
             >
               {Boolean(error) && (
-                <View style={tw`mb-4 rounded-2xl bg-[#5A1818] px-4 py-3`}>
-                  <Text style={tw`text-sm leading-5 text-white`}>{error}</Text>
+                <View style={tw`mb-4 rounded-2xl bg-dangerSoft dark:bg-[#5A1818] px-4 py-3`}>
+                  <Text style={tw`text-sm leading-5 text-foreground dark:text-white`}>{error}</Text>
                   <TouchableOpacity onPress={openSettings}>
-                    <Text style={tw`mt-2 text-sm font-semibold text-[#FFD1D1]`}>
+                    <Text style={tw`mt-2 text-sm font-semibold text-foreground dark:text-[#FFD1D1]`}>
                       Open settings
                     </Text>
                   </TouchableOpacity>
@@ -457,7 +458,7 @@ const NewCarpool = () => {
               />
 
               <View style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Departure Time</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Departure Time</Text>
                 <Controller
                   control={control}
                   name="departureTime"
@@ -481,14 +482,14 @@ const NewCarpool = () => {
                   )}
                 />
                 {errors.departureTime && (
-                  <Text style={tw`mt-1 text-sm text-red-400`}>
+                  <Text style={tw`mt-1 text-sm text-danger dark:text-red-400`}>
                     {errors.departureTime.message}
                   </Text>
                 )}
               </View>
 
               <View style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Available Seats</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Available Seats</Text>
                 <Controller
                   control={control}
                   name="availableSeats"
@@ -503,14 +504,14 @@ const NewCarpool = () => {
                   )}
                 />
                 {errors.availableSeats && (
-                  <Text style={tw`mt-1 text-sm text-red-400`}>
+                  <Text style={tw`mt-1 text-sm text-danger dark:text-red-400`}>
                     {errors.availableSeats.message}
                   </Text>
                 )}
               </View>
 
               <View style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Notes</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Notes</Text>
                 <Controller
                   control={control}
                   name="notes"
@@ -518,16 +519,16 @@ const NewCarpool = () => {
                     <View style={tw`w-full`}>
                       <TextInput
                         autoCapitalize="none"
-                        style={tw`min-h-[120px] rounded-2xl bg-[#0A173F] p-4 text-base text-white`}
+                        style={tw`min-h-[120px] rounded-2xl bg-surface dark:bg-[#0A173F] p-4 text-base text-foreground dark:text-white`}
                         placeholder="Any extra details?"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={color("#9CA3AF", "muted")}
                         multiline
                         maxLength={200}
                         textAlignVertical="top"
                         value={field.value ?? ""}
                         onChangeText={field.onChange}
                       />
-                      <Text style={tw`mt-1 text-right text-sm text-gray-400`}>
+                      <Text style={tw`mt-1 text-right text-sm text-muted dark:text-gray-400`}>
                         {field.value?.length || 0}/200
                       </Text>
                     </View>
@@ -541,8 +542,8 @@ const NewCarpool = () => {
               title={
                 createCarpoolPending ? "Creating carpool" : "Create Carpool"
               }
-              buttonClassName="bg-[#0FF1CF] w-full border-0"
-              textClassName="!text-black"
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-onAccent dark:text-black"
               showArrow={false}
               disabled={createCarpoolPending}
             />

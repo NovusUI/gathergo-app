@@ -166,6 +166,7 @@ let state = [],
   loading = false,
   hydrated = true,
   onboardingHydrated = true,
+  appearanceHydrated = true,
   navigationReady = true,
   currentRoute,
   readyListener,
@@ -246,6 +247,9 @@ const dependencies = {
       hydrate: async () => {},
     }),
   },
+  "@/store/appearance": {
+    useAppearanceStore: () => ({ hasHydrated: appearanceHydrated, hydrate: async () => {} }),
+  },
   "@/utils/fonts": { applyUrbanistFontDefaults() {}, URBANIST_FONT_ASSETS: {} },
   "@gorhom/bottom-sheet": { BottomSheetModalProvider: "Sheets" },
   "@react-native-async-storage/async-storage": { default: {} },
@@ -265,7 +269,7 @@ const dependencies = {
     },
   },
   react: hooks,
-  "react-native": { View: "View" },
+  "react-native": { View: "View", StatusBar: "StatusBar", Platform: { OS: "ios" }, Appearance: { setColorScheme() {} } },
   "react-native-gesture-handler": { GestureHandlerRootView: "GestureRoot" },
   "react-native-paystack-webview": { PaystackProvider: "Payments" },
   "../global.css": {},
@@ -284,6 +288,7 @@ function resetLayout() {
   loading = false;
   hydrated = true;
   onboardingHydrated = true;
+  appearanceHydrated = true;
   navigationReady = true;
   currentRoute = { key: "onboarding", name: "onboarding/index" };
   readyListener = undefined;
@@ -346,6 +351,13 @@ test("the logo waits for the destination render frame after layout", () => {
   assert.equal(hidden, 0);
   paintFrame();
   assert.equal(hidden, 1);
+});
+test("startup waits for the saved app appearance before exposing the first screen", () => {
+  const render = appContent();
+  appearanceHydrated = false;
+  assert.equal(render().screen, null);
+  appearanceHydrated = true;
+  assert.equal(render().screen.type, "Sheets");
 });
 test("layout alone cannot hide the native logo before navigation is ready", () => {
   const render = appContent();

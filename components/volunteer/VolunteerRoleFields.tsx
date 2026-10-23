@@ -1,9 +1,9 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomSwitcher from "@/components/CustomSwitcher";
 import Input from "@/components/inputs/CustomInput1";
 import TextArea from "@/components/inputs/CustomTextArea";
 import type { VolunteerRoleInput } from "@/types/volunteer";
 import { Text, View } from "react-native";
-import tw from "twrnc";
 
 export const emptyVolunteerRole: VolunteerRoleInput = {
   title: "",
@@ -23,6 +23,7 @@ export default function VolunteerRoleFields({
   onChange: (changes: Partial<VolunteerRoleInput>) => void;
   errors?: Partial<Record<keyof VolunteerRoleInput, string>>;
 }) {
+  const { tw } = useAppTheme();
   return (
     <View style={tw`gap-3`}>
       <Input
@@ -52,10 +53,10 @@ export default function VolunteerRoleFields({
         onChangeText={(text) => onChange({ capacity: Number(text) })}
         error={errors.capacity}
       />
-      <View style={tw`flex-row items-center gap-3 rounded-xl bg-[#101C45] p-3`}>
+      <View style={tw`flex-row items-center gap-3 rounded-xl bg-surface dark:bg-[#101C45] p-3`}>
         <View style={tw`flex-1`}>
-          <Text style={tw`font-semibold text-white`}>Organiser approval</Text>
-          <Text style={tw`mt-1 text-xs leading-5 text-[#A8BAE4]`}>
+          <Text style={tw`font-semibold text-foreground dark:text-white`}>Organiser approval</Text>
+          <Text style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#A8BAE4]`}>
             {value.requiresApproval
               ? "Review applications before confirming a place."
               : "People join immediately while places are available."}

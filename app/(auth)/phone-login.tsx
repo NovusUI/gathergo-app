@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { safeGoBack } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
@@ -5,9 +6,9 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Smartphone } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 const PhoneLoginScreen = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [phoneNumber, setPhoneNumber] = useState("");
 
@@ -25,28 +26,28 @@ const PhoneLoginScreen = () => {
   };
 
   return (
-    <View style={tw`flex-1 bg-[#01082E] px-5 pt-14 pb-8`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E] px-5 pt-14 pb-8`}>
       <TouchableOpacity
         onPress={() => safeGoBack(router, "/login")}
         style={tw`self-start p-2`}
       >
-        <ArrowLeft color="white" size={20} />
+        <ArrowLeft color={color("white", "foreground")} size={20} />
       </TouchableOpacity>
 
       <View style={tw`mt-8 gap-2`}>
-        <Text style={tw`text-white text-3xl font-bold`}>Sign in with phone</Text>
-        <Text style={tw`text-gray-300 text-sm`}>
+        <Text style={tw`text-foreground dark:text-white text-3xl font-bold`}>Sign in with phone</Text>
+        <Text style={tw`text-secondary dark:text-gray-300 text-sm`}>
           Use your phone number to continue. We&apos;ll verify and sign you in.
         </Text>
       </View>
 
-      <View style={tw`mt-10 rounded-xl bg-[#1B2A50]/40 border border-[#2A3D6A] px-4 py-3`}>
+      <View style={tw`mt-10 rounded-xl bg-surface/40 dark:bg-[#1B2A50]/40 border border-border dark:border-[#2A3D6A] px-4 py-3`}>
         <View style={tw`flex-row items-center gap-3`}>
-          <Smartphone color="#94A3B8" size={18} />
+          <Smartphone color={color("#94A3B8", "muted")} size={18} />
           <TextInput
-            style={tw`flex-1 text-white py-2`}
+            style={tw`flex-1 text-foreground dark:text-white py-2`}
             placeholder="+2348012345678"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={color("#94A3B8", "muted")}
             keyboardType="phone-pad"
             value={phoneNumber}
             onChangeText={setPhoneNumber}
@@ -54,7 +55,7 @@ const PhoneLoginScreen = () => {
         </View>
       </View>
 
-      <Text style={tw`text-gray-400 text-xs mt-3`}>
+      <Text style={tw`text-muted dark:text-gray-400 text-xs mt-3`}>
         Phone Number Verification (PNV) is finalized in backend endpoint
         `/auth/phone/firebase-token`.
       </Text>
@@ -63,9 +64,9 @@ const PhoneLoginScreen = () => {
         <CustomButton
           onPress={requestCode}
           title="Continue with phone"
-          buttonClassName="bg-[#0FF1CF] border-0 w-full"
-          textClassName="!text-black"
-          arrowCircleColor="bg-[#0A7F7F]"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-onAccent dark:text-black"
+          arrowCircleColor="bg-accentFill dark:bg-[#0A7F7F]"
           disabled={!canContinue}
         />
       </View>

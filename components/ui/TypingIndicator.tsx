@@ -1,8 +1,9 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Text, View } from "react-native";
-import tw from "twrnc";
 
 export const TypingIndicator = ({ text }: { text: string }) => {
+  const { tw } = useAppTheme();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -49,14 +50,14 @@ export const TypingIndicator = ({ text }: { text: string }) => {
           <Animated.View
             key={idx}
             style={[
-              tw`w-1.5 h-1.5 rounded-full bg-gray-400`,
+              tw`w-1.5 h-1.5 rounded-full bg-surfaceMuted dark:bg-gray-400`,
               { transform: [{ translateY: dot }] },
             ]}
           />
         ))}
       </View>
 
-      <Text style={tw`text-gray-400 text-xs ml-2`}>{text}</Text>
+      <Text style={tw`text-muted dark:text-gray-400 text-xs ml-2`}>{text}</Text>
     </View>
   );
 };

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import type { EventRegistrationType } from "@/constants/impact";
 import { useImpactSuggestions } from "@/components/gogo/tasks/impactSuggestions/useImpactSuggestions";
@@ -9,7 +10,7 @@ import type {
 import { useDebounce } from "@/utils/useDebounce";
 import { useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw, { style } from "twrnc";
+
 import TextArea from "@/components/inputs/CustomTextArea";
 
 interface ImpactSelectorProps {
@@ -40,6 +41,8 @@ function SuggestionGroup<T>({
   limit: number;
   onChange: (items: T[]) => void;
 }) {
+  const { tw } = useAppTheme();
+  const twStyle = tw.style;
   const items = Array.from(
     new Map(
       [...selected, ...suggestions].map((item) => [itemKey(item), item]),
@@ -49,10 +52,10 @@ function SuggestionGroup<T>({
   return (
     <View style={tw`gap-3`}>
       <View style={tw`flex-row items-center justify-between gap-3`}>
-        <Text style={tw`text-sm font-semibold text-[#DDE6FF]`}>{title}</Text>
+        <Text style={tw`text-sm font-semibold text-foreground dark:text-[#DDE6FF]`}>{title}</Text>
         <Text
           accessibilityLabel={`${selected.length} of ${limit} selected`}
-          style={tw`text-xs text-[#8FA5E2]`}
+          style={tw`text-xs text-secondary dark:text-[#8FA5E2]`}
         >
           {selected.length}/{limit}
         </Text>
@@ -75,18 +78,18 @@ function SuggestionGroup<T>({
                     : [...selected, item],
                 )
               }
-              style={style(
+              style={twStyle(
                 "min-h-[44px] max-w-full justify-center rounded-xl border px-4 py-3",
                 checked
-                  ? "border-[#0FF1CF] bg-[#0FF1CF]"
-                  : "border-[#1F335E] bg-[#101C45]",
+                  ? "border-accent dark:border-[#0FF1CF] bg-accentFill dark:bg-[#0FF1CF]"
+                  : "border-border dark:border-[#1F335E] bg-surface dark:bg-[#101C45]",
                 disabled && "opacity-40",
               )}
             >
               <Text
-                style={style(
+                style={twStyle(
                   "text-sm font-medium",
-                  checked ? "text-[#01082E]" : "text-white",
+                  checked ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white",
                 )}
               >
                 {checked ? "✓ " : ""}
@@ -113,6 +116,8 @@ export default function ImpactSelector({
   onImpactMapChange,
   section,
 }: ImpactSelectorProps) {
+  const { tw } = useAppTheme();
+
   const suggestionPayload = useMemo<ImpactSuggestionPayload>(
     () => ({
       title: eventTitle.trim(),
@@ -157,7 +162,7 @@ export default function ImpactSelector({
           onChange={onImpactDescriptionChange}
           maxLength={180}
           placeholder="What could this event contribute?"
-          className="!bg-[#101C45]"
+          className="!bg-surface dark:bg-[#101C45]"
         />
       )}
       {section !== "story" && (
@@ -184,7 +189,7 @@ export default function ImpactSelector({
                 }}
                 style={tw`min-h-[44px] justify-center self-start px-3`}
               >
-                <Text style={tw`text-sm font-semibold text-[#0FF1CF]`}>
+                <Text style={tw`text-sm font-semibold text-accent dark:text-[#0FF1CF]`}>
                   Try again
                 </Text>
               </TouchableOpacity>

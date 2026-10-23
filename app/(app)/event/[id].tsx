@@ -1,3 +1,5 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   cancelCheckout,
   cancelEventCheckout,
@@ -94,7 +96,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import tw from "twrnc";
+
 import DontationProgress from "./DontationProgress";
 import FeedBottomSheet from "./FeedBottomSheet";
 import EventVolunteering from "@/components/volunteer/EventVolunteering";
@@ -157,10 +159,10 @@ const DEFAULT_EVENT_TONE: EventTone = {
   iconName: "radio-outline"
 };
 
-const getEventTone = (registrationType?: string | null) =>
-  registrationType
-    ? EVENT_TONES[registrationType] || DEFAULT_EVENT_TONE
-    : DEFAULT_EVENT_TONE;
+const getEventTone = (registrationType: string | null | undefined, color: ThemeColor) => {
+  const tone = registrationType ? EVENT_TONES[registrationType] || DEFAULT_EVENT_TONE : DEFAULT_EVENT_TONE;
+  return { ...tone, accent: color(tone.accent, registrationType === "donation" ? "danger" : registrationType === "registration" ? "warning" : "accent") };
+};
 
 const PROVIDER_LABELS: Record<PaymentProvider, string> = {
   PAYSTACK: "Paystack",
@@ -288,7 +290,9 @@ const EventHeroChip = ({
   iconName: IoniconName;
   label: string;
   accent?: string;
-}) => (
+}) => {
+  const { tw } = useAppTheme();
+  return ((
   <View
     style={[
       tw`max-w-full flex-row items-center rounded-full border px-3 py-2`,
@@ -303,7 +307,8 @@ const EventHeroChip = ({
       {label}
     </Text>
   </View>
-);
+));
+};
 
 const EventDetailRow = ({
   iconName,
@@ -315,17 +320,20 @@ const EventDetailRow = ({
   title: string;
   subtitle: string;
   accent?: string;
-}) => (
+}) => {
+  const { tw } = useAppTheme();
+  return ((
   <View style={tw`flex-row items-start gap-3`}>
     <Ionicons name={iconName} size={18} color={accent} style={tw`mt-0.5`} />
     <View style={tw`flex-1 min-w-0`}>
-      <Text style={tw`text-xs text-[#87A0D6]`}>{title}</Text>
-      <Text style={tw`mt-0.5 text-sm font-medium leading-5 text-white`}>
+      <Text style={tw`text-xs text-muted dark:text-[#87A0D6]`}>{title}</Text>
+      <Text style={tw`mt-0.5 text-sm font-medium leading-5 text-foreground dark:text-white`}>
         {subtitle}
       </Text>
     </View>
   </View>
-);
+));
+};
 
 const calculatePlatformFeeKobo = (
   baseAmountKobo: number,
@@ -421,6 +429,7 @@ const buildCheckoutPreview = (
 };
 
 const EventPage = () => {
+  const { tw, color } = useAppTheme();
   const queryClient = useQueryClient();
   const { id, openFeed, feedTab } = useLocalSearchParams<{
     id?: string | string[];
@@ -829,20 +838,20 @@ const EventPage = () => {
         selectedProvider,
         paymentOptions.pricingConfig
       );
-      const accentBg = accent === "red" ? "bg-[#FF6B6B]" : "bg-[#0FF1CF]";
-      const accentText = accent === "red" ? "text-[#FF9D9D]" : "text-[#0FF1CF]";
+      const accentBg = accent === "red" ? "bg-danger dark:bg-[#FF6B6B]" : "bg-accentFill dark:bg-[#0FF1CF]";
+      const accentText = accent === "red" ? "text-danger dark:text-[#FF9D9D]" : "text-accent dark:text-[#0FF1CF]";
 
       return (
-        <View style={tw`rounded-2xl bg-[#101C45] p-3`}>
+        <View style={tw`rounded-2xl bg-surface dark:bg-[#101C45] p-3`}>
           <View style={tw`flex-row items-center justify-between gap-3`}>
-            <Text style={tw`flex-1 text-sm font-semibold text-white`}>
+            <Text style={tw`flex-1 text-sm font-semibold text-onPrimary dark:text-white`}>
               {title}
             </Text>
             <Text style={tw.style("text-sm font-bold", accentText)}>
               {formatCheckoutAmount(selectedPreview.chargeAmountNaira)}
             </Text>
           </View>
-          <Text style={tw`mt-1 text-xs leading-5 text-gray-400`}>
+          <Text style={tw`mt-1 text-xs leading-5 text-muted dark:text-gray-400`}>
             {selectedProvider === "ALAT_TRANSFER"
               ? "Transfer instructions appear after you confirm."
               : "Secure checkout powered by Paystack."}
@@ -860,13 +869,13 @@ const EventPage = () => {
                     "min-w-[130px] flex-1 rounded-2xl border px-3 py-3",
                     selected
                       ? `${accentBg} border-transparent`
-                      : "border-[#2A3E6A] bg-[#08143B]"
+                      : "border-border dark:border-[#2A3E6A] bg-surface dark:bg-[#08143B]"
                   )}
                 >
                   <Text
                     style={tw.style(
                       "text-xs font-semibold uppercase tracking-wide",
-                      selected ? "text-[#01082E]" : "text-gray-400"
+                      selected ? "text-onAccent dark:text-[#01082E]" : "text-muted dark:text-gray-400"
                     )}
                   >
                     {PROVIDER_LABELS[provider]}
@@ -874,7 +883,7 @@ const EventPage = () => {
                   <Text
                     style={tw.style(
                       "mt-1 text-sm font-bold",
-                      selected ? "text-[#01082E]" : "text-white"
+                      selected ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
                     )}
                   >
                     {formatCheckoutAmount(preview.chargeAmountNaira)}
@@ -886,7 +895,7 @@ const EventPage = () => {
         </View>
       );
     },
-    [paymentOptions, selectedProvider]
+    [paymentOptions, selectedProvider, tw]
   );
 
   // Effect to update event data when image upload completes
@@ -1262,7 +1271,7 @@ const EventPage = () => {
 
   if (isPending) {
     return (
-      <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+      <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Event Details"
@@ -1281,16 +1290,16 @@ const EventPage = () => {
   if (isError || !data) {
     const isNotFound = data?.status_code === 404;
     return (
-      <View style={tw`flex-1 bg-[#01082E] items-center justify-center px-5`}>
-        <Ionicons name="alert-circle-outline" size={60} color="#FF5555" />
-        <Text style={tw`text-white text-xl mt-4`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E] items-center justify-center px-5`}>
+        <Ionicons name="alert-circle-outline" size={60} color={color("#FF5555", "danger")} />
+        <Text style={tw`text-foreground dark:text-white text-xl mt-4`}>
           {isNotFound ? resolvedEventId : "Something went wrong"}
         </Text>
         <CustomButton
           title="Go Back"
           onPress={() => router.replace("/")}
-          buttonClassName="bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
-          textClassName="!text-black"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
+          textClassName="!text-onAccent dark:text-black"
         />
       </View>
     );
@@ -1332,7 +1341,7 @@ const EventPage = () => {
   const selectedImpactPaths = persistedImpactMap.impactPaths;
   const selectedCommitments = persistedImpactMap.commitments;
   const eventLinks = links || [];
-  const eventTone = getEventTone(registrationType);
+  const eventTone = getEventTone(registrationType, color);
   const eventModeLabel =
     isPhysicalEvent === false ? "Online gathering" : "In-person gathering";
   const locationLabel =
@@ -1476,7 +1485,7 @@ const EventPage = () => {
   return (
     <View
       style={[
-        tw`flex-1 pb-5 bg-[#01082E] items-center w-full`,
+        tw`flex-1 pb-5 bg-background dark:bg-[#01082E] items-center w-full`,
         { paddingTop: spacing.xxl }
       ]}
     >
@@ -1495,7 +1504,7 @@ const EventPage = () => {
           <View style={tw`px-4 pt-2`}>
             <View
               style={[
-                tw`overflow-hidden rounded-[32px] border bg-[#07143B]`,
+                tw`overflow-hidden rounded-[32px] border bg-surface dark:bg-[#07143B]`,
                 { borderColor: `${eventTone.accent}33` }
               ]}
             >
@@ -1514,7 +1523,7 @@ const EventPage = () => {
                   />
                 </View>
                 <View
-                  style={tw`absolute bottom-0 left-0 right-0 bg-[#01082E]/82 px-5 pb-5 pt-8`}
+                  style={tw`absolute bottom-0 left-0 right-0 bg-background/82 dark:bg-[#01082E]/82 px-5 pb-5 pt-8`}
                 >
                   <View style={tw`flex-row flex-wrap gap-2`}>
                     <EventHeroChip
@@ -1536,7 +1545,7 @@ const EventPage = () => {
                   </View>
                   <View style={tw`mt-4 flex-row items-end gap-3`}>
                     <Text
-                      style={tw`flex-1 text-2xl font-bold leading-8 text-white`}
+                      style={tw`flex-1 text-2xl font-bold leading-8 text-foreground dark:text-white`}
                       numberOfLines={3}
                     >
                       {title}
@@ -1546,9 +1555,9 @@ const EventPage = () => {
                       accessibilityRole="button"
                       accessibilityLabel="Share event"
                       onPress={handleShare}
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF] border border-white/15`}
+                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF] border border-borderStrong/15 dark:border-white/15`}
                     >
-                      <Share2Icon color="#01082E" size={19} />
+                      <Share2Icon color={color("#01082E", "onAccent")} size={19} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1563,7 +1572,7 @@ const EventPage = () => {
                 )}
                 {data.data.donationsEnabled && registrationType === "volunteer" && !hasEventEnded ? (
                   <CustomButton showArrow={false} title="Support with a donation" onPress={openDonationSheet}
-                    buttonClassName="w-full border-[#FF6B6B]" textClassName="text-[#FF9D9D]" />
+                    buttonClassName="w-full border-danger dark:border-[#FF6B6B]" textClassName="text-danger dark:text-[#FF9D9D]" />
                 ) : null}
 
                 <View style={tw`gap-3`}>
@@ -1611,12 +1620,12 @@ const EventPage = () => {
           {hasEventEnded && (
             <CustomView style={tw`px-4 pt-4`}>
               <View
-                style={tw`rounded-[24px] border border-[#24345A] bg-[#0A173F] p-4`}
+                style={tw`rounded-[24px] border border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F] p-4`}
               >
-                <Text style={tw`text-sm font-semibold text-[#F1D417]`}>
+                <Text style={tw`text-sm font-semibold text-warning dark:text-[#F1D417]`}>
                   This event has ended
                 </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
+                <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#C6D5F2]`}>
                   You can still review the event details, updates, organizer
                   profile, and related links here.
                 </Text>
@@ -1625,10 +1634,10 @@ const EventPage = () => {
           )}
 
           <CustomView style={tw`px-5 pt-4`}>
-            <Text style={tw`text-xl font-semibold text-white`}>
+            <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
               About this event
             </Text>
-            <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
+            <Text style={tw`mt-3 text-sm leading-6 text-foreground dark:text-[#DDE6FF]`}>
               {description}
             </Text>
           </CustomView>
@@ -1640,19 +1649,19 @@ const EventPage = () => {
             selectedCommitments.length > 0) && (
             <CustomView style={tw`px-4 pt-4`}>
               <View
-                style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
+                style={tw`rounded-[28px] border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#101C45] p-5`}
               >
                 <View style={tw`flex-row items-start justify-between gap-3`}>
                   <View style={tw`flex-1`}>
                     <Text
-                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                      style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                     >
                       Impact story
                     </Text>
-                    <Text style={tw`mt-2 text-xl font-semibold text-white`}>
+                    <Text style={tw`mt-2 text-xl font-semibold text-foreground dark:text-white`}>
                       {impactSummary || "From the organiser"}
                     </Text>
-                    <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
+                    <Text style={tw`mt-3 text-sm leading-6 text-foreground dark:text-[#DDE6FF]`}>
                       {impactNote}
                     </Text>
                   </View>
@@ -1665,13 +1674,13 @@ const EventPage = () => {
                     >
                       <SdgGoalIcon
                         number={selectedSdgGoals[0].number}
-                        color="white"
+                        color={color("white", "foreground")}
                         size={23}
                       />
                     </View>
                   ) : (
-                    <View style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}>
-                      <Text style={tw`text-sm font-bold text-[#01082E]`}>
+                    <View style={tw`rounded-full bg-accentFill dark:bg-[#0FF1CF] px-3 py-2`}>
+                      <Text style={tw`text-sm font-bold text-onAccent dark:text-[#01082E]`}>
                         Impact
                       </Text>
                     </View>
@@ -1685,7 +1694,7 @@ const EventPage = () => {
                     {selectedSdgGoals.map((goal) => (
                       <View
                         key={goal.id}
-                        style={tw`flex-row items-center rounded-full bg-[#0A173F] pr-3`}
+                        style={tw`flex-row items-center rounded-full bg-surface dark:bg-[#0A173F] pr-3`}
                       >
                         <View
                           style={[
@@ -1695,11 +1704,11 @@ const EventPage = () => {
                         >
                           <SdgGoalIcon
                             number={goal.number}
-                            color="white"
+                            color={color("white", "foreground")}
                             size={14}
                           />
                         </View>
-                        <Text style={tw`ml-2 text-xs font-semibold text-white`}>
+                        <Text style={tw`ml-2 text-xs font-semibold text-foreground dark:text-white`}>
                           {goal.shortTitle}
                         </Text>
                       </View>
@@ -1708,9 +1717,9 @@ const EventPage = () => {
                     {selectedCommitments.map((commitment) => (
                       <View
                         key={commitment.id}
-                        style={tw`rounded-full bg-[#F4B942]/10 px-3 py-2`}
+                        style={tw`rounded-full bg-warningFill/10 dark:bg-[#F4B942]/10 px-3 py-2`}
                       >
-                        <Text style={tw`text-xs font-semibold text-[#FFE5A0]`}>
+                        <Text style={tw`text-xs font-semibold text-warning dark:text-[#FFE5A0]`}>
                           {commitment.label}
                         </Text>
                       </View>
@@ -1719,9 +1728,9 @@ const EventPage = () => {
                     {selectedImpactPaths.map((mechanism) => (
                       <View
                         key={mechanism.id}
-                        style={tw`rounded-full bg-[#0FF1CF]/10 px-3 py-2`}
+                        style={tw`rounded-full bg-accentFill/10 dark:bg-[#0FF1CF]/10 px-3 py-2`}
                       >
-                        <Text style={tw`text-xs font-semibold text-[#B7FFF5]`}>
+                        <Text style={tw`text-xs font-semibold text-foreground dark:text-[#B7FFF5]`}>
                           {mechanism.summaryLabel}
                         </Text>
                       </View>
@@ -1734,17 +1743,17 @@ const EventPage = () => {
           {hasEventEnded && (impactReport || owner) && (
             <CustomView style={tw`px-5 pb-4`}>
               <View
-                style={tw`rounded-3xl border border-[#1D3B64] bg-[#08143B] p-4`}
+                style={tw`rounded-3xl border border-border dark:border-[#1D3B64] bg-surface dark:bg-[#08143B] p-4`}
               >
                 <View style={tw`flex-row items-start justify-between gap-3`}>
                   <View style={tw`flex-1`}>
                     <Text
-                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                      style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                     >
                       Reported impact
                     </Text>
                     {impactReportPublishedDate && (
-                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                      <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
                         Published {impactReportPublishedDate}
                       </Text>
                     )}
@@ -1753,9 +1762,9 @@ const EventPage = () => {
                   {owner && (
                     <TouchableOpacity
                       onPress={openImpactReportModal}
-                      style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}
+                      style={tw`rounded-full bg-accentFill dark:bg-[#0FF1CF] px-3 py-2`}
                     >
-                      <Text style={tw`text-xs font-bold text-[#01082E]`}>
+                      <Text style={tw`text-xs font-bold text-onAccent dark:text-[#01082E]`}>
                         {impactReport ? "Edit" : "Submit"}
                       </Text>
                     </TouchableOpacity>
@@ -1764,7 +1773,7 @@ const EventPage = () => {
 
                 {impactReport ? (
                   <>
-                    <Text style={tw`mt-4 text-sm leading-6 text-white`}>
+                    <Text style={tw`mt-4 text-sm leading-6 text-foreground dark:text-white`}>
                       {impactReport.summary}
                     </Text>
 
@@ -1773,24 +1782,24 @@ const EventPage = () => {
                         {reportedOutcomes.map((outcome, index) => (
                           <View
                             key={outcome.id || `${outcome.type}-${index}`}
-                            style={tw`min-w-[130px] flex-1 rounded-2xl bg-[#101C45] p-3`}
+                            style={tw`min-w-[130px] flex-1 rounded-2xl bg-surface dark:bg-[#101C45] p-3`}
                           >
-                            <Text style={tw`text-xl font-bold text-[#0FF1CF]`}>
+                            <Text style={tw`text-xl font-bold text-accent dark:text-[#0FF1CF]`}>
                               {numberWithCommas(outcome.value, false, null)}
                             </Text>
                             <Text
-                              style={tw`mt-1 text-xs uppercase text-[#8FA1CB]`}
+                              style={tw`mt-1 text-xs uppercase text-muted dark:text-[#8FA1CB]`}
                             >
                               {outcome.unit}
                             </Text>
                             <Text
-                              style={tw`mt-2 text-sm font-semibold text-white`}
+                              style={tw`mt-2 text-sm font-semibold text-foreground dark:text-white`}
                             >
                               {outcome.label}
                             </Text>
                             {outcome.note ? (
                               <Text
-                                style={tw`mt-1 text-xs leading-5 text-[#B7C5E9]`}
+                                style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#B7C5E9]`}
                               >
                                 {outcome.note}
                               </Text>
@@ -1803,7 +1812,7 @@ const EventPage = () => {
                     {reportedEvidenceLinks.length > 0 && (
                       <View style={tw`mt-4 gap-2`}>
                         <Text
-                          style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                          style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                         >
                           Evidence
                         </Text>
@@ -1811,10 +1820,10 @@ const EventPage = () => {
                           <TouchableOpacity
                             key={`${link}-${index}`}
                             onPress={() => handleOpenEventLink(link)}
-                            style={tw`rounded-2xl bg-[#0A173F] px-4 py-3`}
+                            style={tw`rounded-2xl bg-surface dark:bg-[#0A173F] px-4 py-3`}
                           >
                             <Text
-                              style={tw`text-sm font-semibold text-[#0FF1CF]`}
+                              style={tw`text-sm font-semibold text-accent dark:text-[#0FF1CF]`}
                             >
                               {link}
                             </Text>
@@ -1824,7 +1833,7 @@ const EventPage = () => {
                     )}
                   </>
                 ) : (
-                  <Text style={tw`mt-4 text-sm leading-6 text-[#C6D5F2]`}>
+                  <Text style={tw`mt-4 text-sm leading-6 text-secondary dark:text-[#C6D5F2]`}>
                     Share what actually happened after this event: outcomes,
                     numbers, and links people can trust.
                   </Text>
@@ -1835,10 +1844,10 @@ const EventPage = () => {
           {eventLinks.length > 0 && (
             <CustomView style={tw`px-4 pt-4`}>
               <View
-                style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
+                style={tw`rounded-[28px] border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#101C45] p-5`}
               >
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                 >
                   Event links
                 </Text>
@@ -1851,7 +1860,7 @@ const EventPage = () => {
                       <TouchableOpacity
                         key={`${link}-${index}`}
                         activeOpacity={0.84}
-                        style={tw`rounded-2xl border border-[#1B2A50] bg-[#0A173F] px-4 py-4`}
+                        style={tw`rounded-2xl border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#0A173F] px-4 py-4`}
                         onPress={() => handleOpenEventLink(link)}
                       >
                         <View style={tw`flex-row items-center`}>
@@ -1870,11 +1879,11 @@ const EventPage = () => {
 
                           <View style={tw`ml-3 flex-1`}>
                             <Text
-                              style={tw`text-base font-semibold text-white`}
+                              style={tw`text-base font-semibold text-foreground dark:text-white`}
                             >
                               {linkMeta.label}
                             </Text>
-                            <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                            <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
                               {linkMeta.host || linkMeta.subtitle}
                             </Text>
                           </View>
@@ -1882,7 +1891,7 @@ const EventPage = () => {
                           <Ionicons
                             name="open-outline"
                             size={18}
-                            color="#0FF1CF"
+                            color={color("#0FF1CF", "accent")}
                           />
                         </View>
                       </TouchableOpacity>
@@ -1912,10 +1921,10 @@ const EventPage = () => {
             />
             {!owner && (
               <TouchableOpacity
-                style={tw`p-3 rounded-lg bg-[#0c1447]`}
+                style={tw`p-3 rounded-lg bg-surface dark:bg-[#0c1447]`}
                 onPress={onFollow}
               >
-                <Text style={tw`text-white`}>
+                <Text style={tw`text-foreground dark:text-white`}>
                   {isFollowing ? "Following..." : followStatus}
                 </Text>
               </TouchableOpacity>
@@ -1952,7 +1961,7 @@ const EventPage = () => {
                     router.push(`/event/edit/${resolvedEventId}`);
                   }}
                 >
-                  <Edit2Icon color="#0FF1CF" />
+                  <Edit2Icon color={color("#0FF1CF", "accent")} />
                 </TouchableOpacity>
               </View>
             )}
@@ -1965,16 +1974,16 @@ const EventPage = () => {
               disabled
               onPress={() => {}}
               showArrow={false}
-              buttonClassName="bg-[#1B2A50] border border-[#2B3C66] w-full"
-              textClassName="!text-[#8FA1CB]"
+              buttonClassName="bg-surfaceMuted dark:bg-[#1B2A50] border border-border dark:border-[#2B3C66] w-full"
+              textClassName="!text-muted dark:text-[#8FA1CB]"
               title="Event ended"
             />
           ) : registrationType === "ticket" ? (
             <CustomButton
               onPress={openSheet}
               showArrow={false}
-              buttonClassName="bg-[#0FF1CF] border-0 w-full"
-              textClassName="!text-black shrink"
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+              textClassName="!text-onAccent dark:text-black shrink"
               title="View tickets"
             />
           ) : registrationType === "registration" ? (
@@ -1982,8 +1991,8 @@ const EventPage = () => {
               onPress={handleRegisterPress}
               disabled={registrationDisabled}
               showArrow={false}
-              buttonClassName="bg-[#0FF1CF] border-0 w-full"
-              textClassName="!text-black shrink"
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+              textClassName="!text-onAccent dark:text-black shrink"
               title={
                 checkingRegistration
                   ? "Checking registration…"
@@ -2000,8 +2009,8 @@ const EventPage = () => {
             <CustomButton
               onPress={openDonationSheet}
               showArrow={false}
-              buttonClassName="bg-[#FF6B6B] border-0 w-full"
-              textClassName="!text-white shrink"
+              buttonClassName="bg-danger dark:bg-[#FF6B6B] border-0 w-full"
+              textClassName="!text-onPrimary dark:text-white shrink"
               title="Donate Now"
             />
           ) : !owner ? (
@@ -2044,10 +2053,10 @@ const EventPage = () => {
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <View style={tw`flex-row justify-between items-center p-5`}>
-          <Text style={tw`text-white`}>
+          <Text style={tw`text-foreground dark:text-white`}>
             {!owner && publishedTickets.length > 0 ? "BUY TICKET" : "Tickets"}
           </Text>
           <View style={tw`flex-row items-center gap-3`}>
@@ -2148,8 +2157,8 @@ const EventPage = () => {
                           ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
                           : "Claim tickets"
               }
-              buttonClassName="bg-[#0FF1CF] w-full border-0"
-              textClassName="!text-black"
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-onAccent dark:text-black"
               showArrow={false}
             />
           </View>
@@ -2162,18 +2171,18 @@ const EventPage = () => {
         animationType="slide"
       >
         <View style={tw`flex-1 justify-end bg-black/60 px-5 py-8`}>
-          <View style={tw`rounded-[28px] bg-[#041130] p-5`}>
+          <View style={tw`rounded-[28px] bg-background dark:bg-[#041130] p-5`}>
             <View style={tw`flex-row items-center justify-between gap-3`}>
               <View>
-                <Text style={tw`text-xl font-bold text-white`}>
+                <Text style={tw`text-xl font-bold text-foreground dark:text-white`}>
                   Complete registration
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowRegistrationCheckout(false)}
-                style={tw`h-10 w-10 items-center justify-center rounded-full bg-[#0A173F]`}
+                style={tw`h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-[#0A173F]`}
               >
-                <Ionicons name="close" size={20} color="white" />
+                <Ionicons name="close" size={20} color={color("white", "foreground")} />
               </TouchableOpacity>
             </View>
 
@@ -2186,16 +2195,16 @@ const EventPage = () => {
             </View>
 
             <View style={tw`mt-5 gap-4`}>
-              <View style={tw`rounded-2xl bg-[#08143B] p-4`}>
+              <View style={tw`rounded-2xl bg-surface dark:bg-[#08143B] p-4`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#8FA1CB]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#8FA1CB]`}
                 >
                   Registration total
                 </Text>
-                <Text style={tw`mt-2 text-2xl font-bold text-white`}>
+                <Text style={tw`mt-2 text-2xl font-bold text-foreground dark:text-white`}>
                   {formatCheckoutAmount(registrationPreview.chargeAmountNaira)}
                 </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
+                <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#B7C5E9]`}>
                   This registration will be issued to your GatherGo account.
                 </Text>
               </View>
@@ -2206,9 +2215,9 @@ const EventPage = () => {
                   handleTransaction(true);
                 }}
                 disabled={hasEventEnded || registrationDisabled}
-                buttonClassName="bg-[#0FF1CF] border-0 w-full"
-                textClassName="!text-black"
-                arrowCircleColor="bg-[#0C7F7F]"
+                buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+                textClassName="!text-onAccent dark:text-black"
+                arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
                 title={
                   hasEventEnded
                     ? "Event ended"
@@ -2240,7 +2249,7 @@ const EventPage = () => {
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <BottomSheetScrollView
           style={tw`p-5`}
@@ -2248,7 +2257,7 @@ const EventPage = () => {
           contentContainerStyle={{ paddingBottom: 180 }}
         >
           <View style={tw`flex-row justify-between items-center mb-5`}>
-            <Text style={tw`text-white text-xl font-bold`}>
+            <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>
               Make a Donation
             </Text>
             {/* <TouchableOpacity onPress={closeDonationSheet} style={tw`p-2`}>
@@ -2277,7 +2286,7 @@ const EventPage = () => {
     )} */}
 
           <CustomView style={tw`mb-6`}>
-            <Text style={tw`text-white mb-3 font-medium`}>
+            <Text style={tw`text-foreground dark:text-white mb-3 font-medium`}>
               Donation Amount (₦)
             </Text>
 
@@ -2289,15 +2298,15 @@ const EventPage = () => {
                   onPress={() => setDonationAmount(amount.toString())}
                   style={tw`px-4 py-3 rounded-lg ${
                     donationAmount === amount.toString()
-                      ? "bg-[#0FF1CF]"
-                      : "bg-[#101C45]"
+                      ? "bg-accentFill dark:bg-[#0FF1CF]"
+                      : "bg-surface dark:bg-[#101C45]"
                   }`}
                 >
                   <Text
                     style={tw`${
                       donationAmount === amount.toString()
-                        ? "text-[#01082E] font-bold"
-                        : "text-white"
+                        ? "text-onAccent dark:text-[#01082E] font-bold"
+                        : "text-foreground dark:text-white"
                     }`}
                   >
                     ₦{amount.toLocaleString()}
@@ -2308,11 +2317,11 @@ const EventPage = () => {
 
             {/* Custom Amount Input */}
             <View
-              style={tw`flex-row items-center bg-[#101C45] rounded-xl px-4 py-3`}
+              style={tw`flex-row items-center bg-surface dark:bg-[#101C45] rounded-xl px-4 py-3`}
             >
-              <Text style={tw`text-white text-lg mr-2`}>₦</Text>
+              <Text style={tw`text-foreground dark:text-white text-lg mr-2`}>₦</Text>
               <BottomSheetTextInput
-                style={tw`flex-1 text-white text-lg`}
+                style={tw`flex-1 text-foreground dark:text-white text-lg`}
                 value={donationAmount}
                 onChangeText={setDonationAmount}
                 placeholder="Enter amount"
@@ -2321,26 +2330,26 @@ const EventPage = () => {
               />
               <TouchableOpacity
                 onPress={() => setDonationAmount("500")}
-                style={tw`bg-[#0FF1CF] px-3 py-1 rounded-lg`}
+                style={tw`bg-accentFill dark:bg-[#0FF1CF] px-3 py-1 rounded-lg`}
               >
-                <Text style={tw`text-[#01082E] text-sm`}>Min</Text>
+                <Text style={tw`text-onAccent dark:text-[#01082E] text-sm`}>Min</Text>
               </TouchableOpacity>
             </View>
 
             {parseFloat(donationAmount || "0") < 500 && (
-              <Text style={tw`text-red-500 text-sm mt-2`}>
+              <Text style={tw`text-danger dark:text-red-500 text-sm mt-2`}>
                 Minimum donation is ₦500
               </Text>
             )}
           </CustomView>
 
           <CustomView style={tw`mb-6`}>
-            <Text style={tw`text-white mb-3 font-medium`}>
+            <Text style={tw`text-foreground dark:text-white mb-3 font-medium`}>
               Optional Message (Optional)
             </Text>
             <BottomSheetTextInput
               autoCapitalize="none"
-              style={tw`bg-[#101C45] rounded-xl px-4 py-3 text-white min-h-[100px]`}
+              style={tw`bg-surface dark:bg-[#101C45] rounded-xl px-4 py-3 text-foreground dark:text-white min-h-[100px]`}
               value={donationMessage}
               onChangeText={setDonationMessage}
               placeholder="Add a message of support..."
@@ -2353,23 +2362,23 @@ const EventPage = () => {
 
           <CustomView style={tw`mb-6`}>
             <TouchableOpacity
-              style={tw`flex-row items-center justify-between p-3 bg-[#101C45] rounded-xl`}
+              style={tw`flex-row items-center justify-between p-3 bg-surface dark:bg-[#101C45] rounded-xl`}
               onPress={() => setIsAnonymous(!isAnonymous)}
             >
               <View style={tw`flex-row items-center`}>
                 <View
                   style={tw`w-6 h-6 rounded-md border-2 ${
                     isAnonymous
-                      ? "bg-[#0FF1CF] border-[#0FF1CF]"
-                      : "border-gray-500"
+                      ? "bg-accentFill dark:bg-[#0FF1CF] border-accent dark:border-[#0FF1CF]"
+                      : "border-border dark:border-gray-500"
                   } mr-3 items-center justify-center`}
                 >
                   {isAnonymous && (
-                    <Ionicons name="checkmark" size={16} color="#01082E" />
+                    <Ionicons name="checkmark" size={16} color={color("#01082E", "onAccent")} />
                   )}
                 </View>
                 <View>
-                  <Text style={tw`text-white font-medium`}>
+                  <Text style={tw`text-foreground dark:text-white font-medium`}>
                     Donate anonymously
                   </Text>
                 </View>
@@ -2377,7 +2386,7 @@ const EventPage = () => {
               <Ionicons
                 name={isAnonymous ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color={isAnonymous ? "#0FF1CF" : "gray"}
+                color={isAnonymous ? color("#0FF1CF", "accent") : "gray"}
               />
             </TouchableOpacity>
           </CustomView>
@@ -2389,16 +2398,16 @@ const EventPage = () => {
 
           <CustomView style={tw`mb-7`}>
             <View style={tw`flex-row items-center mb-3`}>
-              <Ionicons name="shield-checkmark" size={20} color="#0FF1CF" />
-              <Text style={tw`text-white ml-2 text-sm`}>
+              <Ionicons name="shield-checkmark" size={20} color={color("#0FF1CF", "accent")} />
+              <Text style={tw`text-foreground dark:text-white ml-2 text-sm`}>
                 {selectedProvider === "ALAT_TRANSFER"
                   ? "Bank transfer checkout via ALAT"
                   : "Secure payment powered by Paystack"}
               </Text>
             </View>
             <View style={tw`flex-row items-center`}>
-              <Ionicons name="information-circle" size={20} color="#0FF1CF" />
-              <Text style={tw`text-white ml-2 text-sm`}>
+              <Ionicons name="information-circle" size={20} color={color("#0FF1CF", "accent")} />
+              <Text style={tw`text-foreground dark:text-white ml-2 text-sm`}>
                 {selectedProvider === "ALAT_TRANSFER"
                   ? "We’ll show transfer instructions after you confirm the donation."
                   : "All donations are processed securely."}
@@ -2417,8 +2426,8 @@ const EventPage = () => {
               initiatingDonation ||
               parseFloat(donationAmount || "0") < 500
             }
-            buttonClassName="bg-[#FF6B6B] w-full border-0"
-            textClassName="!text-white"
+            buttonClassName="bg-danger dark:bg-[#FF6B6B] w-full border-0"
+            textClassName="!text-onPrimary dark:text-white"
             showArrow={false}
             title={
               hasEventEnded
@@ -2466,27 +2475,27 @@ const EventPage = () => {
         animationType="slide"
       >
         <View style={tw`flex-1 justify-end bg-black/60 px-5 py-8`}>
-          <View style={tw`rounded-[28px] bg-[#041130] p-5`}>
+          <View style={tw`rounded-[28px] bg-background dark:bg-[#041130] p-5`}>
             <View style={tw`flex-row items-center justify-between gap-3`}>
-              <View style={tw`rounded-full bg-[#0FF1CF]/15 px-3 py-1.5`}>
+              <View style={tw`rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15 px-3 py-1.5`}>
                 <Text
-                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-[#0FF1CF]`}
+                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-accent dark:text-[#0FF1CF]`}
                 >
                   ALAT transfer
                 </Text>
               </View>
               <View
-                style={tw`rounded-full border border-[#2A3E6A] px-3 py-1.5`}
+                style={tw`rounded-full border border-border dark:border-[#2A3E6A] px-3 py-1.5`}
               >
                 <Text
-                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-white`}
+                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-foreground dark:text-white`}
                 >
                   Awaiting payment
                 </Text>
               </View>
             </View>
             <View style={tw`flex-row items-center justify-between gap-3`}>
-              <Text style={tw`flex-1 text-xl font-bold text-white`}>
+              <Text style={tw`flex-1 text-xl font-bold text-foreground dark:text-white`}>
                 Complete your transfer
               </Text>
               <SheetCloseButton
@@ -2495,16 +2504,16 @@ const EventPage = () => {
               />
             </View>
 
-            <View style={tw`mt-4 gap-2 rounded-3xl bg-[#09173A] p-4`}>
+            <View style={tw`mt-4 gap-2 rounded-3xl bg-surface dark:bg-[#09173A] p-4`}>
               <View style={tw`flex-row items-start gap-3`}>
                 <View
-                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#0FF1CF]`}
+                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF]`}
                 >
-                  <Text style={tw`text-[11px] font-bold text-[#01082E]`}>
+                  <Text style={tw`text-[11px] font-bold text-onAccent dark:text-[#01082E]`}>
                     1
                   </Text>
                 </View>
-                <Text style={tw`flex-1 text-sm leading-5 text-white`}>
+                <Text style={tw`flex-1 text-sm leading-5 text-foreground dark:text-white`}>
                   Transfer exactly{" "}
                   {formatCheckoutAmount(
                     transferInstructions?.amountInNaira || 0
@@ -2514,61 +2523,61 @@ const EventPage = () => {
               </View>
               <View style={tw`flex-row items-start gap-3`}>
                 <View
-                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#0FF1CF]`}
+                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF]`}
                 >
-                  <Text style={tw`text-[11px] font-bold text-[#01082E]`}>
+                  <Text style={tw`text-[11px] font-bold text-onAccent dark:text-[#01082E]`}>
                     2
                   </Text>
                 </View>
-                <Text style={tw`flex-1 text-sm leading-5 text-white`}>
+                <Text style={tw`flex-1 text-sm leading-5 text-foreground dark:text-white`}>
                   Come back here after payment to track confirmation.
                 </Text>
               </View>
             </View>
 
-            <View style={tw`mt-5 gap-3 rounded-3xl bg-[#0A173F] p-4`}>
+            <View style={tw`mt-5 gap-3 rounded-3xl bg-surface dark:bg-[#0A173F] p-4`}>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>Amount</Text>
-                <Text style={tw`mt-1 text-lg font-bold text-[#0FF1CF]`}>
+                <Text style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}>Amount</Text>
+                <Text style={tw`mt-1 text-lg font-bold text-accent dark:text-[#0FF1CF]`}>
                   {formatCheckoutAmount(
                     transferInstructions?.amountInNaira || 0
                   )}
                 </Text>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>Bank</Text>
-                <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+                <Text style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}>Bank</Text>
+                <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
                   {transferInstructions?.bankName || "Wema Bank"}
                 </Text>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}>
                   Account name
                 </Text>
-                <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+                <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
                   {transferInstructions?.accountName ||
                     paymentOptions?.alatTransferDisplayName ||
                     "GatherGo"}
                 </Text>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}>
                   Account number
                 </Text>
                 <View style={tw.style("flex-row items-center gap-5")}>
-                  <Text selectable style={tw` text-lg font-bold text-white`}>
+                  <Text selectable style={tw` text-lg font-bold text-foreground dark:text-white`}>
                     {transferInstructions?.accountNumber || "-"}
                   </Text>
                   <TouchableOpacity
                     onPress={() => void handleCopyAccountNumber()}
                     disabled={!transferInstructions?.accountNumber}
                     style={tw.style(
-                      " self-start rounded-full border border-[#2A3E6A] px-3 py-2",
+                      " self-start rounded-full border border-border dark:border-[#2A3E6A] px-3 py-2",
                       !transferInstructions?.accountNumber && "opacity-50"
                     )}
                   >
                     <Text
-                      style={tw`text-xs font-semibold uppercase tracking-wide text-white`}
+                      style={tw`text-xs font-semibold uppercase tracking-wide text-foreground dark:text-white`}
                     >
                       Copy number
                     </Text>
@@ -2576,10 +2585,10 @@ const EventPage = () => {
                 </View>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}>
                   Expires in
                 </Text>
-                <Text style={tw`mt-1 text-lg font-bold text-[#FFD76A]`}>
+                <Text style={tw`mt-1 text-lg font-bold text-warning dark:text-[#FFD76A]`}>
                   {transferCountdownSeconds === null
                     ? "Bank transfer"
                     : transferCountdownSeconds === 0
@@ -2596,10 +2605,10 @@ const EventPage = () => {
                   `/transaction/${currentTransactionId}?type=${transactionType}`
                 );
               }}
-              style={tw`mt-5 rounded-full bg-[#0FF1CF] px-4 py-4`}
+              style={tw`mt-5 rounded-full bg-accentFill dark:bg-[#0FF1CF] px-4 py-4`}
             >
               <Text
-                style={tw`text-center text-sm font-semibold text-[#01082E]`}
+                style={tw`text-center text-sm font-semibold text-onAccent dark:text-[#01082E]`}
               >
                 I’ve made the transfer
               </Text>
@@ -2611,18 +2620,18 @@ const EventPage = () => {
 
       <Modal visible={showImpactReportModal} transparent animationType="slide">
         <View style={tw`flex-1 justify-end bg-black/65 px-5 py-8`}>
-          <View style={tw`max-h-[88%] rounded-[28px] bg-[#041130] p-5`}>
+          <View style={tw`max-h-[88%] rounded-[28px] bg-background dark:bg-[#041130] p-5`}>
             <View style={tw`flex-row items-start justify-between gap-3`}>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-bold text-white`}>
+                <Text style={tw`text-xl font-bold text-foreground dark:text-white`}>
                   {impactReport ? "Edit impact report" : "Submit impact report"}
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowImpactReportModal(false)}
-                style={tw`h-10 w-10 items-center justify-center rounded-full bg-[#0A173F]`}
+                style={tw`h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-[#0A173F]`}
               >
-                <Ionicons name="close" size={20} color="white" />
+                <Ionicons name="close" size={20} color={color("white", "foreground")} />
               </TouchableOpacity>
             </View>
 
@@ -2633,7 +2642,7 @@ const EventPage = () => {
             >
               <View style={tw`gap-2`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                 >
                   Summary
                 </Text>
@@ -2642,25 +2651,25 @@ const EventPage = () => {
                   value={impactReportSummary}
                   onChangeText={setImpactReportSummary}
                   placeholder="What happened, who benefited, and what changed?"
-                  placeholderTextColor="#8FA1CB"
+                  placeholderTextColor={color("#8FA1CB", "muted")}
                   multiline
                   maxLength={1000}
-                  style={tw`min-h-[110px] rounded-2xl bg-[#101C45] p-4 text-white`}
+                  style={tw`min-h-[110px] rounded-2xl bg-surface dark:bg-[#101C45] p-4 text-foreground dark:text-white`}
                 />
               </View>
 
               <View style={tw`mt-5 gap-3`}>
                 <View style={tw`flex-row items-center justify-between`}>
                   <Text
-                    style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                    style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                   >
                     Outcomes
                   </Text>
                   <TouchableOpacity
                     onPress={addImpactReportOutcome}
-                    style={tw`rounded-full bg-[#0FF1CF]/15 px-3 py-2`}
+                    style={tw`rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15 px-3 py-2`}
                   >
-                    <Text style={tw`text-xs font-bold text-[#0FF1CF]`}>
+                    <Text style={tw`text-xs font-bold text-accent dark:text-[#0FF1CF]`}>
                       Add outcome
                     </Text>
                   </TouchableOpacity>
@@ -2669,10 +2678,10 @@ const EventPage = () => {
                 {impactReportOutcomes.map((outcome, index) => (
                   <View
                     key={outcome.id || index}
-                    style={tw`rounded-2xl bg-[#08143B] p-4`}
+                    style={tw`rounded-2xl bg-surface dark:bg-[#08143B] p-4`}
                   >
                     <View style={tw`flex-row items-center justify-between`}>
-                      <Text style={tw`text-sm font-semibold text-white`}>
+                      <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                         Outcome {index + 1}
                       </Text>
                       {impactReportOutcomes.length > 1 && (
@@ -2680,7 +2689,7 @@ const EventPage = () => {
                           onPress={() => removeImpactReportOutcome(index)}
                         >
                           <Text
-                            style={tw`text-xs font-semibold text-[#FF8A8A]`}
+                            style={tw`text-xs font-semibold text-danger dark:text-[#FF8A8A]`}
                           >
                             Remove
                           </Text>
@@ -2695,8 +2704,8 @@ const EventPage = () => {
                         updateImpactReportOutcome(index, { label: value })
                       }
                       placeholder="Label, e.g. Trees planted"
-                      placeholderTextColor="#8FA1CB"
-                      style={tw`mt-3 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                      placeholderTextColor={color("#8FA1CB", "muted")}
+                      style={tw`mt-3 rounded-2xl bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                     />
 
                     <View style={tw`mt-3 flex-row gap-3`}>
@@ -2706,9 +2715,9 @@ const EventPage = () => {
                           updateImpactReportOutcome(index, { value })
                         }
                         placeholder="Value"
-                        placeholderTextColor="#8FA1CB"
+                        placeholderTextColor={color("#8FA1CB", "muted")}
                         keyboardType="numeric"
-                        style={tw`flex-1 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                        style={tw`flex-1 rounded-2xl bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                       />
                       <TextInput
                         autoCapitalize="none"
@@ -2717,8 +2726,8 @@ const EventPage = () => {
                           updateImpactReportOutcome(index, { unit: value })
                         }
                         placeholder="Unit"
-                        placeholderTextColor="#8FA1CB"
-                        style={tw`flex-1 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                        placeholderTextColor={color("#8FA1CB", "muted")}
+                        style={tw`flex-1 rounded-2xl bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                       />
                     </View>
 
@@ -2729,9 +2738,9 @@ const EventPage = () => {
                         updateImpactReportOutcome(index, { note: value })
                       }
                       placeholder="Optional note"
-                      placeholderTextColor="#8FA1CB"
+                      placeholderTextColor={color("#8FA1CB", "muted")}
                       multiline
-                      style={tw`mt-3 min-h-[72px] rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                      style={tw`mt-3 min-h-[72px] rounded-2xl bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                     />
                   </View>
                 ))}
@@ -2739,7 +2748,7 @@ const EventPage = () => {
 
               <View style={tw`mt-5 gap-2`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                 >
                   Evidence links
                 </Text>
@@ -2748,9 +2757,9 @@ const EventPage = () => {
                   value={impactReportEvidenceText}
                   onChangeText={setImpactReportEvidenceText}
                   placeholder="Paste up to 5 links, one per line"
-                  placeholderTextColor="#8FA1CB"
+                  placeholderTextColor={color("#8FA1CB", "muted")}
                   multiline
-                  style={tw`min-h-[92px] rounded-2xl bg-[#101C45] p-4 text-white`}
+                  style={tw`min-h-[92px] rounded-2xl bg-surface dark:bg-[#101C45] p-4 text-foreground dark:text-white`}
                 />
               </View>
 
@@ -2758,19 +2767,19 @@ const EventPage = () => {
                 <CustomButton
                   onPress={submitImpactReport}
                   disabled={submittingImpactReport}
-                  buttonClassName="bg-[#0FF1CF] border-0 w-full"
-                  textClassName="!text-black"
-                  arrowCircleColor="bg-[#0C7F7F]"
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+                  textClassName="!text-onAccent dark:text-black"
+                  arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
                   title={
                     submittingImpactReport ? "Publishing" : "Publish report"
                   }
                 />
                 <TouchableOpacity
                   onPress={() => setShowImpactReportModal(false)}
-                  style={tw`rounded-xl border border-[#2A3E6A] px-4 py-4`}
+                  style={tw`rounded-xl border border-border dark:border-[#2A3E6A] px-4 py-4`}
                 >
                   <Text
-                    style={tw`text-center text-sm font-semibold text-white`}
+                    style={tw`text-center text-sm font-semibold text-foreground dark:text-white`}
                   >
                     Cancel
                   </Text>

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import AppLoader from "@/components/ui/AppLoader";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import {
@@ -12,7 +13,7 @@ import { getApiErrorMessage } from "@/utils/apiError";
 import { useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import tw from "twrnc";
+
 import { SurveyMapChange } from "./SurveyMapChange";
 
 const REACTIONS: {
@@ -32,6 +33,7 @@ export function PostEventSurvey({
   event: PendingEventFeedback;
   onClose: () => void;
 }) {
+  const { tw } = useAppTheme();
   const [rating, setRating] = useState<EventFeedbackRating | null>(null);
   const [moreLikeThis, setMoreLikeThis] = useState(false);
   const save = useSaveEventFeedback();
@@ -56,7 +58,7 @@ export function PostEventSurvey({
       presentationStyle="fullScreen"
       onRequestClose={postpone}
     >
-      <SafeAreaView style={tw`flex-1 bg-[#01082E]`}>
+      <SafeAreaView style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
         <View style={tw`flex-1 w-full max-w-[500px] self-center px-6`}>
           <View style={tw`flex-row justify-end`}>
             {!result ? (
@@ -66,7 +68,7 @@ export function PostEventSurvey({
                 disabled={pending}
                 style={tw`min-h-11 justify-center px-2`}
               >
-                <Text style={tw`font-semibold text-[#AFC0E7]`}>Not now</Text>
+                <Text style={tw`font-semibold text-secondary dark:text-[#AFC0E7]`}>Not now</Text>
               </TouchableOpacity>
             ) : (
               <View style={tw`h-11`} />
@@ -84,11 +86,11 @@ export function PostEventSurvey({
               />
               <Text
                 accessibilityRole="header"
-                style={tw`text-center text-2xl leading-8 font-bold text-white`}
+                style={tw`text-center text-2xl leading-8 font-bold text-foreground dark:text-white`}
               >
                 {result ? "A little more you." : `How was ${event.title}?`}
               </Text>
-              <Text style={tw`text-center text-sm leading-5 text-[#AFC0E7]`}>
+              <Text style={tw`text-center text-sm leading-5 text-secondary dark:text-[#AFC0E7]`}>
                 {result
                   ? "Your answer is saved. Thanks for helping me tune your map."
                   : "Your answer helps me tune your map."}
@@ -112,10 +114,10 @@ export function PostEventSurvey({
                       if (reaction.rating === "NOT_FOR_ME")
                         setMoreLikeThis(false);
                     }}
-                    style={tw`flex-row items-center gap-3 rounded-2xl border-2 px-5 py-4 ${selected ? "bg-[#0FF1CF]/15 border-[#0FF1CF]" : "bg-[#101C45] border-[#24345A]"}`}
+                    style={tw`flex-row items-center gap-3 rounded-2xl border-2 px-5 py-4 ${selected ? "bg-accentFill/15 dark:bg-[#0FF1CF]/15 border-accent dark:border-[#0FF1CF]" : "bg-surface dark:bg-[#101C45] border-border dark:border-[#24345A]"}`}
                   >
                     <Text style={tw`text-lg`}>{reaction.emoji}</Text>
-                    <Text style={tw`text-base font-semibold text-white`}>
+                    <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                       {reaction.label}
                     </Text>
                   </TouchableOpacity>
@@ -131,9 +133,9 @@ export function PostEventSurvey({
               }}
               disabled={pending || Boolean(result) || rating === "NOT_FOR_ME"}
               onPress={() => setMoreLikeThis((current) => !current)}
-              style={tw`self-start rounded-full border-2 border-[#0FF1CF] px-4 py-3 ${moreLikeThis ? "bg-[#0FF1CF]/15" : "bg-transparent"} ${rating === "NOT_FOR_ME" ? "opacity-40" : ""}`}
+              style={tw`self-start rounded-full border-2 border-accent dark:border-[#0FF1CF] px-4 py-3 ${moreLikeThis ? "bg-accentFill/15 dark:bg-[#0FF1CF]/15" : "bg-transparent"} ${rating === "NOT_FOR_ME" ? "opacity-40" : ""}`}
             >
-              <Text style={tw`text-sm font-semibold text-white`}>
+              <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                 {moreLikeThis ? "✓  " : "+  "}More like this
               </Text>
             </TouchableOpacity>
@@ -141,7 +143,7 @@ export function PostEventSurvey({
             {error ? (
               <Text
                 accessibilityRole="alert"
-                style={tw`text-sm text-[#FF9CAA]`}
+                style={tw`text-sm text-danger dark:text-[#FF9CAA]`}
               >
                 {getApiErrorMessage(
                   error,
@@ -155,12 +157,12 @@ export function PostEventSurvey({
             accessibilityState={{ disabled: pending || (!rating && !result) }}
             disabled={pending || (!rating && !result)}
             onPress={submit}
-            style={tw`min-h-13 my-3 flex-row gap-2 items-center justify-center rounded-full bg-[#0FF1CF] px-5 py-4 ${!rating && !result ? "opacity-40" : ""}`}
+            style={tw`min-h-13 my-3 flex-row gap-2 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF] px-5 py-4 ${!rating && !result ? "opacity-40" : ""}`}
           >
             {pending ? (
               <AppLoader tone="dark" accessibilityLabel="Saving your answer" />
             ) : null}
-            <Text style={tw`font-bold text-base text-[#01082E]`}>
+            <Text style={tw`font-bold text-base text-onAccent dark:text-[#01082E]`}>
               {pending ? "Saving…" : result ? "Done" : "See my map"}
             </Text>
           </TouchableOpacity>

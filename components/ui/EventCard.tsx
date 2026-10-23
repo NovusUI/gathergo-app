@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { EventArtworkFallback } from "@/components/ui/ArtworkFallback";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import { usePressGuard } from "@/hooks/usePressGuard";
@@ -14,7 +15,6 @@ import { Image } from "expo-image";
 import { HandHeart, MapPin, PenLine, Ticket } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface EventCardProps {
   id: string;
@@ -56,17 +56,18 @@ export default function EventCard({
   impactCommitments,
   onPress,
 }: EventCardProps) {
+  const { tw, color } = useAppTheme();
   const eventTypeConfig =
     registrationType === "volunteer"
-      ? { icon: <HandHeart size={18} color="#0FF1CF" /> }
+      ? { icon: <HandHeart size={18} color={color("#0FF1CF", "accent")} /> }
       : registrationType === "ticket"
-      ? { icon: <Ticket size={18} color="#0FF1CF" /> }
+      ? { icon: <Ticket size={18} color={color("#0FF1CF", "accent")} /> }
       : registrationType === "donation"
         ? {
-            icon: <HandHeart size={18} color="#0FF1CF" />,
+            icon: <HandHeart size={18} color={color("#0FF1CF", "accent")} />,
           }
         : {
-            icon: <PenLine size={18} color="#0FF1CF" />,
+            icon: <PenLine size={18} color={color("#0FF1CF", "accent")} />,
           };
 
   const pricingMeta =
@@ -129,7 +130,7 @@ export default function EventCard({
     <TouchableOpacity
       onPress={guardedPress}
       activeOpacity={0.9}
-      style={tw`bg-[#01082e] rounded-xl p-4`}
+      style={tw`bg-surface dark:bg-[#01082e] rounded-xl border border-border dark:border-transparent p-4`}
     >
       <View style={tw`flex-row items-start`}>
         {showImage ? (
@@ -146,9 +147,9 @@ export default function EventCard({
               onError={() => setShowImage(false)}
             />
             <View
-              style={tw`absolute top-1 left-1 p-1 bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`}
+              style={tw`absolute top-1 left-1 p-1 bg-accentFill/80 dark:bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`}
             >
-              <Text style={tw`text-white text-xs`}>
+              <Text style={tw`text-foreground dark:text-white text-xs`}>
                 {formatShortDate(startDate)}
               </Text>
             </View>
@@ -164,9 +165,9 @@ export default function EventCard({
               borderRadius={16}
             />
             <View
-              style={tw`absolute top-1 left-1 p-1 bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`}
+              style={tw`absolute top-1 left-1 p-1 bg-accentFill/80 dark:bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`}
             >
-              <Text style={tw`text-white text-xs`}>
+              <Text style={tw`text-foreground dark:text-white text-xs`}>
                 {formatShortDate(startDate)}
               </Text>
             </View>
@@ -174,18 +175,18 @@ export default function EventCard({
         )}
 
         <View style={tw`ml-4 min-h-[84px] flex-1 gap-2`}>
-          <Text style={tw`text-white font-semibold text-lg`} numberOfLines={2}>
+          <Text style={tw`text-foreground dark:text-white font-semibold text-lg`} numberOfLines={2}>
             {title}
           </Text>
           {impactSummary ? (
             <View
-              style={tw`flex-row items-center rounded-full bg-[#0FF1CF]/10 px-3 py-1.5 self-start`}
+              style={tw`flex-row items-center rounded-full bg-accentFill/10 dark:bg-[#0FF1CF]/10 px-3 py-1.5 self-start`}
             >
               {goal ? (
                 <View
                   style={[
                     tw`h-5 w-5 items-center justify-center rounded-full`,
-                    { backgroundColor: goal.color || "#0FF1CF" },
+                    { backgroundColor: goal.color || color("#0FF1CF", "accentFill") },
                   ]}
                 >
                   <SdgGoalIcon
@@ -196,10 +197,10 @@ export default function EventCard({
                   />
                 </View>
               ) : (
-                <HandHeart size={12} color="#0FF1CF" />
+                <HandHeart size={12} color={color("#0FF1CF", "accent")} />
               )}
               <Text
-                style={tw`ml-2 text-xs font-medium text-[#B7FFF5]`}
+                style={tw`ml-2 text-xs font-medium text-foreground dark:text-[#B7FFF5]`}
                 numberOfLines={1}
               >
                 {impactSummary}
@@ -207,7 +208,7 @@ export default function EventCard({
             </View>
           ) : description ? (
             <Text
-              style={tw`text-xs leading-5 text-[#A8BAE4]`}
+              style={tw`text-xs leading-5 text-secondary dark:text-[#A8BAE4]`}
               numberOfLines={2}
             >
               {description}
@@ -215,9 +216,9 @@ export default function EventCard({
           ) : null}
           {location ? (
             <View style={tw`flex-row items-center gap-1.5`}>
-              <MapPin size={13} color="#8FA5C9" />
+              <MapPin size={13} color={color("#8FA5C9", "muted")} />
               <Text
-                style={tw`flex-1 text-xs text-[#8FA5C9]`}
+                style={tw`flex-1 text-xs text-muted dark:text-[#8FA5C9]`}
                 numberOfLines={1}
               >
                 {location}
@@ -229,21 +230,21 @@ export default function EventCard({
 
       <View style={tw`mt-3 flex-row items-stretch gap-3`}>
         <View
-          style={tw`min-w-[52px] px-4 bg-[#0FF1CF]/10 rounded-lg items-center justify-center`}
+          style={tw`min-w-[52px] px-4 bg-accentFill/10 dark:bg-[#0FF1CF]/10 rounded-lg items-center justify-center`}
         >
           {eventTypeConfig.icon}
         </View>
 
         <View
-          style={tw`flex-1 px-3 py-3 bg-[#0FF1CF]/10 rounded-lg flex-row items-center justify-between gap-3`}
+          style={tw`flex-1 px-3 py-3 bg-accentFill/10 dark:bg-[#0FF1CF]/10 rounded-lg flex-row items-center justify-between gap-3`}
         >
           <Text
-            style={tw`text-[#7CEBDB] text-[11px] uppercase tracking-wide shrink-0`}
+            style={tw`text-info dark:text-[#7CEBDB] text-[11px] uppercase tracking-wide shrink-0`}
           >
             {pricingMeta.label}
           </Text>
           <Text
-            style={tw`flex-1 text-[#0FF1CF] font-semibold leading-6 text-right text-base`}
+            style={tw`flex-1 text-accent dark:text-[#0FF1CF] font-semibold leading-6 text-right text-base`}
           >
             {pricingMeta.value}
           </Text>

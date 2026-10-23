@@ -1,8 +1,9 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import type { GatherGoMascotVariant } from "@/components/gogo/mascot/constants";
 import { useEffect, useRef } from "react";
 import { Animated, StyleProp, Text, View, ViewStyle } from "react-native";
-import tw from "twrnc";
+
 import { GogoComingSoonArtwork } from "@/components/gogo/mascot/GogoComingSoonArtwork";
 import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import { MascotMessage } from "@/components/gogo/mascot/MascotMessage";
@@ -64,6 +65,7 @@ export function MascotMoment({
   layout = "inline",
   style,
 }: MascotMomentProps) {
+  const { tw, color } = useAppTheme();
   const reducedMotion = useReducedMotionPreference();
   const tone = MOMENT_TONES[variant];
   const stacked = layout === "stacked";
@@ -100,7 +102,7 @@ export function MascotMoment({
             ? tw`w-full max-w-[360px] self-center items-center gap-5 py-6`
             : [
                 tw`flex-row items-center gap-3 rounded-2xl border p-3`,
-                { backgroundColor: tone.background, borderColor: tone.border },
+                { backgroundColor: color(tone.background, variant === "error" ? "dangerSoft" : "surface"), borderColor: color(tone.border, "border") },
               ],
         style,
         {
@@ -127,10 +129,10 @@ export function MascotMoment({
           accessibilityRole="header"
           style={
             plain
-              ? tw`text-sm font-semibold text-white`
+              ? tw`text-sm font-semibold text-foreground dark:text-white`
               : stacked
-                ? tw`text-center text-2xl font-bold text-white`
-                : tw`text-xs font-semibold uppercase tracking-wider text-[#8FA1CB]`
+                ? tw`text-center text-2xl font-bold text-foreground dark:text-white`
+                : tw`text-xs font-semibold uppercase tracking-wider text-muted dark:text-[#8FA1CB]`
           }
         >
           {title}
@@ -141,7 +143,7 @@ export function MascotMoment({
               ? tw`w-full`
               : plain
                 ? tw`mt-1`
-                : tw`mt-2 rounded-2xl bg-[#0A173F] px-3 py-2`
+                : tw`mt-2 rounded-2xl bg-surface dark:bg-[#0A173F] px-3 py-2`
           }
         >
           <MascotMessage
@@ -149,9 +151,9 @@ export function MascotMoment({
             animate={typing && !reducedMotion}
             style={
               stacked
-                ? tw`text-center text-base leading-6 text-[#AFC0F4]`
+                ? tw`text-center text-base leading-6 text-secondary dark:text-[#AFC0F4]`
                 : plain
-                  ? tw`text-sm leading-5 text-[#AFC0F4]`
+                  ? tw`text-sm leading-5 text-secondary dark:text-[#AFC0F4]`
                   : undefined
             }
           />

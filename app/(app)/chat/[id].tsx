@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
@@ -52,7 +53,6 @@ import { useVibeCheckPrompt } from "@/hooks/useVibeCheckPrompt";
 import { useMessageQueueStore } from "@/store/messageQueue";
 import { formatTo12Hour } from "@/utils/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import tw from "twrnc";
 
 // Import the useCarpoolDetails hook
 import { useCarpoolDetails } from "@/hooks/useCarpoolDetails";
@@ -96,6 +96,7 @@ const formatRideDepartureTime = (departureTime?: string | null) => {
 };
 
 const ChatPage = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
@@ -659,22 +660,22 @@ const ChatPage = () => {
   if (carpoolError) {
     return (
       <View
-        style={tw`flex-1 pt-10 bg-[#01082E] justify-center items-center p-5`}
+        style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E] justify-center items-center p-5`}
       >
-        <Text style={tw`text-white text-lg mb-4 text-center`}>
+        <Text style={tw`text-foreground dark:text-white text-lg mb-4 text-center`}>
           Unable to load carpool details
         </Text>
         <TouchableOpacity
           onPress={() => refetchCarpoolDetails()}
-          style={tw`bg-blue-500 px-6 py-3 rounded-full`}
+          style={tw`bg-info dark:bg-blue-500 px-6 py-3 rounded-full`}
         >
-          <Text style={tw`text-white`}>Retry</Text>
+          <Text style={tw`text-onPrimary dark:text-white`}>Retry</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => safeGoBack(router, "/conversations")}
-          style={tw`mt-4 px-6 py-3 rounded-full border border-white`}
+          style={tw`mt-4 px-6 py-3 rounded-full border border-borderStrong dark:border-white`}
         >
-          <Text style={tw`text-white`}>Go Back</Text>
+          <Text style={tw`text-foreground dark:text-white`}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -684,16 +685,16 @@ const ChatPage = () => {
   if (carpoolDetails && !isUserMember()) {
     return (
       <View
-        style={tw`flex-1 pt-10 bg-[#01082E] justify-center items-center p-5`}
+        style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E] justify-center items-center p-5`}
       >
-        <Text style={tw`text-white text-lg mb-4 text-center`}>
+        <Text style={tw`text-foreground dark:text-white text-lg mb-4 text-center`}>
           You are not a member of this carpool
         </Text>
         <TouchableOpacity
           onPress={() => safeGoBack(router, "/conversations")}
-          style={tw`bg-blue-500 px-6 py-3 rounded-full`}
+          style={tw`bg-info dark:bg-blue-500 px-6 py-3 rounded-full`}
         >
-          <Text style={tw`text-white`}>Go Back</Text>
+          <Text style={tw`text-onPrimary dark:text-white`}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -701,11 +702,11 @@ const ChatPage = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
-      <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
+      <View style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E]`}>
         <CustomView style={tw`px-3`}>
           <CustomeTopBarNav
             title={eventTitle}
@@ -732,14 +733,14 @@ const ChatPage = () => {
                   style={[
                     tw`w-11 h-11 rounded-full items-center justify-center border`,
                     rideVibeExpanded
-                      ? tw`bg-[#FF6B6B]/12 border-[#FF6B6B]/25`
-                      : tw`bg-[#0FF1CF]/12 border-[#0FF1CF]/25`,
+                      ? tw`bg-danger/12 dark:bg-[#FF6B6B]/12 border-danger/25 dark:border-[#FF6B6B]/25`
+                      : tw`bg-accentFill/12 dark:bg-[#0FF1CF]/12 border-accent/25 dark:border-[#0FF1CF]/25`,
                   ]}
                 >
                   <Ionicons
                     name={rideVibeExpanded ? "close" : rideIconName}
                     size={rideVibeExpanded ? 22 : 24}
-                    color={rideVibeExpanded ? "#FF6B6B" : "#0FF1CF"}
+                    color={rideVibeExpanded ? color("#FF6B6B", "danger") : color("#0FF1CF", "accent")}
                   />
                 </TouchableOpacity>
               )
@@ -778,9 +779,9 @@ const ChatPage = () => {
           !carpoolDetails.canChat &&
           Boolean(carpoolDetails.reason) && (
             <View
-              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-[#4A1320] border border-[#F87171]/30`}
+              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-[#4A1320] border border-danger/30 dark:border-[#F87171]/30`}
             >
-              <Text style={tw`text-white text-center font-semibold`}>
+              <Text style={tw`text-foreground dark:text-white text-center font-semibold`}>
                 Chat Restricted: {carpoolDetails.reason}
               </Text>
             </View>
@@ -815,22 +816,22 @@ const ChatPage = () => {
                   style={tw`flex-1 items-center justify-center py-12 px-5`}
                 >
                   <View
-                    style={tw`w-full rounded-[28px] bg-[#07143B] border border-[#1B2A50] p-6 items-center`}
+                    style={tw`w-full rounded-[28px] bg-surface dark:bg-[#07143B] border border-border dark:border-[#1B2A50] p-6 items-center`}
                   >
                     <View
-                      style={tw`w-16 h-16 rounded-2xl bg-[#0FF1CF]/12 items-center justify-center border border-[#0FF1CF]/20`}
+                      style={tw`w-16 h-16 rounded-2xl bg-accentFill/12 dark:bg-[#0FF1CF]/12 items-center justify-center border border-accent/20 dark:border-[#0FF1CF]/20`}
                     >
                       <Ionicons
                         name={rideIconName}
                         size={34}
-                        color="#0FF1CF"
+                        color={color("#0FF1CF", "accent")}
                       />
                     </View>
-                    <Text style={tw`text-white mt-4 font-semibold text-base`}>
+                    <Text style={tw`text-foreground dark:text-white mt-4 font-semibold text-base`}>
                       {safetyCopy.emptyChatTitle}
                     </Text>
                     <Text
-                      style={tw`text-[#A8BAE4] text-sm mt-2 text-center leading-5`}
+                      style={tw`text-secondary dark:text-[#A8BAE4] text-sm mt-2 text-center leading-5`}
                     >
                       {safetyCopy.emptyChatBody}
                     </Text>
@@ -853,14 +854,14 @@ const ChatPage = () => {
             onPress={() =>
               flatListRef.current?.scrollToOffset({ offset: 0, animated: true })
             }
-            style={tw`absolute bottom-32 right-5 bg-[#0FF1CF] rounded-full h-11 w-11 flex-row items-center justify-center border border-white/20`}
+            style={tw`absolute bottom-32 right-5 bg-accentFill dark:bg-[#0FF1CF] rounded-full h-11 w-11 flex-row items-center justify-center border border-borderStrong/20 dark:border-white/20`}
           >
-            <Ionicons name="arrow-down" size={18} color="#01082E" />
+            <Ionicons name="arrow-down" size={18} color={color("#01082E", "onAccent")} />
             {unreadCount > 0 && (
               <View
-                style={tw`absolute -top-1 -right-1 rounded-full min-w-[18px] h-[18px] bg-white flex-row items-center justify-center`}
+                style={tw`absolute -top-1 -right-1 rounded-full min-w-[18px] h-[18px] bg-surface dark:bg-white flex-row items-center justify-center`}
               >
-                <Text style={tw`text-[#350342] text-xs`}>{unreadCount}</Text>
+                <Text style={tw`text-onAccent dark:text-[#350342] text-xs`}>{unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -868,7 +869,7 @@ const ChatPage = () => {
 
         <View
           style={[
-            tw`w-full max-w-[500px] min-h-28 p-5 bg-[#07143B] border-t border-[#1B2A50]`,
+            tw`w-full max-w-[500px] min-h-28 p-5 bg-surface dark:bg-[#07143B] border-t border-border dark:border-[#1B2A50]`,
             Platform.OS === "android" && keyboardHeight > 0
               ? { paddingBottom: keyboardHeight + 12 }
               : null,
@@ -889,9 +890,9 @@ const ChatPage = () => {
           {/* Show message if user can't chat */}
           {carpoolDetails && !carpoolDetails.canChat && (
             <View
-              style={tw`bg-[#101C45] p-4 rounded-2xl border border-[#1B2A50]`}
+              style={tw`bg-surface dark:bg-[#101C45] p-4 rounded-2xl border border-border dark:border-[#1B2A50]`}
             >
-              <Text style={tw`text-white text-center`}>
+              <Text style={tw`text-foreground dark:text-white text-center`}>
                 {carpoolDetails.reason ||
                   "Chat is not available for this carpool"}
               </Text>

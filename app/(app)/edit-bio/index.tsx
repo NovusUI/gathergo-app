@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import TextArea from "@/components/inputs/CustomTextArea";
 import { useAuth } from "@/context/AuthContext";
@@ -8,9 +9,9 @@ import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, ScrollView, Text } from "react-native";
-import tw from "twrnc";
 
 const EditBioScreen = () => {
+  const { tw } = useAppTheme();
   const router = useLockedRouter();
   const { setUser } = useAuth();
 
@@ -41,7 +42,7 @@ const EditBioScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -49,7 +50,7 @@ const EditBioScreen = () => {
         contentContainerStyle={tw`flex-grow justify-center items-center px-5 pt-20 pb-10 gap-5`}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={tw`text-white`}>Bio</Text>
+        <Text style={tw`text-foreground dark:text-white`}>Bio</Text>
         <Controller
           control={control}
           name="bio"
@@ -66,7 +67,7 @@ const EditBioScreen = () => {
           title={editBioPending ? "Saving..." : "Save"}
           onPress={handleSubmit(onSubmit)}
           buttonClassName="!w-full" // keep as-is since CustomButton handles it internally
-          arrowCircleColor="transparent border-sm border-white"
+          arrowCircleColor="transparent border-sm border-borderStrong dark:border-white"
           disabled={editBioPending}
         />
       </ScrollView>

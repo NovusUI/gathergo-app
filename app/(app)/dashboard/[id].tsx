@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import Shortcut from "@/components/Shortcut";
 import CustomView from "@/components/View";
@@ -18,7 +19,6 @@ import { useLockedRouter } from "@/utils/navigation";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 // Mock payments for this specific event
 const mockEventPayments: Payment[] = [
@@ -105,6 +105,7 @@ const mockEventPayments: Payment[] = [
 ];
 
 const EventDashboard = () => {
+  const { tw } = useAppTheme();
   const { id } = useLocalSearchParams();
   const router = useLockedRouter();
 
@@ -131,7 +132,7 @@ const EventDashboard = () => {
 
   if (isLoading) {
     return (
-      <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
+      <View style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E]`}>
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Event"
@@ -148,20 +149,20 @@ const EventDashboard = () => {
 
   if (!!!data?.data) {
     return (
-      <View style={tw`flex-1 bg-[#01082E] justify-center items-center`}>
-        <Text style={tw`text-white text-xl`}>Event not found</Text>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E] justify-center items-center`}>
+        <Text style={tw`text-foreground dark:text-white text-xl`}>Event not found</Text>
         <TouchableOpacity
-          style={tw`mt-4 px-6 py-3 bg-[#5669FF] rounded-full`}
+          style={tw`mt-4 px-6 py-3 bg-primary dark:bg-[#5669FF] rounded-full`}
           onPress={() => safeGoBack(router, "/dashboard")}
         >
-          <Text style={tw`text-white font-medium`}>Go Back</Text>
+          <Text style={tw`text-onPrimary dark:text-white font-medium`}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
       {/* Top Navigation */}
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
@@ -180,20 +181,20 @@ const EventDashboard = () => {
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => router.push(`/event/${eventId}`)}
-            style={tw`rounded-3xl border border-[#24345A] bg-[#0A173F] p-4`}
+            style={tw`rounded-3xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F] p-4`}
           >
-            <Text style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}>
+            <Text style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}>
               {hasEventEnded ? "Ended event page" : "Public event page"}
             </Text>
-            <Text style={tw`mt-2 text-lg font-semibold text-white`}>
+            <Text style={tw`mt-2 text-lg font-semibold text-foreground dark:text-white`}>
               Open attendee view
             </Text>
-            <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
+            <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#C6D5F2]`}>
               {hasEventEnded
                 ? "This event has ended. Its public page still holds the event details, updates, and any impact stories you shared."
                 : "Preview the event page the same way attendees, donors, and guests see it."}
             </Text>
-            <Text style={tw`mt-3 text-sm font-semibold text-[#0FF1CF]`}>
+            <Text style={tw`mt-3 text-sm font-semibold text-accent dark:text-[#0FF1CF]`}>
               {hasEventEnded ? "View ended event page" : "Open event page"}
             </Text>
           </TouchableOpacity>
@@ -217,9 +218,9 @@ const EventDashboard = () => {
 
       {/* Quick Access - Always visible at bottom */}
       <View
-        style={tw`absolute bottom-0 left-0 right-0 bg-[#01082E] pt-3 pb-5 px-5 border-t border-gray-800`}
+        style={tw`absolute bottom-0 left-0 right-0 bg-background dark:bg-[#01082E] pt-3 pb-5 px-5 border-t border-border dark:border-gray-800`}
       >
-        <Text style={tw`text-white text-lg font-bold mb-3`}>Quick Access</Text>
+        <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-3`}>Quick Access</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

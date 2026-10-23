@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import AppRefreshControl, {
   RefreshIndicator,
 } from "@/components/ui/AppRefreshControl";
@@ -12,9 +13,9 @@ import { VOLUNTEER_STATUS_LABELS } from "@/utils/volunteer";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 export default function MyVolunteering() {
+  const { tw } = useAppTheme();
   const query = useVolunteerHistory();
   const router = useLockedRouter();
   const pageLoader = (
@@ -24,7 +25,7 @@ export default function MyVolunteering() {
     />
   );
   return (
-    <View style={tw`flex-1 bg-[#01082E] pt-10`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E] pt-10`}>
       <View style={tw`px-5`}>
         <CustomeTopBarNav
           title="My volunteering"
@@ -39,7 +40,7 @@ export default function MyVolunteering() {
           onPress={() => query.refetch()}
           style={tw`p-5`}
         >
-          <Text style={tw`text-[#FF8A8A]`}>
+          <Text style={tw`text-danger dark:text-[#FF8A8A]`}>
             Could not load your volunteering. Tap to retry.
           </Text>
         </TouchableOpacity>
@@ -64,10 +65,10 @@ export default function MyVolunteering() {
               />
               {query.data.data.length > 0 ? (
                 <>
-                  <Text style={tw`text-2xl font-bold text-white`}>
+                  <Text style={tw`text-2xl font-bold text-foreground dark:text-white`}>
                     Your time makes an impact
                   </Text>
-                  <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
+                  <Text style={tw`text-sm leading-5 text-secondary dark:text-[#A8BAE4]`}>
                     Track applications, confirmed places and contributions
                     recognised by organisers.
                   </Text>
@@ -98,24 +99,25 @@ export default function MyVolunteering() {
 }
 
 function VolunteerHistoryCard({ entry }: { entry: VolunteerHistoryEntry }) {
+  const { tw } = useAppTheme();
   const router = useLockedRouter();
   return (
-    <View style={tw`gap-3 rounded-2xl border border-[#24345A] p-4`}>
-      <Text style={tw`text-lg font-semibold text-white`}>
+    <View style={tw`gap-3 rounded-2xl border border-border dark:border-[#24345A] p-4`}>
+      <Text style={tw`text-lg font-semibold text-foreground dark:text-white`}>
         {entry.event.title}
       </Text>
-      <Text style={tw`text-sm text-[#A8BAE4]`}>{entry.role.title}</Text>
-      <Text style={tw`text-sm text-[#A8BAE4]`}>
+      <Text style={tw`text-sm text-secondary dark:text-[#A8BAE4]`}>{entry.role.title}</Text>
+      <Text style={tw`text-sm text-secondary dark:text-[#A8BAE4]`}>
         {formatEventDateTime(entry.event.startDate, entry.event.endDate)}
       </Text>
       {entry.event.location !== null ? (
-        <Text style={tw`text-sm text-[#A8BAE4]`}>{entry.event.location}</Text>
+        <Text style={tw`text-sm text-secondary dark:text-[#A8BAE4]`}>{entry.event.location}</Text>
       ) : null}
-      <Text style={tw`font-semibold text-[#0FF1CF]`}>
+      <Text style={tw`font-semibold text-accent dark:text-[#0FF1CF]`}>
         {VOLUNTEER_STATUS_LABELS[entry.status]}
       </Text>
       {entry.confirmedMinutes !== null ? (
-        <Text style={tw`text-sm text-[#C6D5F2]`}>
+        <Text style={tw`text-sm text-secondary dark:text-[#C6D5F2]`}>
           {entry.confirmedMinutes} minutes confirmed by the organiser
         </Text>
       ) : null}

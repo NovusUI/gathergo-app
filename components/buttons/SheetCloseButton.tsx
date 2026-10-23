@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { Ionicons } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native";
-import tw from "twrnc";
 
 export default function SheetCloseButton({
   onPress,
@@ -12,6 +12,7 @@ export default function SheetCloseButton({
   accessibilityLabel?: string;
   disabled?: boolean;
 }) {
+  const { tw, color } = useAppTheme();
   const guardedOnPress = usePressGuard(onPress);
   return (
     <TouchableOpacity
@@ -25,7 +26,7 @@ export default function SheetCloseButton({
         disabled ? tw`opacity-40` : null,
       ]}
     >
-      <Ionicons name="close" size={24} color="#9FB0D8" />
+      <Ionicons name="close" size={24} color={color("#9FB0D8", "secondary")} />
     </TouchableOpacity>
   );
 }

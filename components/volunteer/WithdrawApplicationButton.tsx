@@ -11,6 +11,7 @@ export default function WithdrawApplicationButton({
   application: VolunteerApplication;
   startDate: string;
 }) {
+
   const mutation = useVolunteerAction(application.eventId, {
     onSuccess: () => showGlobalSuccess("Volunteer application withdrawn."),
   });
@@ -21,8 +22,8 @@ export default function WithdrawApplicationButton({
       showArrow={false}
       disabled={mutation.isPending}
       title={mutation.isPending ? "Withdrawing…" : "Withdraw application"}
-      buttonClassName="w-full border-[#FF8A8A]/50 bg-[#2C1737]"
-      textClassName="!text-[#FF8A8A] shrink"
+      buttonClassName="w-full border-danger/50 dark:border-[#FF8A8A]/50 bg-surface dark:bg-[#2C1737]"
+      textClassName="!text-danger dark:text-[#FF8A8A] shrink"
       onPress={() =>
         mutation.mutate({ type: "withdraw", applicationId: application.id })
       }
