@@ -67,6 +67,18 @@
           "backgroundColor": "#01082E"
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "gogo_general_v1",
+          "sounds": [
+            "./assets/sounds/gogo_general.wav",
+            "./assets/sounds/gogo_carpool_positive.wav",
+            "./assets/sounds/gogo_carpool_rejection.wav",
+            "./assets/sounds/gogo_celebration.wav"
+          ]
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser",
       [

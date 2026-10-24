@@ -301,3 +301,7 @@ The server must be updated with the saved-message acknowledgment contract before
 Chat enables padding-based keyboard avoidance on Android as well as iOS. This reserves keyboard overlap in edge-to-edge windows and removes that extra padding when Android has already resized the window.
 
 Passes pull-to-refresh keeps the profile summary as the unchanged list header. Its refresh indicator appears in the Passes section below the profile tabs; only tickets and registrations are refetched.
+
+Notification audio uses the supplied Gogo foley clips, converted to PCM WAV in `assets/sounds` for both iOS and Android: general alerts/chat messages, carpool requests/acceptances, carpool rejections, and frenzy/milestone celebrations. `expo-notifications` bundles the files and the matching Android channels are created before permission/token registration. The OS plays one sound per push, including foreground alerts; socket tray updates do not play a second sound. System mute, Focus/Do Not Disturb, and per-channel settings still apply.
+
+Custom audio needs a rebuilt native app; an OTA update or Expo Go cannot add these bundled resources. Install/open the rebuilt app before testing backend notifications so Android channels exist. The backend selects the filename and channel; deploy both changes together. This does not add sounds to local Gogo toasts or loading animations.

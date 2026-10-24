@@ -1,4 +1,5 @@
 // utils/pushNotifications.ts
+import { NOTIFICATION_SOUNDS } from "@/constants/notificationSounds";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -11,6 +12,20 @@ export const registerForPushNotifications = async (): Promise<
     if (!Device.isDevice) {
       console.log("Must use physical device for push notifications");
       return null;
+    }
+
+    // Android 13 needs a channel before requesting notification permission.
+    if (Platform.OS === "android") {
+      await Promise.all(
+        Object.values(NOTIFICATION_SOUNDS).map(({ channelId, name, sound }) =>
+          Notifications.setNotificationChannelAsync(channelId, {
+            name,
+            sound,
+            importance: Notifications.AndroidImportance.HIGH,
+            vibrationPattern: [0, 250, 250, 250],
+          }),
+        ),
+      );
     }
 
     const { status: existingStatus } =
@@ -40,15 +55,6 @@ export const registerForPushNotifications = async (): Promise<
         projectId,
       })
     ).data;
-
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#FF231F7C",
-      });
-    }
 
     console.log("✅ Expo push token:", token);
     return token;
