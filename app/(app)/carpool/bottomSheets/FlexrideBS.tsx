@@ -1,3 +1,4 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   forwardRef,
@@ -38,8 +39,10 @@ export type FlexrideProps = {
 
 const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
   ({ carpoolId, vehicleIcon }, ref) => {
-  const { tw, color } = useAppTheme();
-  const twStyle = tw.style;
+    const { tw, color } = useAppTheme();
+    const layout = useResponsiveLayout({ hasTabNavigation: false });
+    const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
+    const twStyle = tw.style;
     const queryClient = useQueryClient();
     const [selectedIcon, setSelectedIcon] = useState<
       CarpoolVehicleIconKey | null
@@ -84,6 +87,8 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
 
     return (
       <BottomSheet
+        topInset={layout.insets.top}
+        containerStyle={{ marginHorizontal: sheetMargin }}
         ref={bottomSheetCarRef}
         index={-1}
         snapPoints={snapPoints}
@@ -184,7 +189,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
           </View>
         </BottomSheetScrollView>
 
-        <View style={tw`w-screen max-w-[500px] p-5`}>
+        <View style={tw`w-full max-w-[800px] self-center p-5`}>
           <CustomButton
             title={isCarpoolUpdating ? "Saving vibe" : "Save ride vibe"}
             buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"

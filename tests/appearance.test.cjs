@@ -38,11 +38,7 @@ test('the theme hook follows app settings without reading the phone color scheme
   assert.equal(useAppTheme().mode, 'light'); mode = 'dark'; assert.equal(useAppTheme().mode, 'dark');
   assert.deepEqual(requested, ['light', 'dark']);
 });
-function luminance(hex) {
-  const values = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
-  return values[0] * .2126 + values[1] * .7152 + values[2] * .0722;
-}
-const contrast = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((a, b) => b - a); return (hi + .05) / (lo + .05); };
+const { contrast } = require('./colorContrast.cjs');
 test('the reference palette has readable text, selected controls and solid primary buttons', () => {
   for (const background of [LIGHT_COLORS.background, LIGHT_COLORS.surface]) {
     for (const role of ['foreground', 'secondary', 'muted', 'accent', 'danger', 'warning']) assert.ok(contrast(LIGHT_COLORS[role], background) >= 4.5, role);

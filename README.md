@@ -271,3 +271,23 @@ Shared colors live in `constants/theme.ts`. Use `useAppTheme()` for theme-aware
 `tw` styles and `colors`. Existing styles can preserve their dark utility with
 `dark:`; `color(darkColor, lightRole)` keeps an exact dark color while selecting
 a shared light palette role for inline styles and icons.
+
+Chat surfaces use the shared `chatBackground`, `chatIncoming`, `chatOutgoing`, and `chatPattern` roles. The wallpaper is a decorative SVG tile that stays behind the message list and does not intercept touches or accessibility focus. Shared input boundaries use `borderStrong`; light-mode card backgrounds, status text, and Gogo ride highlights resolve through the app theme.
+
+Global notifications use the shared Gogo toast for success, error, warning, and info messages. It follows app appearance, wraps the full message, respects system safe areas, and supports tapping, closing, or swiping to dismiss. Existing global notification helpers and modal toast hosts use the same design.
+
+### Adaptive layout
+
+Authenticated screens reserve the left, right, and bottom system safe areas in the app layout. Main navigation occupies its own layout space and switches to a rail on sufficiently wide, tall windows; screens should not add a second tab-bar spacer. Home sizes its carousel and event columns from the current window and keeps the active tab during resizing.
+
+Home scrolls its featured card with the feed and pins the tab row at the top beneath the greeting. On supported phone sizes, first scroll the active feed back to the beginning, then start a new downward pull to expand the card and bring the tabs into reach. The card follows the finger between its normal and expanded sizes and settles on release; pulling while browsing always scrolls the feed first. The featured card and Home tabs expose equivalent expand/collapse actions to screen readers without an extra visible control. Short windows and larger text keep the compact layout, and reduced motion disables the settling animation.
+
+Event details use a second column for organizer and participation actions when the safe width reaches 960 points and text scaling permits it. On narrower screens the organizer scrolls with the details and the primary action stays below the scroller. Checkout and feed sheets use actual system insets and centered width limits; creation, Impact Builder, and chat keep readable widths on larger windows. Modal forms protect their own safe areas.
+
+Carpool details, Wallet, and both Dashboards use the same 960-point detail-column threshold and return to a single column above 1.4 text scaling. Carpool keeps its phone action below the scrolling details; its tablet sidebar scrolls independently. Dashboard Quick Access occupies normal layout space below the content. Charts measure their container and update when the window changes. Wallet setup and carpool modals protect their own safe areas.
+
+The app supports rotation (`expo.orientation: default`). Installed development and release apps need a native rebuild to pick up this configuration change.
+
+Profile opens on Passes, which combines the existing owned-ticket and registration queries in one list. The profile summary scrolls with that list and its tabs remain sticky. QR access, event navigation, refresh, loading, and retry remain available. Bio editing and its route are removed; Settings no longer links to My passes.
+
+Dashboard event overview rows and event Quick Access shortcuts open the organiser detail screen (`/dashboard/:eventId`). The explicit attendee-view action on that screen opens the public event page.

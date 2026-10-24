@@ -172,8 +172,8 @@ export default function RideVibeChatCard({
       style={[
         tw`rounded-3xl border overflow-hidden`,
         {
-          backgroundColor: mascotStyle.cardBackground,
-          borderColor: mascotStyle.cardBorder,
+          backgroundColor: color(mascotStyle.cardBackground, "surface"),
+          borderColor: color(mascotStyle.cardBorder, "border"),
         },
       ]}
     >
@@ -213,7 +213,7 @@ export default function RideVibeChatCard({
         <View style={tw`flex-1 min-w-0`}>
           <View style={tw`flex-row items-center justify-between gap-2`}>
             <Text
-              style={[tw`text-xs`, { color: mascotStyle.accent }]}
+              style={[tw`text-xs`, { color: color(mascotStyle.accent, "accent") }]}
               numberOfLines={1}
             >
               {label} ride vibe
@@ -221,7 +221,7 @@ export default function RideVibeChatCard({
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
               size={16}
-              color={mascotStyle.accent}
+              color={color(mascotStyle.accent, "accent")}
             />
           </View>
 
@@ -230,14 +230,14 @@ export default function RideVibeChatCard({
               style={[
                 tw`mt-2 rounded-2xl border px-3 py-3`,
                 {
-                  backgroundColor: mascotStyle.dialogBackground,
-                  borderColor: mascotStyle.cardBorder,
+                  backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                  borderColor: color(mascotStyle.cardBorder, "border"),
                   minHeight: 74,
                 },
               ]}
             >
               <VibeTypingDialog
-                accentColor={mascotStyle.accent}
+                accentColor={color(mascotStyle.accent, "accent")}
                 onComplete={handleDialogComplete}
                 parts={activeDialogMessage}
                 textKey={`${dialogKey}:${dialogMessageIndex}:${activeDialogMessageText}`}
@@ -259,7 +259,7 @@ export default function RideVibeChatCard({
           <View
             style={[
               tw`pt-3 border-t gap-3`,
-              { borderColor: mascotStyle.cardBorder },
+              { borderColor: color(mascotStyle.cardBorder, "border") },
             ]}
           >
             <View style={tw`flex-row items-center justify-between gap-3`}>
@@ -274,13 +274,13 @@ export default function RideVibeChatCard({
               <View
                 style={[
                   tw`h-9 w-9 rounded-full items-center justify-center`,
-                  { backgroundColor: mascotStyle.dialogBackground },
+                  { backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted") },
                 ]}
               >
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={18}
-                  color={mascotStyle.accent}
+                  color={color(mascotStyle.accent, "accent")}
                 />
               </View>
             </View>
@@ -290,8 +290,8 @@ export default function RideVibeChatCard({
                 style={[
                   tw`flex-1 rounded-2xl border p-3`,
                   {
-                    backgroundColor: mascotStyle.dialogBackground,
-                    borderColor: mascotStyle.cardBorder,
+                    backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                    borderColor: color(mascotStyle.cardBorder, "border"),
                     height: 76,
                   },
                 ]}
@@ -302,7 +302,7 @@ export default function RideVibeChatCard({
                 <Text
                   style={[
                     tw`text-xs font-semibold mt-1`,
-                    { color: mascotStyle.accent },
+                    { color: color(mascotStyle.accent, "accent") },
                   ]}
                   numberOfLines={2}
                 >
@@ -313,8 +313,8 @@ export default function RideVibeChatCard({
                 style={[
                   tw`flex-1 rounded-2xl border p-3`,
                   {
-                    backgroundColor: mascotStyle.dialogBackground,
-                    borderColor: mascotStyle.cardBorder,
+                    backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                    borderColor: color(mascotStyle.cardBorder, "border"),
                     height: 76,
                   },
                 ]}
@@ -325,7 +325,7 @@ export default function RideVibeChatCard({
                 <Text
                   style={[
                     tw`text-xs font-semibold mt-1`,
-                    { color: mascotStyle.badgeBg },
+                    { color: color(mascotStyle.badgeBg, "warning") },
                   ]}
                   numberOfLines={2}
                 >
@@ -342,8 +342,8 @@ export default function RideVibeChatCard({
                 style={[
                   tw`h-12 flex-row items-center justify-center gap-2 rounded-2xl border`,
                   {
-                    backgroundColor: mascotStyle.badgeBg,
-                    borderColor: mascotStyle.badgeBg,
+                    backgroundColor: color(mascotStyle.badgeBg, "warningFill"),
+                    borderColor: color(mascotStyle.badgeBg, "warningFill"),
                   },
                 ]}
               >

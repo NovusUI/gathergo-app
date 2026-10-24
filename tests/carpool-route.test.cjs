@@ -72,6 +72,7 @@ const components = Object.fromEntries([
   ["buttons/SheetCloseButton", "Close"], ["CustomEventInfoSelector", "TimePicker"], ["CustomeTopBarNav", "Nav"], ["View", "Content"], ["buttons/CustomBtn1", "Button"], ["inputs/CustomInput1", "Input"], ["ui/AppLoader", "Loader"], ["ui/EventCard", "EventCard"], ["ui/ImpactPageLoader", "PageLoader"], ["carpool/CarpoolRouteFields", "RouteFields"],
 ].map(([path, component]) => ["@/components/" + path, { default: component }]));
 const { default: NewCarpool } = loadTypeScript("app/(app)/new-carpool.tsx", {
+  "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
   ...components, react, "react-native": native, twrnc: tw,
   "@/context/AuthContext": { useAuth: () => ({ user: { id: "driver" } }) },
   "@/hooks/useLocationManager": { useLocationManager: () => ({ coords: { lat: 6.5, lng: 3.3 }, requestLocation: async () => { locationRequests++; return { lat: 6.5, lng: 3.3 }; } }) },

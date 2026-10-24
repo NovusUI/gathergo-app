@@ -52,9 +52,9 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
 
   const getStatusColor = () => {
     const status = getExpirationStatus();
-    if (status === "expired") return "#FF5757";
-    if (status === "expiring") return "#FF932E";
-    return permission.isActive ? "#0FF1CF" : "#6B7280";
+    if (status === "expired") return color("#FF5757", "danger");
+    if (status === "expiring") return color("#FF932E", "warning");
+    return permission.isActive ? color("#0FF1CF", "accent") : color("#6B7280", "muted");
   };
 
   const getStatusText = () => {
@@ -108,7 +108,7 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
           </Text>
         </View>
         <View style={tw`ml-3 flex-1`}>
-          <Text style={tw`text-onPrimary dark:text-white font-semibold`}>
+          <Text style={tw`text-foreground dark:text-white font-semibold`}>
             {permission.scannerName || "User"}
           </Text>
           <View style={tw`flex-row items-center mt-1`}>

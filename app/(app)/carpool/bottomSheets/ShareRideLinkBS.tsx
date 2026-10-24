@@ -1,7 +1,7 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetModal,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { buildCarpoolShareLink } from "@/utils/shareLinks";
@@ -20,13 +20,15 @@ interface ShareRideLinkBSProps {
 
 const ShareRideLinkBS = forwardRef<ShareRideBSRef, ShareRideLinkBSProps>(
   ({ carpoolId }, ref) => {
-  const { tw, color } = useAppTheme();
+    const { tw, color } = useAppTheme();
+    const layout = useResponsiveLayout({ hasTabNavigation: false });
+    const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
     const snapPoints = useMemo(() => ["40%"], []);
-    const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const bottomSheetRef = useRef<BottomSheet>(null);
 
     // expose functions to parent
     useImperativeHandle(ref, () => ({
-      open: () => bottomSheetRef.current?.snapToIndex(1),
+      open: () => bottomSheetRef.current?.snapToIndex(0),
       close: () => bottomSheetRef.current?.close(),
     }));
     const handleShare = async () => {
@@ -41,6 +43,8 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef, ShareRideLinkBSProps>(
 
     return (
       <BottomSheet
+        topInset={layout.insets.top}
+        containerStyle={{ marginHorizontal: sheetMargin }}
         ref={bottomSheetRef}
         index={-1}
         snapPoints={snapPoints}
@@ -48,7 +52,7 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef, ShareRideLinkBSProps>(
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
-            disappearsOnIndex={0}
+            disappearsOnIndex={-1}
             appearsOnIndex={0}
           />
         )}

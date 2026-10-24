@@ -1,7 +1,6 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { usePressGuard } from "@/hooks/usePressGuard";
-import { pushWithLock } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
+import { pushWithLock, useLockedRouter } from "@/utils/navigation";
 import { Text, TouchableOpacity, View } from "react-native";
 
 interface Props {
@@ -33,7 +32,7 @@ const Shortcut = ({
 
     if (normalized.startsWith("events/")) {
       const eventId = normalized.split("/")[1];
-      return eventId ? `/event/${eventId}` : "/new-event";
+      return eventId ? `/dashboard/${eventId}` : "/new-event";
     }
 
     if (normalized.startsWith("dashboard/")) {
@@ -51,11 +50,13 @@ const Shortcut = ({
   return (
     <TouchableOpacity
       style={[
-        tw`p-3 rounded-full gap-2 flex-row items-center min-w-[120px]`,
+        tw`p-3 rounded-full gap-2 flex-row items-center min-w-[120px] max-w-[240px]`,
         isCurrent
           ? tw`border-2 border-warning dark:border-[#F1D417] bg-surfaceMuted dark:bg-[#1B2A50]`
           : tw`bg-surfaceMuted dark:bg-[#1B2A50]`,
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       onPress={guardedPress}
     >
       <View

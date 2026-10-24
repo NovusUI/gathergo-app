@@ -351,7 +351,7 @@ export default function GogoEventCreator({
                         maxLength={2000}
                         textAlignVertical="top"
                         style={[
-                          tw`rounded-2xl border border-border dark:border-[#34516A] bg-surface dark:bg-[#0A173F] px-4 py-4 text-base leading-6 text-foreground dark:text-white`,
+                          tw`rounded-2xl border border-borderStrong dark:border-[#34516A] bg-surface dark:bg-[#0A173F] px-4 py-4 text-base leading-6 text-foreground dark:text-white`,
                           {
                             minHeight: Math.min(
                               100,

@@ -1,15 +1,15 @@
-import { useAppTheme } from "@/hooks/useAppTheme";
-import { GatherIcon } from "@/components/gogo/tasks/badges/GatherArtwork";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
 import StatsCard from "@/components/StatCard";
 import Tab from "@/components/Tab";
 import UserEventsTab from "@/components/UserEventsTab";
-import CustomButton from "@/components/buttons/CustomBtn1";
+import UserPassesTab from "@/components/UserPassesTab";
 import BadgesExperience from "@/components/gogo/tasks/badges/BadgesExperience";
+import { GatherIcon } from "@/components/gogo/tasks/badges/GatherArtwork";
 import AppLoader from "@/components/ui/AppLoader";
-import { layoutSpacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import {
   useGetUsersEvents,
   useMyBadges,
@@ -19,19 +19,21 @@ import { useLockedRouter } from "@/utils/navigation";
 import { useFocusEffect } from "expo-router";
 import { Settings } from "lucide-react-native";
 import { useCallback, useState, type ComponentProps } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TABS = ["About", "Events", "Gather"] as const;
+const TABS = ["Passes", "Events", "Gather"] as const;
 const TAB_ICONS: ComponentProps<typeof Tab>["icon"][] = [
-  { library: "Ionicons", name: "information-circle-outline" },
+  { library: "Ionicons", name: "ticket-outline" },
   { library: "Ionicons", name: "calendar-clear-outline" },
   undefined,
 ];
 
 export default function Profile() {
   const { tw, color } = useAppTheme();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("About");
+  const { pageWidth } = useResponsiveLayout();
+  const contentWidth = Math.min(pageWidth - 40, 840);
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Passes");
   const { user } = useAuth();
   const profileQuery = useUserProfile(user?.id, { enabled: Boolean(user) });
   const profile = profileQuery.data?.data;
@@ -39,7 +41,7 @@ export default function Profile() {
   useFocusEffect(
     useCallback(() => {
       if (user?.id) void refetchBadges();
-    }, [refetchBadges, user?.id]),
+    }, [refetchBadges, user?.id])
   );
   const router = useLockedRouter();
   const {
@@ -51,8 +53,6 @@ export default function Profile() {
   } = useGetUsersEvents(user?.id, 5, { enabled: Boolean(user) });
   const events = userEvents?.pages.flatMap((page) => page.data) ?? [];
 
-  const editBio = () =>
-    router.push(user?.isProfileComplete ? "/edit-bio" : "/profile-setup");
   const summary = (
     <View style={tw`gap-3 pb-3 pt-2`}>
       <View style={tw`flex-row items-center gap-4`}>
@@ -69,7 +69,9 @@ export default function Profile() {
             onPress={() => void profileQuery.refetch()}
             style={tw`flex-1 min-h-11 items-center justify-center`}
           >
-            <Text style={tw`text-sm text-accent dark:text-[#0FF1CF]`}>Retry profile</Text>
+            <Text style={tw`text-sm text-accent dark:text-[#0FF1CF]`}>
+              Retry profile
+            </Text>
           </TouchableOpacity>
         ) : (
           <View style={tw`flex-1 items-center`}>
@@ -97,13 +99,6 @@ export default function Profile() {
           </TouchableOpacity>
         ) : null}
       </View>
-      <CustomButton
-        onPress={editBio}
-        title="Edit bio"
-        showArrow={false}
-        buttonClassName="w-full p-0 h-9 bg-surfaceMuted dark:bg-[#142344] border-0"
-        textClassName="text-foreground dark:text-white text-xs normal-case mr-0"
-      />
     </View>
   );
   const tabs = (
@@ -120,7 +115,13 @@ export default function Profile() {
           icon={TAB_ICONS[index]}
           iconContent={
             tab === "Gather" ? (
-              <GatherIcon color={activeTab === tab ? color("#01082E", "onAccent") : color("#0FF1CF", "accent")} />
+              <GatherIcon
+                color={
+                  activeTab === tab
+                    ? color("#01082E", "onAccent")
+                    : color("#0FF1CF", "accent")
+                }
+              />
             ) : undefined
           }
         />
@@ -129,8 +130,11 @@ export default function Profile() {
   );
 
   return (
-    <SafeAreaView edges={["top"]} style={tw`flex-1 bg-background dark:bg-[#01082E] px-5`}>
-      <View style={tw`w-full max-w-[500px] self-center`}>
+    <SafeAreaView
+      edges={["top"]}
+      style={tw`flex-1 bg-background dark:bg-[#01082E] px-5`}
+    >
+      <View style={[tw`w-full self-center`, { maxWidth: contentWidth }]}>
         <CustomeTopBarNav
           title={profile?.name ? `@${profile.name}` : "Profile"}
           onClickBack={() => router.replace("/")}
@@ -146,23 +150,12 @@ export default function Profile() {
           }
         />
       </View>
-      <View style={tw`w-full max-w-[500px] flex-1 self-center`}>
-        {activeTab === "About" ? (
-          <ScrollView
-            stickyHeaderIndices={[1]}
-            contentContainerStyle={{
-              paddingBottom: layoutSpacing.listBottomInset,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            {summary}
-            <View>{tabs}</View>
-            <View style={tw`py-4`}>
-              <Text style={tw`text-base leading-6 text-secondary dark:text-[#C9D5F5]`}>
-                {profile?.bio || "No bio added yet."}
-              </Text>
-            </View>
-          </ScrollView>
+      <View style={[tw`w-full flex-1 self-center`, { maxWidth: contentWidth }]}>
+        {activeTab === "Passes" ? (
+          <UserPassesTab
+            ListHeaderComponent={summary}
+            renderSectionHeader={() => tabs}
+          />
         ) : activeTab === "Events" ? (
           <UserEventsTab
             events={events}

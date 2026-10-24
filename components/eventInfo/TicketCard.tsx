@@ -116,7 +116,7 @@ const PricingCard = ({
       )}
 
       {/* Main Card */}
-      <View style={tw`bg-surface dark:bg-[#010E3A] rounded-2xl p-5 w-full max-w-md`}>
+      <View style={tw`bg-surface dark:bg-[#010E3A] border border-borderStrong dark:border-0 rounded-2xl p-5 w-full max-w-md`}>
         {/* Top Right Buttons */}
         {(isNew || isEdit) && (
           <View style={tw`absolute top-3 right-3 flex-row gap-3 z-20`}>
@@ -158,7 +158,7 @@ const PricingCard = ({
           >
             {perks && perks.length > 0 && (
               <>
-                <Text style={tw`text-teal-400 text-sm font-medium`}>
+                <Text style={tw`text-accent dark:text-teal-400 text-sm font-medium`}>
                   {showPerk ? "Show Less" : "See Perks"}
                 </Text>
                 <ChevronRight size={16} color={color("#14b8a6", "accent")} />

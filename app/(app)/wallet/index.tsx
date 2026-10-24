@@ -1,3 +1,5 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import AppRefreshControl, {
   RefreshIndicator,
@@ -596,11 +598,11 @@ const SectionCard = ({
   const { tw, color } = useAppTheme();
   const twStyle = tw.style;
   return ((
-  <CustomView
+  <CustomView className="max-w-full"
     style={twStyle("rounded-3xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#08143B] p-4")}
   >
-    <View style={tw`flex-row items-start justify-between gap-3`}>
-      <View style={tw`flex-1`}>
+    <View style={tw`flex-row flex-wrap items-start justify-between gap-3`}>
+      <View style={tw`flex-1 min-w-[140px]`}>
         <Text style={tw`text-foreground dark:text-white text-lg font-semibold`}>{title}</Text>
         {subtitle ? (
           <Text style={tw`mt-1 text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
@@ -676,7 +678,7 @@ const SetupTextInput = ({
       placeholder={placeholder}
       placeholderTextColor={color("#62749F", "muted")}
       keyboardType={keyboardType}
-      style={tw`rounded-2xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335] px-4 py-3 text-foreground dark:text-white`}
+      style={tw`rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335] px-4 py-3 text-foreground dark:text-white`}
     />
   </View>
 ));
@@ -1122,15 +1124,17 @@ const HistoryShell = ({
   const { tw } = useAppTheme();
 
   return ((
-  <View style={tw`flex-1 bg-background dark:bg-[#01082E] px-5 pt-10 pb-4`}>
+  <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E] px-5 pb-4`}>
     <CustomeTopBarNav title={title} onClickBack={onBack} />
     {children}
-  </View>
+  </SafeAreaView>
 ));
 };
 
 const WalletScreen = () => {
   const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout({ hasTabNavigation: false });
+  const inColumns = layout.detailColumns === 2;
   const twStyle = tw.style;
   const router = useLockedRouter();
   const { user } = useAuth();
@@ -1888,14 +1892,14 @@ const WalletScreen = () => {
                   banksQuery.isLoading ? "Loading banks..." : "Select bank"
                 }
                 disabled={banksQuery.isLoading}
-                style={tw`rounded-2xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
+                style={tw`rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
                 textStyle={tw`text-foreground dark:text-white`}
                 placeholderStyle={tw`text-muted dark:text-[#62749F]`}
                 dropDownContainerStyle={tw`border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
                 modalContentContainerStyle={tw`bg-background dark:bg-[#01082E] px-5 pt-10 pb-5`}
                 modalTitleStyle={tw`text-lg font-semibold text-foreground dark:text-white`}
                 searchContainerStyle={tw`border-b border-border dark:border-[#24345A] px-0 pb-4`}
-                searchTextInputStyle={tw`rounded-2xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335] px-4 py-3 text-foreground dark:text-white`}
+                searchTextInputStyle={tw`rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335] px-4 py-3 text-foreground dark:text-white`}
                 listItemContainerStyle={tw`border-b border-border dark:border-[#182857] py-3`}
                 listItemLabelStyle={tw`text-foreground dark:text-white`}
                 selectedItemContainerStyle={tw`bg-accentFill/10 dark:bg-[#0FF1CF]/10`}
@@ -1956,7 +1960,7 @@ const WalletScreen = () => {
             <View style={tw`mb-4`}>
               <FieldLabel>Verification method</FieldLabel>
               <View
-                style={tw`overflow-hidden rounded-2xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
+                style={tw`overflow-hidden rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
               >
                 <Picker
                   selectedValue={personalVerificationMode}
@@ -1972,7 +1976,7 @@ const WalletScreen = () => {
                 </Picker>
               </View>
             </View>
-            <View style={tw`flex-row gap-3`}>
+            <View style={layout.fontScale > 1.4 ? tw`gap-3` : tw`flex-row gap-3`}>
               <View style={tw`flex-1`}>
                 <SetupTextInput
                   label="First name"
@@ -2065,7 +2069,7 @@ const WalletScreen = () => {
             <View style={tw`mb-4`}>
               <FieldLabel>Representative method</FieldLabel>
               <View
-                style={tw`overflow-hidden rounded-2xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
+                style={tw`overflow-hidden rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
               >
                 <Picker
                   selectedValue={representativeVerificationMode}
@@ -2083,7 +2087,7 @@ const WalletScreen = () => {
                 </Picker>
               </View>
             </View>
-            <View style={tw`flex-row gap-3`}>
+            <View style={layout.fontScale > 1.4 ? tw`gap-3` : tw`flex-row gap-3`}>
               <View style={tw`flex-1`}>
                 <SetupTextInput
                   label="First name"
@@ -2368,7 +2372,8 @@ const WalletScreen = () => {
   }
 
   return (
-    <View style={tw`flex-1 bg-background dark:bg-[#01082E] px-5 pt-10 pb-4`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
+      <View style={{flex: 1, width: "100%", maxWidth: inColumns ? layout.pageWidth : 840, alignSelf: "center", paddingHorizontal: layout.horizontalPadding}}>
       <CustomeTopBarNav
         title="Wallet"
         onClickBack={() => safeGoBack(router, "/")}
@@ -2382,10 +2387,12 @@ const WalletScreen = () => {
             onRefresh={refetchAll}
           />
         }
-        contentContainerStyle={tw`pb-12 pt-4`}
+        contentContainerStyle={tw`pb-6 pt-4`}
       >
         <RefreshIndicator refreshing={refreshing} />
-        <CustomView
+        <View style={{flexDirection: inColumns ? "row" : "column", gap: 16}}>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
+        <CustomView className="max-w-full"
           style={twStyle(
             "rounded-[28px] border border-border dark:border-[#1D335E] bg-surface dark:bg-[#091538] p-5",
             {
@@ -2455,8 +2462,9 @@ const WalletScreen = () => {
             </TouchableOpacity>
           </View>
         </CustomView>
-
-        <CustomView style={tw`flex-row flex-wrap gap-3`}>
+          </View>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
+        <CustomView className="max-w-full" style={tw`flex-row flex-wrap gap-3`}>
           {[
             {
               label: "Available",
@@ -2488,7 +2496,8 @@ const WalletScreen = () => {
               <View
                 key={item.label}
                 style={twStyle(
-                  "min-w-[48%] flex-1 rounded-3xl border border-border dark:border-[#1E3157] bg-surface dark:bg-[#08143B] p-4"
+                  "rounded-3xl border border-border dark:border-[#1E3157] bg-surface dark:bg-[#08143B] p-4",
+                  { flexBasis: layout.fontScale > 1.4 ? "100%" : "47%", flexGrow: 1, minWidth: 0 }
                 )}
               >
                 <View style={tw`flex-row items-center justify-between`}>
@@ -2502,7 +2511,11 @@ const WalletScreen = () => {
             );
           })}
         </CustomView>
+          </View>
+        </View>
 
+        <View style={{flexDirection: inColumns ? "row" : "column", gap: 16}}>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
         <SectionCard
           title="Recent transactions"
           subtitle="Latest event collections."
@@ -2524,7 +2537,8 @@ const WalletScreen = () => {
             </Text>
           )}
         </SectionCard>
-
+          </View>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
         <SectionCard
           title="Settlement history"
           subtitle="Latest payout batches."
@@ -2543,6 +2557,8 @@ const WalletScreen = () => {
             </Text>
           )}
         </SectionCard>
+          </View>
+        </View>
       </ScrollView>
 
       <Modal
@@ -2555,7 +2571,7 @@ const WalletScreen = () => {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={tw`flex-1 bg-background dark:bg-[#01082E]`}
         >
-          <View style={tw`flex-1 px-5 pt-10 pb-4`}>
+          <SafeAreaView edges={["top", "left", "right", "bottom"]} style={tw`flex-1 w-full max-w-[720px] self-center px-5 pb-4`}>
             <View style={tw`flex-row items-center justify-between`}>
               <View>
                 <Text style={tw`text-xl font-bold text-foreground dark:text-white`}>
@@ -2572,7 +2588,8 @@ const WalletScreen = () => {
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={tw`pb-10 pt-5`}
+              contentContainerStyle={tw`pb-6 pt-5`}
+              keyboardShouldPersistTaps="handled"
             >
               <MascotMoment
                 variant={setupMascotMoment.variant}
@@ -2589,11 +2606,12 @@ const WalletScreen = () => {
               />
               {renderSetupStep()}
             </ScrollView>
-          </View>
+          </SafeAreaView>
           <AppToast />
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

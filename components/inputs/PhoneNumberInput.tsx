@@ -67,7 +67,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
     return (
       <Pressable
         onPress={() => inputRef.current?.focus()}
-        style={tw.style("mb-4 w-full max-w-96 bg-surface/40 dark:bg-[#1B2A50]/40 p-2 rounded-xl")}
+        style={tw.style("mb-4 w-full max-w-96 bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent p-2 rounded-xl")}
       >
         <View style={tw.style("flex-row items-center px-2")}>
           {/* Phone icon */}
@@ -80,7 +80,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
             selectedValue={selectedCode}
             onValueChange={(code) => setSelectedCode(code)}
             style={{ width: 60, color: color("#FFFFFF", "foreground") }}
-            dropdownIconColor="#FFFFFF"
+            dropdownIconColor={color("#FFFFFF", "foreground")}
             className="bg-transparent outline-none"
           >
             {countries.map((c) => (
@@ -96,7 +96,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
           {/* Phone Number Input */}
           <TextInput
             ref={setRefs}
-            style={tw.style("flex-1 py-3 text-foreground dark:text-white outline-none ml-2")}
+            style={tw.style("flex-1 py-3 text-foreground dark:text-white ml-2")}
             placeholder={placeholder}
             placeholderTextColor={color("#9CA3AF", "muted")}
             keyboardType="phone-pad"

@@ -1,3 +1,4 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomView from "@/components/View";
@@ -149,8 +150,8 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
           style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
+          <SafeAreaView edges={["left", "right", "bottom"]}
+            style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
           >
             <View
               style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
@@ -251,7 +252,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
                 disabled={isPending}
               />
             </View>
-          </View>
+          </SafeAreaView>
         </KeyboardAvoidingView>
       </Modal>
     );

@@ -85,10 +85,11 @@ const ChatInput = ({
           tw`w-full flex-row items-end px-2 py-2 rounded-2xl border`,
           disabled
             ? tw`bg-surfaceMuted/30 dark:bg-[#2A3A5A]/30 border-border/30 dark:border-[#455479]/30`
-            : tw`bg-background dark:bg-[#01082E] border-border dark:border-[#1B2A50]`,
+            : tw`bg-surface dark:bg-[#01082E] border-borderStrong dark:border-[#1B2A50]`,
         ]}
       >
         <TextInput
+          accessibilityLabel="Message"
           autoCapitalize="none"
           ref={inputRef}
           style={[
@@ -120,6 +121,8 @@ const ChatInput = ({
               ? tw`bg-surfaceRaised/30 dark:bg-[#455479]/30`
               : tw`bg-accentFill dark:bg-[#0FF1CF]`,
           ]}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
           onPress={handleSend}
           disabled={sending || disabled || value.trim().length === 0}
         >
@@ -132,7 +135,7 @@ const ChatInput = ({
           )}
           {sending && (
             <AppLoader
-              tone="light"
+              color={color("#FFFFFF", "foreground")}
               size={24}
               accessibilityLabel="Sending message"
             />

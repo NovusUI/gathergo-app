@@ -185,6 +185,7 @@ test("coming-soon moments select laptop Gogo at page and card sizes and respect 
 const { default: CircleScreen } = loadTypeScript(
   "app/(app)/(tabs)/circle.tsx",
   {
+    "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/gogo/mascot/MascotMoment": { MascotMoment: "Moment" },
     "@/utils/navigation": { useLockedRouter: () => ({ replace() {} }) },

@@ -100,6 +100,7 @@ const layoutState = {
 function Stack() {}
 function Redirect() {}
 const { default: AppLayout } = loadTypeScript("app/(app)/_layout.tsx", {
+  "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
   "@/context/AuthContext": { useAuth: () => layoutState },
   "@/store/auth": { useAuthStore: () => layoutState },
   "@/components/ui/AppLaunchScreen": { default: "LaunchScreen" },
@@ -136,7 +137,17 @@ test("event discovery still requires preference onboarding", () => {
 test("completed or skipped preference onboarding does not redirect users back", () => {
   layoutState.segments = ["(app)", "preference"];
   layoutState.user.hasPreferences = true;
-  assert.equal(AppLayout().type, Stack);
+  assert.equal(AppLayout().props.children.type, Stack);
+  layoutState.user.hasPreferences = false;
+});
+
+test("authenticated screens reserve the system bottom area once while leaving screen headers in charge of the top", () => {
+  layoutState.user.hasPreferences = true;
+  layoutState.segments = ["(app)", "(tabs)"];
+  const page = AppLayout();
+  assert.equal(page.type, "SafeArea");
+  assert.deepEqual(page.props.edges, ["left", "right", "bottom"]);
+  assert.equal(page.props.children.type, Stack);
   layoutState.user.hasPreferences = false;
 });
 
@@ -155,6 +166,7 @@ const onboardingUser = { id: "user-1", fullName: "Ada Example", email: "ada@exam
 const emptyProfile = { interests: [], helpModes: [], city: null, learningEnabled: false, weights: [] };
 const preferenceState = { user: onboardingUser, values: [], cursor: 0, saved: [], navigations: [], errors: [], pending: false, loading: false };
 const { default: PreferencesScreen } = loadTypeScript("app/(app)/preference/index.tsx", {
+  "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
   "@/components/gogo/tasks/interestMap/GogoInterestSetup": { GogoInterestSetup },
   "@/components/gogo/tasks/interestMap/InterestMap": { InterestMap: "InterestMap" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },

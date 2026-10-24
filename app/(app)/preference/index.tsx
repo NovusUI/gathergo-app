@@ -1,3 +1,4 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { getApiErrorMessage } from "@/utils/apiError";
 import { GogoInterestSetup } from "@/components/gogo/tasks/interestMap/GogoInterestSetup";
@@ -91,14 +92,14 @@ export default function PreferencesScreen() {
   ) : null;
   if (catalog.isPending || profile.isPending)
     return (
-      <View style={tw`flex-1 bg-background dark:bg-[#01082E] pt-12`}>
+      <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>
         <ImpactPageLoader title="Finding what fits you" />
         {skipSetup}
-      </View>
+      </SafeAreaView>
     );
   if (catalog.isError || profile.isError)
     return (
-      <View style={tw`flex-1 bg-background dark:bg-[#01082E] px-5 justify-center gap-5`}>
+      <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E] px-5 justify-center gap-5`}>
         <MascotMoment
           variant="error"
           layout="stacked"
@@ -116,10 +117,10 @@ export default function PreferencesScreen() {
           buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full"
         />
         {skipSetup}
-      </View>
+      </SafeAreaView>
     );
   return (
-    <View style={tw`flex-1 bg-background dark:bg-[#01082E] pt-12`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>
       {editing ? (
         <GogoInterestSetup
           catalog={catalog.data.data}
@@ -253,6 +254,6 @@ export default function PreferencesScreen() {
           </ScrollView>
         </>
       )}
-    </View>
+    </SafeAreaView>
   );
 }

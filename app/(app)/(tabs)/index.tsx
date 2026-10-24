@@ -1,3 +1,5 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useHomeReachability } from "@/hooks/useHomeReachability";
 import type { ThemeColor } from "@/constants/theme";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { PostEventSurveyPrompt } from "@/components/gogo/tasks/interestMap/PostEventSurveyPrompt";
@@ -19,9 +21,9 @@ import {
 } from "@/services/queries";
 import { useLockedRouter } from "@/utils/navigation";
 import { formatBadgeCount } from "@/utils/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
+  type AccessibilityActionEvent,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -36,9 +38,10 @@ import { useLocationManager } from "@/hooks/useLocationManager";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useUnreadCounts } from "@/hooks/useSocketReactHook";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { GestureDetector } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
-const { width } = Dimensions.get("window");
-const bannerPageWidth = Math.min(width, 500);
 
 const HOME_BANNER_ICON_NAMES = new Set([
   "calendar-outline",
@@ -77,6 +80,28 @@ const getBannerIconName = (card: Pick<HomeAdCard, "key" | "icon">) => {
 
 export default function HomeScreen() {
   const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout();
+  const bannerChromeHeight = 32;
+  const reach = useHomeReachability(layout.bannerHeight + bannerChromeHeight, layout.reachExpansion);
+  const { headerHeight } = reach;
+  const bannerStyle = useAnimatedStyle(() => ({
+    height: headerHeight.value - bannerChromeHeight,
+  }));
+  const bannerBodyStyle = useAnimatedStyle(() => {
+    const progress = layout.reachExpansion > 0
+      ? Math.max(0, Math.min(1, (headerHeight.value - layout.bannerHeight - bannerChromeHeight) / layout.reachExpansion))
+      : 0;
+    return { maxHeight: 16 * layout.fontScale * (1 + 2 * progress) };
+  });
+  const headerActions = layout.reachExpansion > 0 ? [{
+    name: reach.expanded ? "collapseHeader" : "expandHeader",
+    label: reach.expanded ? "Collapse Home header" : "Expand Home header",
+  }] : [];
+  const onHeaderAccessibilityAction = ({ nativeEvent }: AccessibilityActionEvent) => {
+    if (nativeEvent.actionName === (reach.expanded ? "collapseHeader" : "expandHeader")) reach.toggle();
+  };
+  const bannerPageWidth = layout.pageWidth;
+  const carouselRef = useRef<ScrollView>(null);
   const styles = createStyles(color);
   const { requestLocation } = useLocationManager();
   const { data } = useUnreadCounts();
@@ -92,6 +117,9 @@ export default function HomeScreen() {
   ] as const;
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>(tabs[0]);
   const [bannerIndex, setBannerIndex] = useState(0);
+  useEffect(() => {
+    carouselRef.current?.scrollTo({ x: bannerIndex * bannerPageWidth, animated: false });
+  }, [bannerPageWidth, bannerIndex]);
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
 
@@ -201,240 +229,268 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[tw`flex-1 bg-background dark:bg-[#030A31] items-center`, styles.screen]}>
-      {/* Header */}
-      <View
-        style={[
-          tw`flex-row justify-between items-center w-full max-w-[500px]`,
-          styles.header,
-        ]}
-      >
-        <Text style={tw`text-foreground dark:text-white`}>{`Hello ${displayName} 😊`}</Text>
-        <View style={tw`flex-row items-center justify-between`}>
-          <TouchableOpacity
-            style={[tw`relative`, styles.headerIconButton]}
-            onPress={() => router.push("/notifications")}
-          >
-            <Ionicons
-              size={30}
-              color={color("white", "foreground")}
-              name={unreadCount > 0 ? "heart" : "heart-outline"}
-            />
-            {unreadCount > 0 && (
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>
-                  {notificationBadgeLabel}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={tw`relative`}
-            onPress={() => router.push("/conversations")}
-          >
-            <Ionicons
-              size={30}
-              color={color("white", "foreground")}
-              name={hasUnreadMessages ? "chatbubble" : "chatbubble-outline"}
-            />
-            {hasUnreadMessages && (
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>{messageBadgeLabel}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView
-        style={[tw`w-full max-w-[500px]`, styles.scroll]}
-        contentContainerStyle={styles.scrollContent}
-        stickyHeaderIndices={[1]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.bannerWrap}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleBannerScrollEnd}
-          >
-            {bannerCards.map((card) => (
-              <View key={card.key} style={styles.bannerSlide}>
-                <TouchableOpacity
-                  activeOpacity={0.92}
-                  style={styles.bannerCard}
-                  onPress={card.onPress}
-                >
-                  {card.variant === "image" ? (
-                    card.imageUrl ? (
-                      <Image
-                        source={{ uri: card.imageUrl }}
-                        style={styles.bannerImageCard}
-                      />
-                    ) : (
-                      <View style={styles.bannerImageCardFallback}>
-                        <GgCircleArtwork width="100%" height="100%" />
-                      </View>
-                    )
-                  ) : (
-                    <>
-                      <View style={styles.bannerBadge}>
-                        <Text style={styles.bannerBadgeText}>{card.eyebrow}</Text>
-                      </View>
-                      <Text numberOfLines={2} style={styles.bannerTitle}>
-                        {card.title}
-                      </Text>
-                      <Text numberOfLines={1} style={styles.bannerBody}>
-                        {card.body}
-                      </Text>
-                      <View style={styles.bannerFooter}>
-                        <Text style={styles.bannerCta}>{card.cta}</Text>
-                        {renderBannerAccent(card)}
-                      </View>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-          <View style={styles.bannerDots}>
-            {bannerCards.map((card, index) => (
-              <View
-                key={card.key}
-                style={[
-                  styles.bannerDot,
-                  index === bannerIndex && styles.bannerDotActive,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-        <View>
-          <View
-            style={[tw`flex-row justify-between w-full max-w-[500px]`, styles.tabs]}
-          >
-            {tabs.map((tab, index) => (
-              <Tab
-                key={tab}
-                className="px-1 gap-x-1"
-                title={tab}
-                isActive={activeTab === tab}
-                onPress={() => setActiveTab(tab)}
-                icon={tabsIcons[index]}
-                iconContent={
-                  tab === "Gogo picks" ? (
-                    <GatherGoMascot
-                      size={22}
-                      animated={false}
-                      showBadge={false}
-                      style={tw`rounded-full bg-background dark:bg-[#01082E]`}
-                    />
-                  ) : undefined
-                }
-              />
-            ))}
-          </View>
-        </View>
-        <View style={styles.listSection}>
-          {activeTab === "Gogo picks" &&
-            (loading ? (
-              <ImpactPageLoader
-                compact
-                title="Finding your next event"
-                message="Finding events that match your interests."
-              />
-            ) : events?.data?.length ? (
-              <View style={styles.listGroup}>
-                {events.data.map((event: any) => (
-                  <EventCard
-                    key={event.id}
-                    id={event.id}
-                    title={event.title}
-                    description={event.description}
-                    location={event.location}
-                    thumbnailUrl={event.thumbnailUrl}
-                    imageUrl={event.imageUrl}
-                    onPress={() => router.replace(`/event/${event.id}`)}
-                    registrationType={event.registrationType}
-                    registrationFee={event.registrationFee}
-                    donationTarget={event.donationTarget}
-                    lowestTicketPrice={event.lowestTicketPrice}
-                    startDate={event.startDate}
-                    impactTitle={event.impactTitle}
-                    impactDescription={event.impactDescription}
-                    impactSdgGoals={event.impactSdgGoals}
-                    impactPaths={event.impactPaths}
-                    impactCommitments={event.impactCommitments}
-                    impactMapSource={event.impactMapSource}
-                    tags={event.tags}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={tw`text-muted dark:text-gray-400 text-center`}>
-                No events found.
-              </Text>
-            ))}
-
-          {activeTab === "Carpool" &&
-            (pendingCarpoolData ? (
-              <ImpactPageLoader
-                compact
-                title="Mapping nearby rides"
-                message="Finding carpools connected to your event world."
-              />
-            ) : carpoolsForYou?.data.length ? (
-              <View style={styles.listGroup}>
-                {carpoolsForYou.data.map((carpool: any) => (
-                  <CarpoolCard
-                    key={carpool.id}
-                    id={carpool.id}
-                    pickupLocation={carpool.origin}
-                    title={carpool.event.title}
-                    imageUrl={carpool.event.imageUrl}
-                    thumbnailUrl={carpool.event.thumbnailUrl}
-                    startDate={carpool.event.startDate}
-                    departureTime={carpool.departureTime}
-                    availableSeats={carpool.availableSeats}
-                    pricePerSeat={carpool.pricePerSeat}
-                    vehicleIcon={carpool.vehicleIcon}
-                    poolerUsername={carpool.driver?.username}
-                    onPress={() => router.push(`/carpool/${carpool.id}`)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={tw`text-muted dark:text-gray-400 text-center`}>
-                No carpool found for you.
-              </Text>
-            ))}
-
-          {activeTab === "Circle" && (
+    <GestureDetector gesture={reach.panGesture}>
+      <SafeAreaView edges={["top"]} style={[tw`flex-1 bg-background dark:bg-[#030A31] items-center`, styles.screen]}>
+        {/* Header */}
+        <View
+          style={[
+            tw`flex-row justify-between items-center w-full`,
+            styles.header,
+            { maxWidth: layout.pageWidth, paddingHorizontal: layout.horizontalPadding },
+          ]}
+        >
+          <Text numberOfLines={1} style={tw`flex-1 mr-2 text-foreground dark:text-white`}>{`Hello ${displayName} 😊`}</Text>
+          <View style={tw`flex-row items-center justify-between`}>
             <TouchableOpacity
-              style={styles.circleBanner}
-              onPress={() => router.push("/circle")}
-              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+              style={[tw`relative h-11 w-11 items-center justify-center`, styles.headerIconButton]}
+              onPress={() => router.push("/notifications")}
             >
-              <MascotMoment
-                artwork="comingSoon"
-                layout="stacked"
-                compact
-                title="Circle is coming soon"
-                message="A place for your people is on its way. I'll meet you here."
+              <Ionicons
+                size={30}
+                color={color("white", "foreground")}
+                name={unreadCount > 0 ? "heart" : "heart-outline"}
               />
+              {unreadCount > 0 && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.headerBadgeText}>
+                    {notificationBadgeLabel}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
-          )}
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Conversations"
+              style={tw`relative h-11 w-11 items-center justify-center`}
+              onPress={() => router.push("/conversations")}
+            >
+              <Ionicons
+                size={30}
+                color={color("white", "foreground")}
+                name={hasUnreadMessages ? "chatbubble" : "chatbubble-outline"}
+              />
+              {hasUnreadMessages && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.headerBadgeText}>{messageBadgeLabel}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </ScrollView>
-      <PostEventSurveyPrompt />
-    </View>
+
+        <GestureDetector gesture={reach.scrollGesture}>
+          <Animated.ScrollView
+            style={[tw`w-full`, styles.scroll, { maxWidth: layout.pageWidth }]}
+            contentContainerStyle={styles.scrollContent}
+            stickyHeaderIndices={[1]}
+            onScroll={reach.scrollHandler}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View
+              style={[{ width: "100%", maxWidth: layout.pageWidth, overflow: "hidden" }, reach.headerStyle]}
+            >
+              <View style={styles.bannerWrap}>
+                <ScrollView
+                  ref={carouselRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={handleBannerScrollEnd}
+                >
+                  {bannerCards.map((card) => (
+                    <View key={card.key} style={{ width: bannerPageWidth }}>
+                      <Animated.View style={bannerStyle}>
+                        <TouchableOpacity
+                          activeOpacity={0.92}
+                          accessibilityRole="button"
+                          accessibilityLabel={card.variant === "image" ? "Open featured event" : card.title}
+                          accessibilityActions={headerActions}
+                          onAccessibilityAction={onHeaderAccessibilityAction}
+                          style={[styles.bannerCard, { height: "100%", marginHorizontal: layout.horizontalPadding }]}
+                          onPress={card.onPress}
+                        >
+                          {card.variant === "image" ? (
+                            card.imageUrl ? (
+                              <Image
+                                source={{ uri: card.imageUrl }}
+                                style={styles.bannerImageCard}
+                              />
+                            ) : (
+                              <View style={styles.bannerImageCardFallback}>
+                                <GgCircleArtwork width="100%" height="100%" />
+                              </View>
+                            )
+                          ) : (
+                            <View style={styles.bannerContent}>
+                              <View style={styles.bannerBadge}>
+                                <Text style={styles.bannerBadgeText}>{card.eyebrow}</Text>
+                              </View>
+                              <Text numberOfLines={2} style={styles.bannerTitle}>
+                                {card.title}
+                              </Text>
+                              <Animated.View style={[styles.bannerDescription, bannerBodyStyle]}>
+                                <Text numberOfLines={3} style={styles.bannerBody}>
+                                  {card.body}
+                                </Text>
+                              </Animated.View>
+                              <View style={styles.bannerFooter}>
+                                <Text style={styles.bannerCta}>{card.cta}</Text>
+                                {renderBannerAccent(card)}
+                              </View>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </Animated.View>
+                    </View>
+                  ))}
+                </ScrollView>
+                <View style={styles.bannerDots}>
+                  {bannerCards.map((card, index) => (
+                    <View
+                      key={card.key}
+                      style={[
+                        styles.bannerDot,
+                        index === bannerIndex && styles.bannerDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
+            </Animated.View>
+            <View>
+              <View
+                style={[tw`flex-row justify-between w-full`, styles.tabs, { maxWidth: layout.pageWidth, paddingHorizontal: layout.horizontalPadding }]}
+              >
+                {tabs.map((tab, index) => (
+                  <Tab
+                    key={tab}
+                    className="flex-1 px-1 gap-x-1"
+                    accessibilityActions={headerActions}
+                    onAccessibilityAction={onHeaderAccessibilityAction}
+                    title={tab}
+                    isActive={activeTab === tab}
+                    onPress={() => setActiveTab(tab)}
+                    icon={tabsIcons[index]}
+                    iconContent={
+                      tab === "Gogo picks" ? (
+                        <GatherGoMascot
+                          size={22}
+                          animated={false}
+                          showBadge={false}
+                          style={tw`rounded-full bg-background dark:bg-[#01082E]`}
+                        />
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </View>
+            </View>
+            <View style={[styles.listSection, { paddingHorizontal: layout.horizontalPadding }]}>
+              {activeTab === "Gogo picks" &&
+                (loading ? (
+                  <ImpactPageLoader
+                    compact
+                    title="Finding your next event"
+                    message="Finding events that match your interests."
+                  />
+                ) : events?.data?.length ? (
+                  <View style={[styles.listGroup, { flexDirection: "row", flexWrap: "wrap", gap: layout.columnGap }]}>
+                    {events.data.map((event: any) => (
+                      <View key={event.id} style={{ width: layout.cardWidth }}>
+                        <EventCard
+                          id={event.id}
+                          title={event.title}
+                          description={event.description}
+                          location={event.location}
+                          thumbnailUrl={event.thumbnailUrl}
+                          imageUrl={event.imageUrl}
+                          onPress={() => router.replace(`/event/${event.id}`)}
+                          registrationType={event.registrationType}
+                          registrationFee={event.registrationFee}
+                          donationTarget={event.donationTarget}
+                          lowestTicketPrice={event.lowestTicketPrice}
+                          startDate={event.startDate}
+                          impactTitle={event.impactTitle}
+                          impactDescription={event.impactDescription}
+                          impactSdgGoals={event.impactSdgGoals}
+                          impactPaths={event.impactPaths}
+                          impactCommitments={event.impactCommitments}
+                          impactMapSource={event.impactMapSource}
+                          tags={event.tags}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={tw`text-muted dark:text-gray-400 text-center`}>
+                    No events found.
+                  </Text>
+                ))}
+
+              {activeTab === "Carpool" &&
+                (pendingCarpoolData ? (
+                  <ImpactPageLoader
+                    compact
+                    title="Mapping nearby rides"
+                    message="Finding carpools connected to your event world."
+                  />
+                ) : carpoolsForYou?.data.length ? (
+                  <View style={[styles.listGroup, { flexDirection: "row", flexWrap: "wrap", gap: layout.columnGap }]}>
+                    {carpoolsForYou.data.map((carpool: any) => (
+                      <View key={carpool.id} style={{ width: layout.cardWidth }}>
+                        <CarpoolCard
+                          id={carpool.id}
+                          pickupLocation={carpool.origin}
+                          title={carpool.event.title}
+                          imageUrl={carpool.event.imageUrl}
+                          thumbnailUrl={carpool.event.thumbnailUrl}
+                          startDate={carpool.event.startDate}
+                          departureTime={carpool.departureTime}
+                          availableSeats={carpool.availableSeats}
+                          pricePerSeat={carpool.pricePerSeat}
+                          vehicleIcon={carpool.vehicleIcon}
+                          poolerUsername={carpool.driver?.username}
+                          onPress={() => router.push(`/carpool/${carpool.id}`)}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={tw`text-muted dark:text-gray-400 text-center`}>
+                    No carpool found for you.
+                  </Text>
+                ))}
+
+              {activeTab === "Circle" && (
+                <TouchableOpacity
+                  style={styles.circleBanner}
+                  onPress={() => router.push("/circle")}
+                  activeOpacity={0.85}
+                >
+                  <MascotMoment
+                    artwork="comingSoon"
+                    layout="stacked"
+                    compact
+                    title="Circle is coming soon"
+                    message="A place for your people is on its way. I'll meet you here."
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.ScrollView>
+        </GestureDetector>
+        <PostEventSurveyPrompt />
+      </SafeAreaView>
+    </GestureDetector>
   );
 }
 
 const createStyles = (color: ThemeColor) => StyleSheet.create({
   screen: {
-    paddingTop: layoutSpacing.pageTop,
+    paddingTop: spacing.sm,
     paddingBottom: layoutSpacing.pageBottom,
   },
   header: {
@@ -463,10 +519,6 @@ const createStyles = (color: ThemeColor) => StyleSheet.create({
   bannerWrap: {
     marginTop: spacing.lg,
     width: "100%",
-    maxWidth: 500,
-  },
-  bannerSlide: {
-    width: bannerPageWidth,
   },
   bannerCard: {
     marginHorizontal: layoutSpacing.pageHorizontal,
@@ -475,16 +527,25 @@ const createStyles = (color: ThemeColor) => StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     padding: 10,
-    minHeight: 124,
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  bannerContent: {
+    gap: spacing.xs,
+  },
+  bannerDescription: {
+    overflow: "hidden",
   },
   bannerImageCard: {
     width: "100%",
-    height: 102,
+    flex: 1,
+    minHeight: 0,
     borderRadius: 12,
   },
   bannerImageCardFallback: {
     width: "100%",
-    height: 102,
+    flex: 1,
+    minHeight: 0,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -494,7 +555,6 @@ const createStyles = (color: ThemeColor) => StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    marginBottom: spacing.xs,
   },
   bannerBadgeText: {
     color: color("#01082E", "onAccent"),
@@ -506,13 +566,11 @@ const createStyles = (color: ThemeColor) => StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     lineHeight: 18,
-    marginBottom: spacing.xs,
   },
   bannerBody: {
     color: color("#CBD8FF", "foreground"),
     fontSize: 12,
     lineHeight: 16,
-    marginBottom: spacing.xs,
   },
   bannerFooter: {
     flexDirection: "row",

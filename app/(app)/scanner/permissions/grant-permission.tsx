@@ -205,7 +205,7 @@ const GrantPermission = () => {
 
             {/* Search Input */}
             <View
-              style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl px-4 py-3 flex-row items-center mb-6`}
+              style={tw`bg-surfaceMuted dark:bg-[#1B2A50] border border-borderStrong dark:border-transparent rounded-xl px-4 py-3 flex-row items-center mb-6`}
             >
               <Search size={20} color={color("#5669FF", "primary")} />
               <TextInput

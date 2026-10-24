@@ -1,3 +1,4 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 // app/_layout.tsx
 import { usePressGuard } from "@/hooks/usePressGuard";
@@ -9,7 +10,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 
 import { Stack, usePathname, useRouter } from "expo-router";
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useRef, type ReactNode } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 type TabItem = {
@@ -20,12 +21,12 @@ type TabItem = {
 
 export default function RootLayout() {
   const { tw, color } = useAppTheme();
+  const { useNavigationRail, navigationRailWidth } = useResponsiveLayout();
   const pathname = usePathname();
   const router = useRouter();
 
   // Bottom sheet setup
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["34%"], []);
   const openSheet = useCallback(() => {
     bottomSheetRef.current?.snapToIndex(0);
   }, []);
@@ -73,73 +74,91 @@ export default function RootLayout() {
     },
   ];
 
-  return (
-    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: color("#01082E", "background") },
-          animation: "fade",
-        }}
-      />
+  const navigation = (
+    <View
+      accessibilityRole="tablist"
+      accessibilityLabel="Main navigation"
+      style={[
+        tw`bg-background dark:bg-[#01082E] border-border dark:border-gray-800`,
+        useNavigationRail
+          ? { width: navigationRailWidth, justifyContent: "center", gap: 12, borderRightWidth: 1, paddingVertical: 16 }
+          : { flexDirection: "row", justifyContent: "space-around", paddingVertical: 8, borderTopWidth: 1 },
+      ]}
+    >
+      {tabs.map((tab) => {
+        const href = tab.href;
+        const isActive = pathname === href;
+        const iconColor = isActive ? color("#0FF1CF", "accent") : color("white", "foreground");
 
-      {/* Bottom Nav */}
-      <View
-        style={tw`absolute bottom-0 left-0 right-0 flex-row justify-around bg-background dark:bg-[#01082E] py-4 border-t border-border dark:border-gray-800`}
-      >
-        {tabs.map((tab) => {
-          const isActive = pathname === tab.href;
-          const iconColor = isActive ? color("#0FF1CF", "accent") : color("white", "foreground");
-
-          if (!tab.href) {
-            return (
-              <TouchableOpacity
-                key={tab.name}
-                style={tw`items-center`}
-                onPress={guardedOpenSheet}
-              >
-                {tab.icon(iconColor)}
-                <Text style={tw`text-xs text-foreground dark:text-white`}>{tab.name}</Text>
-              </TouchableOpacity>
-            );
-          }
-
+        if (!href) {
           return (
             <TouchableOpacity
               key={tab.name}
-              style={tw`items-center`}
-              onPress={() => replaceWithLock(router, tab.href)}
+              accessibilityRole="button"
+              accessibilityLabel="Create event or carpool"
+              style={tw`min-h-12 items-center justify-center px-2 py-1`}
+              onPress={guardedOpenSheet}
             >
               {tab.icon(iconColor)}
-              <Text
-                style={tw`${
-                  isActive ? "text-accent dark:text-[#0FF1CF]" : "text-foreground dark:text-white"
-                } text-xs`}
-              >
-                {tab.name}
-              </Text>
+              <Text style={tw`text-xs text-foreground dark:text-white`}>{tab.name}</Text>
             </TouchableOpacity>
           );
-        })}
+        }
+
+        return (
+          <TouchableOpacity
+            key={tab.name}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.name}
+            accessibilityState={{ selected: isActive }}
+            style={tw`min-h-12 items-center justify-center px-2 py-1`}
+            onPress={() => replaceWithLock(router, href)}
+          >
+            {tab.icon(iconColor)}
+            <Text
+              style={tw`${
+                isActive ? "text-accent dark:text-[#0FF1CF]" : "text-foreground dark:text-white"
+              } text-xs`}
+            >
+              {tab.name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
+  return (
+    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { flexDirection: useNavigationRail ? "row" : "column" }]}>
+      {useNavigationRail ? navigation : null}
+      <View key="routes" style={tw`flex-1`}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: color("#01082E", "background") },
+            animation: "fade",
+          }}
+        />
       </View>
+      {useNavigationRail ? null : navigation}
 
       {/* Add Tab Bottom Sheet */}
       <BottomSheet
         index={-1}
         ref={bottomSheetRef}
-        snapPoints={snapPoints}
+        enableDynamicSizing
         enablePanDownToClose
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
-            disappearsOnIndex={0}
-            appearsOnIndex={1}
+            disappearsOnIndex={-1}
+            appearsOnIndex={0}
           />
         )}
         backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <BottomSheetScrollView style={tw`px-5`}>
-          <View style={tw`p-5 gap-4`}>
+          <View style={tw`w-full max-w-[560px] self-center p-5 gap-4`}>
             <TouchableOpacity
               style={tw`rounded-3xl bg-surface dark:bg-[#101C45] p-5`}
               onPress={guardedCreateEvent}

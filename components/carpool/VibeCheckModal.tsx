@@ -90,8 +90,8 @@ export default function VibeCheckModal({
           style={[
             tw`w-full max-w-[430px] max-h-[88%] rounded-[28px] border overflow-hidden`,
             {
-              backgroundColor: mascotStyle.cardBackground,
-              borderColor: mascotStyle.cardBorder,
+              backgroundColor: color(mascotStyle.cardBackground, "surface"),
+              borderColor: color(mascotStyle.cardBorder, "border"),
             },
           ]}
         >
@@ -123,7 +123,7 @@ export default function VibeCheckModal({
               />
               <View style={tw`flex-1 min-w-0`}>
                 <Text
-                  style={[tw`text-xs`, { color: mascotStyle.accent }]}
+                  style={[tw`text-xs`, { color: color(mascotStyle.accent, "accent") }]}
                   numberOfLines={1}
                 >
                   {rideLabel} vibe-check
@@ -141,8 +141,8 @@ export default function VibeCheckModal({
               style={[
                 tw`rounded-3xl border p-4 gap-2`,
                 {
-                  backgroundColor: mascotStyle.dialogBackground,
-                  borderColor: mascotStyle.cardBorder,
+                  backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                  borderColor: color(mascotStyle.cardBorder, "border"),
                 },
               ]}
             >
@@ -150,7 +150,7 @@ export default function VibeCheckModal({
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={17}
-                  color={mascotStyle.accent}
+                  color={color(mascotStyle.accent, "accent")}
                 />
                 <Text style={tw`text-foreground dark:text-white text-sm font-semibold`}>
                   {safetyCopy.primarySignalLabel}
@@ -159,7 +159,7 @@ export default function VibeCheckModal({
               <Text
                 style={[
                   tw`text-sm font-semibold`,
-                  { color: mascotStyle.badgeBg },
+                  { color: color(mascotStyle.badgeBg, "warning") },
                 ]}
               >
                 {currentSignal}

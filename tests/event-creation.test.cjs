@@ -669,6 +669,7 @@ const uiFormHooks = {
   }),
 };
 const { default: NewEvent } = loadTypeScript("app/(app)/new-event.tsx", {
+  "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
   ...uiComponents,
   "@/components/gogo/tasks/eventCreation/GogoEventCreator": { default: "GogoCreator" },
   react,

@@ -11,7 +11,19 @@ const one = (root, type) => [...nodes(root)].find(node => node.type === type);
 const text = root => [...nodes(root)].flatMap(node => [node.props.children].flat(Infinity).filter(value => typeof value === 'string' || typeof value === 'number')).join('');
 const tw = strings => ({ classes: strings.join('') });
 const state = { tab: 'Gogo picks', bannerIndex: 0, cursor: 0, routes: [] };
+const { getAdaptiveLayout } = loadTypeScript('utils/layout.ts');
+let homeWidth = 390, homeHeight = 751, homeExpanded = false, homePullProgress = 0;
+const homeLayout = () => ({ ...getAdaptiveLayout(homeWidth, homeHeight, 1), fontScale: 1 });
 const { default: Home } = loadTypeScript('app/(app)/(tabs)/index.tsx', {
+  '@/hooks/useResponsiveLayout': { useResponsiveLayout: homeLayout },
+  '@/hooks/useHomeReachability': { useHomeReachability: (restingHeight, maxExpansion) => ({
+    headerHeight: { value: restingHeight + (homeExpanded ? maxExpansion : homePullProgress * maxExpansion) },
+    headerStyle: { height: restingHeight + (homeExpanded ? maxExpansion : homePullProgress * maxExpansion) },
+    expanded: homeExpanded, panGesture: 'home-pan', scrollGesture: 'feed-scroll', scrollHandler: 'feed-offset-handler', toggle() { homeExpanded = !homeExpanded; },
+  }) },
+  'react-native-safe-area-context': { SafeAreaView: 'SafeArea' },
+  'react-native-gesture-handler': { GestureDetector: 'Detector' },
+  'react-native-reanimated': { default: { View: 'AnimatedView', ScrollView: 'Scroll' }, useAnimatedStyle: fn => fn() },
   '@/components/gogo/tasks/interestMap/PostEventSurveyPrompt': { PostEventSurveyPrompt: 'Survey' },
   '@/components/Tab': { default: 'Tab' },
   '@/components/gogo/mascot/GatherGoMascot': { GatherGoMascot: 'Gogo' },
@@ -30,28 +42,33 @@ const { default: Home } = loadTypeScript('app/(app)/(tabs)/index.tsx', {
   '@/hooks/useNotifications': { useNotifications: () => ({ unreadCount: 0 }) },
   '@/hooks/useSocketReactHook': { useUnreadCounts: () => ({ data: { totalUnread: 0 } }) },
   '@expo/vector-icons': { Ionicons: 'Icon' },
-  react: { useEffect() {}, useState: () => {
+  react: { useRef: current => ({ current }), useEffect() {}, useState: () => {
     const key = state.cursor++ === 0 ? 'tab' : 'bannerIndex';
     return [state[key], next => { state[key] = next; }];
   } },
-  'react-native': { Dimensions: { get: () => ({ width: 390 }) }, StyleSheet: { create: value => value }, ScrollView: 'Scroll', View: 'View', Text: 'Text', TouchableOpacity: 'Button', Image: 'Image' },
+  'react-native': { Animated: { View: 'AnimatedView', add: (a, b) => a + b }, Dimensions: { get: () => ({ width: 390 }) }, StyleSheet: { create: value => value }, ScrollView: 'Scroll', View: 'View', Text: 'Text', TouchableOpacity: 'Button', Image: 'Image' },
   twrnc: { default: tw },
 });
 function home() { state.cursor = 0; return Home(); }
+function mainScroll(page) { return [...nodes(page)].find(node => node.type === 'Scroll' && !node.props.horizontal); }
+function carouselFor(page) { return [...nodes(page)].find(node => node.type === 'Scroll' && node.props.horizontal); }
 function stickyRow(page) {
-  const scroll = one(page, 'Scroll');
-  const stickyChild = scroll.props.children[scroll.props.stickyHeaderIndices[0]];
-  return [...nodes(React.cloneElement(stickyChild, { style: { flex: 1 } }))].find(node => node.props.style?.some?.(style => style?.classes?.includes('flex-row')));
+  return [...nodes(page)].find(node => node.type === 'View' && [node.props.children].flat().some(child => child?.type === 'Tab'));
 }
-test('Home scrolls its compact carousel away while preserving a horizontal native sticky tab row', () => {
+test('Home scrolls its two-size card away and keeps the horizontal tab row in a native sticky header', () => {
   state.tab = 'Gogo picks';
-  const page = home(), scroll = one(page, 'Scroll');
-  assert.deepEqual(scroll.props.stickyHeaderIndices, [1]);
-  const carousel = one(scroll.props.children[0], 'Scroll');
-  assert.equal(carousel.props.horizontal, true);
-  assert.equal(one(carousel, 'Button').props.style.minHeight, 124);
+  const page = home(), scroll = mainScroll(page), carousel = carouselFor(page);
+  assert.equal(one(carousel, 'AnimatedView').props.style.height, 124);
   assert.equal([...nodes(stickyRow(page))].filter(node => node.type === 'Tab').length, 3);
+  assert.deepEqual(scroll.props.stickyHeaderIndices, [1]);
+  assert.strictEqual(carouselFor(scroll.props.children[0]), carousel);
+  const sticky = scroll.props.children[1];
+  const cloned = React.cloneElement(sticky, {style: {flex: 1}});
+  assert.equal([...nodes(stickyRow(cloned))].filter(node => node.type === 'Tab').length, 3);
   assert.ok(one(scroll.props.children[2], 'Event'));
+  assert.equal(page.props.gesture, 'home-pan');
+  assert.equal([...nodes(page)].find(node => node.props.gesture === 'feed-scroll').props.children, scroll);
+  assert.equal(scroll.props.onScroll, 'feed-offset-handler');
   carousel.props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 390 } } });
   assert.equal(state.bannerIndex, 1);
 });
@@ -65,6 +82,63 @@ test('Home tab changes and event, ride, Circle, notification and message routes 
   circle.props.onPress();
   for (const button of [...nodes(home())].filter(node => node.type === 'Button' && one(node, 'Icon')).slice(0, 2)) button.props.onPress();
   assert.deepEqual(state.routes, ['/event/event-1', '/carpool/ride-1', '/circle', '/notifications', '/conversations']);
+});
+test('Home reflows cards and carousel pages on unfolding without changing the active tab', () => {
+  try {
+    state.tab = 'Carpool'; homeWidth = 1200;
+    let page = home();
+    const carousel = [...nodes(page)].find(node => node.type === 'Scroll' && node.props.horizontal);
+    assert.equal(carousel.props.children[0].props.style.width, homeLayout().pageWidth);
+    assert.equal(one(page, 'Carpool').props.id, 'ride-1');
+    const wrapper = [...nodes(page)].find(node => node.type === 'View' && node.props.children?.type === 'Carpool');
+    assert.equal(wrapper.props.style.width, homeLayout().cardWidth);
+    homeWidth = 390;
+    page = home();
+    assert.equal(one(page, 'Carpool').props.id, 'ride-1');
+    assert.equal(state.tab, 'Carpool');
+  } finally { homeWidth = 390; state.tab = 'Gogo picks'; }
+});
+test('each Home tab keeps the same native scroll area and top-only pull gate', () => {
+  try {
+    for (const tab of ['Gogo picks', 'Carpool', 'Circle']) {
+      state.tab = tab;
+      const scroll = mainScroll(home());
+      assert.deepEqual(scroll.props.stickyHeaderIndices, [1]);
+      assert.equal(scroll.props.onScroll, 'feed-offset-handler');
+    }
+  } finally { state.tab = 'Gogo picks'; }
+});
+test('Home uses gestures and screen-reader actions without adding a visible reachability button', () => {
+  try {
+    homeExpanded = false;
+    const page = home();
+    assert.equal(text(page).includes('Bring tabs closer'), false);
+    assert.equal([...nodes(page)].some(node => node.props.accessibilityLabel === 'Bring Home tabs closer'), false);
+    const carousel = [...nodes(page)].find(node => node.type === 'Scroll' && node.props.horizontal);
+    const banner = one(carousel, 'Button');
+    assert.deepEqual(banner.props.accessibilityActions, [{ name: 'expandHeader', label: 'Expand Home header' }]);
+    banner.props.onAccessibilityAction({ nativeEvent: { actionName: 'expandHeader' } });
+    const expanded = home();
+    assert.equal(one(carouselFor(expanded), 'AnimatedView').props.style.height, homeLayout().bannerHeight + homeLayout().reachExpansion);
+    homeHeight = 520;
+    const shortCarousel = [...nodes(home())].find(node => node.type === 'Scroll' && node.props.horizontal);
+    assert.deepEqual(one(shortCarousel, 'Button').props.accessibilityActions, []);
+  } finally { homeHeight = 751; homeExpanded = false; }
+});
+test('banner copy stays grouped and reveals the description at intermediate heights without changing the text layout', () => {
+  try {
+    homeExpanded = false;
+    for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+      homePullProgress = progress;
+      const page = home(), banners = [...nodes(carouselFor(page))].filter(node => node.type === 'Button');
+      const copy = banners[1], content = copy.props.children;
+      assert.equal(copy.props.style[0].justifyContent, 'center');
+      assert.equal(content.type, 'View'); assert.equal(content.props.style.gap, 4);
+      const description = [...nodes(content)].find(node => node.type === 'AnimatedView');
+      assert.equal(description.props.style[1].maxHeight, 16 * (1 + 2 * progress));
+      assert.equal(description.props.children.props.numberOfLines, 3, 'text line count stays stable throughout the gesture');
+    }
+  } finally { homeExpanded = false; homePullProgress = 0; }
 });
 const { LIGHT_COLORS, resolveThemeColor } = loadTypeScript('constants/theme.ts');
 let feedMode = 'dark';

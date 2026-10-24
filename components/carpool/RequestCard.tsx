@@ -42,18 +42,18 @@ export default function RequestCard({
       : `${trimmedNote.slice(0, 110).trimEnd()}...`;
   const statusTone = isAccepted
     ? {
-        cardBg: "#071A33",
-        border: "#1A5A52",
-        badgeBg: "#103B36",
-        badgeText: "#65F5C7",
-        accent: "#0FF1CF",
+        cardBg: color("#071A33", "successSoft"),
+        border: color("#1A5A52", "borderStrong"),
+        badgeBg: color("#103B36", "accentSoft"),
+        badgeText: color("#65F5C7", "success"),
+        accent: color("#0FF1CF", "accent"),
       }
     : {
-        cardBg: "#091737",
-        border: "#324978",
-        badgeBg: "#1B2C5A",
-        badgeText: "#BFD2FF",
-        accent: "#7DA7FF",
+        cardBg: color("#091737", "surface"),
+        border: color("#324978", "borderStrong"),
+        badgeBg: color("#1B2C5A", "infoSoft"),
+        badgeText: color("#BFD2FF", "info"),
+        accent: color("#7DA7FF", "info"),
       };
   const statusLabel = isAccepted ? "Approved" : "Pending";
   const statusCopy = isAccepted

@@ -65,9 +65,10 @@ const Dropdown = forwardRef<View, DropdownProps>(
             setItems={setItems}
             placeholder={placeholder}
             style={{
-              backgroundColor: "rgba(27,42,80,0.4)",
+              backgroundColor: color("rgba(27,42,80,0.4)", "surface"),
               borderRadius: 12,
-              borderWidth: 0,
+              borderWidth: 1,
+              borderColor: error ? color("#EF4444", "danger") : color("transparent", "borderStrong"),
               minHeight: 50,
               flex: 1,
             }}
@@ -79,9 +80,10 @@ const Dropdown = forwardRef<View, DropdownProps>(
               color: color("#9CA3AF", "muted"),
             }}
             dropDownContainerStyle={{
-              backgroundColor: "rgba(27,42,80,0.9)",
+              backgroundColor: color("rgba(27,42,80,0.9)", "surface"),
               borderRadius: 12,
-              borderWidth: 0,
+              borderWidth: 1,
+              borderColor: error ? color("#EF4444", "danger") : color("transparent", "borderStrong"),
             }}
             listItemLabelStyle={{
               color: color("#fff", "foreground"),

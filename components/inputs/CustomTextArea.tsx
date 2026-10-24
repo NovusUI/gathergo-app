@@ -34,7 +34,7 @@ export default function TextArea({
           autoCapitalize="none"
           ref={inputRef}
           style={tw.style(
-            `w-full min-h-[120px] rounded-2xl bg-surface/40 dark:bg-[#1B2A50]/40 text-foreground dark:text-white p-4 text-base`,
+            `w-full min-h-[120px] rounded-2xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent text-foreground dark:text-white p-4 text-base`,
             error && `border border-danger dark:border-red-500`,
             className
           )}

@@ -157,7 +157,7 @@ const PasswordResetVerifyScreen = () => {
         </View>
 
         <View
-          style={tw`mt-10 rounded-xl bg-surface/40 dark:bg-[#1B2A50]/40 border border-border dark:border-[#2A3D6A] px-4 py-3`}
+          style={tw`mt-10 rounded-xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-[#2A3D6A] px-4 py-3`}
         >
           <View style={tw`flex-row items-center gap-3`}>
             <ShieldCheck color={color("#94A3B8", "muted")} size={18} />

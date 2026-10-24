@@ -1,3 +1,5 @@
+import ChatBackdrop from "@/components/ui/ChatBackdrop";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
@@ -10,7 +12,6 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
-  KeyboardEvent,
   Platform,
   Text,
   TouchableOpacity,
@@ -125,7 +126,6 @@ const ChatPage = () => {
 
   const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [rideVibeExpanded, setRideVibeExpanded] = useState(false);
   const draftLoadedRef = useRef(false);
 
@@ -250,26 +250,8 @@ const ChatPage = () => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       });
     });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-    const frameSub = Keyboard.addListener(
-      "keyboardDidChangeFrame",
-      (event: KeyboardEvent) => {
-        setKeyboardHeight(event.endCoordinates?.height ?? 0);
-      }
-    );
-    const showHeightSub = Keyboard.addListener(
-      "keyboardDidShow",
-      (event: KeyboardEvent) => {
-        setKeyboardHeight(event.endCoordinates?.height ?? 0);
-      }
-    );
     return () => {
       showSub.remove();
-      hideSub.remove();
-      frameSub.remove();
-      showHeightSub.remove();
     };
   }, []);
 
@@ -706,8 +688,8 @@ const ChatPage = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
-      <View style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E]`}>
-        <CustomView style={tw`px-3`}>
+      <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>
+        <CustomView className="max-w-full" style={tw`px-3`}>
           <CustomeTopBarNav
             title={eventTitle}
             onClickBack={() => safeGoBack(router, "/conversations")}
@@ -779,7 +761,7 @@ const ChatPage = () => {
           !carpoolDetails.canChat &&
           Boolean(carpoolDetails.reason) && (
             <View
-              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-[#4A1320] border border-danger/30 dark:border-[#F87171]/30`}
+              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-dangerSoft dark:bg-[#4A1320] border border-danger/30 dark:border-[#F87171]/30`}
             >
               <Text style={tw`text-foreground dark:text-white text-center font-semibold`}>
                 Chat Restricted: {carpoolDetails.reason}
@@ -787,7 +769,8 @@ const ChatPage = () => {
             </View>
           )}
 
-        <View style={tw`w-full max-w-[500px] flex-1`}>
+        <View style={tw`w-full flex-1 bg-chatBackground`}>
+          <ChatBackdrop />
           {showLoader ? (
             <ActivityIndicator
               size="large"
@@ -869,10 +852,7 @@ const ChatPage = () => {
 
         <View
           style={[
-            tw`w-full max-w-[500px] min-h-28 p-5 bg-surface dark:bg-[#07143B] border-t border-border dark:border-[#1B2A50]`,
-            Platform.OS === "android" && keyboardHeight > 0
-              ? { paddingBottom: keyboardHeight + 12 }
-              : null,
+            tw`w-full min-h-28 p-5 bg-surface dark:bg-[#07143B] border-t border-border dark:border-[#1B2A50]`,
           ]}
         >
           {!showLoader && carpoolDetails?.canChat && (
@@ -921,7 +901,7 @@ const ChatPage = () => {
           }}
           onClose={vibeCheckPrompt.dismiss}
         />
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 };

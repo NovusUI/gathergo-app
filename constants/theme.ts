@@ -2,6 +2,10 @@ export type ThemeMode = "light" | "dark";
 
 export const LIGHT_COLORS = {
   background: "#F3FFFB",
+  chatBackground: "#E5F0EB",
+  chatIncoming: "#FFFFFF",
+  chatOutgoing: "#CBECDC",
+  chatPattern: "#638F82",
   surface: "#FFFFFF",
   surfaceMuted: "#E7FBF5",
   surfaceRaised: "#D6F6ED",
@@ -10,7 +14,7 @@ export const LIGHT_COLORS = {
   muted: "#4B7069",
   subtle: "#6B8C84",
   border: "#CEEDE4",
-  borderStrong: "#95CDBC",
+  borderStrong: "#659889",
   accent: "#087A66",
   accentFill: "#1EEBC8",
   accentSoft: "#DCF9F0",
@@ -33,6 +37,10 @@ export type ThemeColor = (darkColor: string, lightRole: ThemeColorRole) => strin
 
 export const DARK_COLORS: ThemeColors = {
   background: "#01082E",
+  chatBackground: "#01082E",
+  chatIncoming: "#07143B",
+  chatOutgoing: "#350342",
+  chatPattern: "#8FA5E2",
   surface: "#101C45",
   surfaceMuted: "#1B2A50",
   surfaceRaised: "#2B3C66",

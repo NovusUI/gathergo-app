@@ -50,7 +50,7 @@ export default function NationalityDropdown({
   if (loading) {
     return (
       <View
-        style={tw`w-full max-w-[500px] bg-surface/40 dark:bg-[#1B2A50]/40 p-4 rounded-xl flex-row justify-center`}
+        style={tw`w-full max-w-[500px] bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent p-4 rounded-xl flex-row justify-center`}
       >
         <ActivityIndicator tone="accent" />
       </View>

@@ -71,7 +71,7 @@ function Ring({
         numberOfLines={2}
         style={[
           tw`text-center text-[10px] font-semibold`,
-          { color: topic.accent },
+          { color: color(topic.accent, "foreground") },
         ]}
       >
         {topic.label}

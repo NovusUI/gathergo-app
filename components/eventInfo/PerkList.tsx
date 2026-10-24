@@ -119,7 +119,7 @@ const PerksList: React.FC<PerksListProps> = ({
           Add a perk
         </Text>
 
-        <View style={tw`mt-3 flex-row items-center rounded-2xl bg-background dark:bg-[#07122E] px-4`}>
+        <View style={tw`mt-3 flex-row items-center rounded-2xl border border-borderStrong dark:border-transparent bg-background dark:bg-[#07122E] px-4`}>
           <Ionicons name="add-circle-outline" size={18} color={color("#0FF1CF", "accent")} />
           <InputComponent
             autoCapitalize="none"

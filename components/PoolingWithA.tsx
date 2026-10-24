@@ -32,7 +32,7 @@ export default function PoolingWithA({
     : getCarpoolPassengerMessage();
 
   return (
-    <CustomView className="px-5 gap-5 w-full">
+    <CustomView className="px-5 gap-5 w-full max-w-full">
       <Text style={tw`text-lg text-foreground dark:text-white`}>Ride vibe</Text>
 
       {selectedVehicle ? (

@@ -12,16 +12,16 @@ const PermissionBadge: React.FC<PermissionBadgeProps> = ({
   eventName,
   expiresAt,
 }) => {
-  const { tw } = useAppTheme();
+  const { tw, color } = useAppTheme();
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
   const isExpiringSoon = expiresAt
     ? new Date(expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     : false;
 
   const getBadgeColor = () => {
-    if (isExpired) return "#FF5757";
-    if (isExpiringSoon) return "#FF932E";
-    return "#0FF1CF";
+    if (isExpired) return color("#FF5757", "danger");
+    if (isExpiringSoon) return color("#FF932E", "warning");
+    return color("#0FF1CF", "accent");
   };
 
   const formatExpiration = () => {
@@ -54,12 +54,12 @@ const PermissionBadge: React.FC<PermissionBadgeProps> = ({
       <Shield size={14} color={getBadgeColor()} />
       <View style={tw`ml-2`}>
         <Text
-          style={[tw`text-sm font-medium`, { color: getBadgeColor() }]}
+          style={[tw`text-sm font-medium`, { color: color(getBadgeColor(), "foreground") }]}
           numberOfLines={1}
         >
           {eventName}
         </Text>
-        <Text style={tw`text-muted dark:text-gray-400 text-xs`}>{formatExpiration()}</Text>
+        <Text style={tw`text-secondary dark:text-gray-400 text-xs`}>{formatExpiration()}</Text>
       </View>
     </View>
   );

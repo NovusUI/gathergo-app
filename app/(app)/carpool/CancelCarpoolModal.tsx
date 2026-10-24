@@ -1,7 +1,8 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import React from "react";
-import { Modal, Text, View } from "react-native";
+import { Modal, ScrollView, Text, View } from "react-native";
 
 interface CancelCarpoolModalProps {
   visible: boolean;
@@ -32,15 +33,15 @@ const CancelCarpoolModal: React.FC<CancelCarpoolModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={tw`flex-1 bg-black/70 justify-center items-center p-5`}>
-        <View style={tw`bg-surface dark:bg-[#1A2755] rounded-xl p-5 max-w-md w-full`}>
+      <SafeAreaView edges={["top", "bottom", "left", "right"]} style={tw`flex-1 bg-black/70 justify-center items-center p-5`}>
+        <ScrollView style={tw`bg-surface dark:bg-[#1A2755] rounded-xl max-w-md w-full max-h-[88%]`} contentContainerStyle={tw`p-5`}>
           <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-3`}>
             ⚠️ Existing Carpool Found
           </Text>
 
           <Text style={tw`text-foreground dark:text-white mb-4`}>
-            You already have a carpool for "
-            {existingCarpool.eventTitle || "this event"}" with{" "}
+            You already have a carpool for &quot;
+            {existingCarpool.eventTitle || "this event"}&quot; with{" "}
             {existingCarpool.passengerCount} passenger(s).
           </Text>
 
@@ -57,11 +58,11 @@ const CancelCarpoolModal: React.FC<CancelCarpoolModalProps> = ({
             </Text>
           )}
 
-          <View style={tw`flex-row gap-3 mt-4`}>
+          <View style={tw`gap-3 mt-4`}>
             <CustomButton
               onPress={onKeepCarpool}
               title="Keep My Carpool"
-              buttonClassName={"bg-surfaceMuted dark:bg-gray-700 flex-1 border-0 "}
+              buttonClassName={"bg-surfaceMuted dark:bg-gray-700 w-full border-0 "}
               textClassName={`!text-foreground dark:text-white text-xs`}
               showArrow={false}
             />
@@ -69,14 +70,14 @@ const CancelCarpoolModal: React.FC<CancelCarpoolModalProps> = ({
             <CustomButton
               onPress={onCancelAndRequest}
               title={isLoading ? "Processing..." : "Cancel & Request"}
-              buttonClassName={"bg-accentFill dark:bg-[#0FF1CF] flex-1 border-0 "}
+              buttonClassName={"bg-accentFill dark:bg-[#0FF1CF] w-full border-0 "}
               textClassName={`!text-onAccent dark:text-black text-xs`}
               showArrow={false}
               disabled={isLoading}
             />
           </View>
-        </View>
-      </View>
+        </ScrollView>
+      </SafeAreaView>
     </Modal>
   );
 };

@@ -61,6 +61,7 @@ const native = Object.fromEntries(
     "ScrollView",
     "TextInput",
     "FlatList",
+    "SectionList",
     "KeyboardAvoidingView",
   ].map((name) => [name, name]),
 );
@@ -226,6 +227,7 @@ let searchQuery = { isPending: true };
 const { default: SearchScreen } = loadTypeScript(
   "app/(app)/(tabs)/search.tsx",
   {
+    "@/hooks/useResponsiveLayout": { useResponsiveLayout: () => ({ pageWidth: 390, insets: { top: 24 } }) },
     "@/components/View": { default: "Content" },
     "@/components/ui/AppLoader": { default: "SmallLoader" },
     "@/components/ui/EventCard": { default: "EventCard" },
@@ -264,7 +266,8 @@ test("event search uses the small loader directly below the input without fillin
 
 const passesHooks = hookState();
 let ticketQuery, registrationQuery;
-const { default: MyPassesPage } = loadTypeScript("app/(app)/my-passes.tsx", {
+const { default: MyPassesPage } = loadTypeScript("components/UserPassesTab.tsx", {
+  "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
   "@/components/ui/AppRefreshControl": {
     default: "RefreshControl",
     RefreshIndicator: "RefreshIndicator",
@@ -309,13 +312,21 @@ function resetPasses() {
     refetch() {},
   };
 }
+function passesList() {
+  return [...nodes(passesHooks.render(MyPassesPage))].find(node => node.type === 'SectionList');
+}
+function passCards() {
+  const list = passesList();
+  return list.props.sections.flatMap(section => section.data.map(item => list.props.renderItem({item})));
+}
 function passNodes() {
   const screen = passesHooks.render(MyPassesPage);
-  return [...nodes(screen)].flatMap((node) =>
-    ["EmptyState", "PassCard"].includes(node.type?.name)
-      ? [...nodes(node.type(node.props))]
-      : [node],
-  );
+  const list = [...nodes(screen)].find(node => node.type === 'SectionList');
+  const rows = list.props.sections.flatMap(section => section.data.map(item => list.props.renderItem({item})));
+  const content = [screen, list.props.ListHeaderComponent, ...(rows.length ? rows : [list.props.ListEmptyComponent]), list.props.ListFooterComponent];
+  return content.flatMap(item => [...nodes(item)].flatMap(node =>
+    ['EmptyState', 'PassCard', 'PassQrModal'].includes(node.type?.name)
+      ? [...nodes(node.type(node.props))] : [node]));
 }
 test("no owned passes shows lost Gogo without the dashboard, filters or explore button", () => {
   resetPasses();
@@ -337,7 +348,7 @@ test("loading passes keeps the real loading state instead of claiming no tickets
   resetPasses();
   ticketQuery.isPending = true;
   ticketQuery.data = undefined;
-  assert.equal(passesHooks.render(MyPassesPage).type, "PageLoader");
+  assert.ok(passNodes().some(node => node.type === "PageLoader"));
 });
 const ownedRegistration = {
   id: "registration-1",
@@ -366,10 +377,7 @@ test("owned registrations remain accessible when there are no tickets", () => {
     false,
   );
   assert.ok(content.some((node) => node.props.children === "Tree planting"));
-  const screen = passesHooks.render(MyPassesPage);
-  const card = [...nodes(screen)].find(
-    (node) => node.type?.name === "PassCard",
-  );
+  const card = passCards()[0];
   card.props.onOpenEvent(card.props.pass);
   assert.deepEqual(routes, ["/event/event-1"]);
 });
@@ -382,7 +390,7 @@ test("passes wait for either request and cached empty rechecks before showing th
       query.isPending = pending;
       query.isFetching = true;
       if (pending) query.data = undefined;
-      assert.equal(passesHooks.render(MyPassesPage).type, "PageLoader");
+      assert.ok(passNodes().some(node => node.type === "PageLoader"));
       assert.equal(
         passNodes().some((node) => node.type === "GogoMessage"),
         false,
@@ -423,7 +431,7 @@ test("a failed passes request shows retry instead of an empty state and retries 
     assert.equal(ticketsRetried, 1);
     assert.equal(registrationsRetried, 1);
     query.isFetching = true;
-    assert.equal(passesHooks.render(MyPassesPage).type, "PageLoader");
+    assert.ok(passNodes().some(node => node.type === "PageLoader"));
   }
 });
 test("owned passes stay visible during a background check", () => {
@@ -439,6 +447,26 @@ test("owned passes stay visible during a background check", () => {
     ),
     false,
   );
+});
+
+test("paid tickets and registrations share one unfiltered list with working QR and event actions", () => {
+  resetPasses();
+  ticketQuery.data.data = [{ id: 'paid-ticket', qrCode: 'paid-qr', isUsed: false, createdAt: ownedRegistration.createdAt, transactionId: 'txn-2',
+    eventTicket: { id: 'ticket-type', type: 'General', price: 2500, updatedPrice: null, event: { ...ownedRegistration.event, id: 'event-2', title: 'Community dinner', registrationType: 'ticket', startDate: '2035-10-22T12:00:00Z', endDate: '2035-10-22T14:00:00Z' } } }];
+  registrationQuery.data.data = [ownedRegistration];
+  const cards = passCards();
+  assert.deepEqual(cards.map(card => card.props.pass.eventTitle), ['Tree planting', 'Community dinner']);
+  assert.equal(passesList().props.sections.length, 1);
+  assert.doesNotMatch(text({ props: { children: passNodes() } }), /Your access|Ready for check-in|Archive|Filter/);
+  const paid = cards[1]; paid.props.onOpenQr(paid.props.pass);
+  assert.equal(passNodes().find(node => node.type === 'QRCode').props.value, 'paid-qr');
+  passNodes().find(node => node.type === 'TouchableOpacity' && text(node) === 'Open event').props.onPress();
+  assert.deepEqual(routes, ['/event/event-2']);
+  assert.equal(passNodes().some(node => node.type === 'QRCode'), false);
+});
+test("My passes is removed from Settings", () => {
+  resetLogout();
+  assert.doesNotMatch(text(renderSettings()), /My Passes|My passes/);
 });
 
 const eventHooks = hookState();
@@ -466,7 +494,10 @@ let publishingTicketId;
 let eventEnded = false;
 let eventPaid = false;
 let walletOnboarding = { showPersistentAlert: false };
+let eventLayout = { detailColumns: 1, availableWidth: 390, pageWidth: 390, fontScale: 1, insets: { top: 24, bottom: 34, left: 0, right: 0 } };
 const eventMocks = {
+  "@/hooks/useResponsiveLayout": { useResponsiveLayout: () => eventLayout },
+  "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
   "@/services/serviceFn": {
     recordEventInterest: async () => ({ data: { recorded: true } }),
     cancelEventCheckout: async (...args) => {
@@ -627,6 +658,39 @@ function ticketSheet() {
   const page = eventHooks.render(EventPage);
   return [...nodes(page)].find((node) => node.type === "Sheet");
 }
+test("phones keep the event action below the scrolling details and wide screens place it beside them", () => {
+  const original = eventLayout;
+  try {
+    for (const [width, fontScale, columns] of [[390, 1, false], [760, 1, false], [1024, 1, true], [1366, 1, true], [1024, 1.6, false]]) {
+      eventHooks.reset();
+      eventLayout = { detailColumns: width >= 960 && fontScale <= 1.4 ? 2 : 1, availableWidth: width, pageWidth: Math.min(width, 1200), fontScale, insets: { top: 24, bottom: 34, left: 0, right: 0 } };
+      const page = eventHooks.render(EventPage);
+      assert.equal(page.type, 'SafeArea');
+      assert.deepEqual(page.props.edges, ['top']);
+      const body = page.props.children[0].props.children[1];
+      const scrolls = [body.props.children].flat().filter(node => node?.type === 'ScrollView');
+      assert.equal(scrolls.length, columns ? 2 : 1);
+      assert.equal([...nodes(scrolls[0])].some(node => node.type === 'ActionButton' && node.props.title === 'View tickets'), false);
+      assert.equal([...nodes(scrolls[0])].some(node => node.type === 'Avatar'), !columns);
+      if (columns) assert.ok([...nodes(scrolls[1])].some(node => node.type === 'ActionButton' && node.props.title === 'View tickets'));
+      const sheet = [...nodes(page)].find(node => node.type === 'Sheet');
+      assert.equal(sheet.props.topInset, 24);
+      assert.equal(sheet.props.bottomInset, 34);
+      assert.equal(width - sheet.props.containerStyle.marginLeft - sheet.props.containerStyle.marginRight, Math.min(width, 680));
+    }
+  } finally { eventLayout = original; }
+});
+test("pass loading preserves the profile summary and sticky tabs", () => {
+  resetPasses(); ticketQuery.isPending = true;
+  const summary = {type: 'Summary'}, tabs = () => ({type: 'Tabs'});
+  const page = passesHooks.render(() => MyPassesPage({ListHeaderComponent: summary, renderSectionHeader: tabs}));
+  const list = [...nodes(page)].find(node => node.type === 'SectionList');
+  assert.ok([...nodes(list.props.ListHeaderComponent)].includes(summary));
+  assert.strictEqual(list.props.renderSectionHeader, tabs);
+  assert.equal(list.props.stickySectionHeadersEnabled, true);
+  assert.equal(list.props.ListFooterComponent.type, 'PageLoader');
+});
+
 test("empty and unpublished event tickets show lost Gogo without checkout controls", () => {
   for (const tickets of [[], [{ ...ticket, isVisible: false }]]) {
     eventHooks.reset();

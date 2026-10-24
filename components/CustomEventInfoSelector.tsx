@@ -13,7 +13,7 @@ const CustomEventInfoSelector = ({ title, value, onPress }: Props) => {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={tw`flex flex-row items-center justify-between p-5 bg-surface/40 dark:bg-[#1B2A50]/40 rounded-2xl`}
+      style={tw`flex flex-row items-center justify-between p-5 bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent rounded-2xl`}
     >
       <Text style={tw`text-foreground dark:text-white capitalize`}>{title}</Text>
 

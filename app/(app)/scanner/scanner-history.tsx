@@ -5,9 +5,7 @@ import AppRefreshControl, {
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useScanner } from "@/hooks/useScanner";
-import { useLockedRouter } from "@/utils/navigation";
-import { safeGoBack } from "@/utils/navigation";
-import { useRouter } from "expo-router";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { Clock } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -58,11 +56,11 @@ const ScannerHistory = () => {
   };
 
   const getStatusColor = (success: boolean) => {
-    return success ? "#0FF1CF" : "#FF5757";
+    return success ? color("#0FF1CF", "accent") : color("#FF5757", "danger");
   };
 
   const getTypeColor = (type: string) => {
-    return type === "ticket" ? "#FF932E" : "#5669FF";
+    return type === "ticket" ? color("#FF932E", "warning") : color("#5669FF", "info");
   };
 
   return (

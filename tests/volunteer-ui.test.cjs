@@ -591,6 +591,7 @@ const { useFreeEventRegistration } = loadTypeScript(
 const { default: FeedBottomSheet } = loadTypeScript(
   "app/(app)/event/FeedBottomSheet.tsx",
   {
+    "@/hooks/useResponsiveLayout": { useResponsiveLayout: () => ({ availableWidth: 390, insets: { top: 24, bottom: 34, left: 0, right: 0 } }) },
     "@/hooks/useFreeEventRegistration": { useFreeEventRegistration },
     "@/components/ui/AppRefreshControl": refreshComponents,
     "@/components/volunteer/VolunteerButton": { default: VolunteerButton },
@@ -678,6 +679,7 @@ const creationRoutes = [];
 const { default: CreationLayout } = loadTypeScript(
   "app/(app)/(tabs)/_layout.tsx",
   {
+    "@/hooks/useResponsiveLayout": { useResponsiveLayout: () => ({ useNavigationRail: false, navigationRailWidth: 0 }) },
     "@/hooks/usePressGuard": { usePressGuard: (fn) => fn },
     "@/utils/navigation": {
       pushWithLock: (_router, route) => creationRoutes.push(route),

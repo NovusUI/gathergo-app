@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import { useAuthStore } from "@/store/auth";
 import { Redirect, Stack, useSegments } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AppLayout() {
   const { color } = useAppTheme();
@@ -33,12 +34,14 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: color("#01082E", "background") },
-        animation: "fade",
-      }}
-    />
+    <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1, backgroundColor: color("#01082E", "background") }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: color("#01082E", "background") },
+          animation: "fade",
+        }}
+      />
+    </SafeAreaView>
   );
 }

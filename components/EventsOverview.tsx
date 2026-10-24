@@ -1,15 +1,14 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { useDashboardEvents } from "@/hooks/useDashboard";
-import { pushWithLock } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
+import { pushWithLock, useLockedRouter } from "@/utils/navigation";
 import { ChevronDown, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Modal,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -48,7 +47,7 @@ const EventCard = ({
 
   return (
     <TouchableOpacity onPress={guardedPress}>
-      <CustomView
+      <CustomView className="max-w-full"
         style={tw`flex-row items-center justify-between px-4 py-4 border-t border-accent dark:border-[#0FF1CF] bg-surface/50 dark:bg-[#1B2A50]/50`}
       >
         <ProgressIndicator percentage={event.progress} />
@@ -131,6 +130,11 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
   //   }
   // }, [fetchMoreEvents, filter, loading, hasMore]);
 
+  const openEventDashboard = useCallback((eventId: string) => {
+    setIsExpanded(false);
+    pushWithLock(router, `/dashboard/${eventId}`);
+  }, [router]);
+
   const handleScroll = useCallback(
     (event: any) => {
       const { layoutMeasurement, contentOffset, contentSize } =
@@ -158,7 +162,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
         onRequestClose={() => setIsExpanded(false)}
       >
         <SafeAreaView style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
-          <View style={tw`flex-1`}>
+          <View style={tw`flex-1 w-full max-w-[840px] self-center`}>
             {/* Header */}
             <View
               style={tw`flex-row items-center justify-between p-4 border-b border-accent dark:border-[#0FF1CF]`}
@@ -218,7 +222,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
                     <EventCard
                       key={event.id}
                       event={event}
-                      onPress={() => pushWithLock(router, `/event/${event.id}`)}
+                      onPress={() => openEventDashboard(event.id)}
                     />
                   ))}
 
@@ -243,7 +247,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
   }
 
   return (
-    <CustomView
+    <CustomView className="max-w-full"
       style={tw`w-full border-accent dark:border-[#0FF1CF] border-[1px] rounded-xl p-4 bg-surfaceMuted dark:bg-[#1B2A50]`}
     >
       <View style={tw`flex-row items-center justify-between mb-4`}>
@@ -255,7 +259,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
         <EventCard
           key={event.id}
           event={event}
-          onPress={() => pushWithLock(router, `/event/${event.id}`)}
+          onPress={() => openEventDashboard(event.id)}
         />
       ))}
 

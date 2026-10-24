@@ -45,7 +45,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
     );
 
     if (diffDays < 0) return { color: color("#FF5757", "danger"), text: "Expired" };
-    if (diffDays <= 7) return { color: color("#FF932E", "danger"), text: "Expiring Soon" };
+    if (diffDays <= 7) return { color: color("#FF932E", "warning"), text: "Expiring Soon" };
     return { color: color("#0FF1CF", "accent"), text: "Active" };
   };
 
@@ -84,7 +84,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
 
         {Boolean(permission.eventLocation) && (
           <View style={tw`flex-row items-center`}>
-            <Clock size={16} color={color("#FF932E", "danger")} />
+            <Clock size={16} color={color("#FF932E", "warning")} />
             <Text style={tw`text-muted dark:text-gray-400 text-sm ml-2`}>
               Location: {permission.eventLocation}
             </Text>

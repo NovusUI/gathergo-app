@@ -12,8 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { usePushNotification } from "@/context/PushNotificationContext";
 import { useRemovePushToken } from "@/services/mutations";
 import { useAuthStore } from "@/store/auth";
-import { safeGoBack } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { saveItem } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -36,11 +35,6 @@ const settingsItems = [
     label: "My Volunteering",
     route: "/my-volunteering",
     icon: "people-outline" as const,
-  },
-  {
-    label: "My Passes",
-    route: "/my-passes",
-    icon: "ticket-outline" as const,
   },
   {
     label: "Dashboard",

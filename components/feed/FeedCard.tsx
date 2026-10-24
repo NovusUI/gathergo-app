@@ -344,7 +344,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     const intensity = feed.metadata.intensity;
     const intensityColors = {
-      LOW: { color: "#4CAF50", icon: "flame-outline" },
+      LOW: { color: color("#4CAF50", "success"), icon: "flame-outline" },
       MEDIUM: { color: color("#FF9800", "danger"), icon: "flame" },
       HIGH: { color: color("#FF6B6B", "danger"), icon: "flame" },
     };

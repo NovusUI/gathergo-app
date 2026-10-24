@@ -1,3 +1,4 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
@@ -23,7 +24,6 @@ import {
   buildEventImpactFormFields,
   buildEventParticipationFormFields,
 } from "@/utils/eventForm";
-import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
   EventFormData,
@@ -133,7 +133,7 @@ const NewEvent = () => {
     );
   }
   return (
-    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>
       <View style={tw`px-5`}>
         <CustomeTopBarNav
           title="New Event"
@@ -183,7 +183,7 @@ const NewEvent = () => {
           }}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -691,14 +691,9 @@ const EventCreationForm = ({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
-      <View
-        style={[
-          tw`flex-1 pb-10 bg-background dark:bg-[#01082E] items-center w-full`,
-          { paddingTop: spacing.xxl },
-        ]}
-      >
-        <View style={tw`flex-1 w-full max-w-[500px]`}>
-          <CustomView style={tw`px-5`}>
+      <SafeAreaView edges={["top"]} style={tw`flex-1 pb-3 bg-background dark:bg-[#01082E] items-center w-full`}>
+        <View style={tw`flex-1 w-full max-w-[840px]`}>
+          <CustomView className="max-w-full" style={tw`px-5`}>
             <CustomeTopBarNav
               title={
                 {
@@ -752,7 +747,7 @@ const EventCreationForm = ({
             />
           ) : (
             <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
-              <CustomView style={tw`px-5`}>
+              <CustomView className="max-w-full" style={tw`px-5`}>
                 <Controller
                   name="imgUrl"
                   control={control}
@@ -772,8 +767,8 @@ const EventCreationForm = ({
                 />
               </CustomView>
 
-              <CustomView style={tw`px-5`}>
-                <CustomView style={tw`gap-2`}>
+              <CustomView className="max-w-full" style={tw`px-5`}>
+                <CustomView className="max-w-full" style={tw`gap-2`}>
                   <FormLabel text="event name" />
                   <Controller
                     name="eventName"
@@ -798,11 +793,11 @@ const EventCreationForm = ({
                 <EventStoryFields control={control} setValue={setValue} />
               </CustomView>
 
-              <CustomView style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2`} />
+              <CustomView className="max-w-full" style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2`} />
 
               {/* Event Information */}
-              <CustomView style={tw`px-5`}>
-                <CustomView>
+              <CustomView className="max-w-full" style={tw`px-5`}>
+                <CustomView className="max-w-full">
                   <FormLabel text="event information" />
                 </CustomView>
 
@@ -844,7 +839,7 @@ const EventCreationForm = ({
                 ) : null}
               </CustomView>
 
-              <CustomView style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
+              <CustomView className="max-w-full" style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
 
               <VolunteerSetupFields control={control} setValue={setValue} />
               {errors.volunteerRoles?.message ? (
@@ -862,9 +857,9 @@ const EventCreationForm = ({
                 error={errors.links?.message}
               />
 
-              <CustomView style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
+              <CustomView className="max-w-full" style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
 
-              <CustomView style={tw`items-center px-5`}>
+              <CustomView className="max-w-full" style={tw`items-center px-5`}>
                 <CustomButton
                   disabled={isPending}
                   onPress={handleSubmit(onSubmit, onError)}
@@ -890,8 +885,8 @@ const EventCreationForm = ({
               style={tw`flex-1 justify-end bg-black/55`}
               behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
-              <View
-                style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
+              <SafeAreaView edges={["left", "right", "bottom"]}
+                style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
               >
                 <View
                   style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
@@ -932,7 +927,7 @@ const EventCreationForm = ({
                     />
                   ) : null}
                 </ScrollView>
-              </View>
+              </SafeAreaView>
             </KeyboardAvoidingView>
           </Modal>
 
@@ -946,8 +941,8 @@ const EventCreationForm = ({
               style={tw`flex-1 justify-end bg-black/55`}
               behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
-              <View
-                style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
+              <SafeAreaView edges={["left", "right", "bottom"]}
+                style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
               >
                 <View
                   style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
@@ -979,11 +974,11 @@ const EventCreationForm = ({
                     }
                   />
                 </ScrollView>
-              </View>
+              </SafeAreaView>
             </KeyboardAvoidingView>
           </Modal>
         </View>
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 };

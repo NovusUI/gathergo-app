@@ -1,3 +1,4 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
@@ -20,6 +21,8 @@ import {
 
 const SearchScreen = () => {
   const { tw, color } = useAppTheme();
+  const { pageWidth, insets } = useResponsiveLayout();
+  const contentWidth = Math.min(pageWidth - 40, 840);
   const router = useLockedRouter();
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<TextInput | null>(null);
@@ -108,6 +111,7 @@ const SearchScreen = () => {
       style={[
         tw`flex-1 bg-background dark:bg-[#01082E] items-center flex-col overflow-hidden`,
         styles.screen,
+        { paddingTop: insets.top + spacing.sm },
       ]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
@@ -116,8 +120,9 @@ const SearchScreen = () => {
       <Pressable
         onPress={() => searchInputRef.current?.focus()}
         style={[
-          tw`flex-row items-center bg-surface dark:bg-[#1A2755] rounded-full w-full max-w-[500px]`,
+          tw`flex-row items-center bg-surface dark:bg-[#1A2755] border border-borderStrong dark:border-transparent rounded-full w-full`,
           styles.searchBar,
+          { maxWidth: contentWidth },
         ]}
       >
         <SearchIcon size={20} color={color("white", "foreground")} />
@@ -133,7 +138,7 @@ const SearchScreen = () => {
       </Pressable>
 
       {/* Content */}
-      <CustomView style={styles.contentContainer}>{renderContent()}</CustomView>
+      <CustomView style={{ ...styles.contentContainer, maxWidth: contentWidth }}>{renderContent()}</CustomView>
     </KeyboardAvoidingView>
   );
 };
@@ -151,7 +156,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    marginBottom: layoutSpacing.listBottomInset,
+    marginBottom: 0,
   },
   searchLoading: {
     alignSelf: "center",
@@ -159,10 +164,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     gap: layoutSpacing.listGap,
-    paddingVertical: layoutSpacing.sm,
+    paddingVertical: spacing.sm,
   },
   listFooterLoading: {
-    margin: layoutSpacing.lg,
+    margin: spacing.lg,
   },
 });
 

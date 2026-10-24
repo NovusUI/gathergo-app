@@ -21,7 +21,7 @@ const UserChatView = ({
   const { tw, color } = useAppTheme();
   return (
     <View
-      style={tw`max-w-[84%] min-w-[112px] p-4 bg-dangerSoft dark:bg-[#350342] gap-3 rounded-t-2xl rounded-bl-2xl self-end m-2 border border-accent/20 dark:border-[#0FF1CF]/20`}
+      style={tw`max-w-[84%] min-w-[112px] p-4 bg-chatOutgoing gap-3 rounded-t-2xl rounded-bl-2xl self-end m-2 border border-borderStrong/50 dark:border-[#0FF1CF]/20`}
     >
       <Text style={tw`text-foreground dark:text-white leading-5`}>{message?.trim()}</Text>
       <View style={tw`flex-row items-center self-end gap-2`}>

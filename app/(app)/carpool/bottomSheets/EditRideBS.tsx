@@ -1,3 +1,4 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
@@ -44,7 +45,9 @@ type EditRideBSProps = {
 
 const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
   ({ carpoolId, origin, departureTime, note }, ref) => {
-  const { tw, color } = useAppTheme();
+    const { tw, color } = useAppTheme();
+    const layout = useResponsiveLayout({ hasTabNavigation: false });
+    const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
     const queryClient = useQueryClient();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["88%"], []);
@@ -143,6 +146,8 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
     return (
       <>
         <BottomSheet
+          topInset={layout.insets.top}
+          containerStyle={{ marginHorizontal: sheetMargin }}
           ref={bottomSheetRef}
           index={-1}
           snapPoints={snapPoints}
@@ -161,7 +166,7 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingTop: 16,
-              paddingBottom: 180,
+              paddingBottom: 24,
             }}
           >
             <View style={tw`gap-5`}>
@@ -208,7 +213,7 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                     Ride note
                   </Text>
                   <View
-                    style={tw`rounded-2xl bg-surface/40 dark:bg-[#1B2A50]/40 px-4 py-4 min-h-[132px]`}
+                    style={tw`rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#1B2A50]/40 px-4 py-4 min-h-[132px]`}
                   >
                     <BottomSheetTextInput
                       autoCapitalize="none"
@@ -230,7 +235,7 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
             </View>
           </BottomSheetScrollView>
 
-          <View style={tw`w-screen max-w-[500px] p-5`}>
+          <View style={tw`w-full max-w-[800px] self-center p-5`}>
             <CustomButton
               title={isPending ? "Saving changes" : "Save changes"}
               buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"

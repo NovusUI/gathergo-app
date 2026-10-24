@@ -1,3 +1,4 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import AppRefreshControl, {
   RefreshIndicator,
@@ -56,6 +57,8 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   feedData,
 }) => {
   const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout({ hasTabNavigation: false });
+  const sheetMargin = Math.max(0, (layout.availableWidth - 840) / 2);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "carpool">(initialTab);
   const [carpoolFilter, setCarpoolFilter] = useState<EventCarpoolFilter>("all");
@@ -68,14 +71,6 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   } = useLocationManager();
   const snapPoints = useMemo(() => ["100%"], []);
 
-  // const snapPoints = useMemo(() => {
-  //   // Calculate based on screen height
-  //   const screenHeight = Dimensions.get("window").height;
-  //   return [screenHeight * 0.6, screenHeight * 0.9];
-  // }, []);
-
-  // Use provided feedData or fallback to hook
-  //const feedHook = useEventFeed(eventId);
   const feed = feedData;
 
   const {
@@ -606,7 +601,9 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       snapPoints={snapPoints}
       index={0}
       enableDynamicSizing={false}
-      topInset={0}
+      topInset={layout.insets.top}
+      bottomInset={layout.insets.bottom}
+      containerStyle={{marginLeft: layout.insets.left + sheetMargin, marginRight: layout.insets.right + sheetMargin}}
       onDismiss={onClose}
       enablePanDownToClose
       keyboardBehavior="interactive"
@@ -632,7 +629,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={ListFooterComponent}
         ListEmptyComponent={ListEmptyComponent}
-        contentContainerStyle={tw`pb-20`}
+        contentContainerStyle={tw`w-full max-w-[720px] self-center pb-6`}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         removeClippedSubviews={false}

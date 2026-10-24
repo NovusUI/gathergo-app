@@ -1,7 +1,5 @@
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import CustomeTopBarNav from "@/components/CustomeTopBarNav";
-import Shortcut from "@/components/Shortcut";
-import CustomView from "@/components/View";
 import DonationEventOverview from "@/components/ui/DonationEventOverview";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import Payments from "@/components/ui/Payments";
@@ -13,96 +11,10 @@ import { useEventDashboardData, useShortcutEvent } from "@/hooks/useDashboard";
 import { useEventDetails } from "@/services/queries";
 
 import { isEventPastEnd } from "@/utils/dateTimeHandler";
-import { Payment } from "@/utils/mockPayments";
-import { safeGoBack } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
+import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-
-// Mock payments for this specific event
-const mockEventPayments: Payment[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    amount: 50000,
-    time: "10:30 AM",
-    date: "Jan 25",
-    event: "Feed500",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    amount: 75000,
-    time: "11:15 AM",
-    date: "Jan 25",
-    event: "Feed500",
-  },
-  {
-    id: "3",
-    name: "Robert Johnson",
-    amount: 100000,
-    time: "2:45 PM",
-    date: "Jan 25",
-    event: "Feed500",
-  },
-  {
-    id: "4",
-    name: "Sarah Williams",
-    amount: 25000,
-    time: "4:20 PM",
-    date: "Jan 25",
-    event: "Feed500",
-  },
-  {
-    id: "5",
-    name: "Michael Brown",
-    amount: 150000,
-    time: "9:15 AM",
-    date: "Jan 26",
-    event: "Feed500",
-  },
-  {
-    id: "6",
-    name: "Emily Davis",
-    amount: 50000,
-    time: "1:30 PM",
-    date: "Jan 26",
-    event: "Feed500",
-  },
-  {
-    id: "7",
-    name: "David Wilson",
-    amount: 75000,
-    time: "3:45 PM",
-    date: "Jan 26",
-    event: "Feed500",
-  },
-  {
-    id: "8",
-    name: "Lisa Taylor",
-    amount: 100000,
-    time: "5:20 PM",
-    date: "Jan 26",
-    event: "Feed500",
-  },
-  {
-    id: "9",
-    name: "James Anderson",
-    amount: 25000,
-    time: "10:10 AM",
-    date: "Jan 27",
-    event: "Feed500",
-  },
-  {
-    id: "10",
-    name: "Maria Thomas",
-    amount: 150000,
-    time: "11:45 AM",
-    date: "Jan 27",
-    event: "Feed500",
-  },
-];
+import { Text, TouchableOpacity, View } from "react-native";
 
 const EventDashboard = () => {
   const { tw } = useAppTheme();
@@ -110,15 +22,13 @@ const EventDashboard = () => {
   const router = useLockedRouter();
 
   const eventId = Array.isArray(id) ? id[0] : id;
-  //const event = mockEventData[eventId as keyof typeof mockEventData];
 
-  const { isLoading, data, error } = useEventDashboardData(eventId);
+  const { isLoading, data } = useEventDashboardData(eventId);
   const { data: eventDetailsResponse } = useEventDetails(eventId, {
     enabled: Boolean(eventId),
   });
 
-  const { isLoading: isShortcutLoading, data: shortcutData } =
-    useShortcutEvent(eventId);
+  const { data: shortcutData } = useShortcutEvent(eventId);
 
   const event = useMemo(() => data?.data.event, [data]);
   const eventDetails = eventDetailsResponse?.data;
@@ -132,18 +42,8 @@ const EventDashboard = () => {
 
   if (isLoading) {
     return (
-      <View style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E]`}>
-        <CustomView className={`px-3`}>
-          <CustomeTopBarNav
-            title="Event"
-            onClickBack={() => safeGoBack(router, "/dashboard")}
-          />
-        </CustomView>
-        <ImpactPageLoader
-          title="Mapping event activity"
-          message="Loading your event performance, attendance, and payments."
-        />
-      </View>
+      <DashboardLayout title="Event" onBack={() => safeGoBack(router, "/dashboard")} shortcuts={shortcuts ?? []}
+        loading={<ImpactPageLoader title="Mapping event activity" message="Loading your event performance, attendance, and payments." />} />
     );
   }
 
@@ -162,22 +62,9 @@ const EventDashboard = () => {
   }
 
   return (
-    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
-      {/* Top Navigation */}
-      <View style={tw`pt-10 pb-4 px-5`}>
-        <CustomeTopBarNav
-          title={event.title}
-          onClickBack={() => safeGoBack(router, "/dashboard")}
-        />
-      </View>
-
-      {/* Main Scrollable Content */}
-      <ScrollView
-        style={tw`flex-1`}
-        contentContainerStyle={tw`px-5 pb-28`}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={tw`gap-4 mb-24`}>
+    <DashboardLayout title={event.title} onBack={() => safeGoBack(router, "/dashboard")} shortcuts={shortcuts ?? []} currentShortcutId={eventId}
+      secondary={<Payments title="Event Payments" payments={payments} />}>
+      <View style={tw`gap-4`}>
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => router.push(`/event/${eventId}`)}
@@ -208,38 +95,8 @@ const EventDashboard = () => {
 
           {eventDetails && canRecruitVolunteers(eventDetails) ? <VolunteerOverview event={eventDetails} /> : null}
 
-          {/* Account Info */}
-          {/* <AccountInfoCard accountInfo={event.accountInfo} /> */}
-
-          {/* Event Payments - Using the existing Payment component */}
-          <Payments title="Event Payments" payments={payments} />
-        </View>
-      </ScrollView>
-
-      {/* Quick Access - Always visible at bottom */}
-      <View
-        style={tw`absolute bottom-0 left-0 right-0 bg-background dark:bg-[#01082E] pt-3 pb-5 px-5 border-t border-border dark:border-gray-800`}
-      >
-        <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-3`}>Quick Access</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={tw`flex-row`}
-        >
-          <View style={tw`flex-row gap-3`}>
-            {shortcuts?.map((shortcut) => (
-              <Shortcut
-                key={shortcut.id}
-                title={shortcut.title}
-                link={shortcut.link}
-                isCurrent={shortcut.id === eventId}
-                iconColor={shortcut.iconColor}
-              />
-            ))}
-          </View>
-        </ScrollView>
       </View>
-    </View>
+    </DashboardLayout>
   );
 };
 

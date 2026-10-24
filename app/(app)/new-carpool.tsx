@@ -1,3 +1,4 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import CarpoolRouteFields from "@/components/carpool/CarpoolRouteFields";
 import SheetCloseButton from "@/components/buttons/SheetCloseButton";
@@ -9,7 +10,7 @@ import Input from "@/components/inputs/CustomInput1";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { layoutSpacing, spacing } from "@/constants/spacing";
+import { spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationManager } from "@/hooks/useLocationManager";
 import { CarpoolFormValues, carpoolSchema } from "@/schemas/carpool";
@@ -375,10 +376,8 @@ const NewCarpool = () => {
   };
 
   return (
-    <View
-      style={[tw`flex-1 w-full items-center bg-background dark:bg-[#01082E] pb-10`, styles.screen]}
-    >
-      <View style={tw`flex-1 w-full max-w-[500px] px-5`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 w-full items-center bg-background dark:bg-[#01082E]`}>
+      <View style={tw`flex-1 w-full max-w-[840px] px-5`}>
         <CustomeTopBarNav
           title="Create carpool"
           onClickBack={() => router.replace("/")}
@@ -387,7 +386,7 @@ const NewCarpool = () => {
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           style={[
-            tw`flex-row items-center rounded-full bg-surface dark:bg-[#1A2755]`,
+            tw`flex-row items-center rounded-full border border-borderStrong dark:border-transparent bg-surface dark:bg-[#1A2755]`,
             styles.searchBar,
           ]}
         >
@@ -403,7 +402,7 @@ const NewCarpool = () => {
           />
         </Pressable>
 
-        <CustomView style={tw`flex-1 mb-20`}>{renderEventList()}</CustomView>
+        <CustomView className="max-w-full" style={tw`flex-1`}>{renderEventList()}</CustomView>
       </View>
 
       <Modal
@@ -416,8 +415,8 @@ const NewCarpool = () => {
           style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
+          <SafeAreaView edges={["left", "right", "bottom"]}
+            style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
           >
             <View
               style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
@@ -519,7 +518,7 @@ const NewCarpool = () => {
                     <View style={tw`w-full`}>
                       <TextInput
                         autoCapitalize="none"
-                        style={tw`min-h-[120px] rounded-2xl bg-surface dark:bg-[#0A173F] p-4 text-base text-foreground dark:text-white`}
+                        style={tw`min-h-[120px] rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#0A173F] p-4 text-base text-foreground dark:text-white`}
                         placeholder="Any extra details?"
                         placeholderTextColor={color("#9CA3AF", "muted")}
                         multiline
@@ -547,19 +546,16 @@ const NewCarpool = () => {
               showArrow={false}
               disabled={createCarpoolPending}
             />
-          </View>
+          </SafeAreaView>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default NewCarpool;
 
 const styles = StyleSheet.create({
-  screen: {
-    paddingTop: layoutSpacing.pageTop,
-  },
   searchBar: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,

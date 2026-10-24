@@ -35,9 +35,9 @@ const ScanResultModal: React.FC<ScanResultModalProps> = ({
   if (!result) return null;
 
   const getStatusColor = () => {
-    if (!result.isValid) return "#FF5757";
-    if (result.isUsed) return "#FF932E";
-    return "#0FF1CF";
+    if (!result.isValid) return color("#FF5757", "danger");
+    if (result.isUsed) return color("#FF932E", "warning");
+    return color("#0FF1CF", "accent");
   };
 
   const getStatusText = () => {

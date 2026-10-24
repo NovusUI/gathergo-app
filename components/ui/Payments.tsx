@@ -1,3 +1,4 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { usePayments } from "@/hooks/useDashboard";
 import ActivityIndicator from "@/components/ui/AppLoader";
@@ -5,7 +6,6 @@ import { ChevronDown, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -37,8 +37,8 @@ const PaymentCard = ({ payment }: { payment: Payment }) => {
 
   return (
     <View style={tw`p-4 bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl gap-3 mb-2`}>
-      <View style={tw`flex-row justify-between`}>
-        <Text style={tw`text-foreground dark:text-white text-base font-medium`}>{payment.name}</Text>
+      <View style={tw`flex-row flex-wrap justify-between gap-2`}>
+        <Text style={tw`flex-1 min-w-[100px] text-foreground dark:text-white text-base font-medium`}>{payment.name}</Text>
         <Text style={tw`text-foreground dark:text-white text-base font-semibold`}>
           {payment.creatorPayable.toLocaleString("en-NG", {
             style: "currency",
@@ -46,14 +46,14 @@ const PaymentCard = ({ payment }: { payment: Payment }) => {
           })}
         </Text>
       </View>
-      <View style={tw`flex-row justify-between`}>
-        <View style={tw`flex-row gap-2`}>
+      <View style={tw`flex-row flex-wrap justify-between gap-2`}>
+        <View style={tw`flex-row flex-wrap gap-2 min-w-0`}>
           <Text style={tw`text-muted dark:text-gray-400 text-sm`}>{payment.time}</Text>
           <Text style={tw`text-muted dark:text-gray-400 text-sm`}>{payment.date}</Text>
         </View>
-        <View style={tw`flex-row gap-2`}>
+        <View style={tw`flex-row flex-wrap gap-2 min-w-0`}>
           <Text
-            style={tw`text-primary dark:text-[#5669FF] underline text-sm`}
+            style={tw`shrink text-primary dark:text-[#5669FF] underline text-sm`}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
@@ -145,7 +145,7 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
         onRequestClose={() => setIsExpanded(false)}
       >
         <SafeAreaView style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
-          <View style={tw`flex-1`}>
+          <View style={tw`flex-1 w-full max-w-[840px] self-center`}>
             {/* Header */}
             <View
               style={tw`flex-row items-center justify-between p-4 border-b border-primary dark:border-[#5669FF]`}
@@ -215,7 +215,7 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
   }
 
   return (
-    <CustomView style={tw`rounded-xl bg-surface dark:bg-[#031542] flex-1 p-5`}>
+    <CustomView className="max-w-full" style={tw`rounded-xl bg-surface dark:bg-[#031542] p-5`}>
       <View style={tw``}>
         <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-4`}>{title}</Text>
       </View>

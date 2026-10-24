@@ -55,7 +55,7 @@ export default function FourDigitCodeInput({
         <TextInput
           key={idx}
           ref={(el) => (inputsRef.current[idx] = el)}
-          style={tw.style("w-14 h-14 bg-surface/40 dark:bg-[#1B2A50]/40 text-foreground dark:text-white text-center text-xl rounded-xl")}
+          style={tw.style("w-14 h-14 bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent text-foreground dark:text-white text-center text-xl rounded-xl")}
           keyboardType="number-pad"
           maxLength={1}
           textContentType="oneTimeCode"

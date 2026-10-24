@@ -26,7 +26,7 @@ const ChatView1 = ({ message, time, imageUrl }: Props) => {
         </View>
       )}
       <View
-        style={tw`max-w-[82%] p-4 bg-surface dark:bg-[#07143B] gap-3 rounded-t-2xl rounded-br-2xl m-2 border border-info/15 dark:border-[#31C6F6]/15`}
+        style={tw`max-w-[82%] p-4 bg-chatIncoming gap-3 rounded-t-2xl rounded-br-2xl m-2 border border-border dark:border-[#31C6F6]/15`}
       >
         <Text style={tw`text-foreground dark:text-white leading-5`}>{message?.trim()}</Text>
         <Text style={tw`text-secondary dark:text-[#A8BAE4] text-xs self-end`}>{time}</Text>

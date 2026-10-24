@@ -1,21 +1,22 @@
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { useLockedRouter } from "@/utils/navigation";
-import { ScrollView, View } from "react-native";
+import { ScrollView } from "react-native";
 
 export default function CircleScreen() {
   const { tw } = useAppTheme();
   const router = useLockedRouter();
 
   return (
-    <View style={tw`flex-1 bg-background dark:bg-[#030A31] pt-10 px-5`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#030A31] px-5`}>
       <CustomeTopBarNav
         title="Circle"
         onClickBack={() => router.replace("/")}
       />
       <ScrollView
-        contentContainerStyle={tw`grow items-center justify-center pb-24`}
+        contentContainerStyle={tw`grow items-center justify-center pb-6`}
         showsVerticalScrollIndicator={false}
       >
         <MascotMoment
@@ -25,6 +26,6 @@ export default function CircleScreen() {
           message="I'm getting this space ready for your communities. Come back soon to find your people."
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

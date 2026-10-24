@@ -34,11 +34,11 @@ interface TicketEventOverviewProps {
 const TicketEventOverview = ({ event }: TicketEventOverviewProps) => {
   const { tw, color } = useAppTheme();
   return (
-    <CustomView
+    <CustomView className="max-w-full"
       style={tw`w-full border-primary dark:border-[#5669FF] border-[1px] rounded-xl p-4 bg-surfaceMuted dark:bg-[#1B2A50] gap-4`}
     >
-      <View style={tw`flex-row justify-between items-center`}>
-        <View>
+      <View style={tw`flex-row flex-wrap gap-3 justify-between items-start`}>
+        <View style={tw`flex-1 min-w-0`}>
           <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>{event.title}</Text>
           <Text style={tw`text-secondary dark:text-gray-300 text-sm`}>{event.description}</Text>
         </View>
@@ -97,7 +97,7 @@ const TicketEventOverview = ({ event }: TicketEventOverviewProps) => {
               key={ticketType.id}
               style={tw`p-3 bg-background dark:bg-[#0A1126] rounded-lg gap-2`}
             >
-              <View style={tw`flex-row justify-between items-center`}>
+              <View style={tw`flex-row flex-wrap gap-3 justify-between items-start`}>
                 <Text style={tw`text-foreground dark:text-white font-medium`}>
                   {ticketType.name}
                 </Text>

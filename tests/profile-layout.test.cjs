@@ -1,3 +1,4 @@
+/* global __dirname */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { loadTypeScript } = require('./loadTypeScript.cjs');
@@ -7,16 +8,17 @@ function* nodes(node) {
   for (const child of [node.props?.children].flat(Infinity)) yield* nodes(child);
 }
 const rn = { View: 'View', Text: 'Text', TouchableOpacity: 'Button', ScrollView: 'ScrollView', SectionList: 'SectionList' };
-const state = { tab: 'About', cursor: 0, routes: [], fetched: 0, user: { id: 'user-1', fullName: 'Ada Example', isProfileComplete: true } };
+const state = { tab: 'Passes', cursor: 0, routes: [], fetched: 0, user: { id: 'user-1', fullName: 'Ada Example', isProfileComplete: true } };
 const queries = {
   useUserProfile: () => ({ data: { data: { name: 'ada', bio: 'Meet people and make a difference.', profilePicUrl: undefined, eventsCount: 3, followersCount: 12, followingCount: 8 } }, isError: false, refetch() {} }),
   useMyBadges: () => ({ data: { data: { earnedCount: 2 } }, refetch() {} }),
   useGetUsersEvents: () => ({ data: { pages: [{ data: [] }] }, isFetchingNextPage: false, fetchNextPage: () => state.fetched++, hasNextPage: true, isPending: false }),
 };
 const { default: Profile } = loadTypeScript('app/(app)/(tabs)/profile.tsx', {
+  '@/hooks/useResponsiveLayout': { useResponsiveLayout: () => ({ pageWidth: 390 }) },
   '@/components/gogo/tasks/badges/GatherArtwork': { GatherIcon: 'GatherIcon' },
   '@/components/CustomeTopBarNav': { default: 'TopBar' }, '@/components/ProfileImageUploader': { default: 'Photo' }, '@/components/StatCard': { default: 'Stats' }, '@/components/Tab': { default: 'Tab' },
-  '@/components/UserEventsTab': { default: 'Events' }, '@/components/buttons/CustomBtn1': { default: 'EditBio' }, '@/components/gogo/tasks/badges/BadgesExperience': { default: 'Gather' }, '@/components/ui/AppLoader': { default: 'Loader' },
+  '@/components/UserPassesTab': { default: 'Passes' }, '@/components/UserEventsTab': { default: 'Events' }, '@/components/buttons/CustomBtn1': { default: 'EditBio' }, '@/components/gogo/tasks/badges/BadgesExperience': { default: 'Gather' }, '@/components/ui/AppLoader': { default: 'Loader' },
   '@/context/AuthContext': { useAuth: () => ({ user: state.user }) }, '@/services/queries': queries,
   '@/utils/navigation': { useLockedRouter: () => ({ push: route => state.routes.push(route), replace: route => state.routes.push(route) }) },
   'expo-router': { useFocusEffect() {} }, 'lucide-react-native': { Settings: 'Settings' },
@@ -25,51 +27,45 @@ const { default: Profile } = loadTypeScript('app/(app)/(tabs)/profile.tsx', {
 });
 const one = (root, type) => [...nodes(root)].find(node => node.type === type);
 const tabsFor = page => {
-  const scroll = one(page, 'ScrollView');
-  return scroll ? scroll.props.children[1] : (one(page, 'Events') || one(page, 'Gather')).props.renderSectionHeader();
+  return (one(page, 'Passes') || one(page, 'Events') || one(page, 'Gather')).props.renderSectionHeader();
 };
 const select = title => {
   const tab = [...nodes(tabsFor(Profile()))].find(node => node.type === 'Tab' && node.props.title === title);
   assert.ok(tab, title); tab.props.onPress();
 };
 test('the compact profile keeps its summary in the scroll content and uses a sticky tab row', () => {
-  state.tab = 'About';
+  state.tab = 'Passes';
   const page = Profile(); assert.equal(page.type, 'SafeArea');
   assert.deepEqual(page.props.edges, ['top']);
   assert.equal(one(page, 'TopBar').props.title, '@ada');
-  const scroll = one(page, 'ScrollView'); assert.deepEqual(scroll.props.stickyHeaderIndices, [1]);
-  const summary = scroll.props.children[0];
+  const passes = one(page, 'Passes');
+  assert.ok(passes); assert.equal(one(page, 'ScrollView'), undefined);
+  const summary = passes.props.ListHeaderComponent;
   assert.equal(one(summary, 'Stats').props.eventsCount, 3);
   assert.equal(one(summary, 'Stats').props.followersCount, 12);
-  assert.ok(one(summary, 'Photo')); assert.ok(one(summary, 'EditBio'));
+  assert.ok(one(summary, 'Photo')); assert.equal(one(summary, 'EditBio'), undefined);
   assert.equal([...nodes(tabsFor(page))].filter(node => node.type === 'Tab').length, 3);
 });
 test('Events and Gather receive the same scrollable summary and pinned tabs without an outer ScrollView', () => {
-  state.tab = 'About'; select('Events');
+  state.tab = 'Passes'; select('Events');
   const eventsPage = Profile(); const events = one(eventsPage, 'Events');
   assert.ok(events); assert.equal(one(eventsPage, 'ScrollView'), undefined);
-  assert.ok(one(events.props.ListHeaderComponent, 'Stats')); assert.ok(one(events.props.ListHeaderComponent, 'EditBio'));
+  assert.ok(one(events.props.ListHeaderComponent, 'Stats')); assert.equal(one(events.props.ListHeaderComponent, 'EditBio'), undefined);
   select('Gather'); const gatherPage = Profile(); const gather = one(gatherPage, 'Gather');
   assert.ok(gather); assert.equal(one(gatherPage, 'ScrollView'), undefined);
   assert.ok(one(gather.props.ListHeaderComponent, 'Stats'));
-  assert.deepEqual([...nodes(gather.props.renderSectionHeader())].filter(node => node.type === 'Tab').map(node => node.props.title), ['About', 'Events', 'Gather']);
+  assert.deepEqual([...nodes(gather.props.renderSectionHeader())].filter(node => node.type === 'Tab').map(node => node.props.title), ['Passes', 'Events', 'Gather']);
 });
-test('About tabs stay in one row when React Native replaces the sticky child style', () => {
-  state.tab = 'About';
-  const stickyChild = tabsFor(Profile());
-  // Native ScrollViewStickyHeader transfers this child's style to its wrapper.
-  const clonedChild = require('react').cloneElement(stickyChild, { style: { flex: 1 } });
-  const row = [...nodes(clonedChild)].find(node => node.props.style?.classes?.includes('flex-row'));
-  assert.ok(row);
-  assert.deepEqual(row.props.children.map(tab => tab.props.title), ['About', 'Events', 'Gather']);
-});
-test('editing the bio and opening settings retain their real navigation paths', () => {
-  state.tab = 'About'; state.routes = [];
-  one(Profile(), 'EditBio').props.onPress();
-  const settings = one(Profile(), 'TopBar').props.rightNode; settings.props.onPress();
-  state.user.isProfileComplete = false; one(Profile(), 'EditBio').props.onPress();
-  assert.deepEqual(state.routes, ['/edit-bio', '/settings', '/profile-setup']);
-  state.user.isProfileComplete = true;
+test('Passes replaces About with a ticket tab and bio editing is removed', () => {
+  state.tab = 'Passes'; state.routes = [];
+  const page = Profile();
+  const tabs = [...nodes(tabsFor(page))].filter(node => node.type === 'Tab');
+  assert.deepEqual(tabs.map(node => node.props.title), ['Passes', 'Events', 'Gather']);
+  assert.equal(tabs[0].props.icon.name, 'ticket-outline');
+  assert.equal(one(page, 'EditBio'), undefined);
+  assert.equal(require('node:fs').existsSync(require('node:path').join(__dirname, '../app/(app)/edit-bio/index.tsx')), false);
+  one(page, 'TopBar').props.rightNode.props.onPress();
+  assert.deepEqual(state.routes, ['/settings']);
 });
 
 const { default: Events } = loadTypeScript('components/UserEventsTab.tsx', {

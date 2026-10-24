@@ -1,3 +1,5 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import AvatarGroup from "@/components/AvatarGroup";
 import AvatarWithLabel from "@/components/AvatarWithLabel";
@@ -146,6 +148,8 @@ const SafetyTipRow = ({ tip }: { tip: CarpoolVibeSafetyTip }) => {
 
 const CarpoolPage = () => {
   const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout({ hasTabNavigation: false });
+  const detailsInColumns = layout.detailColumns === 2;
   const { id } = useLocalSearchParams();
   const carpoolId = Array.isArray(id) ? id[0] : id;
   const router = useLockedRouter();
@@ -469,18 +473,89 @@ const CarpoolPage = () => {
   };
   const { title, disabled, action } = getButtonProps();
 
-  return (
+  const crewCard = (
     <View
-      style={tw`flex-1 pt-10 pb-5 bg-background dark:bg-[#01082E] flex flex-col items-center w-full`}
+      onLayout={handleChatAnchorLayout}
+      style={tw`rounded-[24px] bg-surface dark:bg-[#07143B] border border-border dark:border-[#1B2A50] p-4 flex-row justify-between items-center`}
     >
-      <CustomView style={tw`px-5`}>
+      <View style={tw`gap-2`}>
+        <Text style={tw`text-secondary dark:text-[#8FA5E2] text-xs`}>Ride crew</Text>
+        <AvatarGroup
+          avatars={carpool.passengers}
+          owner={owner}
+          onAdd={() => onAvaterClick()}
+        />
+      </View>
+
+      <TouchableOpacity
+        activeOpacity={0.84}
+        accessibilityRole="button"
+        accessibilityLabel="Open carpool chat"
+        onPress={openChat}
+        style={tw`h-12 px-4 rounded-2xl bg-accentFill dark:bg-[#0FF1CF] flex-row items-center gap-2`}
+      >
+        <MessagesSquareIcon color={color("#01082E", "onAccent")} size={18} />
+        <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold`}>Chat</Text>
+      </TouchableOpacity>
+    </View>
+  );
+  const driverCard = (
+    <CustomView className="max-w-full" style={tw`px-4 py-3 flex-row flex-wrap gap-3 justify-between items-center`}>
+      <AvatarWithLabel
+        imageUrl={carpool.driver.profilePicUrlTN}
+        username={carpool.driver.username}
+        role="Pooler"
+      />
+
+      {user?.id !== carpool.driver.id && (
+        <TouchableOpacity
+          style={tw`p-3 rounded-lg bg-surface dark:bg-[#0c1447]`}
+          onPress={onFollow}
+          disabled={isFollowing}
+        >
+          <Text style={tw`text-foreground dark:text-white`}>
+            {isFollowing ? "following..." : followStatus}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </CustomView>
+  );
+  const participationActions = (
+    <CustomView className="max-w-full" style={tw`px-4 py-3`}>
+      {owner ? (
+        <CustomButton
+          onPress={() => requestBSRef.current?.open()}
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-onAccent dark:text-black"
+          arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
+          title="View Requests"
+        />
+      ) : (
+        <CustomButton
+          onPress={action ?? (() => {})}
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-onAccent dark:text-black"
+          arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
+          disabled={disabled}
+          title={leavingCarpool ? "Leaving carpool" : title}
+        />
+      )}
+    </CustomView>
+  );
+
+  return (
+    <SafeAreaView edges={["top"]} style={tw`flex-1 bg-background dark:bg-[#01082E] items-center w-full`}>
+      <View style={{ flex: 1, width: "100%", maxWidth: layout.pageWidth }}>
+      <CustomView className="max-w-full" style={tw`px-5`}>
         <CustomeTopBarNav
           title={carpool.event?.title ?? "Carpool"}
           onClickBack={() => safeGoBack(router, "/")}
         />
       </CustomView>
+      <View style={{flex: 1, width: "100%", maxWidth: detailsInColumns ? undefined : 840, alignSelf: "center", flexDirection: detailsInColumns ? "row" : "column", gap: detailsInColumns ? 24 : 0}}>
+      <View style={{ flex: 1, minWidth: 0 }}>
       <ScrollView
-        style={tw`w-full max-w-[500px]`}
+        style={tw`flex-1 w-full`}
         contentContainerStyle={tw`pb-4`}
         onLayout={handleScrollViewLayout}
         onScroll={handleRideDetailsScroll}
@@ -587,30 +662,7 @@ const CarpoolPage = () => {
             </View>
           </View>
 
-          <View
-            onLayout={handleChatAnchorLayout}
-            style={tw`rounded-[24px] bg-surface dark:bg-[#07143B] border border-border dark:border-[#1B2A50] p-4 flex-row justify-between items-center`}
-          >
-            <View style={tw`gap-2`}>
-              <Text style={tw`text-secondary dark:text-[#8FA5E2] text-xs`}>Ride crew</Text>
-              <AvatarGroup
-                avatars={carpool.passengers}
-                owner={owner}
-                onAdd={() => onAvaterClick()}
-              />
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.84}
-              accessibilityRole="button"
-              accessibilityLabel="Open carpool chat"
-              onPress={openChat}
-              style={tw`h-12 px-4 rounded-2xl bg-accentFill dark:bg-[#0FF1CF] flex-row items-center gap-2`}
-            >
-              <MessagesSquareIcon color={color("#01082E", "onAccent")} size={18} />
-              <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold`}>Chat</Text>
-            </TouchableOpacity>
-          </View>
+          {!detailsInColumns ? crewCard : null}
 
           <View
             style={tw`rounded-[24px] bg-surface dark:bg-[#101C45] border border-border dark:border-[#1B2A50] p-5 gap-4`}
@@ -672,49 +724,9 @@ const CarpoolPage = () => {
             </Text>
           </View>
         </View>
+        {!detailsInColumns ? driverCard : null}
       </ScrollView>
-      {/* Bottom bar */}
-      <CustomView style={tw`px-5 pt-6 flex-row justify-between items-center`}>
-        <AvatarWithLabel
-          imageUrl={carpool.driver.profilePicUrlTN}
-          username={carpool.driver.username}
-          role="Pooler"
-        />
-
-        {user?.id !== carpool.driver.id && (
-          <TouchableOpacity
-            style={tw`p-3 rounded-lg bg-surface dark:bg-[#0c1447]`}
-            onPress={onFollow}
-            disabled={isFollowing}
-          >
-            <Text style={tw`text-foreground dark:text-white`}>
-              {isFollowing ? "following..." : followStatus}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </CustomView>
-
-      <CustomView style={tw`px-5 pb-5`}>
-        {owner ? (
-          <CustomButton
-            onPress={() => requestBSRef.current?.open()}
-            buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-            textClassName="!text-onAccent dark:text-black"
-            arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
-            title="View Requests"
-          />
-        ) : (
-          <CustomButton
-            onPress={action ?? (() => {})}
-            buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-            textClassName="!text-onAccent dark:text-black"
-            arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
-            disabled={disabled}
-            title={leavingCarpool ? "Leaving carpool" : title}
-          />
-        )}
-      </CustomView>
-      {showFloatingChat ? (
+      {!detailsInColumns && showFloatingChat ? (
         <TouchableOpacity
           activeOpacity={0.86}
           accessibilityRole="button"
@@ -722,12 +734,23 @@ const CarpoolPage = () => {
           onPress={openChat}
           style={[
             tw`absolute right-5 w-14 h-14 rounded-full bg-accentFill dark:bg-[#0FF1CF] border border-borderStrong/20 dark:border-white/20 items-center justify-center shadow-lg`,
-            { bottom: 188 },
+            { bottom: 16 },
           ]}
         >
           <MessagesSquareIcon color={color("#01082E", "onAccent")} size={24} />
         </TouchableOpacity>
       ) : null}
+      </View>
+      {detailsInColumns ? (
+        <ScrollView style={{ width: 336, flexGrow: 0, flexShrink: 0 }} contentContainerStyle={tw`pb-4`} showsVerticalScrollIndicator={false}>
+          {driverCard}
+          {crewCard}
+          {participationActions}
+        </ScrollView>
+      ) : participationActions}
+      </View>
+      </View>
+
       <CancelCarpoolModal
         visible={showCancelModal}
         onClose={handleKeepCarpool}
@@ -768,7 +791,7 @@ const CarpoolPage = () => {
         }}
       />
       <ShareRideLinkBS ref={shareRideLinkRef} carpoolId={carpoolId} />
-    </View>
+    </SafeAreaView>
   );
 };
 

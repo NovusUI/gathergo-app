@@ -20,11 +20,11 @@ interface DonationEventOverviewProps {
 const DonationEventOverview = ({ event }: DonationEventOverviewProps) => {
   const { tw, color } = useAppTheme();
   return (
-    <CustomView
+    <CustomView className="max-w-full"
       style={tw`w-full border-accent dark:border-[#0FF1CF] border-[1px] rounded-xl p-4 bg-surfaceMuted dark:bg-[#1B2A50] gap-4`}
     >
-      <View style={tw`flex-row justify-between items-center`}>
-        <View>
+      <View style={tw`flex-row flex-wrap gap-3 justify-between items-start`}>
+        <View style={tw`flex-1 min-w-0`}>
           <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>{event.title}</Text>
           <Text style={tw`text-secondary dark:text-gray-300 text-sm`}>{event.description}</Text>
         </View>

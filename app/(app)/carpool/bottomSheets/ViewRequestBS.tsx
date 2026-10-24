@@ -1,3 +1,4 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import RequestCard from "@/components/carpool/RequestCard";
 import { buildCarpoolShareLink } from "@/utils/shareLinks";
@@ -21,7 +22,9 @@ export type ViewRequestBSRef = {
 
 const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
   ({ carpool, dummy }, ref) => {
-  const { tw, color } = useAppTheme();
+    const { tw, color } = useAppTheme();
+    const layout = useResponsiveLayout({ hasTabNavigation: false });
+    const sheetMargin = Math.max(0, (layout.availableWidth - 840) / 2);
     const bottomSheetRef = useRef<any>(null);
     const snapPoints = useMemo(() => ["72%"], []);
 
@@ -53,6 +56,8 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
 
     return (
       <BottomSheet
+        topInset={layout.insets.top}
+        containerStyle={{ marginHorizontal: sheetMargin }}
         index={-1}
         ref={bottomSheetRef}
         snapPoints={snapPoints}
@@ -60,7 +65,7 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
-            disappearsOnIndex={0}
+            disappearsOnIndex={-1}
             appearsOnIndex={0}
           />
         )}
@@ -169,7 +174,7 @@ const ViewRequestBS = forwardRef<ViewRequestBSRef, ViewRequestBSProps>(
           </View>
         </BottomSheetScrollView>
 
-        <View style={tw`w-screen max-w-[500px] p-5 gap-4`}>
+        <View style={tw`w-full max-w-[800px] self-center p-5 gap-4`}>
           <TouchableOpacity
             onPress={handleShare}
             style={tw`flex-row justify-center items-center gap-2 rounded-[18px] border border-border dark:border-[#1B2A50] py-3`}

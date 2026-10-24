@@ -3,7 +3,7 @@
     "name": "GatherGo",
     "slug": "gathergoapp",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "backgroundColor": "#01082E",
     "icon": "./assets/images/gglogo.png",
     "scheme": "gathergoapp",
