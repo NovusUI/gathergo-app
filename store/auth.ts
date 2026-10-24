@@ -3,11 +3,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+export type GoogleAuthPhase = "idle" | "opening" | "completing";
+
 interface AuthState {
   token: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   hasHydrated: boolean;
+  googleAuthPhase: GoogleAuthPhase;
+  setGoogleAuthPhase: (phase: GoogleAuthPhase) => void;
   setToken: (token: string | null) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
   login: (token: string, refresh_token: string) => Promise<void>;
@@ -21,6 +25,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       hasHydrated: false,
+      googleAuthPhase: "idle",
+      setGoogleAuthPhase: (googleAuthPhase) => set({ googleAuthPhase }),
 
       setToken: (token) => {
         set({
@@ -50,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           refreshToken: null,
           isAuthenticated: false,
+          googleAuthPhase: "idle",
         });
       },
     }),

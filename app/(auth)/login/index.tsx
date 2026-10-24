@@ -3,7 +3,6 @@ import CustomSwitcher from "@/components/CustomSwitcher";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import GoogleLoginBtn from "@/components/buttons/GoogleLoginBtn";
 import Input from "@/components/inputs/CustomInput1";
-import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import LocalSvgAsset from "@/components/ui/LocalSvgAsset";
 import { GOOGLE_AUTH_URL } from "@/constants/network";
 import { useAuth } from "@/context/AuthContext";
@@ -53,7 +52,6 @@ interface DecodedToken {
 
 type LoginFormData = z.infer<typeof loginSchema>;
 const REMEMBER_ME_KEY = "remember_me_credentials";
-type GoogleAuthPhase = "idle" | "opening" | "completing";
 
 const LoginScreen = () => {
   const { tw, color } = useAppTheme();
@@ -61,8 +59,7 @@ const LoginScreen = () => {
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
-  const [googleAuthPhase, setGoogleAuthPhase] =
-    useState<GoogleAuthPhase>("idle");
+  const { googleAuthPhase, setGoogleAuthPhase } = useAuthStore();
   const { mutate: login, isPending: loginPending } = useLogin();
   const { setUser } = useAuth();
 
@@ -143,7 +140,7 @@ const LoginScreen = () => {
   };
 
   const handleGoogleLogin = async () => {
-    if (googleAuthPhase !== "idle") {
+    if (useAuthStore.getState().googleAuthPhase !== "idle") {
       return;
     }
 
@@ -173,7 +170,7 @@ const LoginScreen = () => {
 
       setGoogleAuthPhase("completing");
       await completeLogin(token, refreshToken);
-    } catch (error) {
+    } catch {
       setGoogleAuthPhase("idle");
       showGlobalError("Google login could not be completed. Please try again.");
     }
@@ -245,23 +242,6 @@ const LoginScreen = () => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 120);
   };
-
-  if (googleAuthPhase !== "idle") {
-    return (
-      <FullScreenLoader
-        title={
-          googleAuthPhase === "opening"
-            ? "Connecting to Google"
-            : "Logging you in"
-        }
-        message={
-          googleAuthPhase === "opening"
-            ? "Finish choosing your account and we will bring you right back."
-            : "Please hold on while we finish your GatherGo sign-in."
-        }
-      />
-    );
-  }
 
   return (
     <KeyboardAvoidingView

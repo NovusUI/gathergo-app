@@ -457,15 +457,20 @@ const { default: RootNavigator } = loadTypeScript(
   "navigators/RootNavigators.tsx",
   {
     "@/components/ui/AppLaunchScreen": { default: "LaunchScreen" },
+    "@/components/ui/FullScreenLoader": { default: "GoogleLoader" },
+    react: { useEffect() {} },
+    "react-native": { View: "View", StyleSheet: { absoluteFillObject: {} } },
     "@/context/AuthContext": { useAuth: () => ({ loading: authLoading }) },
     "@/store/auth": {
       useAuthStore: () => ({
         isAuthenticated: authenticated,
         hasHydrated: authHydrated,
+        googleAuthPhase: "idle",
       }),
     },
     "expo-router": {
       Stack: Object.assign(function Stack() {}, { Screen: "Screen" }),
+      usePathname: () => "/",
     },
   },
 );
@@ -479,9 +484,10 @@ test("startup authentication loading keeps the logo screen until navigation can 
   authHydrated = true;
   for (const value of [true, false]) {
     authenticated = value;
-    assert.equal(RootNavigator().props.screenOptions.animation, "none");
+    const stack = [...nodes(RootNavigator())].find(node => node.props.screenOptions);
+    assert.equal(stack.props.screenOptions.animation, "none");
     assert.equal(
-      RootNavigator().props.children.props.name,
+      stack.props.children.props.name,
       value ? "(app)" : "(auth)",
     );
   }

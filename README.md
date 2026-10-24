@@ -291,3 +291,5 @@ The app supports rotation (`expo.orientation: default`). Installed development a
 Profile opens on Passes, which combines the existing owned-ticket and registration queries in one list. The profile summary scrolls with that list and its tabs remain sticky. QR access, event navigation, refresh, loading, and retry remain available. Bio editing and its route are removed; Settings no longer links to My passes.
 
 Dashboard event overview rows and event Quick Access shortcuts open the organiser detail screen (`/dashboard/:eventId`). The explicit attendee-view action on that screen opens the public event page.
+
+Google sign-in keeps a shared, non-persisted handoff phase while the browser is open and the user and tokens are saved. The root navigator covers intermediate routes until the authenticated destination renders: profile completion, interest mapping, or Explore. Cancelled and failed attempts release the cover so sign-in can be retried.
