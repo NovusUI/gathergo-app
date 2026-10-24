@@ -110,8 +110,8 @@ const ChatInput = ({
           multiline
           onFocus={handleFocus}
           onContentSizeChange={handleContentSizeChange}
-          editable={!disabled}
-          selectTextOnFocus={!disabled}
+          editable={!disabled && !sending}
+          selectTextOnFocus={!disabled && !sending}
         />
 
         <TouchableOpacity

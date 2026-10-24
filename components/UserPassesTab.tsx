@@ -448,13 +448,13 @@ export default function UserPassesTab({ ListHeaderComponent, renderSectionHeader
       <SectionList<UnifiedPass>
         sections={[{data: combinedPasses}]}
         keyExtractor={pass => `${pass.kind}-${pass.id}`}
-        ListHeaderComponent={
+        ListHeaderComponent={ListHeaderComponent}
+        renderSectionHeader={info => (
           <>
+            {renderSectionHeader?.(info)}
             <RefreshIndicator refreshing={isRefreshing} />
-            {typeof ListHeaderComponent === "function" ? <ListHeaderComponent /> : ListHeaderComponent}
           </>
-        }
-        renderSectionHeader={renderSectionHeader}
+        )}
         stickySectionHeadersEnabled={Boolean(renderSectionHeader)}
         renderItem={({item}) => <PassCard pass={item} onOpenQr={setSelectedPass} onOpenEvent={handleOpenEvent} />}
         ListFooterComponent={combinedPasses.length === 0 ? (

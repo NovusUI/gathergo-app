@@ -449,6 +449,53 @@ test("owned passes stay visible during a background check", () => {
   );
 });
 
+test("pulling to refresh passes leaves the profile header and tabs in place", async () => {
+  resetPasses();
+  registrationQuery.data.data = [ownedRegistration];
+  const summary = {type: 'Summary'}, tabs = {type: 'Tabs'};
+  const props = { ListHeaderComponent: summary, renderSectionHeader: () => tabs };
+  const render = () => [...nodes(passesHooks.render(() => MyPassesPage(props)))].find(node => node.type === 'SectionList');
+  let ticketsRefreshed = 0, registrationsRefreshed = 0, finishTickets, finishRegistrations;
+  ticketQuery.refetch = () => {
+    ticketsRefreshed++; ticketQuery.isRefetching = true;
+    return new Promise(resolve => { finishTickets = () => { ticketQuery.isRefetching = false; resolve(); }; });
+  };
+  registrationQuery.refetch = () => {
+    registrationsRefreshed++; registrationQuery.isRefetching = true;
+    return new Promise(resolve => { finishRegistrations = () => { registrationQuery.isRefetching = false; resolve(); }; });
+  };
+  const initial = render();
+  const refreshing = initial.props.refreshControl.props.onRefresh();
+  const during = render();
+  assert.equal(ticketsRefreshed, 1); assert.equal(registrationsRefreshed, 1);
+  assert.strictEqual(during.props.ListHeaderComponent, summary);
+  assert.equal([...nodes(during.props.ListHeaderComponent)].some(node => node.type === 'RefreshIndicator'), false);
+  const section = during.props.renderSectionHeader({section: during.props.sections[0]});
+  assert.strictEqual(section.props.children[0], tabs);
+  const indicator = [...nodes(section)].find(node => node.type === 'RefreshIndicator');
+  assert.equal(indicator.props.refreshing, true);
+  assert.equal(during.props.stickySectionHeadersEnabled, true);
+  assert.equal(during.props.sections[0].data[0].eventTitle, 'Tree planting');
+  finishTickets(); await Promise.resolve();
+  assert.equal(render().props.refreshControl.props.refreshing, true);
+  finishRegistrations(); await refreshing;
+  const finished = render();
+  assert.strictEqual(finished.props.ListHeaderComponent, summary);
+  assert.equal(finished.props.refreshControl.props.refreshing, false);
+  assert.equal(finished.props.sections[0].data[0].eventTitle, 'Tree planting');
+});
+test("standalone passes refresh works without a profile header and preserves header component references", () => {
+  resetPasses(); registrationQuery.isRefetching = true;
+  const list = passesList();
+  assert.equal(list.props.ListHeaderComponent, undefined);
+  assert.equal(list.props.stickySectionHeadersEnabled, false);
+  assert.equal([...nodes(list.props.renderSectionHeader({section: list.props.sections[0]}))].find(node => node.type === 'RefreshIndicator').props.refreshing, true);
+  function Summary() { return {type: 'Summary'}; }
+  const embedded = passesHooks.render(() => MyPassesPage({ListHeaderComponent: Summary, renderSectionHeader: () => ({type:'Tabs'})}));
+  const embeddedList = [...nodes(embedded)].find(node => node.type === 'SectionList');
+  assert.strictEqual(embeddedList.props.ListHeaderComponent, Summary);
+});
+
 test("paid tickets and registrations share one unfiltered list with working QR and event actions", () => {
   resetPasses();
   ticketQuery.data.data = [{ id: 'paid-ticket', qrCode: 'paid-qr', isUsed: false, createdAt: ownedRegistration.createdAt, transactionId: 'txn-2',
@@ -685,8 +732,8 @@ test("pass loading preserves the profile summary and sticky tabs", () => {
   const summary = {type: 'Summary'}, tabs = () => ({type: 'Tabs'});
   const page = passesHooks.render(() => MyPassesPage({ListHeaderComponent: summary, renderSectionHeader: tabs}));
   const list = [...nodes(page)].find(node => node.type === 'SectionList');
-  assert.ok([...nodes(list.props.ListHeaderComponent)].includes(summary));
-  assert.strictEqual(list.props.renderSectionHeader, tabs);
+  assert.strictEqual(list.props.ListHeaderComponent, summary);
+  assert.ok([...nodes(list.props.renderSectionHeader({section: list.props.sections[0]}))].some(node => node.type === 'Tabs'));
   assert.equal(list.props.stickySectionHeadersEnabled, true);
   assert.equal(list.props.ListFooterComponent.type, 'PageLoader');
 });

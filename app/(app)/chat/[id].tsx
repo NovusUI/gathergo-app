@@ -51,9 +51,11 @@ import {
   type VibeCheckRole,
 } from "@/hooks/useVibeCheckHandshake";
 import { useVibeCheckPrompt } from "@/hooks/useVibeCheckPrompt";
-import { useMessageQueueStore } from "@/store/messageQueue";
+import { pendingMessage, useMessageQueueStore } from "@/store/messageQueue";
+import { showGlobalError } from "@/utils/globalErrorHandler";
+import "react-native-get-random-values";
+import { v4 as uuidv4 } from "uuid";
 import { formatTo12Hour } from "@/utils/utils";
-import { useQueryClient } from "@tanstack/react-query";
 
 // Import the useCarpoolDetails hook
 import { useCarpoolDetails } from "@/hooks/useCarpoolDetails";
@@ -124,8 +126,8 @@ const ChatPage = () => {
 
   const unreadCount = activeConversation?.unreadCount ?? 0;
 
-  const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
+  const sendInProgress = useRef(false);
   const [rideVibeExpanded, setRideVibeExpanded] = useState(false);
   const draftLoadedRef = useRef(false);
 
@@ -335,72 +337,43 @@ const ChatPage = () => {
       return;
     }
 
-    if (!socket || text.trim().length === 0) return;
+    if (!user || sendInProgress.current || text.trim().length === 0) return;
+    sendInProgress.current = true;
     setSending(true);
-
-    const optimistic = {
-      id: `temp-${Date.now()}`,
-      content: text,
-      carpoolId,
-      senderId: user?.id,
-      createdAt: new Date().toISOString(),
-      sender: {
-        id: user?.id,
-        username: user?.username,
-        // Add user's role for display
-        role: getUserRole(),
-      },
-      readBy: [],
-      optimistic: true,
-    };
-
-    queryClient.setQueryData(["messages", carpoolId], (old: any) => {
-      if (!old) {
-        return {
-          pageParams: [{ before: null, beforeId: null }],
-          pages: [[optimistic]],
-        };
-      }
-
-      const flat = old.pages.flat();
-
-      return {
-        ...old,
-        pages: [[optimistic, ...flat]],
-      };
-    });
-
-    updateConversationAfterSend(carpoolId, optimistic);
-    const shouldClearComposer = options.clearComposer ?? true;
-    if (shouldClearComposer) {
-      setValue("");
-    }
-    if (carpoolId && shouldClearComposer) {
-      AsyncStorage.removeItem(getDraftKey(carpoolId)).catch((error) =>
-        console.log("failed to clear chat draft", error)
-      );
-    }
-
-    requestAnimationFrame(() => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    });
-
     try {
-      if (socket && socket.connected) {
-        socket.emit("sendMessage", {
-          carpoolId,
-          content: text,
-          tempId: optimistic.id,
-        });
-      } else {
-        await addMessage({ carpoolId, content: text, tempId: optimistic.id });
+      const queued = {
+        tempId: `temp-${uuidv4()}`,
+        content: text,
+        carpoolId,
+        senderId: user.id,
+        createdAt: new Date().toISOString(),
+        sender: { id: user.id, username: user.username ?? null },
+        error: null,
+      };
+      await addMessage(queued);
+      updateConversationAfterSend(carpoolId, pendingMessage(queued));
+      const shouldClearComposer = options.clearComposer ?? true;
+      if (shouldClearComposer) {
+        setValue("");
+        AsyncStorage.removeItem(getDraftKey(carpoolId)).catch(error =>
+          console.error("Failed to clear chat draft", error));
       }
-    } catch (e) {
-      console.log("send error", e);
-      Alert.alert("Error", "Failed to send message");
+      requestAnimationFrame(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }));
+    } catch (error) {
+      console.error("Could not save pending message", error);
+      Alert.alert("Message not queued", "Couldn't save your message. Your text is still here; please try again.");
+    } finally {
+      sendInProgress.current = false;
+      setSending(false);
     }
+  };
 
-    setSending(false);
+  const retryMessage = (tempId: string) => {
+    if (!user) return;
+    void useMessageQueueStore.getState().retryMessage(user.id, tempId).catch(error => {
+      console.error("Could not retry message", error);
+      showGlobalError("Couldn't queue this message for retry. Please try again.");
+    });
   };
 
   const openCarpoolDetails = () => {
@@ -600,6 +573,9 @@ const ChatPage = () => {
           signalAction={vibeCheckMessageDetails.signalAction}
           signalTitle={vibeCheckMessageDetails.signalTitle}
           time={messageTime}
+          optimistic={item.optimistic}
+          error={item.error}
+          onRetry={() => retryMessage(item.id)}
           onPress={vibeCheckPrompt.open}
         />
       );
@@ -611,6 +587,8 @@ const ChatPage = () => {
           message={item.content}
           time={messageTime}
           optimistic={item.optimistic}
+          error={item.error}
+          onRetry={() => retryMessage(item.id)}
           rideIconName={rideIconName}
         />
       );
@@ -685,7 +663,7 @@ const ChatPage = () => {
   return (
     <KeyboardAvoidingView
       style={tw`flex-1 bg-background dark:bg-[#01082E]`}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>

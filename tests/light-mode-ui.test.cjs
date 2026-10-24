@@ -88,7 +88,8 @@ test('permission names and every permission status have readable light-mode colo
   assert.equal(toggles, 4); assert.equal(revokes, 4);
 });
 const { default: Incoming } = loadTypeScript('components/ui/ChatView1.tsx', common);
-const { default: Outgoing } = loadTypeScript('components/ui/UserChatView.tsx', common);
+const { default: DeliveryStatus } = loadTypeScript('components/ui/MessageDeliveryStatus.tsx', common);
+const { default: Outgoing } = loadTypeScript('components/ui/UserChatView.tsx', { ...common, './MessageDeliveryStatus': { default: DeliveryStatus } });
 test('chat uses distinct incoming and outgoing bubbles with readable messages and timestamps', () => {
   mode = 'light'; const theme = getAppTheme(mode);
   for (const Component of [Incoming, Outgoing]) assertLegible(render(React.createElement(Component, {message: 'Meet at the gate', time: '10:30'})), theme.colors.chatBackground);

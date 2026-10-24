@@ -293,3 +293,11 @@ Profile opens on Passes, which combines the existing owned-ticket and registrati
 Dashboard event overview rows and event Quick Access shortcuts open the organiser detail screen (`/dashboard/:eventId`). The explicit attendee-view action on that screen opens the public event page.
 
 Google sign-in keeps a shared, non-persisted handoff phase while the browser is open and the user and tokens are saved. The root navigator covers intermediate routes until the authenticated destination renders: profile completion, interest mapping, or Explore. Cancelled and failed attempts release the cover so sign-in can be retried.
+
+Chat saves every outgoing message in an account-owned AsyncStorage outbox before clearing the composer. The app-level socket sender keeps it until a saved-message acknowledgment, live receipt, or history confirms the same sender/conversation/client key. Lost receipts retry after 15 seconds with backoff up to 30 seconds; connection and foreground changes resume delivery. Rejected sends remain visible with a retry action. A restart restores pending content and keys; background delivery resumes when the operating system lets the app run again.
+
+The server must be updated with the saved-message acknowledgment contract before this app version is released. The previous `message-queue-storage` contained no sender identity; it is retained untouched and is not automatically replayed under a possibly different account. Its pending messages may need to be sent again manually. The new outbox uses `chat-outbox-storage`.
+
+Chat enables padding-based keyboard avoidance on Android as well as iOS. This reserves keyboard overlap in edge-to-edge windows and removes that extra padding when Android has already resized the window.
+
+Passes pull-to-refresh keeps the profile summary as the unchanged list header. Its refresh indicator appears in the Passes section below the profile tabs; only tickets and registrations are refetched.
