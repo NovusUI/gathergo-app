@@ -1,11 +1,11 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
-import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useGetSearchResult } from "@/services/queries";
 import { useLockedRouter } from "@/utils/navigation";
-import { useRouter } from "expo-router";
 import { SearchIcon } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -18,9 +18,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const SearchScreen = () => {
+  const { tw, color } = useAppTheme();
+  const { pageWidth, insets } = useResponsiveLayout();
+  const contentWidth = Math.min(pageWidth - 40, 840);
   const router = useLockedRouter();
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<TextInput | null>(null);
@@ -35,28 +37,26 @@ const SearchScreen = () => {
 
   const results = useMemo(
     () => searchResults?.pages?.flatMap((page: any) => page.data) ?? [],
-    [searchResults]
+    [searchResults],
   );
 
   const renderContent = () => {
-    if (isPending) {
-      return (
-        <ImpactPageLoader
-          compact
-          title="Mapping matches"
-          message="Finding events with the right place, purpose, and timing."
-          style={tw`flex-1`}
-        />
-      );
-    }
-
     if (query.trim().length === 0) {
       return (
         <View style={tw`mt-5`}>
-          <Text style={tw`text-white text-center`}>
+          <Text style={tw`text-foreground dark:text-white text-center`}>
             Type something to search for events
           </Text>
         </View>
+      );
+    }
+
+    if (isPending) {
+      return (
+        <ActivityIndicator
+          accessibilityLabel="Searching events"
+          style={styles.searchLoading}
+        />
       );
     }
 
@@ -101,14 +101,18 @@ const SearchScreen = () => {
       />
     ) : (
       <View style={tw`mt-5`}>
-        <Text style={tw`text-white text-center`}>No events found</Text>
+        <Text style={tw`text-foreground dark:text-white text-center`}>No events found</Text>
       </View>
     );
   };
 
   return (
     <KeyboardAvoidingView
-      style={[tw`flex-1 bg-[#01082E] items-center flex-col overflow-hidden`, styles.screen]}
+      style={[
+        tw`flex-1 bg-background dark:bg-[#01082E] items-center flex-col overflow-hidden`,
+        styles.screen,
+        { paddingTop: insets.top + spacing.sm },
+      ]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -116,24 +120,25 @@ const SearchScreen = () => {
       <Pressable
         onPress={() => searchInputRef.current?.focus()}
         style={[
-          tw`flex-row items-center bg-[#1A2755] rounded-full w-full max-w-[500px]`,
+          tw`flex-row items-center bg-surface dark:bg-[#1A2755] border border-borderStrong dark:border-transparent rounded-full w-full`,
           styles.searchBar,
+          { maxWidth: contentWidth },
         ]}
       >
-        <SearchIcon size={20} color="white" />
+        <SearchIcon size={20} color={color("white", "foreground")} />
         <TextInput
           autoCapitalize="none"
           ref={searchInputRef}
           placeholder="Search events"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={color("#94A3B8", "muted")}
           value={query}
           onChangeText={setQuery}
-          style={tw`flex-1 text-white ml-3`}
+          style={tw`flex-1 text-foreground dark:text-white ml-3`}
         />
       </Pressable>
 
       {/* Content */}
-      <CustomView style={styles.contentContainer}>{renderContent()}</CustomView>
+      <CustomView style={{ ...styles.contentContainer, maxWidth: contentWidth }}>{renderContent()}</CustomView>
     </KeyboardAvoidingView>
   );
 };
@@ -151,14 +156,18 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    marginBottom: layoutSpacing.listBottomInset,
+    marginBottom: 0,
+  },
+  searchLoading: {
+    alignSelf: "center",
+    paddingTop: spacing.sm,
   },
   listContent: {
     gap: layoutSpacing.listGap,
-    paddingVertical: layoutSpacing.sm,
+    paddingVertical: spacing.sm,
   },
   listFooterLoading: {
-    margin: layoutSpacing.lg,
+    margin: spacing.lg,
   },
 });
 

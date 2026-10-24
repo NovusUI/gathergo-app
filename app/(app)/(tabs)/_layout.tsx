@@ -1,3 +1,5 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useAppTheme } from "@/hooks/useAppTheme";
 // app/_layout.tsx
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { pushWithLock, replaceWithLock } from "@/utils/navigation";
@@ -8,9 +10,8 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 
 import { Stack, usePathname, useRouter } from "expo-router";
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, type ReactNode } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type TabItem = {
   name: string;
@@ -19,15 +20,14 @@ type TabItem = {
 };
 
 export default function RootLayout() {
+  const { tw, color } = useAppTheme();
+  const { useNavigationRail, navigationRailWidth } = useResponsiveLayout();
   const pathname = usePathname();
   const router = useRouter();
-  const [sheetMode, setSheetMode] = useState<"root" | "eventType">("root");
 
   // Bottom sheet setup
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["34%"], []);
   const openSheet = useCallback(() => {
-    setSheetMode("root");
     bottomSheetRef.current?.snapToIndex(0);
   }, []);
   const guardedOpenSheet = usePressGuard(openSheet);
@@ -35,13 +35,9 @@ export default function RootLayout() {
     bottomSheetRef.current?.close();
     pushWithLock(router, "/new-carpool");
   });
-  const guardedCreateDonationEvent = usePressGuard(() => {
+  const guardedCreateEvent = usePressGuard(() => {
     bottomSheetRef.current?.close();
-    pushWithLock(router, "/new-event?eventType=donation");
-  });
-  const guardedCreateGeneralEvent = usePressGuard(() => {
-    bottomSheetRef.current?.close();
-    pushWithLock(router, "/new-event?eventType=general");
+    pushWithLock(router, "/new-event");
   });
 
   const tabs: TabItem[] = [
@@ -78,200 +74,146 @@ export default function RootLayout() {
     },
   ];
 
-  return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: "#01082E" },
-          animation: "fade",
-        }}
-      />
+  const navigation = (
+    <View
+      accessibilityRole="tablist"
+      accessibilityLabel="Main navigation"
+      style={[
+        tw`bg-background dark:bg-[#01082E] border-border dark:border-gray-800`,
+        useNavigationRail
+          ? { width: navigationRailWidth, justifyContent: "center", gap: 12, borderRightWidth: 1, paddingVertical: 16 }
+          : { flexDirection: "row", justifyContent: "space-around", paddingVertical: 8, borderTopWidth: 1 },
+      ]}
+    >
+      {tabs.map((tab) => {
+        const href = tab.href;
+        const isActive = pathname === href;
+        const iconColor = isActive ? color("#0FF1CF", "accent") : color("white", "foreground");
 
-      {/* Bottom Nav */}
-      <View
-        style={tw`absolute bottom-0 left-0 right-0 flex-row justify-around bg-[#01082E] py-4 border-t border-gray-800`}
-      >
-        {tabs.map((tab) => {
-          const isActive = pathname === tab.href;
-          const color = isActive ? "#0FF1CF" : "white";
-
-          if (!tab.href) {
-            return (
-              <TouchableOpacity
-                key={tab.name}
-                style={tw`items-center`}
-                onPress={guardedOpenSheet}
-              >
-                {tab.icon(color)}
-                <Text style={tw`text-xs text-white`}>{tab.name}</Text>
-              </TouchableOpacity>
-            );
-          }
-
+        if (!href) {
           return (
             <TouchableOpacity
               key={tab.name}
-              style={tw`items-center`}
-              onPress={() => replaceWithLock(router, tab.href)}
+              accessibilityRole="button"
+              accessibilityLabel="Create event or carpool"
+              style={tw`min-h-12 items-center justify-center px-2 py-1`}
+              onPress={guardedOpenSheet}
             >
-              {tab.icon(color)}
-              <Text
-                style={tw`${
-                  isActive ? "text-[#0FF1CF]" : "text-white"
-                } text-xs`}
-              >
-                {tab.name}
-              </Text>
+              {tab.icon(iconColor)}
+              <Text style={tw`text-xs text-foreground dark:text-white`}>{tab.name}</Text>
             </TouchableOpacity>
           );
-        })}
+        }
+
+        return (
+          <TouchableOpacity
+            key={tab.name}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.name}
+            accessibilityState={{ selected: isActive }}
+            style={tw`min-h-12 items-center justify-center px-2 py-1`}
+            onPress={() => replaceWithLock(router, href)}
+          >
+            {tab.icon(iconColor)}
+            <Text
+              style={tw`${
+                isActive ? "text-accent dark:text-[#0FF1CF]" : "text-foreground dark:text-white"
+              } text-xs`}
+            >
+              {tab.name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
+  return (
+    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { flexDirection: useNavigationRail ? "row" : "column" }]}>
+      {useNavigationRail ? navigation : null}
+      <View key="routes" style={tw`flex-1`}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: color("#01082E", "background") },
+            animation: "fade",
+          }}
+        />
       </View>
+      {useNavigationRail ? null : navigation}
 
       {/* Add Tab Bottom Sheet */}
       <BottomSheet
         index={-1}
         ref={bottomSheetRef}
-        snapPoints={snapPoints}
+        enableDynamicSizing
         enablePanDownToClose
-        onClose={() => setSheetMode("root")}
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
-            disappearsOnIndex={0}
-            appearsOnIndex={1}
+            disappearsOnIndex={-1}
+            appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <BottomSheetScrollView style={tw`px-5`}>
-          <View style={tw`p-5 gap-4`}>
-            {sheetMode === "root" ? (
-              <>
-                <TouchableOpacity
-                  style={tw`rounded-3xl bg-[#101C45] p-5`}
-                  onPress={() => setSheetMode("eventType")}
-                >
-                  <View style={tw`flex-row items-center justify-between`}>
-                    <View style={tw`flex-row items-center gap-3`}>
-                      <View
-                        style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}
-                      >
-                        <Ionicons
-                          name="calendar-outline"
-                          size={22}
-                          color="#0FF1CF"
-                        />
-                      </View>
-                      <View>
-                        <Text style={tw`text-base font-semibold text-white`}>
-                          New Event
-                        </Text>
-                        <Text style={tw`mt-1 text-sm text-[#98ABD6]`}>
-                          Choose event type
-                        </Text>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="white" />
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={tw`rounded-3xl bg-[#0FF1CF] p-5`}
-                  onPress={guardedCreateCarpool}
-                >
-                  <View style={tw`flex-row items-center justify-between`}>
-                    <View style={tw`flex-row items-center gap-3`}>
-                      <View
-                        style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#03122F]`}
-                      >
-                        <Ionicons
-                          name="car-sport-outline"
-                          size={22}
-                          color="#0FF1CF"
-                        />
-                      </View>
-                      <View>
-                        <Text
-                          style={tw`text-base font-semibold text-[#01082E]`}
-                        >
-                          New Carpool
-                        </Text>
-                        <Text style={tw`mt-1 text-sm text-[#194949]`}>
-                          Create a shared ride
-                        </Text>
-                      </View>
-                    </View>
+          <View style={tw`w-full max-w-[560px] self-center p-5 gap-4`}>
+            <TouchableOpacity
+              style={tw`rounded-3xl bg-surface dark:bg-[#101C45] p-5`}
+              onPress={guardedCreateEvent}
+            >
+              <View style={tw`flex-row items-center justify-between`}>
+                <View style={tw`flex-row items-center gap-3`}>
+                  <View
+                    style={tw`h-12 w-12 items-center justify-center rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15`}
+                  >
                     <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color="#01082E"
+                      name="calendar-outline"
+                      size={22}
+                      color={color("#0FF1CF", "accent")}
                     />
                   </View>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={tw`self-start rounded-full bg-[#101C45] px-4 py-2`}
-                  onPress={() => setSheetMode("root")}
-                >
-                  <Text style={tw`text-sm font-semibold text-white`}>Back</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={tw`rounded-3xl border border-[#0FF1CF]/20 bg-[#101C45] p-5`}
-                  onPress={guardedCreateGeneralEvent}
-                >
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <View
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF]/15`}
-                    >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={22}
-                        color="#0FF1CF"
-                      />
-                    </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        Create an event
-                      </Text>
-                      <Text style={tw`mt-1 text-sm leading-5 text-[#98ABD6]`}>
-                        Host a free or paid event, from concerts and workshops
-                        to community gatherings.
-                      </Text>
-                    </View>
+                  <View>
+                    <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
+                      New Event
+                    </Text>
+                    <Text style={tw`mt-1 text-sm text-secondary dark:text-[#98ABD6]`}>
+                      Create with Gogo
+                    </Text>
                   </View>
-                </TouchableOpacity>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={color("white", "foreground")} />
+              </View>
+            </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={tw`rounded-3xl border border-[#FF6B6B]/30 bg-[#2A1022] p-5`}
-                  onPress={guardedCreateDonationEvent}
-                >
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <View
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#FF6B6B]/15`}
-                    >
-                      <Ionicons
-                        name="heart-outline"
-                        size={22}
-                        color="#FF8A8A"
-                      />
-                    </View>
-                    <View style={tw`flex-1`}>
-                      <Text style={tw`text-base font-semibold text-white`}>
-                        Create a fundraiser
-                      </Text>
-                      <Text style={tw`mt-1 text-sm leading-5 text-[#F1B3C2]`}>
-                        Raise support around a cause, project, or community
-                        need.
-                      </Text>
-                    </View>
+            <TouchableOpacity
+              style={tw`rounded-3xl bg-accentFill dark:bg-[#0FF1CF] p-5`}
+              onPress={guardedCreateCarpool}
+            >
+              <View style={tw`flex-row items-center justify-between`}>
+                <View style={tw`flex-row items-center gap-3`}>
+                  <View
+                    style={tw`h-12 w-12 items-center justify-center rounded-full bg-background dark:bg-[#03122F]`}
+                  >
+                    <Ionicons
+                      name="car-sport-outline"
+                      size={22}
+                      color={color("#0FF1CF", "accent")}
+                    />
                   </View>
-                </TouchableOpacity>
-              </>
-            )}
+                  <View>
+                    <Text style={tw`text-base font-semibold text-onAccent dark:text-[#01082E]`}>
+                      New Carpool
+                    </Text>
+                    <Text style={tw`mt-1 text-sm text-onAccent dark:text-[#194949]`}>
+                      Create a shared ride
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={color("#01082E", "onAccent")} />
+              </View>
+            </TouchableOpacity>
           </View>
         </BottomSheetScrollView>
       </BottomSheet>

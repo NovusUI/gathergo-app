@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { ChevronRight, Mail, User } from "lucide-react-native";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface UserSearchResultProps {
   user: {
@@ -19,9 +19,10 @@ const UserSearchResult: React.FC<UserSearchResultProps> = ({
   user,
   onSelect,
 }) => {
+  const { tw, color } = useAppTheme();
   return (
     <TouchableOpacity
-      style={tw`bg-[#1B2A50] rounded-xl p-4 mb-3 flex-row items-center`}
+      style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4 mb-3 flex-row items-center`}
       onPress={onSelect}
       activeOpacity={0.8}
     >
@@ -33,28 +34,28 @@ const UserSearchResult: React.FC<UserSearchResultProps> = ({
         />
       ) : (
         <View
-          style={tw`w-12 h-12 rounded-full bg-[#5669FF] items-center justify-center`}
+          style={tw`w-12 h-12 rounded-full bg-primary dark:bg-[#5669FF] items-center justify-center`}
         >
-          <User size={20} color="white" />
+          <User size={20} color={color("white", "onPrimary")} />
         </View>
       )}
 
       {/* User Info */}
       <View style={tw`flex-1 ml-4`}>
-        <Text style={tw`text-white font-semibold`}>
+        <Text style={tw`text-foreground dark:text-white font-semibold`}>
           {user.fullName || user.username || "User"}
         </Text>
         {Boolean(user.username) && (
-          <Text style={tw`text-gray-400 text-sm`}>@{user.username}</Text>
+          <Text style={tw`text-muted dark:text-gray-400 text-sm`}>@{user.username}</Text>
         )}
         <View style={tw`flex-row items-center mt-1`}>
-          <Mail size={12} color="#6B7280" />
-          <Text style={tw`text-gray-400 text-xs ml-1`}>{user.email}</Text>
+          <Mail size={12} color={color("#6B7280", "muted")} />
+          <Text style={tw`text-muted dark:text-gray-400 text-xs ml-1`}>{user.email}</Text>
         </View>
       </View>
 
       {/* Select Indicator */}
-      <ChevronRight size={20} color="#5669FF" />
+      <ChevronRight size={20} color={color("#5669FF", "primary")} />
     </TouchableOpacity>
   );
 };

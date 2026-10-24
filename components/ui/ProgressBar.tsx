@@ -1,5 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { View } from "react-native";
-import tw from "twrnc";
 
 interface ProgressBarProps {
   progress: number;
@@ -8,11 +8,12 @@ interface ProgressBarProps {
 }
 
 const ProgressBar = ({ progress, height = 12 }: ProgressBarProps) => {
+  const { tw } = useAppTheme();
   return (
-    <View style={[tw`bg-[#1B2A50] rounded-full overflow-hidden`, { height }]}>
+    <View style={[tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-full overflow-hidden`, { height }]}>
       <View
         style={[
-          tw`bg-[#5669FF] rounded-full`,
+          tw`bg-primary dark:bg-[#5669FF] rounded-full`,
           {
             width: `${Math.min(progress, 100)}%`,
             height,

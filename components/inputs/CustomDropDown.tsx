@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { forwardRef, useState } from "react";
 import { Text, View } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
-import tw from "twrnc";
 
 type IconType = React.ComponentType<{
   size?: number;
@@ -33,6 +33,7 @@ const Dropdown = forwardRef<View, DropdownProps>(
     },
     ref
   ) => {
+  const { tw, color } = useAppTheme();
     const [open, setOpen] = useState(false);
     const [value, setValue] = useState(selectedValue);
     const [items, setItems] = useState(options);
@@ -64,35 +65,37 @@ const Dropdown = forwardRef<View, DropdownProps>(
             setItems={setItems}
             placeholder={placeholder}
             style={{
-              backgroundColor: "rgba(27,42,80,0.4)",
+              backgroundColor: color("rgba(27,42,80,0.4)", "surface"),
               borderRadius: 12,
-              borderWidth: 0,
+              borderWidth: 1,
+              borderColor: error ? color("#EF4444", "danger") : color("transparent", "borderStrong"),
               minHeight: 50,
               flex: 1,
             }}
             textStyle={{
-              color: "#fff",
+              color: color("#fff", "foreground"),
               fontSize: 16,
             }}
             placeholderStyle={{
-              color: "#9CA3AF",
+              color: color("#9CA3AF", "muted"),
             }}
             dropDownContainerStyle={{
-              backgroundColor: "rgba(27,42,80,0.9)",
+              backgroundColor: color("rgba(27,42,80,0.9)", "surface"),
               borderRadius: 12,
-              borderWidth: 0,
+              borderWidth: 1,
+              borderColor: error ? color("#EF4444", "danger") : color("transparent", "borderStrong"),
             }}
             listItemLabelStyle={{
-              color: "#fff",
+              color: color("#fff", "foreground"),
             }}
             arrowIconStyle={{
-              tintColor: "#fff",
+              tintColor: color("#fff", "foreground"),
             }}
           />
         </View>
 
         {Boolean(error) && (
-          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+          <Text style={tw`text-danger dark:text-red-500 text-xs mt-1`}>{error}</Text>
         )}
       </View>
     );

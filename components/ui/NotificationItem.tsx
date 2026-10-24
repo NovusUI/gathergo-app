@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 // components/NotificationItem.tsx
 import { NotificationArtworkFallback } from "@/components/ui/ArtworkFallback";
 import { spacing } from "@/constants/spacing";
@@ -5,7 +6,6 @@ import { formatShortDate } from "@/utils/dateTimeHandler";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface NotificationItemProps {
   notification: {
@@ -27,6 +27,7 @@ export const NotificationItem = ({
   onPress,
   onMarkAsRead,
 }: NotificationItemProps) => {
+  const { tw } = useAppTheme();
   const [showImage, setShowImage] = useState(Boolean(notification.imageUrl));
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export const NotificationItem = ({
 
       default:
         return (
-          <View style={[tw`flex-row w-full bg-[#01082E]`, styles.inner]}>
+          <View style={[tw`flex-row w-full bg-background dark:bg-[#01082E]`, styles.inner]}>
             <View
               style={tw`w-[91px] h-[84px] rounded-lg overflow-hidden relative`}
             >
@@ -75,28 +76,28 @@ export const NotificationItem = ({
                   borderRadius={8}
                 />
               )}
-              <View style={[tw`absolute bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`, styles.dateBadge]}>
-                <Text style={tw`text-white text-xs`}>
+              <View style={[tw`absolute bg-accentFill/80 dark:bg-[#0FF1CF]/80 rounded-t-lg rounded-br-lg`, styles.dateBadge]}>
+                <Text style={tw`text-foreground dark:text-white text-xs`}>
                   {formatShortDate(notification.createdAt)}
                 </Text>
               </View>
             </View>
             <View style={styles.content}>
               <Text
-                style={tw`text-white font-semibold text-lg`}
+                style={tw`text-foreground dark:text-white font-semibold text-lg`}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {notification.title}
               </Text>
               <Text
-                style={tw`text-white`}
+                style={tw`text-foreground dark:text-white`}
                 numberOfLines={2}
                 ellipsizeMode="tail"
               >
                 {isUsername ? (
                   <>
-                    <Text style={tw`font-bold text-[#3D50DF]`}>
+                    <Text style={tw`font-bold text-primary dark:text-[#3D50DF]`}>
                       {notification.message.split(" ").slice(0, 1).join(" ")}
                     </Text>
                     <Text>
@@ -116,8 +117,8 @@ export const NotificationItem = ({
   return (
     <TouchableOpacity
       onPress={handlePress}
-      style={tw`border-b bg-[#01082E] ${
-        !notification.read ? "border-[#0FF1CF]" : ""
+      style={tw`border-b bg-background dark:bg-[#01082E] ${
+        !notification.read ? "border-accent dark:border-[#0FF1CF]" : ""
       }`}
       hitSlop={{ top: spacing.xs, bottom: spacing.xs, left: 0, right: 0 }}
     >

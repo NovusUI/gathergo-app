@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useRef } from "react";
 import { Pressable, Text, TextInput, TextInputProps, View } from "react-native";
-import tw from "twrnc";
 
 interface TextAreaProps extends TextInputProps {
   value: string;
@@ -23,6 +23,7 @@ export default function TextArea({
   insideBottomSheet = false,
   ...props
 }: TextAreaProps) {
+  const { tw, color } = useAppTheme();
   const inputRef = useRef<TextInput | null>(null);
   const InputComponent = insideBottomSheet ? BottomSheetTextInput : TextInput;
 
@@ -33,12 +34,12 @@ export default function TextArea({
           autoCapitalize="none"
           ref={inputRef}
           style={tw.style(
-            `w-full min-h-[120px] rounded-2xl bg-[#1B2A50]/40 text-white p-4 text-base`,
-            error && `border border-red-500`,
+            `w-full min-h-[120px] rounded-2xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent text-foreground dark:text-white p-4 text-base`,
+            error && `border border-danger dark:border-red-500`,
             className
           )}
           placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={color("#9CA3AF", "muted")}
           value={value}
           onChangeText={onChange}
           multiline
@@ -47,11 +48,11 @@ export default function TextArea({
           {...props}
         />
       </Pressable>
-      <Text style={tw`text-right text-sm text-gray-400 mt-1`}>
+      <Text style={tw`text-right text-sm text-muted dark:text-gray-400 mt-1`}>
         {value?.length || 0}/{maxLength}
       </Text>
       {Boolean(error) && (
-        <Text style={tw`text-red-400 text-sm mt-1`}>{error}</Text>
+        <Text style={tw`text-danger dark:text-red-400 text-sm mt-1`}>{error}</Text>
       )}
     </View>
   );

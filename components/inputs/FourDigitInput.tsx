@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useRef, useState } from "react";
 import { NativeSyntheticEvent, TextInput, TextInputKeyPressEventData, View } from "react-native";
 
@@ -8,6 +9,7 @@ export default function FourDigitCodeInput({
   onChange: (code: string) => void;
   onComplete?: (code: string) => void;
 }) {
+  const { tw } = useAppTheme();
   const [code, setCode] = useState(["", "", "", ""]);
   const inputsRef = useRef<(TextInput | null)[]>([]);
 
@@ -48,12 +50,12 @@ export default function FourDigitCodeInput({
   };
 
   return (
-    <View className="flex-row justify-between w-full max-w-96">
+    <View style={tw.style("flex-row justify-between w-full max-w-96")}>
       {code.map((digit, idx) => (
         <TextInput
           key={idx}
           ref={(el) => (inputsRef.current[idx] = el)}
-          className="w-14 h-14 bg-[#1B2A50]/40 text-white text-center text-xl rounded-xl"
+          style={tw.style("w-14 h-14 bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent text-foreground dark:text-white text-center text-xl rounded-xl")}
           keyboardType="number-pad"
           maxLength={1}
           textContentType="oneTimeCode"

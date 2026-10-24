@@ -4,6 +4,7 @@ import {
   Registration,
   StandardResponse,
 } from "./auth";
+import type { VolunteerApplication, VolunteerRoleWithCount } from "./volunteer";
 
 export enum searchTypes {
   EVENTS = "events",
@@ -29,6 +30,11 @@ export type EventTicket = {
   isVisible: boolean;
   updatedPrice: number | null;
 };
+
+export interface EventTicketResponse
+  extends Pick<StandardResponse, "status" | "message"> {
+  data: EventTicket;
+}
 
 export interface CheckoutPricingRule {
   percentageBps: number;
@@ -65,6 +71,7 @@ export interface EventPaymentOptions {
   maxTicketsPerCheckout: number;
   reservationSeconds: number;
   requiresPayment: boolean;
+  acceptsDonations: boolean;
   supportsPaystack: boolean;
   supportsAlatTransfer: boolean;
   availableProviders: PaymentProvider[];
@@ -129,7 +136,7 @@ export interface UpsertEventImpactReportPayload {
 }
 
 export interface PaginatedEventResponse extends paginatedResponse {
-  data: Event[];
+  data: EventData[];
 }
 
 export interface PaginatedDashboardEventsResponse extends paginatedResponse {
@@ -141,6 +148,8 @@ export interface PaginatedSeachResponse extends paginatedResponse {
 }
 
 export interface EventDetails extends EventData {
+  volunteerRoles: VolunteerRoleWithCount[];
+  volunteers: VolunteerApplication[];
   eventTickets: EventTicket[];
   paymentOptions: EventPaymentOptions;
   impactReport?: EventImpactReport | null;

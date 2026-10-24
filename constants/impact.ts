@@ -4,7 +4,7 @@ import type {
   SuggestedSdgGoal,
 } from "@/types/impact";
 
-export type EventRegistrationType = "ticket" | "registration" | "donation";
+export type { Registration as EventRegistrationType } from "@/types/auth";
 
 type ImpactSdgGoal = Required<
   Pick<SuggestedSdgGoal, "id" | "number" | "title" | "shortTitle" | "color">

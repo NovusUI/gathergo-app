@@ -1,5 +1,19 @@
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useCheckoutCountdown } from "@/hooks/useCheckoutCountdown";
+import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import {
+  cancelCheckout,
+  cancelEventCheckout,
+  recordEventInterest,
+} from "@/services/serviceFn";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { checkoutIntentKey } from "@/utils/checkout";
+import { getFeedFrenzyLevel } from "@/utils/feedFrenzy";
+import { isAxiosError } from "axios";
+import { SafeAreaView } from "react-native-safe-area-context";
 // EventPage.tsx
 import AvatarWithLabel from "@/components/AvatarWithLabel";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
@@ -9,10 +23,12 @@ import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import PricingCard from "@/components/eventInfo/TicketCard";
 import FlameFeedButton from "@/components/feed/FlameFeedButton";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import AppToast from "@/components/ui/AppToast";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
+import WalletSetupReminder from "@/components/ui/WalletSetupReminder";
 import { getEventLinkMeta, normalizeEventLink } from "@/constants/eventLinks";
 import { normalizePersistedImpactMap } from "@/constants/impact";
 import { spacing } from "@/constants/spacing";
@@ -23,8 +39,9 @@ import {
   useFollowUser,
   useGetTickets,
   useInitiateDonation,
+  usePublishEventTicket,
   useRegisterEvent,
-  useUpsertEventImpactReport
+  useUpsertEventImpactReport,
 } from "@/services/mutations";
 import { useEventDetails, useWalletOnboarding } from "@/services/queries";
 import { QUERY_KEYS } from "@/services/queryKeys";
@@ -37,17 +54,17 @@ import {
   GetTicketsResponse,
   PaymentInstructions,
   PaymentProvider,
-  UpsertEventImpactReportPayload
+  UpsertEventImpactReportPayload,
 } from "@/types/event";
 import {
   formatEventDateTime,
   isEventEditableBeforeStartDay,
-  isEventPastEnd
+  isEventPastEnd,
 } from "@/utils/dateTimeHandler";
 import {
   showGlobalError,
   showGlobalSuccess,
-  showGlobalWarning
+  showGlobalWarning,
 } from "@/utils/globalErrorHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { buildEventShareLink } from "@/utils/shareLinks";
@@ -57,7 +74,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
-  BottomSheetTextInput
+  BottomSheetTextInput,
 } from "@gorhom/bottom-sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
@@ -69,7 +86,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentProps
+  type ComponentProps,
 } from "react";
 import {
   Linking,
@@ -79,9 +96,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import tw from "twrnc";
+
+import EventVolunteering from "@/components/volunteer/EventVolunteering";
+import VolunteerButton from "@/components/volunteer/VolunteerButton";
+import VolunteerRolesSheet from "@/components/volunteer/VolunteerRolesSheet";
 import DontationProgress from "./DontationProgress";
 import FeedBottomSheet from "./FeedBottomSheet";
 
@@ -113,47 +133,67 @@ const createEmptyImpactOutcome = (): ImpactReportOutcomeDraft => ({
   label: "",
   value: "",
   unit: "",
-  note: ""
+  note: "",
 });
 
 const EVENT_TONES: Record<string, EventTone> = {
+  volunteer: {
+    label: "Volunteering",
+    accent: "#0FF1CF",
+    iconName: "people-outline",
+  },
   ticket: {
     label: "Ticketed",
     accent: "#0FF1CF",
-    iconName: "ticket-outline"
+    iconName: "ticket-outline",
   },
   registration: {
     label: "Registration",
     accent: "#F8D05C",
-    iconName: "create-outline"
+    iconName: "create-outline",
   },
   donation: {
     label: "Donation",
     accent: "#FF6B6B",
-    iconName: "heart-outline"
-  }
+    iconName: "heart-outline",
+  },
 };
 
 const DEFAULT_EVENT_TONE: EventTone = {
   label: "GatherGo",
   accent: "#31C6F6",
-  iconName: "radio-outline"
+  iconName: "radio-outline",
 };
 
-const getEventTone = (registrationType?: string | null) =>
-  registrationType
+const getEventTone = (
+  registrationType: string | null | undefined,
+  color: ThemeColor
+) => {
+  const tone = registrationType
     ? EVENT_TONES[registrationType] || DEFAULT_EVENT_TONE
     : DEFAULT_EVENT_TONE;
+  return {
+    ...tone,
+    accent: color(
+      tone.accent,
+      registrationType === "donation"
+        ? "danger"
+        : registrationType === "registration"
+        ? "warning"
+        : "accent"
+    ),
+  };
+};
 
 const PROVIDER_LABELS: Record<PaymentProvider, string> = {
   PAYSTACK: "Paystack",
-  ALAT_TRANSFER: "ALAT Transfer"
+  ALAT_TRANSFER: "ALAT Transfer",
 };
 
 const formatCheckoutAmount = (value: number) =>
   `₦${value.toLocaleString("en-NG", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   })}`;
 
 const formatCountdown = (seconds: number) => {
@@ -190,7 +230,7 @@ const formatImpactReportDate = (value?: string | null) => {
   return parsed.toLocaleDateString("en-NG", {
     month: "short",
     day: "numeric",
-    year: "numeric"
+    year: "numeric",
   });
 };
 
@@ -235,7 +275,7 @@ const formatParticipationSummary = ({
   registrationType,
   eventTickets,
   registrationFee,
-  donationTarget
+  donationTarget,
 }: {
   registrationType?: string | null;
   eventTickets?: EventTicket[] | null;
@@ -254,9 +294,12 @@ const formatParticipationSummary = ({
   if (registrationType === "donation") {
     const target = Number(donationTarget || 0);
     return target > 0
-      ? `Target ${numberWithCommas(target, true, null)}`
+      ? `Target ${numberWithCommas(target / 100, true, null)}`
       : "Open donation";
   }
+
+  if (registrationType === "volunteer")
+    return "Volunteer places · no ticket required";
 
   return "Open invite";
 };
@@ -264,84 +307,56 @@ const formatParticipationSummary = ({
 const EventHeroChip = ({
   iconName,
   label,
-  accent = "#0FF1CF"
+  accent = "#0FF1CF",
 }: {
   iconName: IoniconName;
   label: string;
   accent?: string;
-}) => (
-  <View
-    style={[
-      tw`max-w-full flex-row items-center rounded-full border px-3 py-2`,
-      { backgroundColor: `${accent}18`, borderColor: `${accent}33` }
-    ]}
-  >
-    <Ionicons name={iconName} size={14} color={accent} />
-    <Text
-      style={[tw`ml-2 shrink text-xs font-semibold`, { color: accent }]}
-      numberOfLines={1}
+}) => {
+  const { tw } = useAppTheme();
+  return (
+    <View
+      style={[
+        tw`max-w-full flex-row items-center rounded-full border px-3 py-2`,
+        { backgroundColor: `${accent}18`, borderColor: `${accent}33` },
+      ]}
     >
-      {label}
-    </Text>
-  </View>
-);
+      <Ionicons name={iconName} size={14} color={accent} />
+      <Text
+        style={[tw`ml-2 shrink text-xs font-semibold`, { color: accent }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+};
 
-const EventInfoTile = ({
+const EventDetailRow = ({
   iconName,
   title,
   subtitle,
   accent = "#0FF1CF",
-  wide = false,
-  onPress
 }: {
   iconName: IoniconName;
   title: string;
   subtitle: string;
   accent?: string;
-  wide?: boolean;
-  onPress?: () => void;
 }) => {
-  const tileStyle = [
-    tw`rounded-2xl border px-4 py-4`,
-    wide ? tw`w-full` : tw`flex-1 min-w-[145px]`,
-    { backgroundColor: "#0A173F", borderColor: `${accent}26` }
-  ];
-
-  const content = (
-    <>
-      <View
-        style={[
-          tw`h-9 w-9 items-center justify-center rounded-2xl`,
-          { backgroundColor: `${accent}18` }
-        ]}
-      >
-        <Ionicons name={iconName} size={18} color={accent} />
+  const { tw } = useAppTheme();
+  return (
+    <View style={tw`flex-row items-start gap-3`}>
+      <Ionicons name={iconName} size={18} color={accent} style={tw`mt-0.5`} />
+      <View style={tw`flex-1 min-w-0`}>
+        <Text style={tw`text-xs text-muted dark:text-[#87A0D6]`}>{title}</Text>
+        <Text
+          style={tw`mt-0.5 text-sm font-medium leading-5 text-foreground dark:text-white`}
+        >
+          {subtitle}
+        </Text>
       </View>
-      <Text style={tw`mt-3 text-xs uppercase text-[#87A0D6]`}>{title}</Text>
-      <Text
-        style={tw`mt-1 text-sm font-semibold leading-5 text-white`}
-        numberOfLines={wide ? 3 : 2}
-      >
-        {subtitle}
-      </Text>
-    </>
+    </View>
   );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity
-        activeOpacity={0.84}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}: ${subtitle}`}
-        onPress={onPress}
-        style={tileStyle}
-      >
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return <View style={tileStyle}>{content}</View>;
 };
 
 const calculatePlatformFeeKobo = (
@@ -395,7 +410,7 @@ const buildCheckoutPreview = (
       grossAmountNaira: grossAmountKobo / 100,
       buyerPlatformFeeNaira: 0,
       buyerProviderFeeNaira: 0,
-      chargeAmountNaira: grossAmountKobo / 100
+      chargeAmountNaira: grossAmountKobo / 100,
     };
   }
 
@@ -433,17 +448,24 @@ const buildCheckoutPreview = (
     grossAmountNaira: grossAmountKobo / 100,
     buyerPlatformFeeNaira: buyerPlatformFeeKobo / 100,
     buyerProviderFeeNaira: buyerProviderFeeKobo / 100,
-    chargeAmountNaira: chargeAmountKobo / 100
+    chargeAmountNaira: chargeAmountKobo / 100,
   };
 };
 
 const EventPage = () => {
+  const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout({ hasTabNavigation: false });
+  const detailsInColumns = layout.detailColumns === 2;
+  const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
+  const sheetContainerStyle = {
+    marginLeft: layout.insets.left + sheetMargin,
+    marginRight: layout.insets.right + sheetMargin,
+  };
   const queryClient = useQueryClient();
-  const { id, openFeed, feedTab, openPayoutSetup } = useLocalSearchParams<{
+  const { id, openFeed, feedTab } = useLocalSearchParams<{
     id?: string | string[];
     openFeed?: string | string[];
     feedTab?: string | string[];
-    openPayoutSetup?: string | string[];
   }>(); // eventId
   const { user } = useAuth();
 
@@ -453,9 +475,6 @@ const EventPage = () => {
   const initialFeedTab = rawFeedTab === "carpool" ? "carpool" : "feed";
   const shouldOpenFeedFromRoute =
     (Array.isArray(openFeed) ? openFeed[0] : openFeed) === "1";
-  const shouldOpenPayoutSetup =
-    (Array.isArray(openPayoutSetup) ? openPayoutSetup[0] : openPayoutSetup) ===
-    "1";
   const router = useLockedRouter();
 
   const [selectedTickets, setSelectedTickets] = useState<GetTickets[]>([]);
@@ -472,7 +491,6 @@ const EventPage = () => {
     null
   );
   const transferCountdownSeconds = useCheckoutCountdown(checkoutDeadlineMs);
-  const [showCreatorSetupModal, setShowCreatorSetupModal] = useState(false);
   const [showRegistrationCheckout, setShowRegistrationCheckout] =
     useState(false);
   const [showImpactReportModal, setShowImpactReportModal] = useState(false);
@@ -483,6 +501,13 @@ const EventPage = () => {
   const [impactReportEvidenceText, setImpactReportEvidenceText] = useState("");
 
   const { data, isPending, isError } = useEventDetails(resolvedEventId);
+  const {
+    registration: freeRegistration,
+    isPending: checkingRegistration,
+    isError: registrationCheckFailed,
+    refetch: refreshRegistration,
+  } = useFreeEventRegistration(data?.data);
+  const hasFreeRegistration = Boolean(freeRegistration);
   const { data: onboardingData } = useWalletOnboarding({ enabled: !!user?.id });
   const hasEventEnded = useMemo(
     () => isEventPastEnd(data?.data?.startDate, data?.data?.endDate),
@@ -493,6 +518,10 @@ const EventPage = () => {
     [data?.data?.startDate]
   );
 
+  const [updatingCheckout, setUpdatingCheckout] = useState(false);
+  const checkoutSubmittingRef = useRef(false);
+  const [cancellingCheckout, setCancellingCheckout] = useState(false);
+  const cancellingCheckoutRef = useRef(false);
   const [showPaystackWebView, setShowPaystackWebView] = useState(false);
   const [paystackPaymentUrl, setPaystackPaymentUrl] = useState<string>("");
   const [currentTransactionId, setCurrentTransactionId] = useState<string>("");
@@ -519,11 +548,12 @@ const EventPage = () => {
     refresh,
     markAllAsSeen,
     setFeedVisibility,
-    getFeedStats // Get stats for animation
+    getFeedStats, // Get stats for animation
   } = useEventFeedConnection(resolvedEventId, true); // autoJoin = true
 
   const feedStats = getFeedStats();
   const [showFeed, setShowFeed] = useState(false);
+  const [showVolunteerRoles, setShowVolunteerRoles] = useState(false);
   const autoOpenFeedDoneRef = useRef(false);
 
   useEffect(() => {
@@ -551,7 +581,12 @@ const EventPage = () => {
     ticketName: string,
     change: number
   ) => {
-    if (!paymentOptions) return;
+    if (
+      !paymentOptions ||
+      checkoutSubmittingRef.current ||
+      cancellingCheckoutRef.current
+    )
+      return;
     const maximum = paymentOptions.maxTicketsPerCheckout;
     if (
       change > 0 &&
@@ -604,6 +639,57 @@ const EventPage = () => {
     bottomSheetDonationRef.current?.dismiss?.();
   }, []);
 
+  const clearPaymentState = useCallback(() => {
+    setShowPaystackWebView(false);
+    setShowTransferInstructions(false);
+    setCheckoutDeadlineMs(null);
+    setCurrentTransactionId("");
+    setPaystackPaymentUrl("");
+    setTransferInstructions(null);
+  }, []);
+
+  const openCheckoutStatus = useCallback(
+    (transactionId: string, type: typeof transactionType) => {
+      closePaymentSelectionSurfaces();
+      clearPaymentState();
+      router.push(`/transaction/${transactionId}?type=${type}`);
+    },
+    [clearPaymentState, closePaymentSelectionSurfaces, router]
+  );
+
+  const handlePaymentCancel = useCallback(async () => {
+    if (cancellingCheckoutRef.current) return;
+    closePaymentSelectionSurfaces();
+    clearPaymentState();
+    if (transactionType === "DONATION") {
+      showGlobalWarning("Payment cancelled");
+      return;
+    }
+    if (!user) return;
+    cancellingCheckoutRef.current = true;
+    setCancellingCheckout(true);
+    try {
+      await cancelEventCheckout(currentTransactionId, user.id, resolvedEventId);
+      showGlobalWarning("Checkout cancelled. You can try again.");
+    } catch {
+      showGlobalError(
+        "Could not cancel checkout. Check its payment status before trying again."
+      );
+      openCheckoutStatus(currentTransactionId, transactionType);
+    } finally {
+      cancellingCheckoutRef.current = false;
+      setCancellingCheckout(false);
+    }
+  }, [
+    clearPaymentState,
+    closePaymentSelectionSurfaces,
+    currentTransactionId,
+    openCheckoutStatus,
+    resolvedEventId,
+    transactionType,
+    user,
+  ]);
+
   const closeEndedPaymentFlow = useCallback(() => {
     setShowFeed(false);
     closePaymentSelectionSurfaces();
@@ -633,6 +719,24 @@ const EventPage = () => {
   const onboarding = onboardingData?.data;
   const paymentOptions = data?.data.paymentOptions;
   const isOwner = data?.data.creator.id === user?.id;
+  const recordedInterestEvent = useRef<string | null>(null);
+  useEffect(() => {
+    if (!data || isOwner || recordedInterestEvent.current === resolvedEventId)
+      return;
+    recordedInterestEvent.current = resolvedEventId;
+    void recordEventInterest({ eventId: resolvedEventId, kind: "VIEW" }).catch(
+      () => console.warn("Gogo could not update event activity.")
+    );
+  }, [data, isOwner, resolvedEventId]);
+  const {
+    mutate: publishTicket,
+    isPending: publishingTicket,
+    variables: publishingTicketId,
+  } = usePublishEventTicket(resolvedEventId, {
+    onSuccess: () => showGlobalSuccess("Ticket published"),
+    onError: () =>
+      showGlobalError("Couldn’t publish the ticket. Please try again."),
+  });
   const registrationFeeAmount = Number(data?.data.registrationFee || 0);
   const registrationPreview = useMemo(
     () =>
@@ -700,27 +804,14 @@ const EventPage = () => {
   }, [paymentOptions?.availableProviders]);
 
   useEffect(() => {
-    if (
-      shouldOpenPayoutSetup &&
-      isOwner &&
-      paymentOptions?.requiresPayment &&
-      onboarding?.showPersistentAlert
-    ) {
-      setShowCreatorSetupModal(true);
-    }
-  }, [
-    isOwner,
-    onboarding?.showPersistentAlert,
-    paymentOptions?.requiresPayment,
-    shouldOpenPayoutSetup
-  ]);
-
-  useEffect(() => {
     if (transferCountdownSeconds !== 0 || !currentTransactionId) return;
-    setShowTransferInstructions(false);
-    setShowPaystackWebView(false);
-    router.push(`/transaction/${currentTransactionId}?type=${transactionType}`);
-  }, [transferCountdownSeconds, currentTransactionId, router, transactionType]);
+    openCheckoutStatus(currentTransactionId, transactionType);
+  }, [
+    transferCountdownSeconds,
+    currentTransactionId,
+    openCheckoutStatus,
+    transactionType,
+  ]);
 
   const handleProviderInitSuccess = useCallback(
     (
@@ -761,7 +852,11 @@ const EventPage = () => {
       accent: "teal" | "red" = "teal",
       title = "Choose payment method"
     ) => {
-      if (!paymentOptions?.requiresPayment || baseAmountNaira <= 0) {
+      if (
+        !paymentOptions ||
+        paymentOptions.availableProviders.length === 0 ||
+        baseAmountNaira <= 0
+      ) {
         return null;
       }
 
@@ -772,7 +867,7 @@ const EventPage = () => {
             baseAmountNaira,
             provider,
             paymentOptions.pricingConfig
-          )
+          ),
         })
       );
       const selectedPreview = buildCheckoutPreview(
@@ -780,20 +875,30 @@ const EventPage = () => {
         selectedProvider,
         paymentOptions.pricingConfig
       );
-      const accentBg = accent === "red" ? "bg-[#FF6B6B]" : "bg-[#0FF1CF]";
-      const accentText = accent === "red" ? "text-[#FF9D9D]" : "text-[#0FF1CF]";
+      const accentBg =
+        accent === "red"
+          ? "bg-danger dark:bg-[#FF6B6B]"
+          : "bg-accentFill dark:bg-[#0FF1CF]";
+      const accentText =
+        accent === "red"
+          ? "text-danger dark:text-[#FF9D9D]"
+          : "text-accent dark:text-[#0FF1CF]";
 
       return (
-        <View style={tw`rounded-2xl bg-[#101C45] p-3`}>
+        <View style={tw`rounded-2xl bg-surface dark:bg-[#101C45] p-3`}>
           <View style={tw`flex-row items-center justify-between gap-3`}>
-            <Text style={tw`flex-1 text-sm font-semibold text-white`}>
+            <Text
+              style={tw`flex-1 text-sm font-semibold text-foreground dark:text-white`}
+            >
               {title}
             </Text>
             <Text style={tw.style("text-sm font-bold", accentText)}>
               {formatCheckoutAmount(selectedPreview.chargeAmountNaira)}
             </Text>
           </View>
-          <Text style={tw`mt-1 text-xs leading-5 text-gray-400`}>
+          <Text
+            style={tw`mt-1 text-xs leading-5 text-muted dark:text-gray-400`}
+          >
             {selectedProvider === "ALAT_TRANSFER"
               ? "Transfer instructions appear after you confirm."
               : "Secure checkout powered by Paystack."}
@@ -811,13 +916,15 @@ const EventPage = () => {
                     "min-w-[130px] flex-1 rounded-2xl border px-3 py-3",
                     selected
                       ? `${accentBg} border-transparent`
-                      : "border-[#2A3E6A] bg-[#08143B]"
+                      : "border-border dark:border-[#2A3E6A] bg-surface dark:bg-[#08143B]"
                   )}
                 >
                   <Text
                     style={tw.style(
                       "text-xs font-semibold uppercase tracking-wide",
-                      selected ? "text-[#01082E]" : "text-gray-400"
+                      selected
+                        ? "text-onAccent dark:text-[#01082E]"
+                        : "text-muted dark:text-gray-400"
                     )}
                   >
                     {PROVIDER_LABELS[provider]}
@@ -825,7 +932,9 @@ const EventPage = () => {
                   <Text
                     style={tw.style(
                       "mt-1 text-sm font-bold",
-                      selected ? "text-[#01082E]" : "text-white"
+                      selected
+                        ? "text-onAccent dark:text-[#01082E]"
+                        : "text-foreground dark:text-white"
                     )}
                   >
                     {formatCheckoutAmount(preview.chargeAmountNaira)}
@@ -837,7 +946,7 @@ const EventPage = () => {
         </View>
       );
     },
-    [paymentOptions, selectedProvider]
+    [paymentOptions, selectedProvider, tw]
   );
 
   // Effect to update event data when image upload completes
@@ -855,8 +964,8 @@ const EventPage = () => {
               ...oldData.data,
               imageUrl: imageStatusData.data.imageUrl,
               thumbnailUrl: imageStatusData.data.thumbnailUrl,
-              isImageProcessing: false
-            }
+              isImageProcessing: false,
+            },
           };
         }
       );
@@ -874,20 +983,6 @@ const EventPage = () => {
 
       handleProviderInitSuccess(response, "TICKET");
     },
-    onError: (error) => {
-      console.log(error);
-      const details = error.response?.data as
-        | { transactionId?: string; message?: string }
-        | undefined;
-      if (details?.transactionId) {
-        router.push(`/transaction/${details.transactionId}`);
-        return;
-      }
-      showGlobalError(
-        details?.message ||
-          "Could not start checkout. Retry to resume your request."
-      );
-    }
   });
 
   const { mutateAsync: registerEvent, isPending: registeringEvent } =
@@ -896,23 +991,14 @@ const EventPage = () => {
         showGlobalSuccess("Checkout started successfully.");
         handleProviderInitSuccess(response, "REGISTRATION");
       },
-      onError: (error) => {
-        console.log(error);
-        const details = error.response?.data as
-          | { transactionId?: string; message?: string }
-          | undefined;
-        if (details?.transactionId) {
-          router.push(
-            `/transaction/${details.transactionId}?type=REGISTRATION`
-          );
-          return;
-        }
-        showGlobalError(
-          details?.message ||
-            "Could not start checkout. Retry to resume your request."
-        );
-      }
     });
+
+  const registrationDisabled =
+    registeringEvent ||
+    updatingCheckout ||
+    cancellingCheckout ||
+    checkingRegistration ||
+    hasFreeRegistration;
 
   const { mutateAsync: initiateDonation, isPending: initiatingDonation } =
     useInitiateDonation({
@@ -924,7 +1010,7 @@ const EventPage = () => {
         console.error("Donation initiation failed:", error);
 
         showGlobalError("Failed to initiate donation");
-      }
+      },
     });
 
   const { mutateAsync: upsertImpactReport, isPending: submittingImpactReport } =
@@ -936,13 +1022,21 @@ const EventPage = () => {
       onError: (error) => {
         console.error("Impact report submission failed:", error);
         showGlobalError("Failed to publish impact report");
-      }
+      },
     });
 
   const handleTransaction = useCallback(
     async (isRegistration?: boolean) => {
+      if (cancellingCheckoutRef.current || checkoutSubmittingRef.current)
+        return;
       if (hasEventEnded) {
         closeEndedPaymentFlow();
+        return;
+      }
+
+      if (isRegistration && registrationDisabled) return;
+      if (isRegistration && registrationCheckFailed) {
+        await refreshRegistration();
         return;
       }
 
@@ -954,41 +1048,91 @@ const EventPage = () => {
             provider: selectedProvider,
             items: [...selectedTickets]
               .sort((a, b) => a.id.localeCompare(b.id))
-              .map(({ id, quantity }) => ({ id, quantity }))
+              .map(({ id, quantity }) => ({ id, quantity })),
           });
-      const idempotencyKey = await checkoutIntentKey(
-        user.id,
-        resolvedEventId,
-        intent
-      );
-      if (isRegistration) {
-        await registerEvent({
-          idempotencyKey,
-          eventId: resolvedEventId,
-          provider: selectedProvider,
-          platform: "mobile"
-        });
-        return;
-      }
+      checkoutSubmittingRef.current = true;
+      clearPaymentState();
+      try {
+        const idempotencyKey = await checkoutIntentKey(
+          user.id,
+          resolvedEventId,
+          intent
+        );
+        const submitCheckout = async () => {
+          if (isRegistration) {
+            await registerEvent({
+              idempotencyKey,
+              eventId: resolvedEventId,
+              provider: selectedProvider,
+              platform: "mobile",
+            });
+            return;
+          }
+          await mutateAsync({
+            idempotencyKey,
+            items: selectedTickets,
+            provider: selectedProvider,
+            clientContext: { platform: "mobile" },
+          });
+        };
 
-      await mutateAsync({
-        idempotencyKey,
-        items: selectedTickets,
-        provider: selectedProvider,
-        clientContext: {
-          platform: "mobile"
+        try {
+          await submitCheckout();
+        } catch (error) {
+          const activeCheckoutId =
+            isAxiosError<{ transactionId?: string }>(error) &&
+            error.response?.status === 409
+              ? error.response.data.transactionId
+              : undefined;
+          if (!activeCheckoutId) throw error;
+          if (isRegistration) {
+            showGlobalWarning(
+              "You have an unfinished checkout. Resume or cancel it here."
+            );
+            openCheckoutStatus(activeCheckoutId, "REGISTRATION");
+            return;
+          }
+
+          setUpdatingCheckout(true);
+          try {
+            // This revised order already has a persisted key. Keep it for the retry.
+            await cancelCheckout(activeCheckoutId);
+          } catch {
+            showGlobalError(
+              "Could not update checkout. Check the previous payment before trying again."
+            );
+            openCheckoutStatus(activeCheckoutId, "TICKET");
+            return;
+          }
+          // Replace once per press; a further conflict or network error stays visible.
+          await submitCheckout();
         }
-      });
+      } catch (error) {
+        showGlobalError(
+          getApiErrorMessage(
+            error,
+            "Could not start checkout. Retry to resume your request."
+          )
+        );
+      } finally {
+        checkoutSubmittingRef.current = false;
+        setUpdatingCheckout(false);
+      }
     },
     [
+      clearPaymentState,
       closeEndedPaymentFlow,
       hasEventEnded,
       mutateAsync,
+      openCheckoutStatus,
       registerEvent,
+      registrationDisabled,
+      registrationCheckFailed,
+      refreshRegistration,
       resolvedEventId,
       selectedProvider,
       selectedTickets,
-      user
+      user,
     ]
   );
 
@@ -1009,7 +1153,7 @@ const EventPage = () => {
     handleTransaction,
     hasEventEnded,
     paymentOptions?.requiresPayment,
-    registrationFeeAmount
+    registrationFeeAmount,
   ]);
 
   const handleDonation = async () => {
@@ -1046,8 +1190,8 @@ const EventPage = () => {
         isAnonymous,
         provider: selectedProvider,
         clientContext: {
-          platform: "mobile"
-        }
+          platform: "mobile",
+        },
       });
     } catch (error) {
       console.error("Donation error:", error);
@@ -1059,7 +1203,7 @@ const EventPage = () => {
       await Share.share({
         message: `Gather with me on GatherGo 👉 ${buildEventShareLink(
           resolvedEventId
-        )}`
+        )}`,
       });
     } catch (err) {
       console.error("Error sharing:", err);
@@ -1072,6 +1216,11 @@ const EventPage = () => {
       const actionLabel = action?.label?.toUpperCase();
       const normalized = actionType || actionLabel;
       if (!normalized) return;
+      if (normalized.includes("VOLUNTEER")) {
+        setShowFeed(false);
+        setShowVolunteerRoles(true);
+        return;
+      }
       const isPaymentAction =
         normalized.includes("TICKET") ||
         normalized.includes("DONAT") ||
@@ -1128,7 +1277,7 @@ const EventPage = () => {
         setShowFeed(false);
         router.push({
           pathname: "/new-carpool",
-          params: { eventId: resolvedEventId, autoOpenEventPicker: "1" }
+          params: { eventId: resolvedEventId, autoOpenEventPicker: "1" },
         });
       }
     },
@@ -1142,31 +1291,31 @@ const EventPage = () => {
       openDonationSheet,
       openSheet,
       resolvedEventId,
-      router
+      router,
     ]
   );
 
   const { mutateAsync: followPooler, isPending: isFollowing } = useFollowUser({
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.eventDetails, data?.data.id]
+        queryKey: [QUERY_KEYS.eventDetails, data?.data.id],
       });
       showGlobalSuccess("User followed");
     },
-    onError: () => {}
+    onError: () => {},
   });
 
   const owner = isOwner;
   const followStatus = data?.data.isFollowingCreator
     ? "Following"
     : data?.data.isFollowedByCreator
-      ? "Follow back"
-      : "Follow";
+    ? "Follow back"
+    : "Follow";
 
   const onFollow = () => {
     if (["Follow back", "Follow"].includes(followStatus)) {
       followPooler({
-        followingId: creator.id
+        followingId: creator.id,
       });
     } else {
     }
@@ -1174,7 +1323,12 @@ const EventPage = () => {
 
   if (isPending) {
     return (
-      <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+      <View
+        style={[
+          tw`flex-1 bg-background dark:bg-[#01082E]`,
+          { paddingTop: spacing.xxl },
+        ]}
+      >
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Event Details"
@@ -1193,16 +1347,22 @@ const EventPage = () => {
   if (isError || !data) {
     const isNotFound = data?.status_code === 404;
     return (
-      <View style={tw`flex-1 bg-[#01082E] items-center justify-center px-5`}>
-        <Ionicons name="alert-circle-outline" size={60} color="#FF5555" />
-        <Text style={tw`text-white text-xl mt-4`}>
+      <View
+        style={tw`flex-1 bg-background dark:bg-[#01082E] items-center justify-center px-5`}
+      >
+        <Ionicons
+          name="alert-circle-outline"
+          size={60}
+          color={color("#FF5555", "danger")}
+        />
+        <Text style={tw`text-foreground dark:text-white text-xl mt-4`}>
           {isNotFound ? resolvedEventId : "Something went wrong"}
         </Text>
         <CustomButton
           title="Go Back"
           onPress={() => router.replace("/")}
-          buttonClassName="bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
-          textClassName="!text-black"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
+          textClassName="!text-onAccent dark:text-black"
         />
       </View>
     );
@@ -1227,22 +1387,24 @@ const EventPage = () => {
     eventTickets,
     creator,
     registrationFee,
-    registrationType
+    registrationType,
   } = data?.data;
 
+  const publishedTickets = eventTickets.filter((ticket) => ticket.isVisible);
+  const ticketsToShow = owner ? eventTickets : publishedTickets;
   const eventDateTime = formatEventDateTime(startDate, endDate);
   const impactSummary = impactTitle?.trim() || null;
   const impactNote = impactDescription?.trim() || "";
   const persistedImpactMap = normalizePersistedImpactMap({
     impactSdgGoals,
     impactPaths,
-    impactCommitments
+    impactCommitments,
   });
   const selectedSdgGoals = persistedImpactMap.sdgGoals;
   const selectedImpactPaths = persistedImpactMap.impactPaths;
   const selectedCommitments = persistedImpactMap.commitments;
   const eventLinks = links || [];
-  const eventTone = getEventTone(registrationType);
+  const eventTone = getEventTone(registrationType, color);
   const eventModeLabel =
     isPhysicalEvent === false ? "Online gathering" : "In-person gathering";
   const locationLabel =
@@ -1253,7 +1415,7 @@ const EventPage = () => {
     registrationType,
     eventTickets,
     registrationFee,
-    donationTarget: data.data.donationTarget
+    donationTarget: data.data.donationTarget,
   });
   const heroImpactGoal = selectedSdgGoals[0];
   const heroImpactLabel = heroImpactGoal?.shortTitle || impactSummary;
@@ -1277,18 +1439,18 @@ const EventPage = () => {
             label: outcome.label,
             value: String(outcome.value),
             unit: outcome.unit,
-            note: outcome.note || ""
+            note: outcome.note || "",
           }))
         : selectedCommitments.length
-          ? selectedCommitments.map((commitment) => ({
-              id: commitment.id,
-              type: commitment.type,
-              label: commitment.label,
-              value: String(commitment.value),
-              unit: commitment.unit,
-              note: ""
-            }))
-          : [createEmptyImpactOutcome()]
+        ? selectedCommitments.map((commitment) => ({
+            id: commitment.id,
+            type: commitment.type,
+            label: commitment.label,
+            value: String(commitment.value),
+            unit: commitment.unit,
+            note: "",
+          }))
+        : [createEmptyImpactOutcome()]
     );
     setImpactReportEvidenceText(reportedEvidenceLinks.join("\n"));
     setShowImpactReportModal(true);
@@ -1316,7 +1478,7 @@ const EventPage = () => {
   const addImpactReportOutcome = () => {
     setImpactReportOutcomes((current) => [
       ...current,
-      createEmptyImpactOutcome()
+      createEmptyImpactOutcome(),
     ]);
   };
 
@@ -1337,7 +1499,7 @@ const EventPage = () => {
             label,
             value,
             unit,
-            ...(note ? { note } : {})
+            ...(note ? { note } : {}),
           };
         })
         .filter(
@@ -1361,7 +1523,7 @@ const EventPage = () => {
       return {
         summary,
         outcomes,
-        evidenceLinks: parseEvidenceLinks(impactReportEvidenceText)
+        evidenceLinks: parseEvidenceLinks(impactReportEvidenceText),
       };
     };
 
@@ -1383,588 +1545,622 @@ const EventPage = () => {
     await Linking.openURL(normalizedUrl);
   };
 
+  const organizerCard = (
+    <View style={tw`py-3`}>
+      <View
+        style={tw`px-4 w-full flex-row flex-wrap gap-3 justify-between items-center`}
+      >
+        <AvatarWithLabel
+          imageUrl={creator.profilePicUrlTN}
+          username={creator.username}
+          role="Organizer"
+        />
+        {!owner && (
+          <TouchableOpacity
+            style={tw`p-3 rounded-lg bg-surface dark:bg-[#0c1447]`}
+            onPress={onFollow}
+          >
+            <Text style={tw`text-foreground dark:text-white`}>
+              {isFollowing ? "Following..." : followStatus}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {owner && (
+          <View style={tw`flex-row items-center gap-2`}>
+            <VolunteerButton
+              event={data.data}
+              hasEventEnded={hasEventEnded}
+              purpose="manage"
+              variant="icon"
+              onPress={() =>
+                router.push({
+                  pathname: "/volunteers/[id]",
+                  params: { id: resolvedEventId },
+                })
+              }
+            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Edit event"
+              style={[
+                tw`p-3 rounded-lg`,
+                !canEditEvent ? tw`opacity-40` : null,
+              ]}
+              onPress={() => {
+                if (!canEditEvent) {
+                  showGlobalWarning(
+                    "Events can no longer be edited on the day they start."
+                  );
+                  return;
+                }
+
+                router.push(`/event/edit/${resolvedEventId}`);
+              }}
+            >
+              <Edit2Icon color={color("#0FF1CF", "accent")} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+  const participationActions = (
+    <View style={tw`px-4 py-3 w-full gap-3`}>
+      {hasEventEnded ? (
+        <CustomButton
+          disabled
+          onPress={() => {}}
+          showArrow={false}
+          buttonClassName="bg-surfaceMuted dark:bg-[#1B2A50] border border-border dark:border-[#2B3C66] w-full"
+          textClassName="!text-muted dark:text-[#8FA1CB]"
+          title="Event ended"
+        />
+      ) : registrationType === "ticket" ? (
+        <CustomButton
+          onPress={openSheet}
+          showArrow={false}
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-onAccent dark:text-black shrink"
+          title="View tickets"
+        />
+      ) : registrationType === "registration" ? (
+        <CustomButton
+          onPress={handleRegisterPress}
+          disabled={registrationDisabled}
+          showArrow={false}
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-onAccent dark:text-black shrink"
+          title={
+            checkingRegistration
+              ? "Checking registration…"
+              : registeringEvent
+              ? "Registering…"
+              : hasFreeRegistration
+              ? "Registered"
+              : registrationCheckFailed
+              ? "Retry registration check"
+              : "Register"
+          }
+        />
+      ) : registrationType === "donation" ? (
+        <CustomButton
+          onPress={openDonationSheet}
+          showArrow={false}
+          buttonClassName="bg-danger dark:bg-[#FF6B6B] border-0 w-full"
+          textClassName="!text-onPrimary dark:text-white shrink"
+          title="Donate Now"
+        />
+      ) : !owner ? (
+        <VolunteerButton
+          event={data.data}
+          hasEventEnded={hasEventEnded}
+          variant="primary"
+          onPress={() => setShowVolunteerRoles(true)}
+        />
+      ) : null}
+    </View>
+  );
+
   return (
-    <View
-      style={[
-        tw`flex-1 pb-5 bg-[#01082E] items-center w-full`,
-        { paddingTop: spacing.xxl }
-      ]}
+    <SafeAreaView
+      edges={["top"]}
+      style={tw`flex-1 bg-background dark:bg-[#01082E] items-center w-full`}
     >
-      <CustomView style={tw`flex-1`}>
-        <CustomView style={tw`px-3`}>
+      <View style={{ flex: 1, width: "100%", maxWidth: layout.pageWidth }}>
+        <CustomView className="max-w-full" style={tw`px-3`}>
           <CustomeTopBarNav
             title="Event Details"
             onClickBack={() => safeGoBack(router, "/")}
           />
         </CustomView>
 
-        <ScrollView
-          style={tw`w-full`}
-          contentContainerStyle={tw`max-w-[500px] pb-4`}
+        <View
+          style={{
+            flex: 1,
+            width: "100%",
+            maxWidth: detailsInColumns ? undefined : 760,
+            alignSelf: "center",
+            flexDirection: detailsInColumns ? "row" : "column",
+            gap: detailsInColumns ? 24 : 0,
+          }}
         >
-          <View style={tw`px-4 pt-2`}>
-            <View
-              style={[
-                tw`overflow-hidden rounded-[32px] border bg-[#07143B]`,
-                { borderColor: `${eventTone.accent}33` }
-              ]}
-            >
-              <View style={tw`relative`}>
-                <EventImageWithProcessing
-                  imageUrl={imageUrl}
-                  isProcessing={data.data.isImageProcessing}
-                  height={285}
-                  registrationType={registrationType}
-                />
-                <View style={tw`absolute left-4 right-20 top-4 flex-row`}>
-                  <EventHeroChip
-                    iconName={eventTone.iconName}
-                    label={eventTone.label}
-                    accent={eventTone.accent}
+          <ScrollView
+            style={{ flex: 1, minWidth: 0, width: "100%" }}
+            contentContainerStyle={tw`pb-4`}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={tw`px-4 pt-2`}>
+              <View
+                style={[
+                  tw`overflow-hidden rounded-[32px] border bg-surface dark:bg-[#07143B]`,
+                  { borderColor: `${eventTone.accent}33` },
+                ]}
+              >
+                <View style={tw`relative`}>
+                  <EventImageWithProcessing
+                    imageUrl={imageUrl}
+                    isProcessing={data.data.isImageProcessing}
+                    height={285}
+                    registrationType={registrationType}
                   />
-                </View>
-                <View
-                  style={tw`absolute bottom-0 left-0 right-0 bg-[#01082E]/82 px-5 pb-5 pt-8`}
-                >
-                  <View style={tw`flex-row flex-wrap gap-2`}>
+                  <View style={tw`absolute left-4 right-20 top-4 flex-row`}>
                     <EventHeroChip
+                      iconName={eventTone.iconName}
+                      label={eventTone.label}
+                      accent={eventTone.accent}
+                    />
+                  </View>
+                  <View
+                    style={tw`absolute bottom-0 left-0 right-0 bg-background/82 dark:bg-[#01082E]/82 px-5 pb-5 pt-8`}
+                  >
+                    <View style={tw`flex-row flex-wrap gap-2`}>
+                      <EventHeroChip
+                        iconName={
+                          isPhysicalEvent === false
+                            ? "wifi-outline"
+                            : "location-outline"
+                        }
+                        label={eventModeLabel}
+                        accent="#31C6F6"
+                      />
+                      {heroImpactLabel && (
+                        <EventHeroChip
+                          iconName="leaf-outline"
+                          label={heroImpactLabel}
+                          accent={heroImpactGoal?.color || "#F8D05C"}
+                        />
+                      )}
+                    </View>
+                    <View style={tw`mt-4 flex-row items-end gap-3`}>
+                      <Text
+                        style={tw`flex-1 text-2xl font-bold leading-8 text-foreground dark:text-white`}
+                        numberOfLines={3}
+                      >
+                        {title}
+                      </Text>
+                      <TouchableOpacity
+                        activeOpacity={0.84}
+                        accessibilityRole="button"
+                        accessibilityLabel="Share event"
+                        onPress={handleShare}
+                        style={tw`h-12 w-12 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF] border border-borderStrong/15 dark:border-white/15`}
+                      >
+                        <Share2Icon
+                          color={color("#01082E", "onAccent")}
+                          size={19}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={tw`gap-4 p-5`}>
+                  {(data.data.donationsEnabled ||
+                    data.data.totalDonations > 0) && (
+                    <DontationProgress
+                      donationTarget={data.data.donationTarget}
+                      totalDonations={data.data.totalDonations}
+                    />
+                  )}
+                  {data.data.donationsEnabled &&
+                  registrationType === "volunteer" &&
+                  !hasEventEnded ? (
+                    <CustomButton
+                      showArrow={false}
+                      title="Support with a donation"
+                      onPress={openDonationSheet}
+                      buttonClassName="w-full border-danger dark:border-[#FF6B6B]"
+                      textClassName="text-danger dark:text-[#FF9D9D]"
+                    />
+                  ) : null}
+
+                  <View style={tw`gap-3`}>
+                    <EventDetailRow
+                      iconName="calendar-outline"
+                      title="When"
+                      subtitle={eventDateTime}
+                      accent="#0FF1CF"
+                    />
+                    <EventDetailRow
+                      iconName={eventTone.iconName}
+                      title={
+                        data.data.registrationType === "donation"
+                          ? "Target"
+                          : "Access"
+                      }
+                      subtitle={participationSummary}
+                      accent={eventTone.accent}
+                    />
+                    <EventDetailRow
                       iconName={
                         isPhysicalEvent === false
-                          ? "wifi-outline"
-                          : "location-outline"
+                          ? "desktop-outline"
+                          : "map-outline"
                       }
-                      label={eventModeLabel}
+                      title="Where"
+                      subtitle={locationLabel}
                       accent="#31C6F6"
                     />
-                    {heroImpactLabel && (
-                      <EventHeroChip
-                        iconName="leaf-outline"
-                        label={heroImpactLabel}
-                        accent={heroImpactGoal?.color || "#F8D05C"}
-                      />
-                    )}
                   </View>
-                  <View style={tw`mt-4 flex-row items-end gap-3`}>
-                    <Text
-                      style={tw`flex-1 text-2xl font-bold leading-8 text-white`}
-                      numberOfLines={3}
-                    >
-                      {title}
-                    </Text>
-                    <TouchableOpacity
-                      activeOpacity={0.84}
-                      accessibilityRole="button"
-                      accessibilityLabel="Share event"
-                      onPress={handleShare}
-                      style={tw`h-12 w-12 items-center justify-center rounded-full bg-[#0FF1CF] border border-white/15`}
-                    >
-                      <Share2Icon color="#01082E" size={19} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-
-              <View style={tw`gap-4 p-5`}>
-                {data.data.registrationType === "donation" && (
-                  <DontationProgress
-                    donationTarget={data.data.donationTarget}
-                    totalDonations={data.data.totalDonations}
-                  />
-                )}
-
-                <View style={tw`flex-row flex-wrap gap-3`}>
-                  <EventInfoTile
-                    iconName="calendar-outline"
-                    title="When"
-                    subtitle={eventDateTime}
-                    accent="#0FF1CF"
-                  />
-                  <EventInfoTile
-                    iconName={eventTone.iconName}
-                    title={
-                      data.data.registrationType === "donation"
-                        ? "Target"
-                        : "Access"
-                    }
-                    subtitle={participationSummary}
-                    accent={eventTone.accent}
-                  />
-                  <EventInfoTile
-                    iconName={
-                      isPhysicalEvent === false
-                        ? "desktop-outline"
-                        : "map-outline"
-                    }
-                    title="Where"
-                    subtitle={locationLabel}
-                    accent="#31C6F6"
-                    wide
-                  />
                 </View>
               </View>
             </View>
-          </View>
 
-          {hasEventEnded && (
-            <CustomView style={tw`px-4 pt-4`}>
-              <View
-                style={tw`rounded-[24px] border border-[#24345A] bg-[#0A173F] p-4`}
-              >
-                <Text style={tw`text-sm font-semibold text-[#F1D417]`}>
-                  This event has ended
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#C6D5F2]`}>
-                  You can still review the event details, updates, organizer
-                  profile, and related links here.
-                </Text>
-              </View>
-            </CustomView>
-          )}
-
-          <CustomView style={tw`px-5 pt-4`}>
-            <Text style={tw`text-xl font-semibold text-white`}>
-              About this event
-            </Text>
-            <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
-              {description}
-            </Text>
-          </CustomView>
-
-          {(impactSummary ||
-            impactNote ||
-            selectedSdgGoals.length > 0 ||
-            selectedImpactPaths.length > 0 ||
-            selectedCommitments.length > 0) && (
-            <CustomView style={tw`px-4 pt-4`}>
-              <View
-                style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
-              >
-                <View style={tw`flex-row items-start justify-between gap-3`}>
-                  <View style={tw`flex-1`}>
-                    <Text
-                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                    >
-                      Impact story
-                    </Text>
-                    <Text style={tw`mt-2 text-xl font-semibold text-white`}>
-                      {impactSummary || "From the organiser"}
-                    </Text>
-                    <Text style={tw`mt-3 text-sm leading-6 text-[#DDE6FF]`}>
-                      {impactNote}
-                    </Text>
-                  </View>
-                  {selectedSdgGoals[0] ? (
-                    <View
-                      style={[
-                        tw`h-11 w-11 items-center justify-center rounded-full`,
-                        { backgroundColor: selectedSdgGoals[0].color }
-                      ]}
-                    >
-                      <SdgGoalIcon
-                        number={selectedSdgGoals[0].number}
-                        color="white"
-                        size={23}
-                      />
-                    </View>
-                  ) : (
-                    <View style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}>
-                      <Text style={tw`text-sm font-bold text-[#01082E]`}>
-                        Impact
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {(selectedSdgGoals.length > 0 ||
-                  selectedImpactPaths.length > 0 ||
-                  selectedCommitments.length > 0) && (
-                  <View style={tw`mt-4 flex-row flex-wrap gap-2`}>
-                    {selectedSdgGoals.map((goal) => (
-                      <View
-                        key={goal.id}
-                        style={tw`flex-row items-center rounded-full bg-[#0A173F] pr-3`}
-                      >
-                        <View
-                          style={[
-                            tw`h-7 w-7 items-center justify-center rounded-full`,
-                            { backgroundColor: goal.color }
-                          ]}
-                        >
-                          <SdgGoalIcon
-                            number={goal.number}
-                            color="white"
-                            size={14}
-                          />
-                        </View>
-                        <Text style={tw`ml-2 text-xs font-semibold text-white`}>
-                          {goal.shortTitle}
-                        </Text>
-                      </View>
-                    ))}
-
-                    {selectedCommitments.map((commitment) => (
-                      <View
-                        key={commitment.id}
-                        style={tw`rounded-full bg-[#F4B942]/10 px-3 py-2`}
-                      >
-                        <Text style={tw`text-xs font-semibold text-[#FFE5A0]`}>
-                          {commitment.label}
-                        </Text>
-                      </View>
-                    ))}
-
-                    {selectedImpactPaths.map((mechanism) => (
-                      <View
-                        key={mechanism.id}
-                        style={tw`rounded-full bg-[#0FF1CF]/10 px-3 py-2`}
-                      >
-                        <Text style={tw`text-xs font-semibold text-[#B7FFF5]`}>
-                          {mechanism.summaryLabel}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            </CustomView>
-          )}
-          {hasEventEnded && (impactReport || owner) && (
-            <CustomView style={tw`px-5 pb-4`}>
-              <View
-                style={tw`rounded-3xl border border-[#1D3B64] bg-[#08143B] p-4`}
-              >
-                <View style={tw`flex-row items-start justify-between gap-3`}>
-                  <View style={tw`flex-1`}>
-                    <Text
-                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                    >
-                      Reported impact
-                    </Text>
-                    {impactReportPublishedDate && (
-                      <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                        Published {impactReportPublishedDate}
-                      </Text>
-                    )}
-                  </View>
-
-                  {owner && (
-                    <TouchableOpacity
-                      onPress={openImpactReportModal}
-                      style={tw`rounded-full bg-[#0FF1CF] px-3 py-2`}
-                    >
-                      <Text style={tw`text-xs font-bold text-[#01082E]`}>
-                        {impactReport ? "Edit" : "Submit"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {impactReport ? (
-                  <>
-                    <Text style={tw`mt-4 text-sm leading-6 text-white`}>
-                      {impactReport.summary}
-                    </Text>
-
-                    {reportedOutcomes.length > 0 && (
-                      <View style={tw`mt-4 flex-row flex-wrap gap-3`}>
-                        {reportedOutcomes.map((outcome, index) => (
-                          <View
-                            key={outcome.id || `${outcome.type}-${index}`}
-                            style={tw`min-w-[130px] flex-1 rounded-2xl bg-[#101C45] p-3`}
-                          >
-                            <Text style={tw`text-xl font-bold text-[#0FF1CF]`}>
-                              {numberWithCommas(outcome.value, false, null)}
-                            </Text>
-                            <Text
-                              style={tw`mt-1 text-xs uppercase text-[#8FA1CB]`}
-                            >
-                              {outcome.unit}
-                            </Text>
-                            <Text
-                              style={tw`mt-2 text-sm font-semibold text-white`}
-                            >
-                              {outcome.label}
-                            </Text>
-                            {outcome.note ? (
-                              <Text
-                                style={tw`mt-1 text-xs leading-5 text-[#B7C5E9]`}
-                              >
-                                {outcome.note}
-                              </Text>
-                            ) : null}
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    {reportedEvidenceLinks.length > 0 && (
-                      <View style={tw`mt-4 gap-2`}>
-                        <Text
-                          style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                        >
-                          Evidence
-                        </Text>
-                        {reportedEvidenceLinks.map((link, index) => (
-                          <TouchableOpacity
-                            key={`${link}-${index}`}
-                            onPress={() => handleOpenEventLink(link)}
-                            style={tw`rounded-2xl bg-[#0A173F] px-4 py-3`}
-                          >
-                            <Text
-                              style={tw`text-sm font-semibold text-[#0FF1CF]`}
-                            >
-                              {link}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </>
-                ) : (
-                  <Text style={tw`mt-4 text-sm leading-6 text-[#C6D5F2]`}>
-                    Share what actually happened after this event: outcomes,
-                    numbers, and links people can trust.
-                  </Text>
-                )}
-              </View>
-            </CustomView>
-          )}
-          <CustomView style={tw`px-4 pt-4`}>
-            <View
-              style={tw`rounded-[28px] border border-[#1B2A50] bg-[#07143B] p-5`}
-            >
-              <View style={tw`flex-row items-center justify-between gap-3`}>
-                <View style={tw`flex-1 min-w-0 flex-row items-center gap-3`}>
-                  <View
-                    style={tw`h-11 w-11 items-center justify-center rounded-2xl bg-[#0FF1CF]/12`}
-                  >
-                    <Ionicons name="planet-outline" size={22} color="#0FF1CF" />
-                  </View>
-                  <View style={tw`flex-1 min-w-0`}>
-                    <Text
-                      style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                    >
-                      Event essentials
-                    </Text>
-                    <Text style={tw`mt-1 text-base font-semibold text-white`}>
-                      The quick read before you move.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={tw`mt-4 flex-row flex-wrap gap-3`}>
-                <EventInfoTile
-                  iconName="calendar-outline"
-                  title="Date & time"
-                  subtitle={eventDateTime}
-                  accent="#0FF1CF"
-                />
-                <EventInfoTile
-                  iconName={eventTone.iconName}
-                  title={eventTone.label}
-                  subtitle={participationSummary}
-                  accent={eventTone.accent}
-                />
-                <EventInfoTile
-                  iconName={
-                    isPhysicalEvent === false
-                      ? "desktop-outline"
-                      : "map-outline"
-                  }
-                  title="Location"
-                  subtitle={locationLabel}
-                  accent="#31C6F6"
-                  wide
-                />
-                <EventInfoTile
-                  iconName="share-social-outline"
-                  title="Share"
-                  subtitle="Send this GatherGo link."
-                  accent="#F8D05C"
-                  onPress={handleShare}
+            {registrationType === "volunteer" && (
+              <View style={tw`px-5 pt-4`}>
+                <EventVolunteering
+                  event={data.data}
+                  owner={owner}
+                  onPress={() => setShowVolunteerRoles(true)}
                 />
               </View>
-            </View>
-          </CustomView>
-          {eventLinks.length > 0 && (
-            <CustomView style={tw`px-4 pt-4`}>
-              <View
-                style={tw`rounded-[28px] border border-[#1B2A50] bg-[#101C45] p-5`}
-              >
-                <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
-                >
-                  Event links
-                </Text>
+            )}
 
-                <View style={tw`mt-4 gap-3`}>
-                  {eventLinks.map((link, index) => {
-                    const linkMeta = getEventLinkMeta(link);
-
-                    return (
-                      <TouchableOpacity
-                        key={`${link}-${index}`}
-                        activeOpacity={0.84}
-                        style={tw`rounded-2xl border border-[#1B2A50] bg-[#0A173F] px-4 py-4`}
-                        onPress={() => handleOpenEventLink(link)}
-                      >
-                        <View style={tw`flex-row items-center`}>
-                          <View
-                            style={[
-                              tw`h-12 w-12 items-center justify-center rounded-2xl`,
-                              { backgroundColor: linkMeta.backgroundColor }
-                            ]}
-                          >
-                            <Ionicons
-                              name={linkMeta.icon}
-                              size={20}
-                              color={linkMeta.iconColor}
-                            />
-                          </View>
-
-                          <View style={tw`ml-3 flex-1`}>
-                            <Text
-                              style={tw`text-base font-semibold text-white`}
-                            >
-                              {linkMeta.label}
-                            </Text>
-                            <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                              {linkMeta.host || linkMeta.subtitle}
-                            </Text>
-                          </View>
-
-                          <Ionicons
-                            name="open-outline"
-                            size={18}
-                            color="#0FF1CF"
-                          />
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </CustomView>
-          )}
-          {owner &&
-            onboarding?.showPersistentAlert &&
-            paymentOptions?.requiresPayment && (
-              <CustomView style={tw`px-4 pt-4`}>
+            {hasEventEnded && (
+              <CustomView className="max-w-full" style={tw`px-4 pt-4`}>
                 <View
-                  style={tw`rounded-[24px] border border-[#F1D417] bg-[#1B2A50] p-4`}
+                  style={tw`rounded-[24px] border border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F] p-4`}
                 >
-                  <Text style={tw`text-sm font-bold text-[#F1D417]`}>
-                    Payout setup still needs attention
-                  </Text>
-                  <Text style={tw`mt-2 text-sm leading-5 text-white`}>
-                    {onboarding.nextAction === "ADD_SETTLEMENT_ACCOUNT"
-                      ? "Add your settlement account so we know where to pay your earnings."
-                      : onboarding.nextAction === "COMPLETE_KYC"
-                        ? "Complete identity verification so your earnings can be released."
-                        : "We are still preparing ALAT transfer for this creator account."}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setShowCreatorSetupModal(true)}
-                    style={tw`mt-4 rounded-full bg-[#0FF1CF] px-4 py-3`}
+                  <Text
+                    style={tw`text-sm font-semibold text-warning dark:text-[#F1D417]`}
                   >
-                    <Text
-                      style={tw`text-center text-sm font-semibold text-[#01082E]`}
-                    >
-                      Continue setup
-                    </Text>
-                  </TouchableOpacity>
+                    This event has ended
+                  </Text>
+                  <Text
+                    style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#C6D5F2]`}
+                  >
+                    You can still review the event details, updates, organizer
+                    profile, and related links here.
+                  </Text>
                 </View>
               </CustomView>
             )}
-        </ScrollView>
 
-        <View style={tw`py-5`}>
-          <View
-            style={tw`px-5 w-full max-w-[500px] flex-row justify-between items-center`}
-          >
-            <AvatarWithLabel
-              imageUrl={creator.profilePicUrlTN}
-              username={creator.username}
-              role="Organizer"
-            />
-            {!owner && (
-              <TouchableOpacity
-                style={tw`p-3 rounded-lg bg-[#0c1447]`}
-                onPress={onFollow}
+            <CustomView className="max-w-full" style={tw`px-5 pt-4`}>
+              <Text
+                style={tw`text-xl font-semibold text-foreground dark:text-white`}
               >
-                <Text style={tw`text-white`}>
-                  {isFollowing ? "Following..." : followStatus}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {owner && (
-              <TouchableOpacity
-                style={[
-                  tw`p-3 rounded-lg`,
-                  !canEditEvent ? tw`opacity-40` : null
-                ]}
-                onPress={() => {
-                  if (!canEditEvent) {
-                    showGlobalWarning(
-                      "Events can no longer be edited on the day they start."
-                    );
-                    return;
-                  }
+                About this event
+              </Text>
+              <Text
+                style={tw`mt-3 text-sm leading-6 text-foreground dark:text-[#DDE6FF]`}
+              >
+                {description}
+              </Text>
+            </CustomView>
 
-                  router.push(`/event/edit/${resolvedEventId}`);
-                }}
-              >
-                <Edit2Icon color="#0FF1CF" />
-              </TouchableOpacity>
+            {(impactSummary ||
+              impactNote ||
+              selectedSdgGoals.length > 0 ||
+              selectedImpactPaths.length > 0 ||
+              selectedCommitments.length > 0) && (
+              <CustomView className="max-w-full" style={tw`px-4 pt-4`}>
+                <View
+                  style={tw`rounded-[28px] border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#101C45] p-5`}
+                >
+                  <View style={tw`flex-row items-start justify-between gap-3`}>
+                    <View style={tw`flex-1`}>
+                      <Text
+                        style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
+                      >
+                        Impact story
+                      </Text>
+                      <Text
+                        style={tw`mt-2 text-xl font-semibold text-foreground dark:text-white`}
+                      >
+                        {impactSummary || "From the organiser"}
+                      </Text>
+                      <Text
+                        style={tw`mt-3 text-sm leading-6 text-foreground dark:text-[#DDE6FF]`}
+                      >
+                        {impactNote}
+                      </Text>
+                    </View>
+                    {selectedSdgGoals[0] ? (
+                      <View
+                        style={[
+                          tw`h-11 w-11 items-center justify-center rounded-full`,
+                          { backgroundColor: selectedSdgGoals[0].color },
+                        ]}
+                      >
+                        <SdgGoalIcon
+                          number={selectedSdgGoals[0].number}
+                          color={color("white", "foreground")}
+                          size={23}
+                        />
+                      </View>
+                    ) : (
+                      <View
+                        style={tw`rounded-full bg-accentFill dark:bg-[#0FF1CF] px-3 py-2`}
+                      >
+                        <Text
+                          style={tw`text-sm font-bold text-onAccent dark:text-[#01082E]`}
+                        >
+                          Impact
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {(selectedSdgGoals.length > 0 ||
+                    selectedImpactPaths.length > 0 ||
+                    selectedCommitments.length > 0) && (
+                    <View style={tw`mt-4 flex-row flex-wrap gap-2`}>
+                      {selectedSdgGoals.map((goal) => (
+                        <View
+                          key={goal.id}
+                          style={tw`flex-row items-center rounded-full bg-surface dark:bg-[#0A173F] pr-3`}
+                        >
+                          <View
+                            style={[
+                              tw`h-7 w-7 items-center justify-center rounded-full`,
+                              { backgroundColor: goal.color },
+                            ]}
+                          >
+                            <SdgGoalIcon
+                              number={goal.number}
+                              color={color("white", "foreground")}
+                              size={14}
+                            />
+                          </View>
+                          <Text
+                            style={tw`ml-2 text-xs font-semibold text-foreground dark:text-white`}
+                          >
+                            {goal.shortTitle}
+                          </Text>
+                        </View>
+                      ))}
+
+                      {selectedCommitments.map((commitment) => (
+                        <View
+                          key={commitment.id}
+                          style={tw`rounded-full bg-warningFill/10 dark:bg-[#F4B942]/10 px-3 py-2`}
+                        >
+                          <Text
+                            style={tw`text-xs font-semibold text-warning dark:text-[#FFE5A0]`}
+                          >
+                            {commitment.label}
+                          </Text>
+                        </View>
+                      ))}
+
+                      {selectedImpactPaths.map((mechanism) => (
+                        <View
+                          key={mechanism.id}
+                          style={tw`rounded-full bg-accentFill/10 dark:bg-[#0FF1CF]/10 px-3 py-2`}
+                        >
+                          <Text
+                            style={tw`text-xs font-semibold text-foreground dark:text-[#B7FFF5]`}
+                          >
+                            {mechanism.summaryLabel}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </CustomView>
             )}
-          </View>
+            {hasEventEnded && (impactReport || owner) && (
+              <CustomView className="max-w-full" style={tw`px-5 pb-4`}>
+                <View
+                  style={tw`rounded-3xl border border-border dark:border-[#1D3B64] bg-surface dark:bg-[#08143B] p-4`}
+                >
+                  <View style={tw`flex-row items-start justify-between gap-3`}>
+                    <View style={tw`flex-1`}>
+                      <Text
+                        style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
+                      >
+                        Reported impact
+                      </Text>
+                      {impactReportPublishedDate && (
+                        <Text
+                          style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}
+                        >
+                          Published {impactReportPublishedDate}
+                        </Text>
+                      )}
+                    </View>
+
+                    {owner && (
+                      <TouchableOpacity
+                        onPress={openImpactReportModal}
+                        style={tw`rounded-full bg-accentFill dark:bg-[#0FF1CF] px-3 py-2`}
+                      >
+                        <Text
+                          style={tw`text-xs font-bold text-onAccent dark:text-[#01082E]`}
+                        >
+                          {impactReport ? "Edit" : "Submit"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {impactReport ? (
+                    <>
+                      <Text
+                        style={tw`mt-4 text-sm leading-6 text-foreground dark:text-white`}
+                      >
+                        {impactReport.summary}
+                      </Text>
+
+                      {reportedOutcomes.length > 0 && (
+                        <View style={tw`mt-4 flex-row flex-wrap gap-3`}>
+                          {reportedOutcomes.map((outcome, index) => (
+                            <View
+                              key={outcome.id || `${outcome.type}-${index}`}
+                              style={tw`min-w-[130px] flex-1 rounded-2xl bg-surface dark:bg-[#101C45] p-3`}
+                            >
+                              <Text
+                                style={tw`text-xl font-bold text-accent dark:text-[#0FF1CF]`}
+                              >
+                                {numberWithCommas(outcome.value, false, null)}
+                              </Text>
+                              <Text
+                                style={tw`mt-1 text-xs uppercase text-muted dark:text-[#8FA1CB]`}
+                              >
+                                {outcome.unit}
+                              </Text>
+                              <Text
+                                style={tw`mt-2 text-sm font-semibold text-foreground dark:text-white`}
+                              >
+                                {outcome.label}
+                              </Text>
+                              {outcome.note ? (
+                                <Text
+                                  style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#B7C5E9]`}
+                                >
+                                  {outcome.note}
+                                </Text>
+                              ) : null}
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {reportedEvidenceLinks.length > 0 && (
+                        <View style={tw`mt-4 gap-2`}>
+                          <Text
+                            style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
+                          >
+                            Evidence
+                          </Text>
+                          {reportedEvidenceLinks.map((link, index) => (
+                            <TouchableOpacity
+                              key={`${link}-${index}`}
+                              onPress={() => handleOpenEventLink(link)}
+                              style={tw`rounded-2xl bg-surface dark:bg-[#0A173F] px-4 py-3`}
+                            >
+                              <Text
+                                style={tw`text-sm font-semibold text-accent dark:text-[#0FF1CF]`}
+                              >
+                                {link}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <Text
+                      style={tw`mt-4 text-sm leading-6 text-secondary dark:text-[#C6D5F2]`}
+                    >
+                      Share what actually happened after this event: outcomes,
+                      numbers, and links people can trust.
+                    </Text>
+                  )}
+                </View>
+              </CustomView>
+            )}
+            {eventLinks.length > 0 && (
+              <CustomView className="max-w-full" style={tw`px-4 pt-4`}>
+                <View
+                  style={tw`rounded-[28px] border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#101C45] p-5`}
+                >
+                  <Text
+                    style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
+                  >
+                    Event links
+                  </Text>
+
+                  <View style={tw`mt-4 gap-3`}>
+                    {eventLinks.map((link, index) => {
+                      const linkMeta = getEventLinkMeta(link);
+
+                      return (
+                        <TouchableOpacity
+                          key={`${link}-${index}`}
+                          activeOpacity={0.84}
+                          style={tw`rounded-2xl border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#0A173F] px-4 py-4`}
+                          onPress={() => handleOpenEventLink(link)}
+                        >
+                          <View style={tw`flex-row items-center`}>
+                            <View
+                              style={[
+                                tw`h-12 w-12 items-center justify-center rounded-2xl`,
+                                { backgroundColor: linkMeta.backgroundColor },
+                              ]}
+                            >
+                              <Ionicons
+                                name={linkMeta.icon}
+                                size={20}
+                                color={linkMeta.iconColor}
+                              />
+                            </View>
+
+                            <View style={tw`ml-3 flex-1`}>
+                              <Text
+                                style={tw`text-base font-semibold text-foreground dark:text-white`}
+                              >
+                                {linkMeta.label}
+                              </Text>
+                              <Text
+                                style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}
+                              >
+                                {linkMeta.host || linkMeta.subtitle}
+                              </Text>
+                            </View>
+
+                            <Ionicons
+                              name="open-outline"
+                              size={18}
+                              color={color("#0FF1CF", "accent")}
+                            />
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </CustomView>
+            )}
+            {owner &&
+              onboarding?.showPersistentAlert &&
+              (paymentOptions?.requiresPayment ||
+                paymentOptions?.acceptsDonations) && (
+                <CustomView className="max-w-full" style={tw`px-4 pt-4`}>
+                  <WalletSetupReminder
+                    nextAction={onboarding.nextAction}
+                    onPress={() => router.push("/wallet")}
+                  />
+                </CustomView>
+              )}
+            {!detailsInColumns ? organizerCard : null}
+          </ScrollView>
+          {detailsInColumns ? (
+            <ScrollView
+              style={{ width: 336, flexGrow: 0, flexShrink: 0 }}
+              contentContainerStyle={tw`pb-4`}
+              showsVerticalScrollIndicator={false}
+            >
+              {organizerCard}
+              {participationActions}
+            </ScrollView>
+          ) : (
+            participationActions
+          )}
         </View>
-
-        {hasEventEnded ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
-            <CustomButton
-              disabled
-              onPress={() => {}}
-              buttonClassName="bg-[#1B2A50] border border-[#2B3C66] w-full max-w-[500px]"
-              textClassName="!text-[#8FA1CB]"
-              arrowCircleColor="bg-[#22315E]"
-              title="Event ended"
-            />
-          </View>
-        ) : registrationType === "ticket" ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
-            <CustomButton
-              onPress={openSheet}
-              buttonClassName="bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-              textClassName="!text-black"
-              arrowCircleColor="bg-[#0C7F7F]"
-              title="View tickets"
-            />
-          </View>
-        ) : registrationType === "registration" ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
-            <CustomButton
-              onPress={handleRegisterPress}
-              disabled={registeringEvent}
-              buttonClassName="bg-[#0FF1CF] border-0 w-full max-w-[500px]"
-              textClassName="!text-black"
-              arrowCircleColor="bg-[#0C7F7F]"
-              title={registeringEvent ? "Registering" : "Register"}
-            />
-          </View>
-        ) : registrationType === "donation" ? (
-          <View style={tw`px-5 w-full max-w-[500px]`}>
-            <CustomButton
-              onPress={openDonationSheet}
-              buttonClassName="bg-[#FF6B6B] border-0 w-full max-w-[500px]"
-              textClassName="!text-white"
-              arrowCircleColor="bg-[#D93E3E]"
-              title={`Donate Now`}
-            />
-          </View>
-        ) : null}
-      </CustomView>
+      </View>
 
       {/* Companion feed button */}
       <View
@@ -1972,15 +2168,19 @@ const EventPage = () => {
         style={[tw`absolute inset-0`, showFeed ? tw`z-0 opacity-0` : tw`z-20`]}
       >
         <FlameFeedButton
+          frenzyLevel={getFeedFrenzyLevel(allFeeds)}
           unreadCount={feedStats.totalCount}
           onPress={() => setShowFeed(true)}
           disabled={showFeed}
-          showCarpoolSignal={isPhysicalEvent !== false}
+          supportsCarpool={isPhysicalEvent !== false && !hasEventEnded}
         />
       </View>
 
       {/* BottomSheet for Tickets */}
       <BottomSheetModal
+        containerStyle={sheetContainerStyle}
+        topInset={layout.insets.top}
+        bottomInset={layout.insets.bottom}
         ref={bottomSheetRef}
         snapPoints={snapPoints}
         android_keyboardInputMode="adjustResize"
@@ -1994,69 +2194,119 @@ const EventPage = () => {
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <View style={tw`flex-row justify-between items-center p-5`}>
-          <Text style={tw`text-white`}>BUY TICKET</Text>
-          <AnimatedNumber value={ticketTotal} />
+          <Text style={tw`text-foreground dark:text-white`}>
+            {!owner && publishedTickets.length > 0 ? "BUY TICKET" : "Tickets"}
+          </Text>
+          <View style={tw`flex-row items-center gap-3`}>
+            {publishedTickets.length > 0 ? (
+              <AnimatedNumber value={ticketTotal} />
+            ) : null}
+            <SheetCloseButton
+              onPress={() => bottomSheetRef.current?.dismiss()}
+            />
+          </View>
         </View>
 
         <BottomSheetScrollView
           style={tw`p-5`}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={
+            ticketsToShow.length === 0
+              ? tw`grow justify-center pb-10`
+              : undefined
+          }
         >
-          <View style={tw`py-5 gap-5`}>
-            {eventTickets?.map((ticket) => (
-              <PricingCard
-                key={ticket.id}
-                selectedQuantity={
-                  selectedTickets.find((item) => item.id === ticket.id)
-                    ?.quantity ?? 0
-                }
-                canIncrease={
-                  paymentOptions !== undefined &&
-                  selectedTickets.reduce(
-                    (sum, item) => sum + item.quantity,
-                    0
-                  ) < paymentOptions.maxTicketsPerCheckout
-                }
-                onQuantityChange={(change) =>
-                  handleTicketSelection(ticket.id, ticket.type, change)
-                }
-                title={ticket.type}
-                price={ticket.price}
-                description={ticket.description}
-                perks={ticket.perks}
-                ticketQuantity={ticket.quantity}
-                sold={ticket.sold}
-                isVisible={ticket.isVisible}
-                updatedPrice={ticket.updatedPrice}
-              />
-            ))}
-          </View>
+          {ticketsToShow.length === 0 ? (
+            <MascotMoment
+              variant="empty"
+              layout="stacked"
+              title="Tickets aren't live yet"
+              message="The organiser hasn't published tickets for this event. Check back here soon."
+              typing={false}
+            />
+          ) : (
+            <View style={tw`py-5 gap-5`}>
+              {ticketsToShow.map((ticket) => (
+                <PricingCard
+                  key={ticket.id}
+                  selectedQuantity={
+                    selectedTickets.find((item) => item.id === ticket.id)
+                      ?.quantity ?? 0
+                  }
+                  canIncrease={
+                    paymentOptions !== undefined &&
+                    selectedTickets.reduce(
+                      (sum, item) => sum + item.quantity,
+                      0
+                    ) < paymentOptions.maxTicketsPerCheckout
+                  }
+                  onQuantityChange={
+                    ticket.isVisible
+                      ? (change) =>
+                          handleTicketSelection(ticket.id, ticket.type, change)
+                      : undefined
+                  }
+                  onPublish={
+                    owner && !ticket.isVisible && !hasEventEnded
+                      ? () => {
+                          if (!publishingTicket) publishTicket(ticket.id);
+                        }
+                      : undefined
+                  }
+                  isPublishing={
+                    publishingTicket && publishingTicketId === ticket.id
+                  }
+                  publishDisabled={publishingTicket}
+                  title={ticket.type}
+                  price={ticket.price}
+                  description={ticket.description}
+                  perks={ticket.perks}
+                  ticketQuantity={ticket.quantity}
+                  sold={ticket.sold}
+                  isVisible={ticket.isVisible}
+                  updatedPrice={ticket.updatedPrice}
+                />
+              ))}
+            </View>
+          )}
         </BottomSheetScrollView>
 
-        <View style={tw`w-full max-w-[500px] gap-3 p-5`}>
-          {renderProviderSelector(ticketTotal)}
-          <CustomButton
-            onPress={() => handleTransaction(false)}
-            disabled={
-              hasEventEnded || selectedTickets.length === 0 || gettingTickets
-            }
-            title={
-              hasEventEnded
-                ? "Event ended"
-                : gettingTickets
+        {publishedTickets.length > 0 ? (
+          <View style={tw`w-full max-w-[640px] self-center gap-3 p-5`}>
+            {renderProviderSelector(ticketTotal)}
+            <CustomButton
+              onPress={() => handleTransaction(false)}
+              disabled={
+                hasEventEnded ||
+                selectedTickets.length === 0 ||
+                gettingTickets ||
+                updatingCheckout ||
+                cancellingCheckout
+              }
+              title={
+                hasEventEnded
+                  ? "Event ended"
+                  : updatingCheckout
+                  ? "Updating checkout..."
+                  : cancellingCheckout
+                  ? "Cancelling checkout..."
+                  : gettingTickets
                   ? "Initiating..."
                   : ticketTotal > 0
-                    ? `Pay ${formatCheckoutAmount(ticketPreview.chargeAmountNaira)}`
-                    : "Claim tickets"
-            }
-            buttonClassName="bg-[#0FF1CF] w-full border-0"
-            textClassName="!text-black"
-            showArrow={false}
-          />
-        </View>
+                  ? `Pay ${formatCheckoutAmount(
+                      ticketPreview.chargeAmountNaira
+                    )}`
+                  : "Claim tickets"
+              }
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-onAccent dark:text-black"
+              showArrow={false}
+            />
+          </View>
+        ) : null}
       </BottomSheetModal>
 
       <Modal
@@ -2065,18 +2315,24 @@ const EventPage = () => {
         animationType="slide"
       >
         <View style={tw`flex-1 justify-end bg-black/60 px-5 py-8`}>
-          <View style={tw`rounded-[28px] bg-[#041130] p-5`}>
+          <View style={tw`rounded-[28px] bg-background dark:bg-[#041130] p-5`}>
             <View style={tw`flex-row items-center justify-between gap-3`}>
               <View>
-                <Text style={tw`text-xl font-bold text-white`}>
+                <Text
+                  style={tw`text-xl font-bold text-foreground dark:text-white`}
+                >
                   Complete registration
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowRegistrationCheckout(false)}
-                style={tw`h-10 w-10 items-center justify-center rounded-full bg-[#0A173F]`}
+                style={tw`h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-[#0A173F]`}
               >
-                <Ionicons name="close" size={20} color="white" />
+                <Ionicons
+                  name="close"
+                  size={20}
+                  color={color("white", "foreground")}
+                />
               </TouchableOpacity>
             </View>
 
@@ -2089,16 +2345,20 @@ const EventPage = () => {
             </View>
 
             <View style={tw`mt-5 gap-4`}>
-              <View style={tw`rounded-2xl bg-[#08143B] p-4`}>
+              <View style={tw`rounded-2xl bg-surface dark:bg-[#08143B] p-4`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#8FA1CB]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#8FA1CB]`}
                 >
                   Registration total
                 </Text>
-                <Text style={tw`mt-2 text-2xl font-bold text-white`}>
+                <Text
+                  style={tw`mt-2 text-2xl font-bold text-foreground dark:text-white`}
+                >
                   {formatCheckoutAmount(registrationPreview.chargeAmountNaira)}
                 </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
+                <Text
+                  style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#B7C5E9]`}
+                >
                   This registration will be issued to your GatherGo account.
                 </Text>
               </View>
@@ -2108,18 +2368,18 @@ const EventPage = () => {
                   setShowRegistrationCheckout(false);
                   handleTransaction(true);
                 }}
-                disabled={hasEventEnded || registeringEvent}
-                buttonClassName="bg-[#0FF1CF] border-0 w-full"
-                textClassName="!text-black"
-                arrowCircleColor="bg-[#0C7F7F]"
+                disabled={hasEventEnded || registrationDisabled}
+                buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+                textClassName="!text-onAccent dark:text-black"
+                arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
                 title={
                   hasEventEnded
                     ? "Event ended"
                     : registeringEvent
-                      ? "Registering"
-                      : `Register for ${formatCheckoutAmount(
-                          registrationPreview.chargeAmountNaira
-                        )}`
+                    ? "Registering"
+                    : `Register for ${formatCheckoutAmount(
+                        registrationPreview.chargeAmountNaira
+                      )}`
                 }
               />
             </View>
@@ -2130,6 +2390,9 @@ const EventPage = () => {
 
       {/* BottomSheet for Donation */}
       <BottomSheetModal
+        containerStyle={sheetContainerStyle}
+        topInset={layout.insets.top}
+        bottomInset={layout.insets.bottom}
         ref={bottomSheetDonationRef}
         snapPoints={snapPointsDonation}
         android_keyboardInputMode="adjustResize"
@@ -2143,15 +2406,15 @@ const EventPage = () => {
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#01082E" }}
+        backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       >
         <BottomSheetScrollView
           style={tw`p-5`}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 180 }}
+          contentContainerStyle={{ paddingBottom: 24 }}
         >
           <View style={tw`flex-row justify-between items-center mb-5`}>
-            <Text style={tw`text-white text-xl font-bold`}>
+            <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>
               Make a Donation
             </Text>
             {/* <TouchableOpacity onPress={closeDonationSheet} style={tw`p-2`}>
@@ -2166,7 +2429,7 @@ const EventPage = () => {
           ₦{numberWithCommas(donationTarget / 100, false, null)}
         </Text>
         <View style={tw`h-2 bg-gray-700 rounded-full overflow-hidden`}>
-          <View 
+          <View
             style={[
               tw`h-full bg-[#0FF1CF] rounded-full`,
               { width: `${Math.min((data.data.totalDonations || 0) / donationTarget * 100, 100)}%` }
@@ -2179,8 +2442,8 @@ const EventPage = () => {
       </View>
     )} */}
 
-          <CustomView style={tw`mb-6`}>
-            <Text style={tw`text-white mb-3 font-medium`}>
+          <CustomView className="max-w-full" style={tw`mb-6`}>
+            <Text style={tw`text-foreground dark:text-white mb-3 font-medium`}>
               Donation Amount (₦)
             </Text>
 
@@ -2192,15 +2455,15 @@ const EventPage = () => {
                   onPress={() => setDonationAmount(amount.toString())}
                   style={tw`px-4 py-3 rounded-lg ${
                     donationAmount === amount.toString()
-                      ? "bg-[#0FF1CF]"
-                      : "bg-[#101C45]"
+                      ? "bg-accentFill dark:bg-[#0FF1CF]"
+                      : "bg-surface dark:bg-[#101C45]"
                   }`}
                 >
                   <Text
                     style={tw`${
                       donationAmount === amount.toString()
-                        ? "text-[#01082E] font-bold"
-                        : "text-white"
+                        ? "text-onAccent dark:text-[#01082E] font-bold"
+                        : "text-foreground dark:text-white"
                     }`}
                   >
                     ₦{amount.toLocaleString()}
@@ -2211,11 +2474,13 @@ const EventPage = () => {
 
             {/* Custom Amount Input */}
             <View
-              style={tw`flex-row items-center bg-[#101C45] rounded-xl px-4 py-3`}
+              style={tw`flex-row items-center bg-surface dark:bg-[#101C45] border border-borderStrong dark:border-transparent rounded-xl px-4 py-3`}
             >
-              <Text style={tw`text-white text-lg mr-2`}>₦</Text>
+              <Text style={tw`text-foreground dark:text-white text-lg mr-2`}>
+                ₦
+              </Text>
               <BottomSheetTextInput
-                style={tw`flex-1 text-white text-lg`}
+                style={tw`flex-1 text-foreground dark:text-white text-lg`}
                 value={donationAmount}
                 onChangeText={setDonationAmount}
                 placeholder="Enter amount"
@@ -2224,26 +2489,28 @@ const EventPage = () => {
               />
               <TouchableOpacity
                 onPress={() => setDonationAmount("500")}
-                style={tw`bg-[#0FF1CF] px-3 py-1 rounded-lg`}
+                style={tw`bg-accentFill dark:bg-[#0FF1CF] px-3 py-1 rounded-lg`}
               >
-                <Text style={tw`text-[#01082E] text-sm`}>Min</Text>
+                <Text style={tw`text-onAccent dark:text-[#01082E] text-sm`}>
+                  Min
+                </Text>
               </TouchableOpacity>
             </View>
 
             {parseFloat(donationAmount || "0") < 500 && (
-              <Text style={tw`text-red-500 text-sm mt-2`}>
+              <Text style={tw`text-danger dark:text-red-500 text-sm mt-2`}>
                 Minimum donation is ₦500
               </Text>
             )}
           </CustomView>
 
-          <CustomView style={tw`mb-6`}>
-            <Text style={tw`text-white mb-3 font-medium`}>
+          <CustomView className="max-w-full" style={tw`mb-6`}>
+            <Text style={tw`text-foreground dark:text-white mb-3 font-medium`}>
               Optional Message (Optional)
             </Text>
             <BottomSheetTextInput
               autoCapitalize="none"
-              style={tw`bg-[#101C45] rounded-xl px-4 py-3 text-white min-h-[100px]`}
+              style={tw`bg-surface dark:bg-[#101C45] border border-borderStrong dark:border-transparent rounded-xl px-4 py-3 text-foreground dark:text-white min-h-[100px]`}
               value={donationMessage}
               onChangeText={setDonationMessage}
               placeholder="Add a message of support..."
@@ -2254,25 +2521,29 @@ const EventPage = () => {
             />
           </CustomView>
 
-          <CustomView style={tw`mb-6`}>
+          <CustomView className="max-w-full" style={tw`mb-6`}>
             <TouchableOpacity
-              style={tw`flex-row items-center justify-between p-3 bg-[#101C45] rounded-xl`}
+              style={tw`flex-row items-center justify-between p-3 bg-surface dark:bg-[#101C45] rounded-xl`}
               onPress={() => setIsAnonymous(!isAnonymous)}
             >
               <View style={tw`flex-row items-center`}>
                 <View
                   style={tw`w-6 h-6 rounded-md border-2 ${
                     isAnonymous
-                      ? "bg-[#0FF1CF] border-[#0FF1CF]"
-                      : "border-gray-500"
+                      ? "bg-accentFill dark:bg-[#0FF1CF] border-accent dark:border-[#0FF1CF]"
+                      : "border-border dark:border-gray-500"
                   } mr-3 items-center justify-center`}
                 >
                   {isAnonymous && (
-                    <Ionicons name="checkmark" size={16} color="#01082E" />
+                    <Ionicons
+                      name="checkmark"
+                      size={16}
+                      color={color("#01082E", "onAccent")}
+                    />
                   )}
                 </View>
                 <View>
-                  <Text style={tw`text-white font-medium`}>
+                  <Text style={tw`text-foreground dark:text-white font-medium`}>
                     Donate anonymously
                   </Text>
                 </View>
@@ -2280,7 +2551,7 @@ const EventPage = () => {
               <Ionicons
                 name={isAnonymous ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color={isAnonymous ? "#0FF1CF" : "gray"}
+                color={isAnonymous ? color("#0FF1CF", "accent") : "gray"}
               />
             </TouchableOpacity>
           </CustomView>
@@ -2290,18 +2561,26 @@ const EventPage = () => {
             "red"
           )}
 
-          <CustomView style={tw`mb-7`}>
+          <CustomView className="max-w-full" style={tw`mb-7`}>
             <View style={tw`flex-row items-center mb-3`}>
-              <Ionicons name="shield-checkmark" size={20} color="#0FF1CF" />
-              <Text style={tw`text-white ml-2 text-sm`}>
+              <Ionicons
+                name="shield-checkmark"
+                size={20}
+                color={color("#0FF1CF", "accent")}
+              />
+              <Text style={tw`text-foreground dark:text-white ml-2 text-sm`}>
                 {selectedProvider === "ALAT_TRANSFER"
                   ? "Bank transfer checkout via ALAT"
                   : "Secure payment powered by Paystack"}
               </Text>
             </View>
             <View style={tw`flex-row items-center`}>
-              <Ionicons name="information-circle" size={20} color="#0FF1CF" />
-              <Text style={tw`text-white ml-2 text-sm`}>
+              <Ionicons
+                name="information-circle"
+                size={20}
+                color={color("#0FF1CF", "accent")}
+              />
+              <Text style={tw`text-foreground dark:text-white ml-2 text-sm`}>
                 {selectedProvider === "ALAT_TRANSFER"
                   ? "We’ll show transfer instructions after you confirm the donation."
                   : "All donations are processed securely."}
@@ -2310,7 +2589,7 @@ const EventPage = () => {
           </CustomView>
         </BottomSheetScrollView>
 
-        <View style={tw`w-full max-w-[500px] p-5`}>
+        <View style={tw`w-full max-w-[640px] self-center p-5`}>
           <CustomButton
             onPress={() => {
               handleDonation();
@@ -2320,21 +2599,28 @@ const EventPage = () => {
               initiatingDonation ||
               parseFloat(donationAmount || "0") < 500
             }
-            buttonClassName="bg-[#FF6B6B] w-full border-0"
-            textClassName="!text-white"
+            buttonClassName="bg-danger dark:bg-[#FF6B6B] w-full border-0"
+            textClassName="!text-onPrimary dark:text-white"
             showArrow={false}
             title={
               hasEventEnded
                 ? "Event ended"
                 : initiatingDonation
-                  ? "Processing..."
-                  : `Donate ${formatCheckoutAmount(
-                      donationPreview.chargeAmountNaira
-                    )}`
+                ? "Processing..."
+                : `Donate ${formatCheckoutAmount(
+                    donationPreview.chargeAmountNaira
+                  )}`
             }
           />
         </View>
       </BottomSheetModal>
+      {showVolunteerRoles ? (
+        <VolunteerRolesSheet
+          event={data.data}
+          owner={owner}
+          onClose={() => setShowVolunteerRoles(false)}
+        />
+      ) : null}
       <FeedBottomSheet
         eventId={resolvedEventId}
         isVisible={showFeed}
@@ -2352,7 +2638,7 @@ const EventPage = () => {
           error,
           hideFeed,
           loadMore: loadMore, // This is the loadMore function
-          refresh
+          refresh,
         }}
       />
 
@@ -2362,39 +2648,55 @@ const EventPage = () => {
         animationType="slide"
       >
         <View style={tw`flex-1 justify-end bg-black/60 px-5 py-8`}>
-          <View style={tw`rounded-[28px] bg-[#041130] p-5`}>
+          <View style={tw`rounded-[28px] bg-background dark:bg-[#041130] p-5`}>
             <View style={tw`flex-row items-center justify-between gap-3`}>
-              <View style={tw`rounded-full bg-[#0FF1CF]/15 px-3 py-1.5`}>
+              <View
+                style={tw`rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15 px-3 py-1.5`}
+              >
                 <Text
-                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-[#0FF1CF]`}
+                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-accent dark:text-[#0FF1CF]`}
                 >
                   ALAT transfer
                 </Text>
               </View>
               <View
-                style={tw`rounded-full border border-[#2A3E6A] px-3 py-1.5`}
+                style={tw`rounded-full border border-border dark:border-[#2A3E6A] px-3 py-1.5`}
               >
                 <Text
-                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-white`}
+                  style={tw`text-[11px] font-semibold uppercase tracking-wider text-foreground dark:text-white`}
                 >
                   Awaiting payment
                 </Text>
               </View>
             </View>
-            <Text style={tw`text-xl font-bold text-white`}>
-              Complete your transfer
-            </Text>
+            <View style={tw`flex-row items-center justify-between gap-3`}>
+              <Text
+                style={tw`flex-1 text-xl font-bold text-foreground dark:text-white`}
+              >
+                Complete your transfer
+              </Text>
+              <SheetCloseButton
+                accessibilityLabel="Close transfer instructions"
+                onPress={() => setShowTransferInstructions(false)}
+              />
+            </View>
 
-            <View style={tw`mt-4 gap-2 rounded-3xl bg-[#09173A] p-4`}>
+            <View
+              style={tw`mt-4 gap-2 rounded-3xl bg-surface dark:bg-[#09173A] p-4`}
+            >
               <View style={tw`flex-row items-start gap-3`}>
                 <View
-                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#0FF1CF]`}
+                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF]`}
                 >
-                  <Text style={tw`text-[11px] font-bold text-[#01082E]`}>
+                  <Text
+                    style={tw`text-[11px] font-bold text-onAccent dark:text-[#01082E]`}
+                  >
                     1
                   </Text>
                 </View>
-                <Text style={tw`flex-1 text-sm leading-5 text-white`}>
+                <Text
+                  style={tw`flex-1 text-sm leading-5 text-foreground dark:text-white`}
+                >
                   Transfer exactly{" "}
                   {formatCheckoutAmount(
                     transferInstructions?.amountInNaira || 0
@@ -2404,61 +2706,88 @@ const EventPage = () => {
               </View>
               <View style={tw`flex-row items-start gap-3`}>
                 <View
-                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-[#0FF1CF]`}
+                  style={tw`mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF]`}
                 >
-                  <Text style={tw`text-[11px] font-bold text-[#01082E]`}>
+                  <Text
+                    style={tw`text-[11px] font-bold text-onAccent dark:text-[#01082E]`}
+                  >
                     2
                   </Text>
                 </View>
-                <Text style={tw`flex-1 text-sm leading-5 text-white`}>
+                <Text
+                  style={tw`flex-1 text-sm leading-5 text-foreground dark:text-white`}
+                >
                   Come back here after payment to track confirmation.
                 </Text>
               </View>
             </View>
 
-            <View style={tw`mt-5 gap-3 rounded-3xl bg-[#0A173F] p-4`}>
+            <View
+              style={tw`mt-5 gap-3 rounded-3xl bg-surface dark:bg-[#0A173F] p-4`}
+            >
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>Amount</Text>
-                <Text style={tw`mt-1 text-lg font-bold text-[#0FF1CF]`}>
+                <Text
+                  style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}
+                >
+                  Amount
+                </Text>
+                <Text
+                  style={tw`mt-1 text-lg font-bold text-accent dark:text-[#0FF1CF]`}
+                >
                   {formatCheckoutAmount(
                     transferInstructions?.amountInNaira || 0
                   )}
                 </Text>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>Bank</Text>
-                <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+                <Text
+                  style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}
+                >
+                  Bank
+                </Text>
+                <Text
+                  style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}
+                >
                   {transferInstructions?.bankName || "Wema Bank"}
                 </Text>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text
+                  style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}
+                >
                   Account name
                 </Text>
-                <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+                <Text
+                  style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}
+                >
                   {transferInstructions?.accountName ||
                     paymentOptions?.alatTransferDisplayName ||
                     "GatherGo"}
                 </Text>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text
+                  style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}
+                >
                   Account number
                 </Text>
                 <View style={tw.style("flex-row items-center gap-5")}>
-                  <Text selectable style={tw` text-lg font-bold text-white`}>
+                  <Text
+                    selectable
+                    style={tw` text-lg font-bold text-foreground dark:text-white`}
+                  >
                     {transferInstructions?.accountNumber || "-"}
                   </Text>
                   <TouchableOpacity
                     onPress={() => void handleCopyAccountNumber()}
                     disabled={!transferInstructions?.accountNumber}
                     style={tw.style(
-                      " self-start rounded-full border border-[#2A3E6A] px-3 py-2",
+                      " self-start rounded-full border border-border dark:border-[#2A3E6A] px-3 py-2",
                       !transferInstructions?.accountNumber && "opacity-50"
                     )}
                   >
                     <Text
-                      style={tw`text-xs font-semibold uppercase tracking-wide text-white`}
+                      style={tw`text-xs font-semibold uppercase tracking-wide text-foreground dark:text-white`}
                     >
                       Copy number
                     </Text>
@@ -2466,15 +2795,19 @@ const EventPage = () => {
                 </View>
               </View>
               <View>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text
+                  style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}
+                >
                   Expires in
                 </Text>
-                <Text style={tw`mt-1 text-lg font-bold text-[#FFD76A]`}>
+                <Text
+                  style={tw`mt-1 text-lg font-bold text-warning dark:text-[#FFD76A]`}
+                >
                   {transferCountdownSeconds === null
                     ? "Bank transfer"
                     : transferCountdownSeconds === 0
-                      ? "Hold expired"
-                      : formatCountdown(transferCountdownSeconds)}
+                    ? "Hold expired"
+                    : formatCountdown(transferCountdownSeconds)}
                 </Text>
               </View>
             </View>
@@ -2486,75 +2819,12 @@ const EventPage = () => {
                   `/transaction/${currentTransactionId}?type=${transactionType}`
                 );
               }}
-              style={tw`mt-5 rounded-full bg-[#0FF1CF] px-4 py-4`}
+              style={tw`mt-5 rounded-full bg-accentFill dark:bg-[#0FF1CF] px-4 py-4`}
             >
               <Text
-                style={tw`text-center text-sm font-semibold text-[#01082E]`}
+                style={tw`text-center text-sm font-semibold text-onAccent dark:text-[#01082E]`}
               >
                 I’ve made the transfer
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowTransferInstructions(false)}
-              style={tw`mt-3 rounded-full border border-[#2A3E6A] px-4 py-4`}
-            >
-              <Text style={tw`text-center text-sm font-semibold text-white`}>
-                Close
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <AppToast />
-      </Modal>
-
-      <Modal visible={showCreatorSetupModal} transparent animationType="fade">
-        <View style={tw`flex-1 items-center justify-center bg-black/65 px-5`}>
-          <View
-            style={tw`w-full max-w-[420px] rounded-[28px] bg-[#041130] p-5`}
-          >
-            <Text style={tw`text-xl font-bold text-white`}>
-              Finish payout setup
-            </Text>
-            <Text style={tw`mt-3 text-sm leading-6 text-[#B7C5E9]`}>
-              {onboarding?.nextAction === "ADD_SETTLEMENT_ACCOUNT"
-                ? "Your paid event is live. Add the settlement account next so we know where to pay your earnings."
-                : onboarding?.nextAction === "COMPLETE_KYC"
-                  ? "Your event can keep collecting payments, but payouts will stay on hold until identity verification is complete."
-                  : "Your monetized event is ready. The next step is finishing the remaining wallet setup so all payout options are available."}
-            </Text>
-
-            <View style={tw`mt-5 rounded-2xl bg-[#0A173F] p-4`}>
-              <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
-                Why this matters
-              </Text>
-              <Text style={tw`mt-2 text-sm leading-5 text-white`}>
-                Buyers can keep paying now. This step is about unlocking
-                settlement and making sure the payout account belongs to the
-                right creator.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => {
-                setShowCreatorSetupModal(false);
-                router.push("/wallet");
-              }}
-              style={tw`mt-5 rounded-full bg-[#0FF1CF] px-4 py-4`}
-            >
-              <Text
-                style={tw`text-center text-sm font-semibold text-[#01082E]`}
-              >
-                Complete in Wallet
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowCreatorSetupModal(false)}
-              style={tw`mt-3 rounded-full border border-[#2A3E6A] px-4 py-4`}
-            >
-              <Text style={tw`text-center text-sm font-semibold text-white`}>
-                Maybe later
               </Text>
             </TouchableOpacity>
           </View>
@@ -2564,18 +2834,26 @@ const EventPage = () => {
 
       <Modal visible={showImpactReportModal} transparent animationType="slide">
         <View style={tw`flex-1 justify-end bg-black/65 px-5 py-8`}>
-          <View style={tw`max-h-[88%] rounded-[28px] bg-[#041130] p-5`}>
+          <View
+            style={tw`max-h-[88%] rounded-[28px] bg-background dark:bg-[#041130] p-5`}
+          >
             <View style={tw`flex-row items-start justify-between gap-3`}>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-bold text-white`}>
+                <Text
+                  style={tw`text-xl font-bold text-foreground dark:text-white`}
+                >
                   {impactReport ? "Edit impact report" : "Submit impact report"}
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowImpactReportModal(false)}
-                style={tw`h-10 w-10 items-center justify-center rounded-full bg-[#0A173F]`}
+                style={tw`h-10 w-10 items-center justify-center rounded-full bg-surface dark:bg-[#0A173F]`}
               >
-                <Ionicons name="close" size={20} color="white" />
+                <Ionicons
+                  name="close"
+                  size={20}
+                  color={color("white", "foreground")}
+                />
               </TouchableOpacity>
             </View>
 
@@ -2586,7 +2864,7 @@ const EventPage = () => {
             >
               <View style={tw`gap-2`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                 >
                   Summary
                 </Text>
@@ -2595,25 +2873,27 @@ const EventPage = () => {
                   value={impactReportSummary}
                   onChangeText={setImpactReportSummary}
                   placeholder="What happened, who benefited, and what changed?"
-                  placeholderTextColor="#8FA1CB"
+                  placeholderTextColor={color("#8FA1CB", "muted")}
                   multiline
                   maxLength={1000}
-                  style={tw`min-h-[110px] rounded-2xl bg-[#101C45] p-4 text-white`}
+                  style={tw`min-h-[110px] rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#101C45] p-4 text-foreground dark:text-white`}
                 />
               </View>
 
               <View style={tw`mt-5 gap-3`}>
                 <View style={tw`flex-row items-center justify-between`}>
                   <Text
-                    style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                    style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                   >
                     Outcomes
                   </Text>
                   <TouchableOpacity
                     onPress={addImpactReportOutcome}
-                    style={tw`rounded-full bg-[#0FF1CF]/15 px-3 py-2`}
+                    style={tw`rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15 px-3 py-2`}
                   >
-                    <Text style={tw`text-xs font-bold text-[#0FF1CF]`}>
+                    <Text
+                      style={tw`text-xs font-bold text-accent dark:text-[#0FF1CF]`}
+                    >
                       Add outcome
                     </Text>
                   </TouchableOpacity>
@@ -2622,10 +2902,12 @@ const EventPage = () => {
                 {impactReportOutcomes.map((outcome, index) => (
                   <View
                     key={outcome.id || index}
-                    style={tw`rounded-2xl bg-[#08143B] p-4`}
+                    style={tw`rounded-2xl bg-surface dark:bg-[#08143B] p-4`}
                   >
                     <View style={tw`flex-row items-center justify-between`}>
-                      <Text style={tw`text-sm font-semibold text-white`}>
+                      <Text
+                        style={tw`text-sm font-semibold text-foreground dark:text-white`}
+                      >
                         Outcome {index + 1}
                       </Text>
                       {impactReportOutcomes.length > 1 && (
@@ -2633,7 +2915,7 @@ const EventPage = () => {
                           onPress={() => removeImpactReportOutcome(index)}
                         >
                           <Text
-                            style={tw`text-xs font-semibold text-[#FF8A8A]`}
+                            style={tw`text-xs font-semibold text-danger dark:text-[#FF8A8A]`}
                           >
                             Remove
                           </Text>
@@ -2648,8 +2930,8 @@ const EventPage = () => {
                         updateImpactReportOutcome(index, { label: value })
                       }
                       placeholder="Label, e.g. Trees planted"
-                      placeholderTextColor="#8FA1CB"
-                      style={tw`mt-3 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                      placeholderTextColor={color("#8FA1CB", "muted")}
+                      style={tw`mt-3 rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                     />
 
                     <View style={tw`mt-3 flex-row gap-3`}>
@@ -2659,9 +2941,9 @@ const EventPage = () => {
                           updateImpactReportOutcome(index, { value })
                         }
                         placeholder="Value"
-                        placeholderTextColor="#8FA1CB"
+                        placeholderTextColor={color("#8FA1CB", "muted")}
                         keyboardType="numeric"
-                        style={tw`flex-1 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                        style={tw`flex-1 rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                       />
                       <TextInput
                         autoCapitalize="none"
@@ -2670,8 +2952,8 @@ const EventPage = () => {
                           updateImpactReportOutcome(index, { unit: value })
                         }
                         placeholder="Unit"
-                        placeholderTextColor="#8FA1CB"
-                        style={tw`flex-1 rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                        placeholderTextColor={color("#8FA1CB", "muted")}
+                        style={tw`flex-1 rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                       />
                     </View>
 
@@ -2682,9 +2964,9 @@ const EventPage = () => {
                         updateImpactReportOutcome(index, { note: value })
                       }
                       placeholder="Optional note"
-                      placeholderTextColor="#8FA1CB"
+                      placeholderTextColor={color("#8FA1CB", "muted")}
                       multiline
-                      style={tw`mt-3 min-h-[72px] rounded-2xl bg-[#101C45] px-4 py-3 text-white`}
+                      style={tw`mt-3 min-h-[72px] rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#101C45] px-4 py-3 text-foreground dark:text-white`}
                     />
                   </View>
                 ))}
@@ -2692,7 +2974,7 @@ const EventPage = () => {
 
               <View style={tw`mt-5 gap-2`}>
                 <Text
-                  style={tw`text-xs uppercase tracking-widest text-[#87A0D6]`}
+                  style={tw`text-xs uppercase tracking-widest text-muted dark:text-[#87A0D6]`}
                 >
                   Evidence links
                 </Text>
@@ -2701,9 +2983,9 @@ const EventPage = () => {
                   value={impactReportEvidenceText}
                   onChangeText={setImpactReportEvidenceText}
                   placeholder="Paste up to 5 links, one per line"
-                  placeholderTextColor="#8FA1CB"
+                  placeholderTextColor={color("#8FA1CB", "muted")}
                   multiline
-                  style={tw`min-h-[92px] rounded-2xl bg-[#101C45] p-4 text-white`}
+                  style={tw`min-h-[92px] rounded-2xl bg-surface dark:bg-[#101C45] p-4 text-foreground dark:text-white`}
                 />
               </View>
 
@@ -2711,19 +2993,19 @@ const EventPage = () => {
                 <CustomButton
                   onPress={submitImpactReport}
                   disabled={submittingImpactReport}
-                  buttonClassName="bg-[#0FF1CF] border-0 w-full"
-                  textClassName="!text-black"
-                  arrowCircleColor="bg-[#0C7F7F]"
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+                  textClassName="!text-onAccent dark:text-black"
+                  arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
                   title={
                     submittingImpactReport ? "Publishing" : "Publish report"
                   }
                 />
                 <TouchableOpacity
                   onPress={() => setShowImpactReportModal(false)}
-                  style={tw`rounded-xl border border-[#2A3E6A] px-4 py-4`}
+                  style={tw`rounded-xl border border-border dark:border-[#2A3E6A] px-4 py-4`}
                 >
                   <Text
-                    style={tw`text-center text-sm font-semibold text-white`}
+                    style={tw`text-center text-sm font-semibold text-foreground dark:text-white`}
                   >
                     Cancel
                   </Text>
@@ -2748,21 +3030,21 @@ const EventPage = () => {
           console.log("✅ Payment successful, reference:", reference);
           showGlobalSuccess("Confirming your payment…");
           closePaymentSelectionSurfaces();
-          setShowPaystackWebView(false);
+          clearPaymentState();
           router.replace(
             `/transaction/${currentTransactionId}?type=${transactionType}`
           );
         }}
         onCancel={() => {
-          console.log("❌ Payment cancelled");
-          showGlobalWarning("Payment cancelled");
+          void handlePaymentCancel();
         }}
         onError={(error) => {
-          console.error("💥 Payment error:", error);
-          showGlobalError("Payment error occurred");
+          console.error("Payment error:", error);
+          showGlobalError("Check payment status before trying again.");
+          openCheckoutStatus(currentTransactionId, transactionType);
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

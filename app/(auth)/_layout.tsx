@@ -1,10 +1,13 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuth } from "@/context/AuthContext";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import { useAuthStore } from "@/store/auth";
+import { authenticatedStartRoute } from "@/utils/authRouting";
 import { Redirect, Stack } from "expo-router";
 
 export default function AuthLayout() {
-  const { loading } = useAuth();
+  const { color } = useAppTheme();
+  const { user, loading } = useAuth();
   const { isAuthenticated, hasHydrated } = useAuthStore();
 
   if (loading || !hasHydrated) {
@@ -12,14 +15,14 @@ export default function AuthLayout() {
   }
 
   if (isAuthenticated) {
-    return <Redirect href="/" />;
+    return <Redirect href={authenticatedStartRoute(user)} />;
   }
 
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#01082E" },
+        contentStyle: { backgroundColor: color("#01082E", "background") },
         animation: "fade",
       }}
     />

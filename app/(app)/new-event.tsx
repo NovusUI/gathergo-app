@@ -1,3 +1,6 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
 import CustomView from "@/components/View";
@@ -6,31 +9,51 @@ import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
 import EventStoryFields from "@/components/eventInfo/EventStoryFields";
+import VolunteerSetupFields from "@/components/eventInfo/VolunteerSetupFields";
+import EventFundraisingFields from "@/components/eventInfo/EventFundraisingFields";
+import GogoEventCreator from "@/components/gogo/tasks/eventCreation/GogoEventCreator";
+import { useGogoEventCreation } from "@/components/gogo/tasks/eventCreation/useGogoEventCreation";
+import type { EventCreationSection } from "@/components/gogo/tasks/eventCreation/types";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
-import { normalizeEventLink } from "@/constants/eventLinks";
-import { buildEventImpactFormFields } from "@/utils/eventForm";
-import { spacing } from "@/constants/spacing";
+import { normalizeEventLinks } from "@/constants/eventLinks";
+import {
+  DEFAULT_REGISTRATION_CAPACITY,
+  buildEventImpactFormFields,
+  buildEventParticipationFormFields,
+} from "@/utils/eventForm";
 import {
   DateTimeFormData,
   EventFormData,
   EventPricing,
   EventTicket,
   eventSchema,
+  dateTimeSchema,
 } from "@/schemas/event";
 import { useCreateEvent } from "@/services/mutations";
 import { buildEventDateTimeIso, extractDate } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { CHACHE_KEYS } from "@/utils/keys";
 import { useLockedRouter } from "@/utils/navigation";
-import { getItem, removeItem, saveItem } from "@/utils/storage";
+import { removeItem } from "@/utils/storage";
 import { convertUndefinedToNull, objectToFormData } from "@/utils/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import EventDraftPrompt from "@/components/gogo/tasks/eventCreation/EventDraftPrompt";
+import {
+  loadEventDrafts,
+  discardEventDraft,
+  type SavedEventDraft,
+} from "@/components/gogo/tasks/eventCreation/draftStorage";
+import { useEventDraftPersistence } from "@/components/gogo/tasks/eventCreation/useEventDraftPersistence";
+import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
+import EventTypePicker from "@/components/gogo/tasks/eventCreation/EventTypePicker";
+import type { Registration } from "@/types/auth";
 import { CheckCheck } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -42,29 +65,151 @@ import {
   View,
 } from "react-native";
 
-import tw from "twrnc";
 
-const normalizeEventLinks = (links?: string[]) =>
-  (links || [])
-    .map((link) => normalizeEventLink(link))
-    .filter(Boolean)
-    .slice(0, 5);
+type CreationScreen =
+  | { kind: "checking" | "picker" | "error" }
+  | { kind: "resume"; draft: SavedEventDraft }
+  | { kind: "editing"; type: Registration; draft: SavedEventDraft | null };
 
 const NewEvent = () => {
+  const { tw } = useAppTheme();
   const router = useLockedRouter();
-  const { eventType } = useLocalSearchParams<{ eventType?: string }>();
-  const presetEventType = Array.isArray(eventType) ? eventType[0] : eventType;
-  const isDonationEvent = presetEventType === "donation";
-  const eventFormCacheKey = `${CHACHE_KEYS.eventFormKey}_${
-    isDonationEvent ? "donation" : "general"
-  }`;
-  const pricingSectionTitle = isDonationEvent ? "Donation setup" : "Pricing";
-
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [dateTimeData, setDateTimeData] = useState<DateTimeFormData | null>(
-    null,
+  const [screen, setScreen] = useState<CreationScreen>({ kind: "checking" });
+  const [drafts, setDrafts] = useState<SavedEventDraft[]>([]);
+  const [discarding, setDiscarding] = useState(false);
+  const loadCycle = useRef(0);
+  const checkDrafts = useCallback(async (offerResume = true) => {
+    const cycle = ++loadCycle.current;
+    setScreen({ kind: "checking" });
+    try {
+      const saved = await loadEventDrafts();
+      if (loadCycle.current !== cycle) return;
+      setDrafts(saved);
+      setScreen(
+        offerResume && saved.length
+          ? { kind: "resume", draft: saved[0] }
+          : { kind: "picker" },
+      );
+    } catch {
+      if (loadCycle.current === cycle) setScreen({ kind: "error" });
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void checkDrafts();
+      return () => {
+        loadCycle.current += 1;
+      };
+    }, [checkDrafts]),
   );
-  const [pricingData, setPricingData] = useState<EventPricing | null>(null);
+  const discardDraft = async (draft: SavedEventDraft) => {
+    if (discarding) return;
+    const cycle = loadCycle.current;
+    setDiscarding(true);
+    try {
+      await discardEventDraft(draft.values.registrationType);
+      if (loadCycle.current !== cycle) return;
+      setDrafts((current) =>
+        current.filter(
+          (item) =>
+            item.values.registrationType !== draft.values.registrationType,
+        ),
+      );
+      setScreen({ kind: "picker" });
+    } catch {
+      showGlobalError("Couldn’t discard your draft. Please try again.");
+    } finally {
+      setDiscarding(false);
+    }
+  };
+  if (screen.kind === "editing") {
+    return (
+      <EventCreationForm
+        key={screen.type}
+        participationType={screen.type}
+        initialDraft={screen.draft}
+        onChangeType={() => void checkDrafts(false)}
+      />
+    );
+  }
+  return (
+    <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>
+      <View style={tw`px-5`}>
+        <CustomeTopBarNav
+          title="New Event"
+          onClickBack={() => router.replace("/")}
+        />
+      </View>
+      {screen.kind === "checking" ? (
+        <ImpactPageLoader />
+      ) : screen.kind === "error" ? (
+        <View style={tw`flex-1 justify-center gap-4 px-6`}>
+          <MascotMoment
+            layout="stacked"
+            variant="error"
+            title="Couldn’t load your draft"
+            message="Try again to pick up where you left off."
+          />
+          <CustomButton
+            title="Try again"
+            onPress={() => void checkDrafts()}
+            showArrow={false}
+          />
+        </View>
+      ) : screen.kind === "resume" ? (
+        <EventDraftPrompt
+          title={screen.draft.values.eventName}
+          busy={discarding}
+          onContinue={() =>
+            setScreen({
+              kind: "editing",
+              type: screen.draft.values.registrationType,
+              draft: screen.draft,
+            })
+          }
+          onDiscard={() => void discardDraft(screen.draft)}
+        />
+      ) : (
+        <EventTypePicker
+          onSelect={(type) => {
+            const saved = drafts.find(
+              (draft) => draft.values.registrationType === type,
+            );
+            setScreen(
+              saved
+                ? { kind: "resume", draft: saved }
+                : { kind: "editing", type, draft: null },
+            );
+          }}
+        />
+      )}
+    </SafeAreaView>
+  );
+};
+
+const EventCreationForm = ({
+  participationType,
+  initialDraft,
+  onChangeType,
+}: {
+  participationType: Registration;
+  initialDraft: SavedEventDraft | null;
+  onChangeType: () => void;
+}) => {
+  const { tw, color } = useAppTheme();
+  const router = useLockedRouter();
+  const isDonationEvent = participationType === "donation";
+  const pricingSectionTitle = isDonationEvent
+    ? "Fundraising goal"
+    : participationType === "ticket"
+      ? "Tickets"
+      : "Registration";
+
+  const [mode, setMode] = useState<"gogo" | "manual">(
+    initialDraft?.mode ?? "gogo",
+  );
+  const [activeSection, setActiveSection] =
+    useState<EventCreationSection | null>(null);
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
 
   const [editingTicket, setEditingTicket] = useState<EventTicket | null>(null);
@@ -74,10 +219,6 @@ const NewEvent = () => {
 
     openSheetTicket();
   };
-
-  const openSheet = useCallback((section: string) => {
-    setActiveSection(section);
-  }, []);
 
   const openSheetTicket = useCallback(() => {
     setIsTicketSheetOpen(true);
@@ -93,8 +234,6 @@ const NewEvent = () => {
   }, []);
 
   const handleDateTimeSave = (data: DateTimeFormData) => {
-    setDateTimeData(data);
-
     // Update the main form with date/time data
     setValue("startDate", data.startDate);
     setValue("endDate", data.endDate);
@@ -106,33 +245,72 @@ const NewEvent = () => {
 
     clearErrors(["startDate", "endDate", "startTime", "endTime"]);
 
-    closeSheet();
+    void finishSection("Date and Time");
   };
 
   const handlePricingSave = (data: EventPricing) => {
-    setPricingData(data);
-    setValue("registrationType", data.registrationType);
-    setValue("registrationAttendees", data.registrationAttendees);
-    setValue("registrationFee", data.registrationFee);
-    setValue("donationTarget", data.donationTarget);
-    setValue("tickets", data.tickets || []);
-    closeSheet();
-    clearErrors(
-      isDonationEvent
-        ? ["registrationType", "donationTarget"]
-        : "registrationType",
-    );
+    handlePricingChange(data);
+    void finishSection("Pricing");
   };
 
-  const renderSheetContent = () => {
-    switch (activeSection) {
-      case "Date and Time":
+  const renderSectionContent = (section: EventCreationSection | null) => {
+    switch (section) {
+      case "Date and Time": {
+        const values = getValues();
+        const currentDates = {
+          startDate: values.startDate ? new Date(values.startDate) : undefined,
+          endDate: values.endDate ? new Date(values.endDate) : undefined,
+          startTime: values.startTime,
+          endTime: values.endTime,
+          isRecurring: values.isRecurring,
+          repeat: values.repeat,
+          endRepeat: values.endRepeat,
+        };
         return (
           <DateAndTime
-            initialData={dateTimeData}
+            initialData={currentDates}
             onSave={handleDateTimeSave}
             editMode={false}
             allowRecurring={false}
+          />
+        );
+      }
+      case "Story":
+      case "Impact story":
+      case "Impact map":
+      case "Interests":
+        return (
+          <EventStoryFields
+            control={control}
+            setValue={setValue}
+            section={section}
+          />
+        );
+      case "Volunteering":
+        return (
+          <View>
+            <VolunteerSetupFields control={control} setValue={setValue} />
+            <EventFundraisingFields control={control} setValue={setValue} />
+          </View>
+        );
+      case "Cover":
+        return (
+          <Controller
+            name="imgUrl"
+            control={control}
+            render={({ field: { value, onChange } }) => (
+              <CoverImagePicker value={value || null} onChange={onChange} />
+            )}
+          />
+        );
+      case "Links":
+        return (
+          <EventLinks
+            links={watch("links")}
+            onChange={(value) =>
+              setValue("links", value, { shouldValidate: true })
+            }
+            error={errors.links?.message}
           />
         );
       case "Location":
@@ -144,13 +322,32 @@ const NewEvent = () => {
               <View>
                 <Location
                   isPhysicalEvent={watch("isPhysicalEvent")}
-                  onSave={({ location, isPhysicalEvent }) => {
+                  physicalOnly={
+                    participationType === "volunteer" ||
+                    watch("volunteerRoles").length > 0
+                  }
+                  submitLabel="Continue"
+                  onChange={({ location, isPhysicalEvent }) => {
+                    if (
+                      !isPhysicalEvent &&
+                      (watch("registrationType") === "volunteer" ||
+                        watch("volunteerRoles").length > 0)
+                    ) {
+                      showGlobalError(
+                        "Volunteer roles require a physical venue.",
+                      );
+                      return;
+                    }
                     onChange(location);
                     setValue("isPhysicalEvent", isPhysicalEvent, {
                       shouldValidate: true,
                     });
-                    closeSheet();
                   }}
+                  onSave={
+                    mode === "gogo"
+                      ? () => void finishSection("Location")
+                      : undefined
+                  }
                   value={value}
                 />
               </View>
@@ -158,16 +355,55 @@ const NewEvent = () => {
           />
         );
       case "Pricing":
+        if (participationType === "volunteer") return null;
+        if (participationType === "donation")
+          return (
+            <View style={tw`gap-4`}>
+              <Controller
+                name="donationTarget"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Input
+                    accessibilityLabel="Fundraising target in naira"
+                    numeric
+                    moneyFormat
+                    placeholder="Target in ₦ (minimum ₦5,000)"
+                    value={
+                      field.value === undefined ? "" : String(field.value / 100)
+                    }
+                    onChangeText={(text) =>
+                      field.onChange(
+                        text === ""
+                          ? undefined
+                          : Math.round(Number(text) * 100),
+                      )
+                    }
+                    error={fieldState.error?.message}
+                  />
+                )}
+              />
+              {mode === "gogo" ? (
+                <CustomButton
+                  onPress={() => void finishSection("Pricing")}
+                  title="Continue"
+                  showArrow={false}
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-onAccent dark:text-black"
+                />
+              ) : null}
+            </View>
+          );
         return (
           <Pricing
             onEdit={onEdit}
             initialData={pricingData}
-            onSave={handlePricingSave}
+            onChange={handlePricingChange}
+            onSave={mode === "gogo" ? handlePricingSave : undefined}
             setTicket={(updated: EventTicket[]) => setValue("tickets", updated)}
             tickets={watch("tickets") || []}
-            allowedRegistrationTypes={
-              isDonationEvent ? ["donation"] : ["ticket", "registration"]
-            }
+            allowedRegistrationTypes={[participationType]}
+            compact
+            submitLabel="Continue"
             createTicket={() => {
               setEditingTicket(null);
               openSheetTicket();
@@ -194,7 +430,7 @@ const NewEvent = () => {
     getValues,
     setValue,
     clearErrors,
-    reset,
+    trigger,
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema) as Resolver<EventFormData>,
     defaultValues: {
@@ -216,122 +452,130 @@ const NewEvent = () => {
       location: "",
       links: [],
       tags: [],
-      registrationType: isDonationEvent ? "donation" : undefined,
+      registrationType: participationType,
       description: "",
       isRecurring: false,
       tickets: [],
       registrationAttendees: undefined,
       registrationFee: undefined,
       donationTarget: undefined,
+      donationsEnabled: false,
+      volunteerRoles: [],
+      ...initialDraft?.values,
     },
   });
 
-  const startDate = watch("startDate");
-  const isPhysicalEvent = watch("isPhysicalEvent");
-  const location = watch("location");
-  const registrationType = watch("registrationType");
-  const donationTarget = watch("donationTarget");
-
-  const buildPricingState = useCallback(
-    (values: Partial<EventFormData>): EventPricing | null => {
-      const nextRegistrationType = isDonationEvent
-        ? "donation"
-        : values.registrationType;
-
-      if (!nextRegistrationType) {
-        return null;
-      }
-
-      return {
-        registrationType: nextRegistrationType,
-        paid:
-          nextRegistrationType === "registration"
-            ? Number(values.registrationFee || 0) > 0
-            : false,
-        registrationFee:
-          nextRegistrationType === "registration"
-            ? values.registrationFee
-            : undefined,
-        donationTarget:
-          nextRegistrationType === "donation"
-            ? values.donationTarget
-            : undefined,
-        limited:
-          nextRegistrationType === "registration"
-            ? Boolean(
-                values.registrationAttendees &&
-                  Number(values.registrationAttendees) !== 100000,
-              )
-            : false,
-        registrationAttendees:
-          nextRegistrationType === "registration"
-            ? values.registrationAttendees
-            : undefined,
-        tickets: nextRegistrationType === "ticket" ? values.tickets || [] : [],
-      };
+  const handlePricingChange = useCallback(
+    (data: EventPricing) => {
+      setValue("registrationType", data.registrationType);
+      setValue("registrationAttendees", data.registrationAttendees, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue("registrationFee", data.registrationFee, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      if (data.registrationType === "donation")
+        setValue("donationTarget", data.donationTarget, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      setValue("tickets", data.tickets);
+      clearErrors("registrationType");
     },
-    [isDonationEvent],
+    [clearErrors, setValue],
   );
 
-  useEffect(() => {
-    let isMounted = true;
-
-    (async () => {
-      const cached = await getItem(eventFormCacheKey);
-      if (cached) {
-        try {
-          const parsed = {
-            isPhysicalEvent: true,
-            ...JSON.parse(cached),
-          };
-          if (!isMounted) {
-            return;
-          }
-          reset(parsed); // restore form state
-          setPricingData(buildPricingState(parsed));
-        } catch (e) {
-          console.log("Error parsing cached event form:", e);
-        }
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [buildPricingState, eventFormCacheKey, reset]);
-
-  useEffect(() => {
-    if (!isDonationEvent) {
-      return;
+  const conversation = useGogoEventCreation({
+    getValues,
+    setValue,
+    isDonationEvent,
+    initialState: initialDraft?.conversation,
+  });
+  const { getDraftState } = conversation;
+  const getDraft = useCallback(
+    (): SavedEventDraft => ({
+      values: getValues(),
+      mode,
+      conversation: getDraftState(),
+    }),
+    [getValues, mode, getDraftState],
+  );
+  const draftPersistence = useEventDraftPersistence({
+    watch,
+    getDraft,
+    onLeave: conversation.cancel,
+  });
+  const reviewDraft = () => {
+    conversation.cancel();
+    setMode("manual");
+  };
+  const changeEventType = async () => {
+    conversation.cancel();
+    try {
+      await draftPersistence.flush();
+      onChangeType();
+    } catch {
+      showGlobalError("Couldn’t keep your draft. Please try again.");
     }
+  };
 
-    setValue("registrationType", "donation");
-    setPricingData(buildPricingState(getValues()));
-  }, [buildPricingState, getValues, isDonationEvent, setValue]);
+  const finishSection = async (
+    section: EventCreationSection | null = activeSection,
+  ) => {
+    const fields =
+      section === "Impact story"
+        ? (["impactDescription"] as const)
+        : section === "Links"
+          ? (["links"] as const)
+          : section === "Story"
+            ? (["eventName", "description"] as const)
+            : section === "Pricing" && isDonationEvent
+              ? (["donationTarget"] as const)
+              : section === "Volunteering"
+                ? (["volunteerRoles", "donationTarget"] as const)
+                : null;
+    if (fields && !(await trigger([...fields]))) return;
+    const completed = section;
+    closeSheet();
+    if (mode === "gogo")
+      void conversation.continueFromDraft(completed ?? undefined);
+  };
 
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const startDate = watch("startDate");
+  const registrationFee = watch("registrationFee");
+  const registrationAttendees = watch("registrationAttendees");
+  const tickets = watch("tickets");
+  const registrationType = watch("registrationType");
 
-    const subscription = watch((value) => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(async () => {
-        try {
-          await saveItem(eventFormCacheKey, JSON.stringify(value));
-        } catch (e) {
-          console.log("Error saving event form progress:", e);
-        }
-      }, 250);
-    });
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      subscription.unsubscribe();
+  const pricingData = useMemo<EventPricing | null>(() => {
+    if (registrationType === "volunteer" || registrationType === "donation")
+      return null;
+    return {
+      registrationType,
+      paid: registrationType === "registration" && (registrationFee ?? 0) > 0,
+      registrationFee:
+        registrationType === "registration" ? registrationFee : undefined,
+      limited:
+        registrationType === "registration" &&
+        registrationAttendees !== undefined &&
+        registrationAttendees !== DEFAULT_REGISTRATION_CAPACITY,
+      registrationAttendees:
+        registrationType === "registration" ? registrationAttendees : undefined,
+      tickets: registrationType === "ticket" ? (tickets ?? []) : [],
     };
-  }, [eventFormCacheKey, watch]);
+  }, [registrationType, registrationFee, registrationAttendees, tickets]);
+
+  const openSheet = (section: EventCreationSection) => {
+    conversation.cancel();
+    if (section === "Impact story" && conversation.suggestedImpactStory) {
+      setValue("impactDescription", conversation.suggestedImpactStory, {
+        shouldDirty: true,
+      });
+    }
+    setActiveSection(section);
+  };
 
   const onError = (errors: any) => {
     const firstErrorMessage = Object.values(errors || {}).find(
@@ -344,31 +588,14 @@ const NewEvent = () => {
 
   const { mutateAsync, isPending } = useCreateEvent({
     onSuccess: async (data) => {
-      const createdEventType = watch("registrationType");
-      const hasPaidRegistration =
-        createdEventType === "registration" &&
-        Number(watch("registrationFee") || 0) > 0;
-      const hasDonationFlow = createdEventType === "donation";
-      const hasPaidTickets =
-        createdEventType === "ticket" &&
-        (watch("tickets") || []).some(
-          (ticket: any) => Number(ticket?.price || 0) > 0,
-        );
-      const shouldPromptWallet =
-        hasPaidRegistration || hasDonationFlow || hasPaidTickets;
-
       showGlobalSuccess(
         data.data.isImageProcessing
           ? "Event created! Image uploading in background..."
           : "Event created successfully!",
       );
-      await removeItem(eventFormCacheKey);
+      await draftPersistence.clear();
       await removeItem(CHACHE_KEYS.eventFormKey);
-      router.replace(
-        shouldPromptWallet
-          ? `/event/${data.data.id}?openPayoutSetup=1`
-          : `/event/${data.data.id}`,
-      );
+      router.replace(`/event/${data.data.id}`);
     },
     onError: (e) => {
       console.error(e);
@@ -387,6 +614,12 @@ const NewEvent = () => {
   // };
 
   const onSubmit = async (data: EventFormData) => {
+    const dates = dateTimeSchema.safeParse(data);
+    if (!dates.success) {
+      showGlobalError(dates.error.issues[0].message);
+      openSheet("Date and Time");
+      return;
+    }
     const {
       repeat,
       imgUrl,
@@ -394,13 +627,9 @@ const NewEvent = () => {
       startTime,
       endTime,
       registrationType,
-      registrationFee,
-      registrationAttendees,
       startDate,
       endDate,
       endRepeat,
-      tickets,
-      donationTarget,
       links,
       isPhysicalEvent,
       location,
@@ -419,32 +648,15 @@ const NewEvent = () => {
       reoccurring: repeat,
       isPhysicalEvent,
       location: isPhysicalEvent ? location : "",
-      ...(finalRegistrationType === "registration"
-        ? finalRegistrationType === "registration" && !registrationAttendees
-          ? { registrationAttendees: 100000 }
-          : { registrationAttendees }
-        : {}),
-      ...(finalRegistrationType === "registration"
-        ? finalRegistrationType === "registration" && !registrationFee
-          ? { registrationFee: 0 }
-          : { registrationFee }
-        : {}),
-      ...(finalRegistrationType === "donation" && donationTarget
-        ? { donationTarget }
-        : {}),
-      registrationType: finalRegistrationType,
+      ...buildEventParticipationFormFields(
+        { ...data, registrationType: finalRegistrationType },
+        "create",
+      ),
       startDate: buildEventDateTimeIso(startDate, startTime),
       endDate: buildEventDateTimeIso(endDate, endTime, {
         endOfMinute: endTime === "23:59",
       }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
-      ...(finalRegistrationType === "ticket"
-        ? {
-            tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify({ ...rest }),
-            ),
-          }
-        : {}),
     };
     const refinedData = convertUndefinedToNull(correctedData);
     const formData = objectToFormData(refinedData);
@@ -475,60 +687,79 @@ const NewEvent = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
-      <View
-        style={[
-          tw`flex-1 pb-10 bg-[#01082E] items-center w-full`,
-          { paddingTop: spacing.xxl },
-        ]}
-      >
-        <View style={tw`flex-1 w-full max-w-[500px]`}>
-          <CustomView style={tw`px-5`}>
+      <SafeAreaView edges={["top"]} style={tw`flex-1 pb-3 bg-background dark:bg-[#01082E] items-center w-full`}>
+        <View style={tw`flex-1 w-full max-w-[840px]`}>
+          <CustomView className="max-w-full" style={tw`px-5`}>
             <CustomeTopBarNav
-              title={isDonationEvent ? "New Fundraiser" : "New Event"}
-              onClickBack={() => router.replace("/")}
+              title={
+                {
+                  donation: "New Fundraiser",
+                  ticket: "New ticket event",
+                  registration: "New registration event",
+                  volunteer: "New volunteer event",
+                }[participationType]
+              }
+              onClickBack={() => void changeEventType()}
             />
           </CustomView>
-          <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
-            <CustomView style={tw`px-5`}>
-              <Controller
-                name="imgUrl"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <View>
-                    <CoverImagePicker
-                      value={value || null}
-                      onChange={onChange}
-                    />
-                    {errors.imgUrl && (
-                      <Text style={tw`text-red-500`}>
-                        {errors.imgUrl.message}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              />
-            </CustomView>
-
-            <CustomView style={tw`px-5`}>
-              <CustomView style={tw`gap-2`}>
-                <FormLabel text="event name" />
+          <View style={tw`px-5 flex-row items-center justify-between`}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => void changeEventType()}
+              style={tw`min-h-[44px] justify-center py-2`}
+            >
+              <Text style={tw`text-sm text-secondary dark:text-[#AFC0F4]`}>Change event type</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                if (mode === "gogo") {
+                  reviewDraft();
+                } else {
+                  setMode("gogo");
+                  void conversation.continueFromDraft();
+                }
+              }}
+              style={tw`min-h-[44px] justify-center py-2`}
+            >
+              <Text style={tw`text-sm font-medium text-accent dark:text-[#0FF1CF]`}>
+                {mode === "gogo" ? "Use manual form" : "Let Gogo guide me"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {mode === "gogo" ? (
+            <GogoEventCreator
+              conversation={conversation}
+              isDonationEvent={isDonationEvent}
+              onOpenSection={openSheet}
+              onReview={reviewDraft}
+              draftTitle={watch("eventName")}
+              impactStory={watch("impactDescription")}
+              renderInlineSection={(section) =>
+                section === "Location" || section === "Pricing"
+                  ? renderSectionContent(section)
+                  : null
+              }
+            />
+          ) : (
+            <ScrollView style={tw`w-full`} keyboardShouldPersistTaps="handled">
+              <CustomView className="max-w-full" style={tw`px-5`}>
                 <Controller
-                  name="eventName"
+                  name="imgUrl"
                   control={control}
                   render={({ field: { value, onChange } }) => (
                     <View>
-                      <Input
-                        placeholder="Event name"
-                        onChangeText={onChange}
-                        value={value}
+                      <CoverImagePicker
+                        value={value || null}
+                        onChange={onChange}
                       />
-                      {errors.eventName && (
-                        <Text style={tw`text-red-500`}>
-                          {errors.eventName.message}
+                      {errors.imgUrl && (
+                        <Text style={tw`text-danger dark:text-red-500`}>
+                          {errors.imgUrl.message}
                         </Text>
                       )}
                     </View>
@@ -536,109 +767,116 @@ const NewEvent = () => {
                 />
               </CustomView>
 
-              <EventStoryFields control={control} setValue={setValue} />
-            </CustomView>
+              <CustomView className="max-w-full" style={tw`px-5`}>
+                <CustomView className="max-w-full" style={tw`gap-2`}>
+                  <FormLabel text="event name" />
+                  <Controller
+                    name="eventName"
+                    control={control}
+                    render={({ field: { value, onChange } }) => (
+                      <View>
+                        <Input
+                          placeholder="Event name"
+                          onChangeText={onChange}
+                          value={value}
+                        />
+                        {errors.eventName && (
+                          <Text style={tw`text-danger dark:text-red-500`}>
+                            {errors.eventName.message}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  />
+                </CustomView>
 
-            <CustomView style={tw`bg-[#1B2A50]/40 h-2`} />
-
-            {/* Event Information */}
-            <CustomView style={tw`px-5`}>
-              <CustomView>
-                <FormLabel text="event information" />
+                <EventStoryFields control={control} setValue={setValue} />
               </CustomView>
 
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                onPress={() => openSheet("Date and Time")}
-              >
-                <View>
-                  <Text style={tw`text-white text-base`}>Date and Time</Text>
-                  {errors.startDate && (
-                    <Text style={tw`text-red-500`}>
-                      {errors.startDate.message}
-                    </Text>
-                  )}
-                </View>
-                {!errors.startDate && startDate && (
-                  <CheckCheck color="#0FF1CF" />
-                )}
-              </TouchableOpacity>
+              <CustomView className="max-w-full" style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2`} />
 
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                onPress={() => openSheet("Location")}
-              >
-                <View style={tw`flex-1 pr-3`}>
-                  <Text style={tw`text-white text-base`}>Location</Text>
+              {/* Event Information */}
+              <CustomView className="max-w-full" style={tw`px-5`}>
+                <CustomView className="max-w-full">
+                  <FormLabel text="event information" />
+                </CustomView>
+
+                <TouchableOpacity
+                  style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
+                  onPress={() => openSheet("Date and Time")}
+                >
+                  <View>
+                    <Text style={tw`text-foreground dark:text-white text-base`}>Date and Time</Text>
+                    {errors.startDate && (
+                      <Text style={tw`text-danger dark:text-red-500`}>
+                        {errors.startDate.message}
+                      </Text>
+                    )}
+                  </View>
+                  {!errors.startDate && startDate && (
+                    <CheckCheck color={color("#0FF1CF", "accent")} />
+                  )}
+                </TouchableOpacity>
+
+                <View style={tw`mt-5 gap-3`}>
+                  <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
+                    Location
+                  </Text>
+                  {renderSectionContent("Location")}
                   {errors.location ? (
-                    <Text style={tw`text-red-500`}>
+                    <Text style={tw`text-danger dark:text-red-500`}>
                       {errors.location.message}
                     </Text>
-                  ) : (
-                    <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
-                      {isPhysicalEvent
-                        ? location || "Add the physical venue"
-                        : "No physical meetup"}
-                    </Text>
-                  )}
+                  ) : null}
                 </View>
-                {!errors.location &&
-                  (Boolean(location) || !isPhysicalEvent) && (
-                    <CheckCheck color="#0FF1CF" />
-                  )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex-row justify-between items-center`}
-                onPress={() => openSheet("Pricing")}
-              >
-                <View>
-                  <Text style={tw`text-white text-base`}>
-                    {pricingSectionTitle}
-                  </Text>
-                  {(isDonationEvent
-                    ? errors.donationTarget
-                    : errors.registrationType) && (
-                    <Text style={tw`text-red-500`}>
-                      {isDonationEvent
-                        ? errors.donationTarget?.message
-                        : errors.registrationType?.message}
+                {registrationType !== "volunteer" ? (
+                  <View style={tw`mt-6 gap-3`}>
+                    <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
+                      {pricingSectionTitle}
                     </Text>
-                  )}
-                </View>
-                {!errors.registrationType &&
-                  !errors.donationTarget &&
-                  (isDonationEvent ? donationTarget : registrationType) && (
-                    <CheckCheck color="#0FF1CF" />
-                  )}
-              </TouchableOpacity>
-            </CustomView>
+                    {renderSectionContent("Pricing")}
+                  </View>
+                ) : null}
+              </CustomView>
 
-            <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
+              <CustomView className="max-w-full" style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
 
-            <EventLinks
-              links={watch("links") || []}
-              onChange={(value) =>
-                setValue("links", value, { shouldValidate: true })
-              }
-              error={errors.links?.message}
-            />
+              <VolunteerSetupFields control={control} setValue={setValue} />
+              {errors.volunteerRoles?.message ? (
+                <Text style={tw`px-5 text-danger dark:text-red-400`}>
+                  {errors.volunteerRoles.message}
+                </Text>
+              ) : null}
+              <EventFundraisingFields control={control} setValue={setValue} />
 
-            <CustomView style={tw`bg-[#1B2A50]/40 h-2 w-full`} />
-
-            <CustomView style={tw`items-center px-5`}>
-              <CustomButton
-                disabled={isPending}
-                onPress={handleSubmit(onSubmit, onError)}
-                title={isPending ? "publishing.." : "publish event"}
-                showArrow={false}
-                buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                textClassName="!text-black"
+              <EventLinks
+                links={watch("links") || []}
+                onChange={(value) =>
+                  setValue("links", value, { shouldValidate: true })
+                }
+                error={errors.links?.message}
               />
-            </CustomView>
-          </ScrollView>
+
+              <CustomView className="max-w-full" style={tw`bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full`} />
+
+              <CustomView className="max-w-full" style={tw`items-center px-5`}>
+                <CustomButton
+                  disabled={isPending}
+                  onPress={handleSubmit(onSubmit, onError)}
+                  title={isPending ? "publishing.." : "publish event"}
+                  showArrow={false}
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-onAccent dark:text-black"
+                />
+              </CustomView>
+            </ScrollView>
+          )}
           <Modal
-            visible={Boolean(activeSection)}
+            visible={Boolean(
+              activeSection &&
+                activeSection !== "Location" &&
+                activeSection !== "Pricing",
+            )}
             animationType="slide"
             transparent
             onRequestClose={closeSheet}
@@ -647,24 +885,23 @@ const NewEvent = () => {
               style={tw`flex-1 justify-end bg-black/55`}
               behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
-              <View
-                style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              <SafeAreaView edges={["left", "right", "bottom"]}
+                style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
               >
                 <View
-                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
                 />
 
                 <View style={tw`flex-row items-start justify-between gap-4`}>
                   <View style={tw`flex-1`}>
-                    <Text style={tw`text-xl font-semibold text-white`}>
+                    <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                       {activeSectionTitle}
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={closeSheet}>
-                    <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                      Close
-                    </Text>
-                  </TouchableOpacity>
+                  <SheetCloseButton
+                    accessibilityLabel="Close event section"
+                    onPress={closeSheet}
+                  />
                 </View>
 
                 <ScrollView
@@ -672,9 +909,25 @@ const NewEvent = () => {
                   contentContainerStyle={tw`pt-4 pb-6`}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {renderSheetContent()}
+                  {renderSectionContent(activeSection)}
+                  {mode === "gogo" &&
+                  (activeSection === "Story" ||
+                    activeSection === "Impact story" ||
+                    activeSection === "Impact map" ||
+                    activeSection === "Interests" ||
+                    activeSection === "Volunteering" ||
+                    activeSection === "Cover" ||
+                    activeSection === "Links") ? (
+                    <CustomButton
+                      onPress={() => void finishSection()}
+                      title="Continue with Gogo"
+                      showArrow={false}
+                      buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none mt-5"
+                      textClassName="!text-onAccent dark:text-black"
+                    />
+                  ) : null}
                 </ScrollView>
-              </View>
+              </SafeAreaView>
             </KeyboardAvoidingView>
           </Modal>
 
@@ -688,24 +941,23 @@ const NewEvent = () => {
               style={tw`flex-1 justify-end bg-black/55`}
               behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
-              <View
-                style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              <SafeAreaView edges={["left", "right", "bottom"]}
+                style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
               >
                 <View
-                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                  style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
                 />
 
                 <View style={tw`flex-row items-start justify-between gap-4`}>
                   <View style={tw`flex-1`}>
-                    <Text style={tw`text-xl font-semibold text-white`}>
+                    <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                       {editingTicket ? "Edit ticket" : "Create ticket"}
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={closeSheetTicket}>
-                    <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                      Close
-                    </Text>
-                  </TouchableOpacity>
+                  <SheetCloseButton
+                    accessibilityLabel="Close ticket sheet"
+                    onPress={closeSheetTicket}
+                  />
                 </View>
 
                 <ScrollView
@@ -722,11 +974,11 @@ const NewEvent = () => {
                     }
                   />
                 </ScrollView>
-              </View>
+              </SafeAreaView>
             </KeyboardAvoidingView>
           </Modal>
         </View>
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 };

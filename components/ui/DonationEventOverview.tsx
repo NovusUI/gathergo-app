@@ -1,6 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomView from "@/components/View";
 import { Text, View } from "react-native";
-import tw from "twrnc";
+
 import LineChart from "./LineChart";
 import ProgressBar from "./ProgressBar";
 
@@ -17,54 +18,55 @@ interface DonationEventOverviewProps {
 }
 
 const DonationEventOverview = ({ event }: DonationEventOverviewProps) => {
+  const { tw, color } = useAppTheme();
   return (
-    <CustomView
-      style={tw`w-full border-[#0FF1CF] border-[1px] rounded-xl p-4 bg-[#1B2A50] gap-4`}
+    <CustomView className="max-w-full"
+      style={tw`w-full border-accent dark:border-[#0FF1CF] border-[1px] rounded-xl p-4 bg-surfaceMuted dark:bg-[#1B2A50] gap-4`}
     >
-      <View style={tw`flex-row justify-between items-center`}>
-        <View>
-          <Text style={tw`text-white text-xl font-bold`}>{event.title}</Text>
-          <Text style={tw`text-gray-300 text-sm`}>{event.description}</Text>
+      <View style={tw`flex-row flex-wrap gap-3 justify-between items-start`}>
+        <View style={tw`flex-1 min-w-0`}>
+          <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>{event.title}</Text>
+          <Text style={tw`text-secondary dark:text-gray-300 text-sm`}>{event.description}</Text>
         </View>
-        <View style={tw`bg-green-900 px-3 py-1 rounded-full`}>
-          <Text style={tw`text-green-300 text-sm`}>Active</Text>
+        <View style={tw`bg-successSoft dark:bg-green-900 px-3 py-1 rounded-full`}>
+          <Text style={tw`text-success dark:text-green-300 text-sm`}>Active</Text>
         </View>
       </View>
 
       <View style={tw`gap-3`}>
         <View style={tw`flex-row justify-between`}>
-          <Text style={tw`text-gray-300`}>Target</Text>
-          <Text style={tw`text-white font-bold`}>
+          <Text style={tw`text-secondary dark:text-gray-300`}>Target</Text>
+          <Text style={tw`text-foreground dark:text-white font-bold`}>
             ₦{event.target.toLocaleString()}
           </Text>
         </View>
 
         <View style={tw`gap-2`}>
           <View style={tw`flex-row justify-between`}>
-            <Text style={tw`text-gray-300`}>Raised</Text>
-            <Text style={tw`text-[#0FF1CF] font-bold`}>
+            <Text style={tw`text-secondary dark:text-gray-300`}>Raised</Text>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-bold`}>
               ₦{event.raised.toLocaleString()}
             </Text>
           </View>
           <ProgressBar progress={event.progress} />
-          <Text style={tw`text-gray-400 text-right text-sm`}>
+          <Text style={tw`text-muted dark:text-gray-400 text-right text-sm`}>
             {event.progress.toFixed(1)}%
           </Text>
         </View>
 
         <View style={tw`flex-row justify-between`}>
-          <Text style={tw`text-gray-300`}>Participants</Text>
-          <Text style={tw`text-white font-bold`}>
+          <Text style={tw`text-secondary dark:text-gray-300`}>Participants</Text>
+          <Text style={tw`text-foreground dark:text-white font-bold`}>
             {event.participants.toLocaleString()}
           </Text>
         </View>
       </View>
 
       <View style={tw`mt-2`}>
-        <Text style={tw`text-white font-bold mb-3`}>Weekly Donations</Text>
+        <Text style={tw`text-foreground dark:text-white font-bold mb-3`}>Weekly Donations</Text>
         <LineChart
           data={event.donations}
-          color="#0FF1CF"
+          color={color("#0FF1CF", "accent")}
           valueKey="amount"
           label="Amount"
         />

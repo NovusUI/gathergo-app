@@ -3,9 +3,9 @@ import { z } from "zod";
 export const carpoolSchema = z
   .object({
     isToEvent: z.boolean(),
-    poolLocation: z.string().optional(),
+    poolLocation: z.string().trim(),
     useCurrentLocation: z.boolean(),
-    poolDestination: z.string().optional(),
+    poolDestination: z.string().trim(),
     departureTime: z.string().min(1, "Departure time is required"),
     availableSeats: z
       .union([
@@ -23,7 +23,7 @@ export const carpoolSchema = z
       ctx.addIssue({
         path: ["poolLocation"],
         code: "custom",
-        message: "Pool location is required when going to event.",
+        message: "Add a pickup location.",
       });
     }
 
@@ -31,7 +31,7 @@ export const carpoolSchema = z
       ctx.addIssue({
         path: ["poolDestination"],
         code: "custom",
-        message: "Pool destination is required when returning from event.",
+        message: "Add a destination after the event.",
       });
     }
   });

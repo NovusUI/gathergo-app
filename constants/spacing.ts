@@ -15,5 +15,5 @@ export const layoutSpacing = {
   sectionGap: spacing.lg,
   cardPadding: spacing.lg,
   listGap: spacing.md,
-  listBottomInset: 80,
+  listBottomInset: 24,
 } as const;

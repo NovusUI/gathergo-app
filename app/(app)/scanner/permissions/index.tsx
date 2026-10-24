@@ -1,3 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import PermissionCard from "@/components/scanner/PermissionCard";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
@@ -9,15 +13,14 @@ import { Plus, Shield, Users } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
   Alert,
-  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const ManagePermissions = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const params = useLocalSearchParams();
   const eventId = params.eventId as string;
@@ -100,7 +103,7 @@ const ManagePermissions = () => {
 
   if (isLoading.grantedPermissions && !grantedPermissions.length) {
     return (
-      <View style={tw`flex-1 bg-[#01082E]`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
         <View style={tw`pt-10 pb-4 px-5`}>
           <CustomeTopBarNav
             title="Manage Permissions"
@@ -116,7 +119,7 @@ const ManagePermissions = () => {
   }
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
       {/* Top Navigation */}
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
@@ -156,13 +159,13 @@ const ManagePermissions = () => {
         <View style={tw`flex-row items-center justify-between`}>
           <TouchableOpacity
             style={tw`px-4 py-2 rounded-full ${
-              filterActive ? "bg-[#5669FF]" : "bg-[#1B2A50]"
+              filterActive ? "bg-primary dark:bg-[#5669FF]" : "bg-surfaceMuted dark:bg-[#1B2A50]"
             }`}
             onPress={() => setFilterActive(true)}
           >
             <Text
               style={tw`text-sm font-medium ${
-                filterActive ? "text-white" : "text-gray-400"
+                filterActive ? "text-onPrimary dark:text-white" : "text-muted dark:text-gray-400"
               }`}
             >
               Active ({activePermissions.length})
@@ -170,20 +173,20 @@ const ManagePermissions = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={tw`px-4 py-2 rounded-full ${
-              !filterActive ? "bg-[#FF932E]" : "bg-[#1B2A50]"
+              !filterActive ? "bg-danger dark:bg-[#FF932E]" : "bg-surfaceMuted dark:bg-[#1B2A50]"
             }`}
             onPress={() => setFilterActive(false)}
           >
             <Text
               style={tw`text-sm font-medium ${
-                !filterActive ? "text-white" : "text-gray-400"
+                !filterActive ? "text-onPrimary dark:text-white" : "text-muted dark:text-gray-400"
               }`}
             >
               Inactive ({inactivePermissions.length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={tw`flex-row items-center bg-[#0FF1CF] px-4 py-2 rounded-full`}
+            style={tw`flex-row items-center bg-accentFill dark:bg-[#0FF1CF] px-4 py-2 rounded-full`}
             onPress={() =>
               router.push({
                 pathname: "/scanner/permissions/grant-permission",
@@ -191,8 +194,8 @@ const ManagePermissions = () => {
               })
             }
           >
-            <Plus size={16} color="#01082E" />
-            <Text style={tw`text-[#01082E] text-sm font-semibold ml-2`}>
+            <Plus size={16} color={color("#01082E", "onAccent")} />
+            <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold ml-2`}>
               Grant Access
             </Text>
           </TouchableOpacity>
@@ -205,33 +208,32 @@ const ManagePermissions = () => {
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#5669FF"
-            colors={["#5669FF"]}
           />
         }
       >
+        <RefreshIndicator refreshing={refreshing} />
         {errors.grantedPermissions ? (
           <View style={tw`items-center justify-center py-20`}>
-            <Shield size={64} color="#FF5757" />
-            <Text style={tw`text-[#FF5757] text-lg font-semibold mt-4`}>
+            <Shield size={64} color={color("#FF5757", "danger")} />
+            <Text style={tw`text-danger dark:text-[#FF5757] text-lg font-semibold mt-4`}>
               Failed to Load Permissions
             </Text>
-            <Text style={tw`text-gray-500 text-center mt-2 px-10`}>
+            <Text style={tw`text-muted dark:text-gray-500 text-center mt-2 px-10`}>
               {errors.grantedPermissions.message || "Please try again"}
             </Text>
             <TouchableOpacity
-              style={tw`bg-[#5669FF] px-6 py-3 rounded-full mt-4`}
+              style={tw`bg-primary dark:bg-[#5669FF] px-6 py-3 rounded-full mt-4`}
               onPress={() => refetchGrantedPermissions()}
             >
-              <Text style={tw`text-white font-semibold`}>Try Again</Text>
+              <Text style={tw`text-onPrimary dark:text-white font-semibold`}>Try Again</Text>
             </TouchableOpacity>
           </View>
         ) : filteredPermissions.length > 0 ? (
           <View style={tw`gap-3`}>
-            <Text style={tw`text-white text-lg font-bold mb-2`}>
+            <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-2`}>
               {filterActive ? "Active Permissions" : "Inactive Permissions"}
             </Text>
             {filteredPermissions.map((permission) => (
@@ -248,11 +250,11 @@ const ManagePermissions = () => {
           </View>
         ) : (
           <View style={tw`items-center justify-center py-20`}>
-            <Users size={64} color="#2A3A6A" />
-            <Text style={tw`text-gray-400 text-lg font-semibold mt-4`}>
+            <Users size={64} color={color("#2A3A6A", "subtle")} />
+            <Text style={tw`text-muted dark:text-gray-400 text-lg font-semibold mt-4`}>
               No Permissions Found
             </Text>
-            <Text style={tw`text-gray-500 text-center mt-2 px-10`}>
+            <Text style={tw`text-muted dark:text-gray-500 text-center mt-2 px-10`}>
               {searchQuery
                 ? "No users match your search"
                 : `No ${
@@ -261,7 +263,7 @@ const ManagePermissions = () => {
             </Text>
             {!searchQuery && (
               <TouchableOpacity
-                style={tw`bg-[#0FF1CF] px-6 py-3 rounded-full mt-4`}
+                style={tw`bg-accentFill dark:bg-[#0FF1CF] px-6 py-3 rounded-full mt-4`}
                 onPress={() =>
                   router.push({
                     pathname: "/scanner/permissions/grant-permission",
@@ -269,7 +271,7 @@ const ManagePermissions = () => {
                   })
                 }
               >
-                <Text style={tw`text-[#01082E] font-semibold`}>
+                <Text style={tw`text-onAccent dark:text-[#01082E] font-semibold`}>
                   Grant First Permission
                 </Text>
               </TouchableOpacity>
@@ -279,34 +281,34 @@ const ManagePermissions = () => {
 
         {/* Stats Summary */}
         {grantedPermissions.length > 0 && (
-          <View style={tw`mt-6 bg-[#1B2A50] rounded-xl p-4`}>
-            <Text style={tw`text-white text-lg font-bold mb-3`}>
+          <View style={tw`mt-6 bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4`}>
+            <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-3`}>
               Permission Summary
             </Text>
             <View style={tw`flex-row justify-between`}>
               <View style={tw`items-center`}>
-                <Text style={tw`text-white text-2xl font-bold`}>
+                <Text style={tw`text-foreground dark:text-white text-2xl font-bold`}>
                   {grantedPermissions.length}
                 </Text>
-                <Text style={tw`text-gray-400 text-sm`}>Total</Text>
+                <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Total</Text>
               </View>
               <View style={tw`items-center`}>
-                <Text style={tw`text-[#0FF1CF] text-2xl font-bold`}>
+                <Text style={tw`text-accent dark:text-[#0FF1CF] text-2xl font-bold`}>
                   {activePermissions.length}
                 </Text>
-                <Text style={tw`text-gray-400 text-sm`}>Active</Text>
+                <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Active</Text>
               </View>
               <View style={tw`items-center`}>
-                <Text style={tw`text-[#FF932E] text-2xl font-bold`}>
+                <Text style={tw`text-danger dark:text-[#FF932E] text-2xl font-bold`}>
                   {inactivePermissions.length}
                 </Text>
-                <Text style={tw`text-gray-400 text-sm`}>Inactive</Text>
+                <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Inactive</Text>
               </View>
               <View style={tw`items-center`}>
-                <Text style={tw`text-white text-2xl font-bold`}>
+                <Text style={tw`text-foreground dark:text-white text-2xl font-bold`}>
                   {grantedPermissions.filter((p) => p.expiresAt).length}
                 </Text>
-                <Text style={tw`text-gray-400 text-sm`}>Expiring</Text>
+                <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Expiring</Text>
               </View>
             </View>
           </View>

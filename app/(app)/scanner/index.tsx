@@ -1,16 +1,13 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
-import { useRouter } from "expo-router";
-import { BarChart3, Clock, QrCode, Shield, Users } from "lucide-react-native";
+import { Clock, QrCode, Shield, Users } from "lucide-react-native";
 import { useState } from "react";
-import {
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import tw from "twrnc";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import PermissionBadge from "@/components/scanner/PermissionBadge";
 import QuickScanCard from "@/components/scanner/QuickScanCard";
 import ScannerStats from "@/components/scanner/ScannerStats";
@@ -19,6 +16,7 @@ import { safeGoBack } from "@/utils/navigation";
 import { useLockedRouter } from "@/utils/navigation";
 
 const ScannerHome = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -48,7 +46,7 @@ const ScannerHome = () => {
       title: "Scan QR Code",
       description: "Scan tickets and registrations",
       icon: QrCode,
-      color: "#5669FF",
+      color: color("#5669FF", "primary"),
       onPress: () => router.push("/scanner/scanner-screen"),
     },
     {
@@ -56,7 +54,7 @@ const ScannerHome = () => {
       title: "Scan History",
       description: "View your scanning history",
       icon: Clock,
-      color: "#FF932E",
+      color: color("#FF932E", "danger"),
       onPress: () => router.push("/scanner/scanner-history"),
     },
     {
@@ -64,7 +62,7 @@ const ScannerHome = () => {
       title: "My Permissions",
       description: "Events you can scan for",
       icon: Shield,
-      color: "#0FF1CF",
+      color: color("#0FF1CF", "accent"),
       onPress: () => router.push("/scanner/permissions/my-permissions"),
     },
     {
@@ -86,7 +84,7 @@ const ScannerHome = () => {
   // }, [statsError, permissionsError]);
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
       {/* Top Navigation */}
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
@@ -101,24 +99,16 @@ const ScannerHome = () => {
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#5669FF"
-            colors={["#5669FF"]}
-          />
+          <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Welcome Section */}
-        <View style={tw`mb-6`}>
-          <Text style={tw`text-white text-2xl font-bold mb-2`}>
-            QR Code Scanner
-          </Text>
-          <Text style={tw`text-gray-400 text-base`}>
-            Scan tickets, registrations, and donations. Everyone can view
-            details. Mark as used requires permission.
-          </Text>
-        </View>
+        <RefreshIndicator refreshing={refreshing} />
+        <MascotMoment
+          title="Let's scan"
+          message="Point your camera at a QR code to view its details. Checking someone in needs the organiser's permission."
+          typing={false}
+          style={tw`mb-6`}
+        />
 
         {/* Quick Scan Card */}
         <View style={tw`mb-6`}>
@@ -138,7 +128,7 @@ const ScannerHome = () => {
         {!permissionsLoading && permissions && permissions.length > 0 && (
           <View style={tw`mb-6`}>
             <View style={tw`flex-row items-center justify-between mb-3`}>
-              <Text style={tw`text-white text-lg font-bold`}>
+              <Text style={tw`text-foreground dark:text-white text-lg font-bold`}>
                 Active Permissions
               </Text>
               <TouchableOpacity
@@ -146,7 +136,7 @@ const ScannerHome = () => {
                   router.push("/scanner/permissions/my-permissions")
                 }
               >
-                <Text style={tw`text-[#5669FF] text-sm font-medium`}>
+                <Text style={tw`text-primary dark:text-[#5669FF] text-sm font-medium`}>
                   View All
                 </Text>
               </TouchableOpacity>
@@ -160,8 +150,8 @@ const ScannerHome = () => {
                 />
               ))}
               {permissions.length > 3 && (
-                <View style={tw`bg-[#1B2A50] px-3 py-1 rounded-full`}>
-                  <Text style={tw`text-gray-400 text-xs`}>
+                <View style={tw`bg-surfaceMuted dark:bg-[#1B2A50] px-3 py-1 rounded-full`}>
+                  <Text style={tw`text-muted dark:text-gray-400 text-xs`}>
                     +{permissions.length - 3} more
                   </Text>
                 </View>
@@ -172,14 +162,14 @@ const ScannerHome = () => {
 
         {/* Scanner Menu */}
         <View style={tw`mb-8`}>
-          <Text style={tw`text-white text-lg font-bold mb-4`}>
+          <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-4`}>
             Scanner Tools
           </Text>
           <View style={tw`gap-3`}>
             {menuItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={tw`bg-[#1B2A50] rounded-xl p-4 flex-row items-center`}
+                style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4 flex-row items-center`}
                 onPress={item.onPress}
                 activeOpacity={0.8}
               >
@@ -192,35 +182,21 @@ const ScannerHome = () => {
                   <item.icon size={24} color={item.color} />
                 </View>
                 <View style={tw`flex-1`}>
-                  <Text style={tw`text-white text-base font-semibold`}>
+                  <Text style={tw`text-foreground dark:text-white text-base font-semibold`}>
                     {item.title}
                   </Text>
-                  <Text style={tw`text-gray-400 text-sm mt-1`}>
+                  <Text style={tw`text-muted dark:text-gray-400 text-sm mt-1`}>
                     {item.description}
                   </Text>
                 </View>
                 <View
-                  style={tw`w-8 h-8 rounded-full bg-[#2A3A6A] items-center justify-center`}
+                  style={tw`w-8 h-8 rounded-full bg-surfaceMuted dark:bg-[#2A3A6A] items-center justify-center`}
                 >
-                  <Text style={tw`text-white`}>→</Text>
+                  <Text style={tw`text-foreground dark:text-white`}>→</Text>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        {/* Info Section */}
-        <View style={tw`bg-[#1B2A50] rounded-xl p-4 mb-6`}>
-          <View style={tw`flex-row items-center mb-2`}>
-            <BarChart3 size={20} color="#0FF1CF" />
-            <Text style={tw`text-white text-sm font-semibold ml-2`}>
-              How Scanning Works
-            </Text>
-          </View>
-          <Text style={tw`text-gray-400 text-sm`}>
-            • Everyone can scan QR codes to view details{"\n"}• Only event
-            owners and authorized scanners can mark as used{"\n"}• Granting a user scanner permission gives them access to scan any of your events{"\n"}• All scans are logged for security
-          </Text>
         </View>
       </ScrollView>
     </View>

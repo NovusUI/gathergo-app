@@ -1,3 +1,5 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import { useScanner } from "@/hooks/useScanner";
 import { safeGoBack } from "@/utils/navigation";
@@ -13,10 +15,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import ScanResultModal from "./scan-result";
 
 const ScannerScreen = () => {
+  const { tw, color } = useAppTheme();
+  const styles = createStyles(color);
   const router = useLockedRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -86,7 +90,7 @@ const ScannerScreen = () => {
   if (!permission) {
     return (
       <View style={tw`flex-1 bg-black items-center justify-center`}>
-        <Text style={tw`text-white text-lg`}>
+        <Text style={tw`text-foreground dark:text-white text-lg`}>
           Requesting camera permission...
         </Text>
       </View>
@@ -96,14 +100,14 @@ const ScannerScreen = () => {
   if (!permission.granted) {
     return (
       <View style={tw`flex-1 bg-black items-center justify-center p-5`}>
-        <Text style={tw`text-white text-lg text-center mb-4`}>
+        <Text style={tw`text-foreground dark:text-white text-lg text-center mb-4`}>
           Camera permission is required to scan QR codes
         </Text>
         <TouchableOpacity
-          style={tw`bg-[#5669FF] px-6 py-3 rounded-full`}
+          style={tw`bg-primary dark:bg-[#5669FF] px-6 py-3 rounded-full`}
           onPress={requestPermission}
         >
-          <Text style={tw`text-white font-semibold`}>Grant Permission</Text>
+          <Text style={tw`text-onPrimary dark:text-white font-semibold`}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
     );
@@ -130,10 +134,10 @@ const ScannerScreen = () => {
             style={tw`w-10 h-10 rounded-full bg-black/50 items-center justify-center`}
             onPress={() => safeGoBack(router, "/scanner")}
           >
-            <X size={24} color="white" />
+            <X size={24} color={color("white", "foreground")} />
           </TouchableOpacity>
 
-          <Text style={tw`text-white text-lg font-semibold`}>
+          <Text style={tw`text-foreground dark:text-white text-lg font-semibold`}>
             QR Code Scanner
           </Text>
 
@@ -148,13 +152,13 @@ const ScannerScreen = () => {
             <View style={[styles.corner, styles.bottomLeft]} />
             <View style={[styles.corner, styles.bottomRight]} />
           </View>
-          <Text style={tw`text-white text-center mt-6 text-lg font-medium`}>
+          <Text style={tw`text-foreground dark:text-white text-center mt-6 text-lg font-medium`}>
             Align QR code within frame
           </Text>
           {isProcessing && (
             <View style={tw`mt-4`}>
               <ActivityIndicator tone="accent" size="large" />
-              <Text style={tw`text-white text-center mt-2`}>Processing...</Text>
+              <Text style={tw`text-foreground dark:text-white text-center mt-2`}>Processing...</Text>
             </View>
           )}
         </View>
@@ -166,22 +170,22 @@ const ScannerScreen = () => {
             onPress={toggleFlash}
           >
             {flash ? (
-              <FlashlightOff size={28} color="white" />
+              <FlashlightOff size={28} color={color("white", "foreground")} />
             ) : (
-              <Flashlight size={28} color="white" />
+              <Flashlight size={28} color={color("white", "foreground")} />
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={tw`w-20 h-20 rounded-full border-4 border-white/30 items-center justify-center`}
+            style={tw`w-20 h-20 rounded-full border-4 border-borderStrong/30 dark:border-white/30 items-center justify-center`}
             onPress={resetScanner}
             disabled={isProcessing}
           >
             <View
-              style={tw`w-16 h-16 rounded-full bg-white/10 items-center justify-center`}
+              style={tw`w-16 h-16 rounded-full bg-surface/10 dark:bg-white/10 items-center justify-center`}
             >
               {!isProcessing && (
-                <Text style={tw`text-white text-sm font-bold`}>SCAN</Text>
+                <Text style={tw`text-foreground dark:text-white text-sm font-bold`}>SCAN</Text>
               )}
             </View>
           </TouchableOpacity>
@@ -190,7 +194,7 @@ const ScannerScreen = () => {
             style={tw`w-14 h-14 rounded-full bg-black/50 items-center justify-center mx-4`}
             onPress={toggleCameraType}
           >
-            <RotateCw size={28} color="white" />
+            <RotateCw size={28} color={color("white", "foreground")} />
           </TouchableOpacity>
         </View>
       </View>
@@ -210,7 +214,7 @@ const ScannerScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   scanFrame: {
     width: 250,
     height: 250,
@@ -220,7 +224,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 30,
     height: 30,
-    borderColor: "#5669FF",
+    borderColor: color("#5669FF", "primary"),
   },
   topLeft: {
     top: 0,

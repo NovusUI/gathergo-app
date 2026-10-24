@@ -1,3 +1,5 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CoverImagePicker from "@/components/EventImagePicket";
 import CustomView from "@/components/View";
@@ -6,13 +8,15 @@ import CreateTicket from "@/components/eventInfo/CreateTicket";
 import DateAndTime from "@/components/eventInfo/DateAndTime";
 import EventLinks from "@/components/eventInfo/EventLinks";
 import EventStoryFields from "@/components/eventInfo/EventStoryFields";
+import VolunteerSetupFields from "@/components/eventInfo/VolunteerSetupFields";
+import EventFundraisingFields from "@/components/eventInfo/EventFundraisingFields";
 import Location from "@/components/eventInfo/Location";
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { normalizeEventLink } from "@/constants/eventLinks";
-import { buildEventImpactFormFields } from "@/utils/eventForm";
+import { normalizeEventLinks } from "@/constants/eventLinks";
+import { buildEventImpactFormFields, buildEventParticipationFormFields } from "@/utils/eventForm";
 import { spacing } from "@/constants/spacing";
 import {
   DateTimeFormData,
@@ -48,13 +52,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
-
-const normalizeEventLinks = (links?: string[]) =>
-  (links || [])
-    .map((link) => normalizeEventLink(link))
-    .filter(Boolean)
-    .slice(0, 5);
 
 const getUpdateErrorMessage = (error: unknown) => {
   const data = (error as { data?: { message?: string | string[] } })?.data;
@@ -68,6 +65,7 @@ const getUpdateErrorMessage = (error: unknown) => {
 };
 
 const EditEvent = () => {
+  const { tw } = useAppTheme();
   const { id } = useLocalSearchParams();
   const eventId = Array.isArray(id) ? id[0] : id;
   const router = useLockedRouter();
@@ -79,6 +77,9 @@ const EditEvent = () => {
     null,
   );
   const [pricingData, setPricingData] = useState<EventPricing | null>(null);
+  const [locationDraft, setLocationDraft] = useState<
+    Pick<EventFormData, "location" | "isPhysicalEvent">
+  >({ location: "", isPhysicalEvent: true });
   const [isTicketSheetOpen, setIsTicketSheetOpen] = useState(false);
   const blockedEditRedirectedRef = useRef(false);
 
@@ -165,6 +166,8 @@ const EditEvent = () => {
       registrationAttendees: undefined,
       registrationFee: undefined,
       donationTarget: undefined,
+      donationsEnabled: false,
+      volunteerRoles: [],
       repeat: "NONE",
       endRepeat: undefined,
     },
@@ -206,6 +209,8 @@ const EditEvent = () => {
         registrationAttendees: e.registrationAttendees || undefined,
         registrationFee: e.registrationFee || undefined,
         donationTarget: e.donationTarget || undefined,
+        donationsEnabled: e.donationsEnabled,
+        volunteerRoles: e.volunteerRoles.map(({ title, description, capacity, requiresApproval }) => ({ title, description, capacity, requiresApproval })),
         isRecurring: e.reoccurring !== "NONE",
         repeat: e.reoccurring || "NONE",
         endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined,
@@ -221,7 +226,7 @@ const EditEvent = () => {
         endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined,
       });
 
-      setPricingData({
+      setPricingData(e.registrationType === "volunteer" ? null : {
         registrationType: e.registrationType,
         registrationFee: e.registrationFee ? e.registrationFee : undefined,
         donationTarget: e.donationTarget ? e.donationTarget : undefined,
@@ -282,6 +287,7 @@ const EditEvent = () => {
   };
 
   const handlePricingSave = (data: EventPricing) => {
+    if (lockedRegistrationType === "volunteer") return;
     const nextPricingData = {
       ...data,
       registrationType: lockedRegistrationType ?? data.registrationType,
@@ -291,7 +297,7 @@ const EditEvent = () => {
     setValue("registrationType", nextPricingData.registrationType);
     setValue("registrationAttendees", nextPricingData.registrationAttendees);
     setValue("registrationFee", nextPricingData.registrationFee);
-    setValue("donationTarget", nextPricingData.donationTarget);
+    if (nextPricingData.registrationType === "donation") setValue("donationTarget", nextPricingData.donationTarget);
     setValue("tickets", nextPricingData.tickets);
     clearErrors(
       nextPricingData.registrationType === "donation"
@@ -317,18 +323,23 @@ const EditEvent = () => {
           <Controller
             name="location"
             control={control}
-            render={({ field: { value, onChange } }) => (
+            render={({ field: { onChange } }) => (
               <View>
                 <Location
-                  isPhysicalEvent={watch("isPhysicalEvent")}
-                  onSave={({ location, isPhysicalEvent }) => {
+                  isPhysicalEvent={locationDraft.isPhysicalEvent}
+                  onChange={setLocationDraft}
+                  onSave={() => {
+                    const { location, isPhysicalEvent } = locationDraft;
+                    if (!isPhysicalEvent && watch("volunteerRoles").length > 0) {
+                      showGlobalError("Volunteer roles require a physical venue."); return;
+                    }
                     onChange(location);
                     setValue("isPhysicalEvent", isPhysicalEvent, {
                       shouldValidate: true,
                     });
                     closeSheet();
                   }}
-                  value={value}
+                  value={locationDraft.location}
                 />
               </View>
             )}
@@ -343,7 +354,7 @@ const EditEvent = () => {
             onSave={handlePricingSave}
             tickets={watch("tickets") || []}
             allowedRegistrationTypes={
-              lockedRegistrationType ? [lockedRegistrationType] : undefined
+              lockedRegistrationType && lockedRegistrationType !== "volunteer" ? [lockedRegistrationType] : undefined
             }
             createTicket={() => {
               setEditingTicket(null);
@@ -378,12 +389,8 @@ const EditEvent = () => {
       repeat,
       endRepeat,
       registrationType,
-      registrationFee,
-      registrationAttendees,
-      donationTarget,
       links,
       location,
-      tickets,
       imgUrl,
       isPhysicalEvent,
     } = data;
@@ -403,24 +410,8 @@ const EditEvent = () => {
         endOfMinute: endTime === "23:59",
       }),
       ...(endRepeat ? { endRepeat: extractDate(endRepeat) } : {}),
-      ...(resolvedRegistrationType === "registration"
-        ? {
-            registrationAttendees: registrationAttendees || 100000,
-            registrationFee: registrationFee || 0,
-          }
-        : {}),
-      ...(resolvedRegistrationType === "donation"
-        ? {
-            donationTarget: donationTarget || 0,
-          }
-        : {}),
-      ...(resolvedRegistrationType === "ticket"
-        ? {
-            tickets: tickets?.map(({ paid, limited, isNew, ...rest }) =>
-              JSON.stringify(rest),
-            ),
-          }
-        : {}),
+      ...buildEventParticipationFormFields({ ...data, registrationType: resolvedRegistrationType }, "update"),
+
     };
 
     //const refinedData = convertUndefinedToNull(correctedData);
@@ -440,7 +431,7 @@ const EditEvent = () => {
   // *********** Loading & Error States ************ //
   if (isPending) {
     return (
-      <View style={[tw`flex-1 bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
+      <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, { paddingTop: spacing.xxl }]}>
         <CustomView className={`px-3`}>
           <CustomeTopBarNav
             title="Edit Event"
@@ -457,15 +448,15 @@ const EditEvent = () => {
 
   if (isError || !eventData) {
     return (
-      <View style={tw`flex-1 bg-[#01082E] items-center justify-center px-5`}>
-        <Text style={tw`text-white text-xl mt-4`}>
+      <View style={tw`flex-1 bg-background dark:bg-[#01082E] items-center justify-center px-5`}>
+        <Text style={tw`text-foreground dark:text-white text-xl mt-4`}>
           Event not found or error loading
         </Text>
         <CustomButton
           title="Go Back"
           onPress={() => router.replace("/")}
-          buttonClassName="bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
-          textClassName="!text-black"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] mt-6 w-full max-w-[300px]"
+          textClassName="!text-onAccent dark:text-black"
         />
       </View>
     );
@@ -479,13 +470,13 @@ const EditEvent = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
       <View
         style={[
-          tw`flex-1 pb-5 bg-[#01082E] flex flex-col items-center w-full`,
+          tw`flex-1 pb-5 bg-background dark:bg-[#01082E] flex flex-col items-center w-full`,
           { paddingTop: spacing.xxl },
         ]}
       >
@@ -510,7 +501,7 @@ const EditEvent = () => {
                       onChange={onChange}
                     />
                     {errors.imgUrl && (
-                      <Text style={tw`text-red-500`}>
+                      <Text style={tw`text-danger dark:text-red-500`}>
                         {errors.imgUrl.message}
                       </Text>
                     )}
@@ -535,7 +526,7 @@ const EditEvent = () => {
                   )}
                 />
                 {errors.eventName && (
-                  <Text style={tw`text-red-500`}>
+                  <Text style={tw`text-danger dark:text-red-500`}>
                     {errors.eventName.message}
                   </Text>
                 )}
@@ -544,50 +535,63 @@ const EditEvent = () => {
               <EventStoryFields control={control} setValue={setValue} />
             </CustomView>
 
-            <CustomView className="!bg-[#1B2A50]/40 h-2" />
+            <CustomView className="!bg-surface/40 dark:bg-[#1B2A50]/40 h-2" />
 
             {/* Event Info */}
             <CustomView className="px-5">
               <FormLabel text="event information" />
               <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
                 onPress={() => openSheet("Date and Time")}
               >
-                <Text style={tw`text-white text-base`}>Date and Time</Text>
-                {startDateWatch && <Text style={tw`text-[#0FF1CF]`}>✓</Text>}
+                <Text style={tw`text-foreground dark:text-white text-base`}>Date and Time</Text>
+                {startDateWatch && <Text style={tw`text-accent dark:text-[#0FF1CF]`}>✓</Text>}
               </TouchableOpacity>
               <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
-                onPress={() => openSheet("Location")}
+                style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                onPress={() => {
+                  setLocationDraft({
+                    location: watch("location"),
+                    isPhysicalEvent: watch("isPhysicalEvent"),
+                  });
+                  openSheet("Location");
+                }}
               >
                 <View style={tw`flex-1 pr-3`}>
-                  <Text style={tw`text-white text-base`}>Location</Text>
-                  <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+                  <Text style={tw`text-foreground dark:text-white text-base`}>Location</Text>
+                  <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
                     {isPhysicalEventWatch
                       ? locationWatch || "Add the physical venue"
                       : "No physical meetup"}
                   </Text>
                 </View>
                 {(Boolean(locationWatch) || !isPhysicalEventWatch) && (
-                  <Text style={tw`text-[#0FF1CF]`}>✓</Text>
+                  <Text style={tw`text-accent dark:text-[#0FF1CF]`}>✓</Text>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={tw`bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
-                onPress={() => openSheet("Pricing")}
-              >
-                <Text style={tw`text-white text-base`}>
-                  {pricingSectionTitle}
-                </Text>
-                {(isDonationEvent
-                  ? donationTargetWatch
-                  : registrationTypeWatch) && (
-                  <Text style={tw`text-[#0FF1CF]`}>✓</Text>
-                )}
-              </TouchableOpacity>
+              {lockedRegistrationType !== "volunteer" ? (
+                <TouchableOpacity
+                  style={tw`bg-surface dark:bg-[#101C45] p-5 my-2 rounded-xl flex flex-row justify-between items-center`}
+                  onPress={() => openSheet("Pricing")}
+                >
+                  <Text style={tw`text-foreground dark:text-white text-base`}>
+                    {pricingSectionTitle}
+                  </Text>
+                  {(isDonationEvent
+                    ? donationTargetWatch
+                    : registrationTypeWatch) && (
+                    <Text style={tw`text-accent dark:text-[#0FF1CF]`}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null}
             </CustomView>
 
-            <CustomView className="!bg-[#1B2A50]/40 h-2 w-full" />
+            <CustomView className="!bg-surface/40 dark:bg-[#1B2A50]/40 h-2 w-full" />
+
+            <VolunteerSetupFields control={control} setValue={setValue} editMode
+              onManage={() => router.push({ pathname: "/volunteers/[id]", params: { id: eventId } })} />
+            {errors.volunteerRoles?.message ? <Text style={tw`px-5 text-danger dark:text-red-400`}>{errors.volunteerRoles.message}</Text> : null}
+            <EventFundraisingFields control={control} setValue={setValue} savedTarget={eventData.data.donationTarget} />
 
             <EventLinks
               links={watch("links") || []}
@@ -603,8 +607,8 @@ const EditEvent = () => {
                 onPress={handleSubmit(onSubmit)}
                 title={isUpdatePending ? "updating..." : "Update Event"}
                 showArrow={false}
-                buttonClassName="bg-[#0FF1CF] w-full !border-none"
-                textClassName="!text-black"
+                buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                textClassName="!text-onAccent dark:text-black"
               />
             </CustomView>
           </ScrollView>
@@ -622,23 +626,22 @@ const EditEvent = () => {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View
-              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
             >
               <View
-                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
               />
 
               <View style={tw`flex-row items-start justify-between gap-4`}>
                 <View style={tw`flex-1`}>
-                  <Text style={tw`text-xl font-semibold text-white`}>
+                  <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                     {activeSectionTitle}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={closeSheet}>
-                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                    Close
-                  </Text>
-                </TouchableOpacity>
+                <SheetCloseButton
+                  accessibilityLabel="Close event section"
+                  onPress={closeSheet}
+                />
               </View>
 
               <ScrollView
@@ -663,23 +666,22 @@ const EditEvent = () => {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View
-              style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+              style={tw`max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-8 pt-5`}
             >
               <View
-                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+                style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
               />
 
               <View style={tw`flex-row items-start justify-between gap-4`}>
                 <View style={tw`flex-1`}>
-                  <Text style={tw`text-xl font-semibold text-white`}>
+                  <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                     {editingTicket ? "Edit ticket" : "Create ticket"}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={closeSheetTicket}>
-                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                    Close
-                  </Text>
-                </TouchableOpacity>
+                <SheetCloseButton
+                  accessibilityLabel="Close ticket sheet"
+                  onPress={closeSheetTicket}
+                />
               </View>
 
               <ScrollView

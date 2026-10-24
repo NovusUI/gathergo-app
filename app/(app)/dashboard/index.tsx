@@ -1,144 +1,32 @@
-import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import EventsOverview from "@/components/EventsOverview";
-import Shortcut from "@/components/Shortcut";
-import CustomView from "@/components/View";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import Payments from "@/components/ui/Payments";
+import WalletSetupReminder from "@/components/ui/WalletSetupReminder";
 import { useDashboardData, useShortcut } from "@/hooks/useDashboard";
 import { useWalletOnboarding } from "@/services/queries";
-import { safeGoBack } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
-import { useEffect } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 
-const shortcuts = [
-  { id: "wallet", title: "Wallet", link: "wallet", iconColor: "#FF932E" },
-  {
-    id: "feed500",
-    title: "Feed500",
-    link: "events/feed500",
-    iconColor: "#5669FF",
-  },
-  {
-    id: "education",
-    title: "Education",
-    link: "events/education",
-    iconColor: "#0FF1CF",
-  },
-  {
-    id: "medical",
-    title: "Medical",
-    link: "events/medical",
-    iconColor: "#FF5757",
-  },
-  {
-    id: "housing",
-    title: "Housing",
-    link: "events/housing",
-    iconColor: "#9D4EDD",
-  },
-];
-
-const Dashboard = () => {
+export default function Dashboard() {
   const router = useLockedRouter();
-
-  const { isLoading, data, error } = useDashboardData();
+  const { isLoading, data } = useDashboardData();
   const { data: onboarding } = useWalletOnboarding();
-
-  const { shortcuts, isLoading: loadingShortcuts } = useShortcut();
-
-  useEffect(() => {
-    console.log(shortcuts?.data?.shortcuts);
-  }, [shortcuts]);
-
-  if (isLoading) {
-    return (
-      <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
-        <CustomView className={`px-3`}>
-          <CustomeTopBarNav
-            title="Dashboard"
-            onClickBack={() => router.replace("/")}
-          />
-        </CustomView>
-        <ImpactPageLoader
-          title="Mapping your dashboard"
-          message="Loading your events, attendance, and payments."
-        />
-      </View>
-    );
-  }
+  const { data: shortcuts } = useShortcut();
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
-      {/* Top Navigation */}
-      <View style={tw`pt-10 pb-4 px-5`}>
-        <CustomeTopBarNav
-          title="Dashboard"
-          onClickBack={() => safeGoBack(router, "/")}
-        />
-      </View>
-
-      {/* Main Scrollable Content */}
-      <ScrollView
-        style={tw`flex-1 mb-20`}
-        contentContainerStyle={tw`px-5`}
-        showsVerticalScrollIndicator={false}
-      >
-        {onboarding?.data?.showPersistentAlert && (
-          <TouchableOpacity
-            style={tw`bg-[#1B2A50] border border-[#F1D417] rounded-2xl p-4 mb-5`}
-            onPress={() => router.push('/wallet')}
-          >
-            <Text style={tw`text-[#F1D417] font-bold text-base mb-1`}>
-              Action needed
-            </Text>
-            <Text style={tw`text-white text-sm mb-2`}>
-              {onboarding.data.nextAction === 'ADD_SETTLEMENT_ACCOUNT'
-                ? 'Add your settlement account to unlock creator payouts.'
-                : onboarding.data.nextAction === 'COMPLETE_KYC'
-                  ? 'Complete verification so your earnings can be settled.'
-                  : 'Finish wallet setup to enable ALAT transfer.'}
-            </Text>
-            <Text style={tw`text-[#0FF1CF] text-sm font-semibold`}>Open wallet</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Events Overview */}
-        <View style={tw`mb-6`}>
-          <EventsOverview initialEvents={data?.data.events} />
-        </View>
-
-        {/* Payments */}
-        <View style={tw`mb-24`}>
-          <Payments payments={data?.data.payments || []} />
-        </View>
-      </ScrollView>
-
-      {/* Quick Access - Always visible at bottom */}
-      <View
-        style={tw`absolute bottom-0 left-0 right-0 bg-[#01082E] pt-3 pb-5 px-5 border-t border-gray-800`}
-      >
-        <Text style={tw`text-white text-lg font-bold mb-3`}>Quick Access</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={tw`flex-row`}
-        >
-          <View style={tw`flex-row gap-3`}>
-            {shortcuts?.data?.shortcuts.map((shortcut) => (
-              <Shortcut
-                key={shortcut.id}
-                title={shortcut.title}
-                link={shortcut.link}
-                iconColor={shortcut.iconColor}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-    </View>
+    <DashboardLayout
+      title="Dashboard"
+      onBack={() => safeGoBack(router, "/")}
+      shortcuts={shortcuts?.data.shortcuts ?? []}
+      loading={isLoading ? (
+        <ImpactPageLoader title="Mapping your dashboard" message="Loading your events, attendance, and payments." />
+      ) : undefined}
+      header={onboarding?.data.showPersistentAlert ? (
+        <WalletSetupReminder nextAction={onboarding.data.nextAction} onPress={() => router.push("/wallet")} />
+      ) : null}
+      secondary={<Payments payments={data?.data.payments ?? []} />}
+    >
+      <EventsOverview initialEvents={data?.data.events} />
+    </DashboardLayout>
   );
-};
-
-export default Dashboard;
+}

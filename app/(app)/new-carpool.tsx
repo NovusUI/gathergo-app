@@ -1,3 +1,7 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import CarpoolRouteFields from "@/components/carpool/CarpoolRouteFields";
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
@@ -6,7 +10,7 @@ import Input from "@/components/inputs/CustomInput1";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import EventCard from "@/components/ui/EventCard";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { layoutSpacing, spacing } from "@/constants/spacing";
+import { spacing } from "@/constants/spacing";
 import { useAuth } from "@/context/AuthContext";
 import { useLocationManager } from "@/hooks/useLocationManager";
 import { CarpoolFormValues, carpoolSchema } from "@/schemas/carpool";
@@ -17,6 +21,7 @@ import {
   useGetSearchResult,
 } from "@/services/queries";
 import { CarpoolForm } from "@/types/carpool";
+import type { EventData } from "@/types/auth";
 import { extractTime, isEventPastEnd } from "@/utils/dateTimeHandler";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { useLockedRouter } from "@/utils/navigation";
@@ -33,7 +38,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -41,7 +45,6 @@ import {
 } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import tw from "twrnc";
 
 const defaultCarpoolFormValues: CarpoolFormValues = {
   isToEvent: true,
@@ -62,14 +65,20 @@ const isEventEligibleForCarpool = (event?: {
   return !isEventPastEnd(event?.startDate, event?.endDate);
 };
 
+type CarpoolEvent = Pick<
+  EventData,
+  "id" | "title" | "location" | "startDate" | "endDate" | "isPhysicalEvent"
+>;
+
 const NewCarpool = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const { eventId: routeEventId, autoOpenEventPicker } = useLocalSearchParams<{
     eventId?: string;
     autoOpenEventPicker?: string;
   }>();
   const [query, setQuery] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CarpoolEvent | null>(null);
   const [isFormModalVisible, setIsFormModalVisible] = useState(false);
   const [picker, setPicker] = useState<null | string>(null);
   const searchInputRef = useRef<TextInput | null>(null);
@@ -129,7 +138,7 @@ const NewCarpool = () => {
     reset(defaultCarpoolFormValues);
   }, [reset]);
 
-  const openCarpoolForm = useCallback((event: any) => {
+  const openCarpoolForm = useCallback((event: CarpoolEvent) => {
     if (event?.isPhysicalEvent === false) {
       showGlobalError("Carpool is only available for physical events");
       return;
@@ -237,7 +246,7 @@ const NewCarpool = () => {
         />
       ) : (
         <View style={tw`mt-5`}>
-          <Text style={tw`text-center text-white`}>
+          <Text style={tw`text-center text-foreground dark:text-white`}>
             No physical events found
           </Text>
         </View>
@@ -246,7 +255,7 @@ const NewCarpool = () => {
 
     return suggestedEvents.length ? (
       <View>
-        <Text style={tw`text-left text-white`}>Suggestions</Text>
+        <Text style={tw`text-left text-foreground dark:text-white`}>Suggestions</Text>
         <FlatList
           data={suggestedEvents}
           keyExtractor={(item) => item.id}
@@ -278,7 +287,7 @@ const NewCarpool = () => {
       </View>
     ) : (
       <View style={tw`mt-5`}>
-        <Text style={tw`text-center text-white`}>
+        <Text style={tw`text-center text-foreground dark:text-white`}>
           No physical event suggestions right now
         </Text>
       </View>
@@ -321,8 +330,16 @@ const NewCarpool = () => {
       return;
     }
 
+    const eventLocation = selectedEvent.location;
+    if (!eventLocation?.trim()) {
+      showGlobalError(
+        "This event needs a venue before you can create a carpool."
+      );
+      return;
+    }
+
     let startPoint: { lng: number; lat: number } | undefined;
-    if (data.useCurrentLocation) {
+    if (data.isToEvent && data.useCurrentLocation) {
       if (coords) {
         startPoint = { lng: coords.lng, lat: coords.lat };
       } else {
@@ -336,9 +353,8 @@ const NewCarpool = () => {
     }
 
     const payload: CarpoolForm = {
-      origin: data.isToEvent
-        ? data.poolLocation || ""
-        : data.poolDestination || "",
+      origin: data.isToEvent ? data.poolLocation : eventLocation,
+      destination: data.isToEvent ? eventLocation : data.poolDestination,
       departureTime: data.departureTime,
       note: data.notes || undefined,
       availableSeats: Number(data.availableSeats || 3),
@@ -360,10 +376,8 @@ const NewCarpool = () => {
   };
 
   return (
-    <View
-      style={[tw`flex-1 w-full items-center bg-[#01082E] pb-10`, styles.screen]}
-    >
-      <View style={tw`flex-1 w-full max-w-[500px] px-5`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 w-full items-center bg-background dark:bg-[#01082E]`}>
+      <View style={tw`flex-1 w-full max-w-[840px] px-5`}>
         <CustomeTopBarNav
           title="Create carpool"
           onClickBack={() => router.replace("/")}
@@ -372,23 +386,23 @@ const NewCarpool = () => {
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           style={[
-            tw`flex-row items-center rounded-full bg-[#1A2755]`,
+            tw`flex-row items-center rounded-full border border-borderStrong dark:border-transparent bg-surface dark:bg-[#1A2755]`,
             styles.searchBar,
           ]}
         >
-          <SearchIcon size={20} color="white" />
+          <SearchIcon size={20} color={color("white", "foreground")} />
           <TextInput
             autoCapitalize="none"
             ref={searchInputRef}
             placeholder="Search a physical event to carpool"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={color("#94A3B8", "muted")}
             value={query}
             onChangeText={setQuery}
-            style={tw`ml-3 flex-1 text-white`}
+            style={tw`ml-3 flex-1 text-foreground dark:text-white`}
           />
         </Pressable>
 
-        <CustomView style={tw`flex-1 mb-20`}>{renderEventList()}</CustomView>
+        <CustomView className="max-w-full" style={tw`flex-1`}>{renderEventList()}</CustomView>
       </View>
 
       <Modal
@@ -401,28 +415,23 @@ const NewCarpool = () => {
           style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          <SafeAreaView edges={["left", "right", "bottom"]}
+            style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
           >
             <View
-              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
             />
 
             <View style={tw`flex-row items-start justify-between gap-4`}>
               <View style={tw`flex-1`}>
-                <Text style={tw`text-xl font-semibold text-white`}>
+                <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                   {selectedEvent?.title || "Create carpool"}
                 </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
-                  {selectedEvent?.location ||
-                    "Set the ride details riders need before they join."}
-                </Text>
               </View>
-              <TouchableOpacity onPress={closeFormModal}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                  Close
-                </Text>
-              </TouchableOpacity>
+              <SheetCloseButton
+                accessibilityLabel="Close carpool sheet"
+                onPress={closeFormModal}
+              />
             </View>
 
             <ScrollView
@@ -431,125 +440,24 @@ const NewCarpool = () => {
               keyboardShouldPersistTaps="handled"
             >
               {Boolean(error) && (
-                <View style={tw`mb-4 rounded-2xl bg-[#5A1818] px-4 py-3`}>
-                  <Text style={tw`text-sm leading-5 text-white`}>{error}</Text>
+                <View style={tw`mb-4 rounded-2xl bg-dangerSoft dark:bg-[#5A1818] px-4 py-3`}>
+                  <Text style={tw`text-sm leading-5 text-foreground dark:text-white`}>{error}</Text>
                   <TouchableOpacity onPress={openSettings}>
-                    <Text style={tw`mt-2 text-sm font-semibold text-[#FFD1D1]`}>
+                    <Text style={tw`mt-2 text-sm font-semibold text-foreground dark:text-[#FFD1D1]`}>
                       Open settings
                     </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              <View style={tw`rounded-2xl bg-[#0A173F] p-4`}>
-                <Text style={tw`text-sm font-semibold text-white`}>
-                  Make the ride plan easy to trust
-                </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
-                  Share where you&apos;re coming from, when you&apos;re leaving,
-                  how many seats are open, and any extra note riders should
-                  know.
-                </Text>
-              </View>
-
-              <View
-                style={tw`mt-5 flex-row items-center justify-between gap-3`}
-              >
-                <Text
-                  style={tw`text-white ${
-                    isToEvent ? "font-bold" : "opacity-50"
-                  }`}
-                >
-                  To Event
-                </Text>
-
-                <Controller
-                  control={control}
-                  name="isToEvent"
-                  render={({ field: { value, onChange } }) => (
-                    <Switch
-                      value={value}
-                      onValueChange={onChange}
-                      thumbColor="#0FF1CF"
-                      trackColor={{ false: "#1A2755", true: "#1A2755" }}
-                    />
-                  )}
-                />
-
-                <Text
-                  style={tw`text-white ${
-                    !isToEvent ? "font-bold" : "opacity-50"
-                  }`}
-                >
-                  From Event
-                </Text>
-              </View>
-
-              {isToEvent ? (
-                <View style={tw`mt-5`}>
-                  <Text style={tw`mb-2 text-white`}>Pool Location</Text>
-                  <Controller
-                    control={control}
-                    name="poolLocation"
-                    render={({ field: { value, onChange } }) => (
-                      <Input
-                        style={tw`h-12`}
-                        placeholderTextColor="#475569"
-                        placeholder="Enter a landmark, bus stop, or area"
-                        onChangeText={onChange}
-                        value={value}
-                      />
-                    )}
-                  />
-                  {errors.poolLocation && (
-                    <Text style={tw`mt-1 text-sm text-red-400`}>
-                      {errors.poolLocation.message}
-                    </Text>
-                  )}
-
-                  <View
-                    style={tw`mt-4 flex-row items-center justify-between gap-5`}
-                  >
-                    <Text style={tw`flex-1 text-white`}>
-                      I am currently close to where I&apos;ll be pooling from
-                    </Text>
-                    <Controller
-                      control={control}
-                      name="useCurrentLocation"
-                      render={({ field: { value, onChange } }) => (
-                        <Switch
-                          value={value}
-                          onValueChange={onChange}
-                          thumbColor={value ? "#0FF1CF" : "#555"}
-                        />
-                      )}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={tw`mt-5`}>
-                  <Text style={tw`mb-2 text-white`}>Pool Destination</Text>
-                  <Controller
-                    control={control}
-                    name="poolDestination"
-                    render={({ field: { value, onChange } }) => (
-                      <Input
-                        placeholder="Enter a landmark, bus stop, or area"
-                        onChangeText={onChange}
-                        value={value}
-                      />
-                    )}
-                  />
-                  {errors.poolDestination && (
-                    <Text style={tw`mt-1 text-sm text-red-400`}>
-                      {errors.poolDestination.message}
-                    </Text>
-                  )}
-                </View>
-              )}
+              <CarpoolRouteFields
+                control={control}
+                setValue={setValue}
+                eventLocation={selectedEvent?.location ?? ""}
+              />
 
               <View style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Departure Time</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Departure Time</Text>
                 <Controller
                   control={control}
                   name="departureTime"
@@ -573,14 +481,14 @@ const NewCarpool = () => {
                   )}
                 />
                 {errors.departureTime && (
-                  <Text style={tw`mt-1 text-sm text-red-400`}>
+                  <Text style={tw`mt-1 text-sm text-danger dark:text-red-400`}>
                     {errors.departureTime.message}
                   </Text>
                 )}
               </View>
 
               <View style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Available Seats</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Available Seats</Text>
                 <Controller
                   control={control}
                   name="availableSeats"
@@ -595,14 +503,14 @@ const NewCarpool = () => {
                   )}
                 />
                 {errors.availableSeats && (
-                  <Text style={tw`mt-1 text-sm text-red-400`}>
+                  <Text style={tw`mt-1 text-sm text-danger dark:text-red-400`}>
                     {errors.availableSeats.message}
                   </Text>
                 )}
               </View>
 
               <View style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Notes</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Notes</Text>
                 <Controller
                   control={control}
                   name="notes"
@@ -610,16 +518,16 @@ const NewCarpool = () => {
                     <View style={tw`w-full`}>
                       <TextInput
                         autoCapitalize="none"
-                        style={tw`min-h-[120px] rounded-2xl bg-[#0A173F] p-4 text-base text-white`}
+                        style={tw`min-h-[120px] rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#0A173F] p-4 text-base text-foreground dark:text-white`}
                         placeholder="Any extra details?"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={color("#9CA3AF", "muted")}
                         multiline
                         maxLength={200}
                         textAlignVertical="top"
                         value={field.value ?? ""}
                         onChangeText={field.onChange}
                       />
-                      <Text style={tw`mt-1 text-right text-sm text-gray-400`}>
+                      <Text style={tw`mt-1 text-right text-sm text-muted dark:text-gray-400`}>
                         {field.value?.length || 0}/200
                       </Text>
                     </View>
@@ -633,24 +541,21 @@ const NewCarpool = () => {
               title={
                 createCarpoolPending ? "Creating carpool" : "Create Carpool"
               }
-              buttonClassName="bg-[#0FF1CF] w-full border-0"
-              textClassName="!text-black"
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-onAccent dark:text-black"
               showArrow={false}
               disabled={createCarpoolPending}
             />
-          </View>
+          </SafeAreaView>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default NewCarpool;
 
 const styles = StyleSheet.create({
-  screen: {
-    paddingTop: layoutSpacing.pageTop,
-  },
   searchBar: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,

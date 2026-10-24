@@ -3,17 +3,13 @@
     "name": "GatherGo",
     "slug": "gathergoapp",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
+    "backgroundColor": "#01082E",
     "icon": "./assets/images/gglogo.png",
     "scheme": "gathergoapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "platforms": ["ios", "android", "web"],
-    "splash": {
-      "image": "./assets/images/gglogo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#01082E"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gathergo.dev",
@@ -26,8 +22,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/gglogo.png",
-        "backgroundColor": "#01082E"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0FF1CF"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.gathergo.dev",
@@ -66,9 +62,21 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/gglogo.png",
-          "imageWidth": 200,
+          "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#01082E"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "gogo_general_v1",
+          "sounds": [
+            "./assets/sounds/gogo_general.wav",
+            "./assets/sounds/gogo_carpool_positive.wav",
+            "./assets/sounds/gogo_carpool_rejection.wav",
+            "./assets/sounds/gogo_celebration.wav"
+          ]
         }
       ],
       "expo-secure-store",

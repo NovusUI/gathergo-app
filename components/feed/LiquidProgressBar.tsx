@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 // components/feed/LiquidProgressBar.tsx
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, View } from "react-native";
-import tw from "twrnc";
 
 interface LiquidProgressBarProps {
   percentage: number;
@@ -16,6 +16,7 @@ const LiquidProgressBar: React.FC<LiquidProgressBarProps> = ({
   height = 8,
   showWave = false,
 }) => {
+  const { tw, color: themeColor } = useAppTheme();
   const waveAnim = useRef(new Animated.Value(0)).current;
   const fillAnim = useRef(new Animated.Value(0)).current;
   const normalized = Math.max(0, Math.min(percentage, 100));
@@ -96,7 +97,7 @@ const LiquidProgressBar: React.FC<LiquidProgressBarProps> = ({
                 {
                   height,
                   backgroundColor:
-                    normalized >= marker ? "white" : "transparent",
+                    normalized >= marker ? themeColor("white", "surface") : "transparent",
                   opacity: 0.3,
                 },
               ]}

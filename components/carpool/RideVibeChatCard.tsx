@@ -1,5 +1,6 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
-import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import type {
   CarpoolVibeDialogMessage,
   CarpoolVibeMascotStyle,
@@ -14,7 +15,6 @@ import {
   type ComponentProps,
 } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -68,6 +68,7 @@ const VibeTypingDialog = ({
   speedMs = 22,
   textKey,
 }: VibeTypingDialogProps) => {
+  const { tw } = useAppTheme();
   const [visibleCharacters, setVisibleCharacters] = useState(0);
   const fullText = useMemo(() => getDialogText(parts), [parts]);
   const visibleParts = useMemo(
@@ -102,7 +103,7 @@ const VibeTypingDialog = ({
   }, [fullText, onComplete, visibleCharacters]);
 
   return (
-    <Text style={tw`text-white text-sm leading-5`}>
+    <Text style={tw`text-foreground dark:text-white text-sm leading-5`}>
       {visibleParts.map((part, index) => (
         <Text
           key={`${index}-${part.highlight ? "highlight" : "text"}`}
@@ -133,6 +134,7 @@ export default function RideVibeChatCard({
   safetySignal,
   vibeCheckButtonLabel = "Complete signal",
 }: RideVibeChatCardProps) {
+  const { tw, color } = useAppTheme();
   const safetyCopy = getCarpoolVibeSafetyRoleCopy(
     safetySignal,
     roleLabel,
@@ -170,8 +172,8 @@ export default function RideVibeChatCard({
       style={[
         tw`rounded-3xl border overflow-hidden`,
         {
-          backgroundColor: mascotStyle.cardBackground,
-          borderColor: mascotStyle.cardBorder,
+          backgroundColor: color(mascotStyle.cardBackground, "surface"),
+          borderColor: color(mascotStyle.cardBorder, "border"),
         },
       ]}
     >
@@ -205,13 +207,13 @@ export default function RideVibeChatCard({
           palette={mascotStyle}
           size={expanded ? 74 : 58}
           style={{ flexShrink: 0 }}
-          variant={mascotStyle.variant}
+          variant="idle"
         />
 
         <View style={tw`flex-1 min-w-0`}>
           <View style={tw`flex-row items-center justify-between gap-2`}>
             <Text
-              style={[tw`text-xs`, { color: mascotStyle.accent }]}
+              style={[tw`text-xs`, { color: color(mascotStyle.accent, "accent") }]}
               numberOfLines={1}
             >
               {label} ride vibe
@@ -219,7 +221,7 @@ export default function RideVibeChatCard({
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
               size={16}
-              color={mascotStyle.accent}
+              color={color(mascotStyle.accent, "accent")}
             />
           </View>
 
@@ -228,14 +230,14 @@ export default function RideVibeChatCard({
               style={[
                 tw`mt-2 rounded-2xl border px-3 py-3`,
                 {
-                  backgroundColor: mascotStyle.dialogBackground,
-                  borderColor: mascotStyle.cardBorder,
+                  backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                  borderColor: color(mascotStyle.cardBorder, "border"),
                   minHeight: 74,
                 },
               ]}
             >
               <VibeTypingDialog
-                accentColor={mascotStyle.accent}
+                accentColor={color(mascotStyle.accent, "accent")}
                 onComplete={handleDialogComplete}
                 parts={activeDialogMessage}
                 textKey={`${dialogKey}:${dialogMessageIndex}:${activeDialogMessageText}`}
@@ -243,7 +245,7 @@ export default function RideVibeChatCard({
             </View>
           ) : (
             <Text
-              style={[tw`text-white text-sm leading-5 mt-1`, { minHeight: 40 }]}
+              style={[tw`text-foreground dark:text-white text-sm leading-5 mt-1`, { minHeight: 40 }]}
               numberOfLines={2}
             >
               {dialogText}
@@ -257,28 +259,28 @@ export default function RideVibeChatCard({
           <View
             style={[
               tw`pt-3 border-t gap-3`,
-              { borderColor: mascotStyle.cardBorder },
+              { borderColor: color(mascotStyle.cardBorder, "border") },
             ]}
           >
             <View style={tw`flex-row items-center justify-between gap-3`}>
               <View style={tw`flex-1 min-w-0`}>
-                <Text style={tw`text-white text-sm font-semibold`}>
+                <Text style={tw`text-foreground dark:text-white text-sm font-semibold`}>
                   Handshake flow
                 </Text>
-                <Text style={tw`text-[#A8BAE4] text-xs mt-1`}>
+                <Text style={tw`text-secondary dark:text-[#A8BAE4] text-xs mt-1`}>
                   {safetySignal.title}
                 </Text>
               </View>
               <View
                 style={[
                   tw`h-9 w-9 rounded-full items-center justify-center`,
-                  { backgroundColor: mascotStyle.dialogBackground },
+                  { backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted") },
                 ]}
               >
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={18}
-                  color={mascotStyle.accent}
+                  color={color(mascotStyle.accent, "accent")}
                 />
               </View>
             </View>
@@ -288,19 +290,19 @@ export default function RideVibeChatCard({
                 style={[
                   tw`flex-1 rounded-2xl border p-3`,
                   {
-                    backgroundColor: mascotStyle.dialogBackground,
-                    borderColor: mascotStyle.cardBorder,
+                    backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                    borderColor: color(mascotStyle.cardBorder, "border"),
                     height: 76,
                   },
                 ]}
               >
-                <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+                <Text style={tw`text-secondary dark:text-[#8FA5E2] text-xs`} numberOfLines={1}>
                   {safetyCopy.primarySignalLabel}
                 </Text>
                 <Text
                   style={[
                     tw`text-xs font-semibold mt-1`,
-                    { color: mascotStyle.accent },
+                    { color: color(mascotStyle.accent, "accent") },
                   ]}
                   numberOfLines={2}
                 >
@@ -311,19 +313,19 @@ export default function RideVibeChatCard({
                 style={[
                   tw`flex-1 rounded-2xl border p-3`,
                   {
-                    backgroundColor: mascotStyle.dialogBackground,
-                    borderColor: mascotStyle.cardBorder,
+                    backgroundColor: color(mascotStyle.dialogBackground, "surfaceMuted"),
+                    borderColor: color(mascotStyle.cardBorder, "border"),
                     height: 76,
                   },
                 ]}
               >
-                <Text style={tw`text-[#8FA5E2] text-xs`} numberOfLines={1}>
+                <Text style={tw`text-secondary dark:text-[#8FA5E2] text-xs`} numberOfLines={1}>
                   {safetyCopy.secondarySignalLabel}
                 </Text>
                 <Text
                   style={[
                     tw`text-xs font-semibold mt-1`,
-                    { color: mascotStyle.badgeBg },
+                    { color: color(mascotStyle.badgeBg, "warning") },
                   ]}
                   numberOfLines={2}
                 >
@@ -340,17 +342,17 @@ export default function RideVibeChatCard({
                 style={[
                   tw`h-12 flex-row items-center justify-center gap-2 rounded-2xl border`,
                   {
-                    backgroundColor: mascotStyle.badgeBg,
-                    borderColor: mascotStyle.badgeBg,
+                    backgroundColor: color(mascotStyle.badgeBg, "warningFill"),
+                    borderColor: color(mascotStyle.badgeBg, "warningFill"),
                   },
                 ]}
               >
                 <Ionicons
                   name="shield-checkmark-outline"
                   size={17}
-                  color="#01082E"
+                  color={color("#01082E", "onAccent")}
                 />
-                <Text style={tw`text-[#01082E] text-sm font-semibold`}>
+                <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold`}>
                   {vibeCheckButtonLabel}
                 </Text>
               </TouchableOpacity>

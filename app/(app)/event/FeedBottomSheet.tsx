@@ -1,4 +1,12 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppRefreshControl, {
+  RefreshIndicator,
+  nativeRefreshIndicatorOffset,
+} from "@/components/ui/AppRefreshControl";
+import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
 // components/event/FeedBottomSheet.tsx
+import VolunteerButton from "@/components/volunteer/VolunteerButton";
 import FeedRenderer from "@/components/feed/FeedRenderer";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import { FeedItem } from "@/hooks/useEventFeed";
@@ -15,7 +23,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
+
 import DontationProgress from "./DontationProgress";
 
 interface FeedBottomSheetProps {
@@ -48,6 +56,9 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   onAction,
   feedData,
 }) => {
+  const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout({ hasTabNavigation: false });
+  const sheetMargin = Math.max(0, (layout.availableWidth - 840) / 2);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "carpool">(initialTab);
   const [carpoolFilter, setCarpoolFilter] = useState<EventCarpoolFilter>("all");
@@ -60,19 +71,12 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   } = useLocationManager();
   const snapPoints = useMemo(() => ["100%"], []);
 
-  // const snapPoints = useMemo(() => {
-  //   // Calculate based on screen height
-  //   const screenHeight = Dimensions.get("window").height;
-  //   return [screenHeight * 0.6, screenHeight * 0.9];
-  // }, []);
-
-  // Use provided feedData or fallback to hook
-  //const feedHook = useEventFeed(eventId);
   const feed = feedData;
 
   const {
     data: carpoolPages,
     isPending: carpoolsLoading,
+    isRefetching: carpoolsRefreshing,
     isFetchingNextPage: carpoolsLoadingMore,
     fetchNextPage: loadMoreCarpools,
     hasNextPage: hasMoreCarpools,
@@ -101,10 +105,17 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const carpoolTotal = carpoolPages?.pages?.[0]?.meta?.total ?? 0;
 
   const { data: eventData } = useEventDetails(eventId);
+  const {
+    registration: freeRegistration,
+    isPending: checkingRegistration,
+    isError: registrationCheckFailed,
+    refetch: refreshRegistration,
+  } = useFreeEventRegistration(eventData?.data);
   const supportsCarpool = eventData?.data?.isPhysicalEvent !== false;
   const canUseCarpool = supportsCarpool && !hasEventEnded;
   const eventRegistrationFee = eventData?.data?.registrationFee ?? null;
   const [refreshing, setRefreshing] = useState(false);
+  const listRefreshing = activeTab === "feed" ? refreshing : carpoolsRefreshing;
 
   // Open/close handling
   useEffect(() => {
@@ -144,6 +155,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     setTimeout(() => setRefreshing(false), 1000);
   }, [feed?.refresh]);
 
+  const refreshList = useCallback(() => {
+    if (activeTab === "feed") {
+      onRefresh();
+    } else {
+      void refreshCarpools();
+    }
+  }, [activeTab, onRefresh, refreshCarpools]);
+
   const handleLoadMore = useCallback(() => {
     if (feed?.hasMore && !feed?.loadingMore) {
       feed?.loadMore();
@@ -166,7 +185,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       <TouchableOpacity
         disabled={hasEventEnded}
         style={[
-          tw`mx-4 mb-3 p-4 bg-[#101C45] rounded-xl border border-[#1B2A50]`,
+          tw`mx-4 mb-3 p-4 bg-surface dark:bg-[#101C45] rounded-xl border border-border dark:border-[#1B2A50]`,
           hasEventEnded ? tw`opacity-50` : null,
         ]}
         onPress={() =>
@@ -175,32 +194,32 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       >
         <View style={tw`flex-row justify-between items-start`}>
           <View style={tw`flex-1 pr-3`}>
-            <Text style={tw`text-white font-semibold`} numberOfLines={1}>
+            <Text style={tw`text-foreground dark:text-white font-semibold`} numberOfLines={1}>
               {item.origin}
               {item.destination ? ` -> ${item.destination}` : ""}
             </Text>
-            <Text style={tw`text-gray-400 text-xs mt-1`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
               Departs {item.departureTime}
             </Text>
           </View>
           <View style={tw`items-end`}>
-            <Text style={tw`text-[#0FF1CF] font-semibold text-xs`}>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-semibold text-xs`}>
               {item.pricePerSeat > 0
                 ? `₦${numberWithCommas(item.pricePerSeat, false, null)}`
                 : "Free"}
             </Text>
-            <Text style={tw`text-gray-400 text-xs mt-1`}>
+            <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
               {item.seatsLeft} seat{item.seatsLeft === 1 ? "" : "s"} left
             </Text>
           </View>
         </View>
 
         <View style={tw`flex-row items-center justify-between mt-3`}>
-          <Text style={tw`text-gray-300 text-xs`}>
+          <Text style={tw`text-secondary dark:text-gray-300 text-xs`}>
             @{item.driver?.username || "driver"}
           </Text>
-          <View style={tw`bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
-            <Text style={tw`text-xs text-[#01082E] font-semibold`}>
+          <View style={tw`bg-accentFill dark:bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
+            <Text style={tw`text-xs text-onAccent dark:text-[#01082E] font-semibold`}>
               {(() => {
                 if (carpoolFilter === "close_to_you") {
                   if (typeof item.distanceKm === "number") {
@@ -230,7 +249,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         </View>
       </TouchableOpacity>
     ),
-    [carpoolFilter, hasEventEnded, onAction]
+    [carpoolFilter, hasEventEnded, onAction, tw]
   );
 
   // Render event info based on type
@@ -243,22 +262,23 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       registrationFee,
       donationTarget,
       totalDonations,
+      donationsEnabled,
     } = eventData.data;
 
     return (
-      <View style={tw`p-4 bg-[#101C45] mx-4 mt-2 rounded-xl`}>
-        <Text style={tw`text-white font-bold mb-2`}>
+      <View style={tw`p-4 bg-surface dark:bg-[#101C45] mx-4 mt-2 mb-4 rounded-xl`}>
+        <Text style={tw`text-foreground dark:text-white font-bold mb-2`}>
           {eventData.data.title}
         </Text>
 
         {hasEventEnded && (
           <View
-            style={tw`mb-3 rounded-xl border border-[#2B3C66] bg-[#1B2A50]/60 p-3`}
+            style={tw`mb-3 rounded-xl border border-border dark:border-[#2B3C66] bg-surface/60 dark:bg-[#1B2A50]/60 p-3`}
           >
-            <Text style={tw`text-sm font-semibold text-[#8FA1CB]`}>
+            <Text style={tw`text-sm font-semibold text-muted dark:text-[#8FA1CB]`}>
               Event ended
             </Text>
-            <Text style={tw`mt-1 text-xs leading-5 text-[#9FB0D8]`}>
+            <Text style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#9FB0D8]`}>
               Ticketing, registration, and donations are closed.
             </Text>
           </View>
@@ -266,20 +286,20 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
         {!hasEventEnded && registrationType === "ticket" && eventTickets && (
           <View style={tw`mb-3`}>
-            <Text style={tw`text-gray-300 mb-2`}>Available Tickets:</Text>
+            <Text style={tw`text-secondary dark:text-gray-300 mb-2`}>Available Tickets:</Text>
             {eventTickets.map((ticket: any, index: number) => (
               <TouchableOpacity
                 key={index}
-                style={tw`px-3 py-2 bg-[#1B2A50] rounded-lg mb-2`}
+                style={tw`px-3 py-2 bg-surfaceMuted dark:bg-[#1B2A50] rounded-lg mb-2`}
                 onPress={() => onAction?.({ type: "BUY_TICKET" })}
               >
                 <View style={tw`flex-row justify-between items-center`}>
-                  <Text style={tw`text-white`}>{ticket.type}</Text>
-                  <Text style={tw`text-[#0FF1CF] font-bold`}>
+                  <Text style={tw`text-foreground dark:text-white`}>{ticket.type}</Text>
+                  <Text style={tw`text-accent dark:text-[#0FF1CF] font-bold`}>
                     ₦{numberWithCommas(ticket.price || 0, false, null)}
                   </Text>
                 </View>
-                <Text style={tw`text-gray-400 text-xs mt-1`}>
+                <Text style={tw`text-muted dark:text-gray-400 text-xs mt-1`}>
                   {ticket.quantity - ticket.sold} remaining
                 </Text>
               </TouchableOpacity>
@@ -289,21 +309,36 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
         {!hasEventEnded && registrationType === "registration" && (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Event registration"
+            accessibilityState={{
+              disabled: checkingRegistration || Boolean(freeRegistration),
+            }}
+            disabled={checkingRegistration || Boolean(freeRegistration)}
             style={tw`mb-3`}
-            onPress={() => onAction?.({ type: "REGISTER" })}
+            onPress={() =>
+              registrationCheckFailed
+                ? void refreshRegistration()
+                : onAction?.({ type: "REGISTER" })
+            }
           >
-            <Text style={tw`text-gray-300 mb-1`}>Registration:</Text>
-            <Text style={tw`text-[#0FF1CF] font-bold text-lg`}>
-              {registrationFee && registrationFee > 0
-                ? `₦${numberWithCommas(registrationFee, false, null)}`
-                : "Free"}
+            <Text style={tw`text-secondary dark:text-gray-300 mb-1`}>Registration:</Text>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-bold text-lg`}>
+              {checkingRegistration
+                ? "Checking registration…"
+                : freeRegistration
+                  ? "Registered"
+                  : registrationCheckFailed
+                    ? "Retry registration check"
+                    : registrationFee && registrationFee > 0
+                      ? `₦${numberWithCommas(registrationFee, false, null)}`
+                      : "Free"}
             </Text>
           </TouchableOpacity>
         )}
 
         {!hasEventEnded &&
-          registrationType === "donation" &&
-          donationTarget && (
+          donationsEnabled && (registrationType === "donation" || registrationType === "volunteer") && (
             <DontationProgress
               onAction={onAction}
               donationTarget={donationTarget}
@@ -327,14 +362,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       style={tw.style(
         "px-3 py-2 rounded-full border",
         carpoolFilter === value
-          ? "bg-[#0FF1CF] border-[#0FF1CF]"
-          : "bg-[#101C45] border-[#1B2A50]"
+          ? "bg-accentFill dark:bg-[#0FF1CF] border-accent dark:border-[#0FF1CF]"
+          : "bg-surface dark:bg-[#101C45] border-border dark:border-[#1B2A50]"
       )}
     >
       <Text
         style={tw.style(
           "text-xs font-semibold",
-          carpoolFilter === value ? "text-[#01082E]" : "text-white"
+          carpoolFilter === value ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
         )}
       >
         {label}
@@ -345,21 +380,22 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const ListHeaderComponent = useCallback(
     () => (
       <>
+        <RefreshIndicator refreshing={listRefreshing} />
         <View
-          style={tw`flex-row justify-between items-center p-5 border-b border-gray-800`}
+          style={tw`flex-row justify-between items-center gap-2 p-5 border-b border-border dark:border-gray-800`}
         >
-          <View style={tw`flex-row items-center gap-2`}>
+          <View style={tw`flex-1 flex-row flex-wrap items-center gap-2`}>
             <TouchableOpacity
               style={tw.style(
                 "px-3 py-1.5 rounded-full",
-                activeTab === "feed" ? "bg-[#0FF1CF]" : "bg-[#1B2A50]"
+                activeTab === "feed" ? "bg-accentFill dark:bg-[#0FF1CF]" : "bg-surfaceMuted dark:bg-[#1B2A50]"
               )}
               onPress={() => setActiveTab("feed")}
             >
               <Text
                 style={tw.style(
                   "text-xs font-semibold",
-                  activeTab === "feed" ? "text-[#01082E]" : "text-white"
+                  activeTab === "feed" ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
                 )}
               >
                 Live Feed
@@ -369,14 +405,14 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               <TouchableOpacity
                 style={tw.style(
                   "px-3 py-1.5 rounded-full",
-                  activeTab === "carpool" ? "bg-[#0FF1CF]" : "bg-[#1B2A50]"
+                  activeTab === "carpool" ? "bg-accentFill dark:bg-[#0FF1CF]" : "bg-surfaceMuted dark:bg-[#1B2A50]"
                 )}
                 onPress={() => setActiveTab("carpool")}
               >
                 <Text
                   style={tw.style(
                     "text-xs font-semibold",
-                    activeTab === "carpool" ? "text-[#01082E]" : "text-white"
+                    activeTab === "carpool" ? "text-onAccent dark:text-[#01082E]" : "text-foreground dark:text-white"
                   )}
                 >
                   Carpool
@@ -384,60 +420,58 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
               </TouchableOpacity>
             )}
           </View>
-          <View style={tw`flex-row items-center`}>
-            {activeTab === "feed" && Boolean(feed?.error) && (
-              <Text style={tw`text-red-500 text-xs mr-3`}>{feed?.error}</Text>
-            )}
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="white" />
+          <View style={tw`flex-row items-center gap-2`}>
+            {eventData && onAction ? (
+              <VolunteerButton
+                event={eventData.data}
+                hasEventEnded={hasEventEnded}
+                variant="compact"
+                onPress={() => onAction({ type: "VOLUNTEER" })}
+              />
+            ) : null}
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close feed"
+              onPress={onClose}
+              hitSlop={8}
+            >
+              <Ionicons name="close" size={24} color={color("white", "foreground")} />
             </TouchableOpacity>
           </View>
         </View>
+        {activeTab === "feed" && feed?.error ? (
+          <Text style={tw`px-5 pt-2 text-danger dark:text-red-500 text-xs`}>{feed.error}</Text>
+        ) : null}
 
         {activeTab === "feed" ? (
           <>
             {renderEventInfo()}
 
-            {feed?.pinnedFeeds && feed?.pinnedFeeds.length > 0 && (
-              <View style={tw`px-4 mt-4 `}>
-                <Text style={tw`text-gray-400 mb-3`}>📌 Pinned</Text>
-                {feed.pinnedFeeds.map((pinnedFeed) => (
-                  <View key={`pinned-${pinnedFeed?.id}`}>
-                    {renderFeedItem({ item: pinnedFeed })}
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <Text
-              style={tw`text-gray-400 mb-3 px-4 py-4 ${
-                feed?.pinnedFeeds && feed?.pinnedFeeds?.length > 0
-                  ? "mt-4"
-                  : "mt-0"
-              }`}
-            >
-              📝 Latest Activity
-            </Text>
-
-            {feed?.loading && feed?.regularFeeds?.length === 0 && (
-              <ActivityIndicator tone="accent" size="large" style={tw`py-10`} />
-            )}
+            {!listRefreshing &&
+              feed?.loading &&
+              feed?.allFeeds.length === 0 && (
+                <ActivityIndicator
+                  tone="accent"
+                  size="large"
+                  style={tw`py-10`}
+                />
+              )}
           </>
         ) : (
           <View style={tw`px-4 pt-4 gap-3`}>
             <View style={tw`flex-row justify-between items-center`}>
-              <Text style={tw`text-gray-300 text-sm`}>
+              <Text style={tw`text-secondary dark:text-gray-300 text-sm`}>
                 {carpoolTotal} ride{carpoolTotal === 1 ? "" : "s"} available
               </Text>
               <TouchableOpacity
                 disabled={hasEventEnded}
                 onPress={() => onAction?.({ type: "CREATE_CARPOOL" })}
                 style={[
-                  tw`bg-[#0FF1CF]/20 px-3 py-1.5 rounded-full border border-[#0FF1CF]/40`,
+                  tw`bg-accentFill/20 dark:bg-[#0FF1CF]/20 px-3 py-1.5 rounded-full border border-accent/40 dark:border-[#0FF1CF]/40`,
                   hasEventEnded ? tw`opacity-50` : null,
                 ]}
               >
-                <Text style={tw`text-[#0FF1CF] text-xs font-semibold`}>
+                <Text style={tw`text-accent dark:text-[#0FF1CF] text-xs font-semibold`}>
                   {hasEventEnded ? "Event ended" : "Create ride"}
                 </Text>
               </TouchableOpacity>
@@ -451,21 +485,21 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
 
             {Boolean(locationError) && carpoolFilter === "close_to_you" && (
               <View
-                style={tw`bg-red-500/20 border border-red-500/40 p-3 rounded-lg`}
+                style={tw`bg-danger/20 dark:bg-red-500/20 border border-danger/40 dark:border-red-500/40 p-3 rounded-lg`}
               >
-                <Text style={tw`text-red-300 text-xs mb-2`}>
+                <Text style={tw`text-danger dark:text-red-300 text-xs mb-2`}>
                   {locationError}
                 </Text>
                 <TouchableOpacity
                   onPress={openSettings}
-                  style={tw`self-start bg-red-500/20 px-3 py-1 rounded-full`}
+                  style={tw`self-start bg-danger/20 dark:bg-red-500/20 px-3 py-1 rounded-full`}
                 >
-                  <Text style={tw`text-red-200 text-xs`}>Open Settings</Text>
+                  <Text style={tw`text-danger dark:text-red-200 text-xs`}>Open Settings</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {(carpoolsLoading || requestingCloseToYou) && (
+            {!listRefreshing && (carpoolsLoading || requestingCloseToYou) && (
               <ActivityIndicator tone="accent" size="large" style={tw`py-8`} />
             )}
           </View>
@@ -473,19 +507,23 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       </>
     ),
     [
+      listRefreshing,
       activeTab,
       carpoolFilter,
       carpoolsLoading,
       carpoolTotal,
       feed,
+      eventData,
+      freeRegistration,
+      checkingRegistration,
+      registrationCheckFailed,
+      refreshRegistration,
       hasEventEnded,
       locationError,
       requestingCloseToYou,
       onClose,
       onAction,
-      renderFeedItem,
-      canUseCarpool,
-    ]
+      canUseCarpool, tw, color]
   );
 
   // List Footer Component
@@ -493,20 +531,19 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     () => (
       <>
         {/* Loading More Indicator */}
-        {activeTab === "feed" && feed?.loadingMore && (
+        {!listRefreshing && activeTab === "feed" && feed?.loadingMore && (
           <ActivityIndicator tone="accent" style={tw`py-4`} />
         )}
-        {activeTab === "carpool" && carpoolsLoadingMore && (
+        {!listRefreshing && activeTab === "carpool" && carpoolsLoadingMore && (
           <ActivityIndicator tone="accent" style={tw`py-4`} />
         )}
 
         {/* End of Feed Message */}
         {activeTab === "feed" &&
           !feed?.hasMore &&
-          feed?.regularFeeds &&
-          feed?.regularFeeds?.length > 0 && (
+          Boolean(feed?.allFeeds.length) && (
             <View style={tw`py-6 items-center`}>
-              <Text style={tw`text-gray-500`}>
+              <Text style={tw`text-muted dark:text-gray-500`}>
                 🎉 You&apos;ve reached the end
               </Text>
             </View>
@@ -515,19 +552,21 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           !hasMoreCarpools &&
           carpoolList.length > 0 && (
             <View style={tw`py-6 items-center`}>
-              <Text style={tw`text-gray-500`}>No more rides</Text>
+              <Text style={tw`text-muted dark:text-gray-500`}>No more rides</Text>
             </View>
           )}
       </>
     ),
     [
+      listRefreshing,
       activeTab,
       carpoolList.length,
       carpoolsLoadingMore,
       feed?.loadingMore,
       feed?.hasMore,
-      feed?.regularFeeds?.length,
+      feed?.allFeeds.length,
       hasMoreCarpools,
+      tw,
     ]
   );
 
@@ -537,23 +576,23 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       activeTab === "feed" && !feed?.loading ? (
         <View style={tw`py-10 items-center`}>
           <Ionicons name="chatbubble-outline" size={48} color="#666" />
-          <Text style={tw`text-gray-500 mt-4`}>No activity yet</Text>
-          <Text style={tw`text-gray-600 text-sm mt-2`}>
+          <Text style={tw`text-muted dark:text-gray-500 mt-4`}>No activity yet</Text>
+          <Text style={tw`text-muted dark:text-gray-600 text-sm mt-2`}>
             Be the first to interact with this event!
           </Text>
         </View>
       ) : activeTab === "carpool" && !carpoolsLoading ? (
         <View style={tw`py-10 items-center`}>
           <Ionicons name="car-outline" size={48} color="#666" />
-          <Text style={tw`text-gray-500 mt-4`}>No rides found</Text>
-          <Text style={tw`text-gray-600 text-sm mt-2`}>
+          <Text style={tw`text-muted dark:text-gray-500 mt-4`}>No rides found</Text>
+          <Text style={tw`text-muted dark:text-gray-600 text-sm mt-2`}>
             {hasEventEnded
               ? "Ride creation and joining are closed for this event."
               : "Try another filter or create a ride for this event."}
           </Text>
         </View>
       ) : null,
-    [activeTab, carpoolsLoading, feed?.loading, hasEventEnded]
+    [activeTab, carpoolsLoading, feed?.loading, hasEventEnded, tw]
   );
 
   return (
@@ -562,7 +601,9 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       snapPoints={snapPoints}
       index={0}
       enableDynamicSizing={false}
-      topInset={0}
+      topInset={layout.insets.top}
+      bottomInset={layout.insets.bottom}
+      containerStyle={{marginLeft: layout.insets.left + sheetMargin, marginRight: layout.insets.right + sheetMargin}}
       onDismiss={onClose}
       enablePanDownToClose
       keyboardBehavior="interactive"
@@ -575,37 +616,38 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           appearsOnIndex={0}
         />
       )}
-      backgroundStyle={{ backgroundColor: "#01082E" }}
+      backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       handleIndicatorStyle={{ backgroundColor: "#666" }}
     >
       <BottomSheetFlatList
         key={activeTab}
+        style={tw`flex-1`}
         focusHook={useFocusEffect}
-        data={activeTab === "feed" ? feed?.regularFeeds || [] : carpoolList}
+        data={activeTab === "feed" ? feed?.allFeeds ?? [] : carpoolList}
         keyExtractor={(item: any) => item.id}
         renderItem={activeTab === "feed" ? renderFeedItem : renderCarpoolItem}
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={ListFooterComponent}
         ListEmptyComponent={ListEmptyComponent}
-        contentContainerStyle={tw`pb-20`}
+        contentContainerStyle={tw`w-full max-w-[720px] self-center pb-6`}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         removeClippedSubviews={false}
         extraData={{
           activeTab,
           eventRegistrationFee,
-          feedCount: feed?.regularFeeds?.length || 0,
-          pinnedCount: feed?.pinnedFeeds?.length || 0,
+          feedCount: feed?.allFeeds.length || 0,
           carpoolCount: carpoolList.length,
           hasEventEnded,
         }}
-        refreshing={activeTab === "feed" ? refreshing : false}
-        onRefresh={
-          activeTab === "feed"
-            ? onRefresh
-            : () => {
-                refreshCarpools();
-              }
+        refreshing={listRefreshing}
+        onRefresh={refreshList}
+        progressViewOffset={nativeRefreshIndicatorOffset}
+        refreshControl={
+          <AppRefreshControl
+            refreshing={listRefreshing}
+            onRefresh={refreshList}
+          />
         }
         onEndReached={
           activeTab === "feed"

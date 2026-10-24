@@ -1,4 +1,4 @@
-import { Toast } from "react-native-toast-message/lib/src/Toast";
+import Toast from "react-native-toast-message";
 
 export const showGlobalError = (message: string) => {
   Toast.show({

@@ -1,16 +1,17 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { usePayments } from "@/hooks/useDashboard";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import { ChevronDown, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import CustomView from "../View";
 
 interface Payment {
@@ -31,27 +32,28 @@ interface Props {
 }
 
 const PaymentCard = ({ payment }: { payment: Payment }) => {
+  const { tw } = useAppTheme();
   console.log(payment.creatorPayable)
 
   return (
-    <View style={tw`p-4 bg-[#1B2A50] rounded-xl gap-3 mb-2`}>
-      <View style={tw`flex-row justify-between`}>
-        <Text style={tw`text-white text-base font-medium`}>{payment.name}</Text>
-        <Text style={tw`text-white text-base font-semibold`}>
+    <View style={tw`p-4 bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl gap-3 mb-2`}>
+      <View style={tw`flex-row flex-wrap justify-between gap-2`}>
+        <Text style={tw`flex-1 min-w-[100px] text-foreground dark:text-white text-base font-medium`}>{payment.name}</Text>
+        <Text style={tw`text-foreground dark:text-white text-base font-semibold`}>
           {payment.creatorPayable.toLocaleString("en-NG", {
             style: "currency",
             currency: "NGN",
           })}
         </Text>
       </View>
-      <View style={tw`flex-row justify-between`}>
-        <View style={tw`flex-row gap-2`}>
-          <Text style={tw`text-gray-400 text-sm`}>{payment.time}</Text>
-          <Text style={tw`text-gray-400 text-sm`}>{payment.date}</Text>
+      <View style={tw`flex-row flex-wrap justify-between gap-2`}>
+        <View style={tw`flex-row flex-wrap gap-2 min-w-0`}>
+          <Text style={tw`text-muted dark:text-gray-400 text-sm`}>{payment.time}</Text>
+          <Text style={tw`text-muted dark:text-gray-400 text-sm`}>{payment.date}</Text>
         </View>
-        <View style={tw`flex-row gap-2`}>
+        <View style={tw`flex-row flex-wrap gap-2 min-w-0`}>
           <Text
-            style={tw`text-[#5669FF] underline text-sm`}
+            style={tw`shrink text-primary dark:text-[#5669FF] underline text-sm`}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
@@ -64,6 +66,7 @@ const PaymentCard = ({ payment }: { payment: Payment }) => {
 };
 
 const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
+  const { tw, color } = useAppTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -80,13 +83,13 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
   // Flatten all payments from all pages
   const allPayments = useMemo(() => {
     if (!paymentsResponse?.pages) return [];
-    
+
     const flattened = paymentsResponse.pages.flatMap((page) => {
       // Log each page to verify structure
       console.log('Page data:', page);
       return page.data || []; // Fallback to empty array if data is undefined
     });
-    
+
     console.log('All payments count:', flattened.length);
     return flattened;
   }, [paymentsResponse]);
@@ -141,24 +144,24 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
         visible={isExpanded}
         onRequestClose={() => setIsExpanded(false)}
       >
-        <SafeAreaView style={tw`flex-1 bg-[#01082E]`}>
-          <View style={tw`flex-1`}>
+        <SafeAreaView style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
+          <View style={tw`flex-1 w-full max-w-[840px] self-center`}>
             {/* Header */}
             <View
-              style={tw`flex-row items-center justify-between p-4 border-b border-[#5669FF]`}
+              style={tw`flex-row items-center justify-between p-4 border-b border-primary dark:border-[#5669FF]`}
             >
-              <Text style={tw`text-white text-xl font-bold`}>
+              <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>
                 All Payments ({allPayments.length})
               </Text>
               <TouchableOpacity onPress={() => setIsExpanded(false)}>
-                <X color="white" size={24} />
+                <X color={color("white", "foreground")} size={24} />
               </TouchableOpacity>
             </View>
 
             {/* Error Display */}
             {error && (
-              <View style={tw`bg-red-500/20 p-4 m-4 rounded-lg`}>
-                <Text style={tw`text-red-500 text-center`}>
+              <View style={tw`bg-danger/20 dark:bg-red-500/20 p-4 m-4 rounded-lg`}>
+                <Text style={tw`text-danger dark:text-red-500 text-center`}>
                   Error loading payments: {error.message}
                 </Text>
               </View>
@@ -175,7 +178,7 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
               <View style={tw`gap-2 pb-4`}>
                 {allPayments.length === 0 && !isLoading && !isFetching ? (
                   <View style={tw`py-8`}>
-                    <Text style={tw`text-white text-center`}>No payments found</Text>
+                    <Text style={tw`text-foreground dark:text-white text-center`}>No payments found</Text>
                   </View>
                 ) : (
                   allPayments.map((payment, index) => (
@@ -189,7 +192,7 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
                 {(isLoading || isFetchingNextPage) && (
                   <View style={tw`py-8`}>
                     <ActivityIndicator tone="accent" size="large" />
-                    <Text style={tw`text-white text-center mt-2`}>
+                    <Text style={tw`text-foreground dark:text-white text-center mt-2`}>
                       {isLoading ? 'Loading payments...' : 'Loading more...'}
                     </Text>
                   </View>
@@ -199,8 +202,8 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
 
             {/* Bottom indicator when there's more data */}
             {hasNextPage && !isFetchingNextPage && allPayments.length > 0 && (
-              <View style={tw`py-2 items-center border-t border-gray-700`}>
-                <Text style={tw`text-gray-400 text-sm`}>
+              <View style={tw`py-2 items-center border-t border-border dark:border-gray-700`}>
+                <Text style={tw`text-muted dark:text-gray-400 text-sm`}>
                   Scroll for more payments
                 </Text>
               </View>
@@ -212,14 +215,14 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
   }
 
   return (
-    <CustomView style={tw`rounded-xl bg-[#031542] flex-1 p-5`}>
+    <CustomView className="max-w-full" style={tw`rounded-xl bg-surface dark:bg-[#031542] p-5`}>
       <View style={tw``}>
-        <Text style={tw`text-white text-lg font-bold mb-4`}>{title}</Text>
+        <Text style={tw`text-foreground dark:text-white text-lg font-bold mb-4`}>{title}</Text>
       </View>
 
       {!initialPayments?.length ? (
         <View style={tw``}>
-          <Text style={tw`text-white text-center`}>No payments yet</Text>
+          <Text style={tw`text-foreground dark:text-white text-center`}>No payments yet</Text>
         </View>
       ) : (
         <View style={tw``}>
@@ -232,10 +235,10 @@ const Payments = ({ title = "Payments", payments: initialPayments }: Props) => {
           {hasMorePayments && (
             <TouchableOpacity
               onPress={() => setIsExpanded(true)}
-              style={tw`flex-row items-center justify-center mt-4 pt-4 border-t border-gray-700`}
+              style={tw`flex-row items-center justify-center mt-4 pt-4 border-t border-border dark:border-gray-700`}
             >
-              <ChevronDown color="#5669FF" size={20} />
-              <Text style={tw`text-[#5669FF] ml-2`}>View all payments</Text>
+              <ChevronDown color={color("#5669FF", "primary")} size={20} />
+              <Text style={tw`text-primary dark:text-[#5669FF] ml-2`}>View all payments</Text>
             </TouchableOpacity>
           )}
         </View>

@@ -1,8 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { usePressGuard } from "@/hooks/usePressGuard";
-import { pushWithLock } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
+import { pushWithLock, useLockedRouter } from "@/utils/navigation";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface Props {
   title: string;
@@ -17,6 +16,7 @@ const Shortcut = ({
   iconColor = "#FF932E",
   isCurrent = false,
 }: Props) => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
 
   const resolveLink = (target: string) => {
@@ -32,7 +32,7 @@ const Shortcut = ({
 
     if (normalized.startsWith("events/")) {
       const eventId = normalized.split("/")[1];
-      return eventId ? `/event/${eventId}` : "/new-event";
+      return eventId ? `/dashboard/${eventId}` : "/new-event";
     }
 
     if (normalized.startsWith("dashboard/")) {
@@ -50,24 +50,26 @@ const Shortcut = ({
   return (
     <TouchableOpacity
       style={[
-        tw`p-3 rounded-full gap-2 flex-row items-center min-w-[120px]`,
+        tw`p-3 rounded-full gap-2 flex-row items-center min-w-[120px] max-w-[240px]`,
         isCurrent
-          ? tw`border-2 border-[#F1D417] bg-[#1B2A50]`
-          : tw`bg-[#1B2A50]`,
+          ? tw`border-2 border-warning dark:border-[#F1D417] bg-surfaceMuted dark:bg-[#1B2A50]`
+          : tw`bg-surfaceMuted dark:bg-[#1B2A50]`,
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       onPress={guardedPress}
     >
       <View
         style={[
           tw`flex-row justify-center items-center w-8 h-8 rounded-full`,
-          { backgroundColor: isCurrent ? "#F1D417" : iconColor },
+          { backgroundColor: isCurrent ? color("#F1D417", "warningFill") : iconColor },
         ]}
       >
-        <Text style={tw`font-bold text-white capitalize`}>{title[0]}</Text>
+        <Text style={tw`font-bold text-foreground dark:text-white capitalize`}>{title[0]}</Text>
       </View>
       <View style={tw`flex-1`}>
         <Text
-          style={tw`text-white text-sm capitalize`}
+          style={tw`text-foreground dark:text-white text-sm capitalize`}
           numberOfLines={1}
           ellipsizeMode="tail"
         >

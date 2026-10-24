@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import {
   DEFAULT_RESEND_COOLDOWN_SECONDS,
@@ -24,9 +25,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const PasswordResetVerifyScreen = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const { email, sentAt } = useLocalSearchParams<{
     email?: string | string[];
@@ -130,7 +131,7 @@ const PasswordResetVerifyScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -142,28 +143,28 @@ const PasswordResetVerifyScreen = () => {
           onPress={() => safeGoBack(router, "/password-reset")}
           style={tw`self-start p-2 mb-8`}
         >
-          <ArrowLeft color="white" size={20} />
+          <ArrowLeft color={color("white", "foreground")} size={20} />
         </TouchableOpacity>
 
         <View style={tw`gap-2`}>
-          <Text style={tw`text-white text-3xl font-bold`}>
+          <Text style={tw`text-foreground dark:text-white text-3xl font-bold`}>
             Enter reset code
           </Text>
-          <Text style={tw`text-gray-300 text-sm leading-5`}>
+          <Text style={tw`text-secondary dark:text-gray-300 text-sm leading-5`}>
             Use the code sent to {normalizedEmail || "your email"} and choose a
             new password for your GatherGo account.
           </Text>
         </View>
 
         <View
-          style={tw`mt-10 rounded-xl bg-[#1B2A50]/40 border border-[#2A3D6A] px-4 py-3`}
+          style={tw`mt-10 rounded-xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-[#2A3D6A] px-4 py-3`}
         >
           <View style={tw`flex-row items-center gap-3`}>
-            <ShieldCheck color="#94A3B8" size={18} />
+            <ShieldCheck color={color("#94A3B8", "muted")} size={18} />
             <TextInput
-              style={tw`flex-1 text-white py-2 tracking-widest`}
+              style={tw`flex-1 text-foreground dark:text-white py-2 tracking-widest`}
               placeholder="Enter reset code"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={color("#94A3B8", "muted")}
               keyboardType="number-pad"
               value={normalizedCode}
               onChangeText={(text) => setCode(text.replace(/\D/g, ""))}
@@ -191,7 +192,7 @@ const PasswordResetVerifyScreen = () => {
         </View>
 
         {isCoolingDown ? (
-          <Text style={tw`mt-6 text-[#8FA1CB] font-medium`}>
+          <Text style={tw`mt-6 text-muted dark:text-[#8FA1CB] font-medium`}>
             Resend code in {formattedRemaining}
           </Text>
         ) : (
@@ -200,7 +201,7 @@ const PasswordResetVerifyScreen = () => {
             disabled={isResending}
             style={tw`mt-6 self-start`}
           >
-            <Text style={tw`text-[#0FF1CF] font-semibold`}>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] font-semibold`}>
               {isResending ? "Sending another code..." : "Resend code"}
             </Text>
           </TouchableOpacity>
@@ -210,9 +211,9 @@ const PasswordResetVerifyScreen = () => {
           <CustomButton
             onPress={handleResetPassword}
             title={isResetting ? "Resetting..." : "Reset password"}
-            buttonClassName="bg-[#0FF1CF] border-0 w-full"
-            textClassName="!text-black"
-            arrowCircleColor="bg-[#0A7F7F]"
+            buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+            textClassName="!text-onAccent dark:text-black"
+            arrowCircleColor="bg-accentFill dark:bg-[#0A7F7F]"
             disabled={!canSubmit || isResetting}
           />
         </View>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -4 224 228" width="448" height="456" role="img" aria-labelledby="t d">
+  <title id="t">Gogo waving</title>
+  <desc id="d">Gogo, the GatherGo mascot, bobs gently, blinks, glances around and waves hello.</desc>
+  <style>
+    .all { transform-box: view-box; }
+    .shadow { transform-origin: 100px 207px; animation: shadow 2.6s ease-in-out infinite; }
+    .bob { animation: bob 2.6s ease-in-out infinite; }
+    .ring { transform-origin: 100px 14px; animation: ring 2.6s ease-in-out infinite; }
+    .eyes { transform-origin: 100px 96px; animation: blink 4.2s infinite; }
+    .pupils { animation: look 6s ease-in-out infinite; }
+    .wave { transform-origin: 172px 124px; animation: wave 1.3s ease-in-out infinite; }
+    .hello { animation: hello 1.3s ease-in-out infinite; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    @keyframes shadow { 0%,100% { transform: scale(1); opacity: .1; } 50% { transform: scale(.9); opacity: .07; } }
+    @keyframes ring { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+    @keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+    @keyframes look { 0%,35%,100% { transform: translate(0,0); } 45%,65% { transform: translate(-5px,-2px); } 75%,90% { transform: translate(4px,1px); } }
+    @keyframes wave { 0%,100% { transform: rotate(-10deg); } 50% { transform: rotate(16deg); } }
+    @keyframes hello { 0%,100% { opacity: .15; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .shadow,.bob,.ring,.eyes,.pupils,.wave,.hello { animation: none; } }
+  </style>
+  <ellipse class="shadow" cx="100" cy="207" rx="50" ry="7" fill="#0B3B35" opacity="0.1"/>
+  <g class="bob">
+    <ellipse cx="76" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <ellipse cx="124" cy="199" rx="16" ry="9" fill="#0FB898"/>
+    <path d="M100 23V36" stroke="#0FB898" stroke-width="5" stroke-linecap="round"/>
+    <circle class="ring" cx="100" cy="14" r="9" fill="none" stroke="#0FB898" stroke-width="5"/>
+    <rect x="26" y="34" width="148" height="164" rx="74" fill="#1EEBC8"/>
+    <circle cx="44" cy="136" r="8" fill="#FF8F7E" opacity="0.55"/>
+    <circle cx="156" cy="136" r="8" fill="#FF8F7E" opacity="0.55"/>
+    <g class="eyes">
+      <circle cx="70" cy="96" r="25" fill="#fff"/>
+      <circle cx="130" cy="96" r="25" fill="#fff"/>
+      <g class="pupils">
+        <circle cx="72" cy="99" r="11" fill="#0B3B35"/>
+        <circle cx="132" cy="99" r="11" fill="#0B3B35"/>
+        <circle cx="76" cy="94" r="3.5" fill="#fff"/>
+        <circle cx="136" cy="94" r="3.5" fill="#fff"/>
+      </g>
+    </g>
+    <path d="M74 140Q100 166 126 140" fill="none" stroke="#0B3B35" stroke-width="8" stroke-linecap="round"/>
+    <path d="M28 128Q8 140 14 160" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/>
+    <g class="wave">
+      <path d="M172 124Q198 112 190 80" fill="none" stroke="#0FB898" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="190" cy="75" r="10" fill="#0FB898"/>
+    </g>
+    <g transform="translate(-12 -8)"><path class="hello" d="M176 52Q184 44 192 52M200 44Q208 36 216 44" fill="none" stroke="#0FB898" stroke-width="4" stroke-linecap="round"/></g>
+  </g>
+</svg>

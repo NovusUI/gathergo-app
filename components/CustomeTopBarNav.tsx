@@ -1,8 +1,8 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import type { ReactNode } from "react";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { ChevronLeft } from "lucide-react-native";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface Props {
   title: string;
@@ -21,6 +21,7 @@ const CustomeTopBarNav = ({
   rightNode,
   rightText,
 }: Props) => {
+  const { tw, color } = useAppTheme();
   const guardedBackPress = usePressGuard(onClickBack);
   const guardedRightPress = usePressGuard(onClickRight);
 
@@ -31,10 +32,10 @@ const CustomeTopBarNav = ({
       {/* Left Section */}
       <View style={tw`flex-row items-center gap-2 flex-1 min-w-0`}>
         <TouchableOpacity onPress={guardedBackPress} style={tw`p-2`}>
-          <ChevronLeft color={"white"} />
+          <ChevronLeft color={color("white", "foreground")} />
         </TouchableOpacity>
         <Text
-          style={tw`text-white text-lg font-semibold flex-1`}
+          style={tw`text-foreground dark:text-white text-lg font-semibold flex-1`}
           numberOfLines={1}
         >
           {title}
@@ -51,7 +52,7 @@ const CustomeTopBarNav = ({
         >
           {rightIcon && <Image source={rightIcon} style={tw`w-6 h-6`} />}
           {Boolean(rightText) && (
-            <Text style={tw`text-white text-base`}>{rightText}</Text>
+            <Text style={tw`text-foreground dark:text-white text-base`}>{rightText}</Text>
           )}
         </TouchableOpacity>
       ) : null}

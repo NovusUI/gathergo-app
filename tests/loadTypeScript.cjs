@@ -17,6 +17,16 @@ function loadTypeScript(relativePath, dependencies = {}) {
   const requireModule = loaded.require.bind(loaded);
   loaded.require = (specifier) => {
     if (Object.hasOwn(dependencies, specifier)) return dependencies[specifier];
+    if (specifier === "@/hooks/useAppTheme") {
+      const { DARK_COLORS } = loadTypeScript("constants/theme.ts");
+      // Existing isolated screen tests use their supplied styling double in dark mode.
+      const styling = dependencies.twrnc;
+      const tw = styling?.default;
+      if (tw && !tw.style && styling.style) tw.style = styling.style;
+      return { useAppTheme: () => ({
+        mode: "dark", colors: DARK_COLORS, color: (darkColor) => darkColor, tw,
+      }) };
+    }
     return specifier.startsWith("@/")
       ? loadTypeScript(`${specifier.slice(2)}.ts`)
       : requireModule(specifier);

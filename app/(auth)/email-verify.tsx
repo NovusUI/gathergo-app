@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -22,9 +23,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, ShieldCheck } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 const EmailVerifyScreen = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const { setUser } = useAuth();
   const { email, sentAt } = useLocalSearchParams<{
@@ -133,31 +134,31 @@ const EmailVerifyScreen = () => {
   };
 
   return (
-    <View style={tw`flex-1 bg-[#01082E] px-5 pt-14 pb-8`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E] px-5 pt-14 pb-8`}>
       <TouchableOpacity
         onPress={() => safeGoBack(router, "/signup")}
         style={tw`self-start p-2`}
       >
-        <ArrowLeft color="white" size={20} />
+        <ArrowLeft color={color("white", "foreground")} size={20} />
       </TouchableOpacity>
 
       <View style={tw`mt-8 gap-2`}>
-        <Text style={tw`text-white text-3xl font-bold`}>Verify email</Text>
-        <Text style={tw`text-gray-300 text-sm leading-5`}>
+        <Text style={tw`text-foreground dark:text-white text-3xl font-bold`}>Verify email</Text>
+        <Text style={tw`text-secondary dark:text-gray-300 text-sm leading-5`}>
           Enter the 6-digit code sent to {normalizedEmail || "your email"} to
           finish setting up your GatherGo account.
         </Text>
       </View>
 
       <View
-        style={tw`mt-10 rounded-xl bg-[#1B2A50]/40 border border-[#2A3D6A] px-4 py-3`}
+        style={tw`mt-10 rounded-xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-[#2A3D6A] px-4 py-3`}
       >
         <View style={tw`flex-row items-center gap-3`}>
-          <ShieldCheck color="#94A3B8" size={18} />
+          <ShieldCheck color={color("#94A3B8", "muted")} size={18} />
           <TextInput
-            style={tw`flex-1 text-white py-2 tracking-widest`}
+            style={tw`flex-1 text-foreground dark:text-white py-2 tracking-widest`}
             placeholder="Enter verification code"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={color("#94A3B8", "muted")}
             keyboardType="number-pad"
             value={normalizedCode}
             onChangeText={(text) => setCode(text.replace(/\D/g, ""))}
@@ -166,13 +167,13 @@ const EmailVerifyScreen = () => {
         </View>
       </View>
 
-      <Text style={tw`text-gray-400 text-xs mt-3 leading-5`}>
+      <Text style={tw`text-muted dark:text-gray-400 text-xs mt-3 leading-5`}>
         The code expires after a few minutes. If it is missing, check spam or
         request a fresh code below.
       </Text>
 
       {isCoolingDown ? (
-        <Text style={tw`mt-6 text-[#8FA1CB] font-medium`}>
+        <Text style={tw`mt-6 text-muted dark:text-[#8FA1CB] font-medium`}>
           Resend code in {formattedRemaining}
         </Text>
       ) : (
@@ -181,7 +182,7 @@ const EmailVerifyScreen = () => {
           disabled={isResending}
           style={tw`mt-6 self-start`}
         >
-          <Text style={tw`text-[#0FF1CF] font-semibold`}>
+          <Text style={tw`text-accent dark:text-[#0FF1CF] font-semibold`}>
             {isResending ? "Sending another code..." : "Resend code"}
           </Text>
         </TouchableOpacity>
@@ -191,16 +192,16 @@ const EmailVerifyScreen = () => {
         onPress={() => router.replace("/login")}
         style={tw`mt-3 self-start`}
       >
-        <Text style={tw`text-gray-300`}>Back to sign in</Text>
+        <Text style={tw`text-secondary dark:text-gray-300`}>Back to sign in</Text>
       </TouchableOpacity>
 
       <View style={tw`mt-auto gap-3`}>
         <CustomButton
           onPress={handleVerify}
           title={isVerifying ? "Verifying..." : "Verify & sign in"}
-          buttonClassName="bg-[#0FF1CF] border-0 w-full"
-          textClassName="!text-black"
-          arrowCircleColor="bg-[#0A7F7F]"
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 w-full"
+          textClassName="!text-onAccent dark:text-black"
+          arrowCircleColor="bg-accentFill dark:bg-[#0A7F7F]"
           disabled={!canSubmit || isVerifying}
         />
       </View>

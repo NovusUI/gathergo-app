@@ -1,5 +1,6 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Text } from "react-native";
-import tw from "twrnc";
+
 import CustomView from "../View";
 
 interface Props {
@@ -8,9 +9,10 @@ interface Props {
 }
 
 const FormLabel = ({ text, className = "" }: Props) => {
+  const { tw } = useAppTheme();
   return (
     <CustomView>
-      <Text style={tw`text-white text-sm capitalize ${className}`}>{text}</Text>
+      <Text style={tw`text-foreground dark:text-white text-sm capitalize ${className}`}>{text}</Text>
     </CustomView>
   );
 };

@@ -1,3 +1,9 @@
+import type { ThemeColor } from "@/constants/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppLoader from "@/components/ui/AppLoader";
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 // app/notifications.tsx
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
@@ -13,15 +19,15 @@ import { formatBadgeCount } from "@/utils/utils";
 import { useCallback, useMemo, useState } from "react";
 import {
   Pressable,
-  RefreshControl,
   SectionList,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 export default function NotificationsScreen() {
+  const { tw, color } = useAppTheme();
+  const styles = createStyles(color);
   const {
     notifications,
     unreadCount,
@@ -98,7 +104,7 @@ export default function NotificationsScreen() {
     ({ section }: { section: { title: string; data: Notification[] } }) => (
       <Text style={styles.sectionHeader}>{section.title}</Text>
     ),
-    []
+    [styles.sectionHeader]
   );
 
   const keyExtractor = useCallback((item: Notification) => item.id, []);
@@ -107,7 +113,7 @@ export default function NotificationsScreen() {
     if (filteredNotifications.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Text style={tw`text-gray-500 text-center`}>
+          <Text style={tw`text-muted dark:text-gray-500 text-center`}>
             {activeTab === "unread"
               ? "No unread notifications"
               : activeTab === "events"
@@ -127,18 +133,20 @@ export default function NotificationsScreen() {
         stickySectionHeadersEnabled={false}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
+        ListHeaderComponent={<RefreshIndicator refreshing={refreshing} />}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <AppRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={tw`text-gray-500 text-center`}>No notifications yet</Text>
+            <Text style={tw`text-muted dark:text-gray-500 text-center`}>No notifications yet</Text>
           </View>
         }
         ListFooterComponent={
           isLoadingMore ? (
             <View style={styles.footerLoading}>
-              <Text style={tw`text-gray-500`}>Loading more...</Text>
+              <AppLoader accessibilityLabel="Loading more notifications" />
+              <Text style={tw`text-muted dark:text-gray-500`}>Loading more...</Text>
             </View>
           ) : null
         }
@@ -164,7 +172,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={[tw`flex-1 bg-[#01082E]`, styles.screen]}>
+    <View style={[tw`flex-1 bg-background dark:bg-[#01082E]`, styles.screen]}>
       <CustomeTopBarNav
         title="Notifications"
         onClickBack={() => router.replace("/")}
@@ -179,13 +187,13 @@ export default function NotificationsScreen() {
               key={tab.key}
               onPress={() => handleTabPress(tab.key)}
               style={tw`pb-2 border-b-2 ${
-                isActive ? "border-[#0FF1CF]" : "border-transparent"
+                isActive ? "border-accent dark:border-[#0FF1CF]" : "border-transparent"
               }`}
             >
               <View style={tw`flex-row items-center`}>
                 <Text
                   style={tw`${
-                    isActive ? "text-[#0FF1CF]" : "text-gray-400"
+                    isActive ? "text-accent dark:text-[#0FF1CF]" : "text-muted dark:text-gray-400"
                   } font-medium`}
                 >
                   {tab.label}
@@ -211,7 +219,7 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (color: ThemeColor) => StyleSheet.create({
   screen: {
     paddingTop: layoutSpacing.pageTop,
   },
@@ -228,7 +236,8 @@ const styles = StyleSheet.create({
     marginBottom: layoutSpacing.listBottomInset,
   },
   sectionHeader: {
-    ...tw`text-white font-semibold`,
+    color: color("white", "foreground"),
+    fontWeight: "600",
     paddingHorizontal: layoutSpacing.pageHorizontal,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
@@ -243,7 +252,7 @@ const styles = StyleSheet.create({
   },
   tabBadge: {
     marginLeft: spacing.xs,
-    backgroundColor: "#EF4444",
+    backgroundColor: color("#EF4444", "danger"),
     borderRadius: 999,
     minWidth: 20,
     height: 20,
@@ -252,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   tabBadgeText: {
-    color: "#FFFFFF",
+    color: color("#FFFFFF", "foreground"),
     fontSize: 10,
     fontWeight: "700",
   },

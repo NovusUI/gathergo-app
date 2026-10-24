@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
@@ -28,9 +29,9 @@ import {
   View,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import tw from "twrnc";
 
 const ProfileSetup = () => {
+  const { tw } = useAppTheme();
   const { user, setUser } = useAuth();
   const router = useLockedRouter();
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -179,7 +180,7 @@ const ProfileSetup = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -202,26 +203,26 @@ const ProfileSetup = () => {
 
       <View style={tw`w-full max-w-[500px] flex-1 flex flex-col gap-5`}>
         <View style={tw`gap-2`}>
-          <Text style={tw`text-white text-3xl font-bold`}>
+          <Text style={tw`text-foreground dark:text-white text-3xl font-bold`}>
             Make your presence known
           </Text>
-          <Text style={tw`text-[#B9C7F1] text-sm leading-6`}>
+          <Text style={tw`text-secondary dark:text-[#B9C7F1] text-sm leading-6`}>
             Your profile helps people find you, trust you, and connect you to events and communities you enjoy.
           </Text>
         </View>
 
-        <View style={tw`bg-[#0FF1CF]/10 border border-[#0FF1CF]/25 rounded-2xl px-4 py-4 gap-1`}>
-          <Text style={tw`text-[#0FF1CF] text-[11px] font-bold tracking-widest uppercase`}>
+        <View style={tw`bg-accentFill/10 dark:bg-[#0FF1CF]/10 border border-accent/25 dark:border-[#0FF1CF]/25 rounded-2xl px-4 py-4 gap-1`}>
+          <Text style={tw`text-accent dark:text-[#0FF1CF] text-[11px] font-bold tracking-widest uppercase`}>
             Community-first
           </Text>
-          <Text style={tw`text-white text-sm`}>
+          <Text style={tw`text-foreground dark:text-white text-sm`}>
             People show up more confidently when they know who&apos;s in the room.
           </Text>
         </View>
 
         {/* Full Name */}
         <CustomView style={tw`gap-2`}>
-          <Text style={tw`text-white text-sm font-semibold`}>Name</Text>
+          <Text style={tw`text-foreground dark:text-white text-sm font-semibold`}>Name</Text>
           <Controller
             control={control}
             name="fullName"
@@ -241,7 +242,7 @@ const ProfileSetup = () => {
         {/* Username */}
 
         <CustomView style={tw`gap-2`}>
-          <Text style={tw`text-white text-sm font-semibold`}>Username</Text>
+          <Text style={tw`text-foreground dark:text-white text-sm font-semibold`}>Username</Text>
           <Controller
             control={control}
             name="username"
@@ -267,7 +268,7 @@ const ProfileSetup = () => {
             )}
           />
           {!errors?.username?.message && usernameStatus === "available" && (
-            <Text style={tw`text-[#0FF1CF] text-xs`}>
+            <Text style={tw`text-accent dark:text-[#0FF1CF] text-xs`}>
               Nice. This one is yours.
             </Text>
           )}
@@ -275,7 +276,7 @@ const ProfileSetup = () => {
 
         {/* Birthday (Date Picker) */}
         <CustomView style={tw`gap-2`}>
-          <Text style={tw`text-white text-sm font-semibold`}>Birthday</Text>
+          <Text style={tw`text-foreground dark:text-white text-sm font-semibold`}>Birthday</Text>
           <Controller
             control={control}
             name="birthDate"
@@ -306,8 +307,8 @@ const ProfileSetup = () => {
             ? "Checking..."
             : "Step into GatherGo"
         }
-        buttonClassName="bg-[#0FF1CF] border-0 !w-full"
-        textClassName="!text-black"
+        buttonClassName="bg-accentFill dark:bg-[#0FF1CF] border-0 !w-full"
+        textClassName="!text-onAccent dark:text-black"
         showArrow={false}
       />
       </ScrollView>

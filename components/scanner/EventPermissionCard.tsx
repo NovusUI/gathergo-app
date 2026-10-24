@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
     Calendar,
     ChevronRight,
@@ -7,7 +8,6 @@ import {
 } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface EventPermissionCardProps {
   permission: {
@@ -24,6 +24,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
   permission,
   onPress,
 }) => {
+  const { tw, color } = useAppTheme();
   const formatDate = (dateString: string) => {
     if (!dateString) return "no expiration";
     const date = new Date(dateString);
@@ -35,7 +36,7 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
   };
 
   const getExpirationStatus = () => {
-    if (!permission.expiresAt) return { color: "#0FF1CF", text: "Active" };
+    if (!permission.expiresAt) return { color: color("#0FF1CF", "accent"), text: "Active" };
 
     const date = new Date(permission.expiresAt);
     const now = new Date();
@@ -43,16 +44,16 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
       (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    if (diffDays < 0) return { color: "#FF5757", text: "Expired" };
-    if (diffDays <= 7) return { color: "#FF932E", text: "Expiring Soon" };
-    return { color: "#0FF1CF", text: "Active" };
+    if (diffDays < 0) return { color: color("#FF5757", "danger"), text: "Expired" };
+    if (diffDays <= 7) return { color: color("#FF932E", "warning"), text: "Expiring Soon" };
+    return { color: color("#0FF1CF", "accent"), text: "Active" };
   };
 
   const status = getExpirationStatus();
 
   return (
     <TouchableOpacity
-      style={tw`bg-[#1B2A50] rounded-xl p-4`}
+      style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4`}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -69,30 +70,30 @@ const EventPermissionCard: React.FC<EventPermissionCardProps> = ({
             {status.text}
           </Text>
         </View>
-        <ChevronRight size={20} color="#5669FF" />
+        <ChevronRight size={20} color={color("#5669FF", "primary")} />
       </View>
 
       {/* Details */}
       <View style={tw`gap-2`}>
         <View style={tw`flex-row items-center`}>
-          <Calendar size={16} color="#5669FF" />
-          <Text style={tw`text-gray-400 text-sm ml-2`}>
+          <Calendar size={16} color={color("#5669FF", "primary")} />
+          <Text style={tw`text-muted dark:text-gray-400 text-sm ml-2`}>
             Event: {formatDate(permission.eventDate)}
           </Text>
         </View>
 
         {Boolean(permission.eventLocation) && (
           <View style={tw`flex-row items-center`}>
-            <Clock size={16} color="#FF932E" />
-            <Text style={tw`text-gray-400 text-sm ml-2`}>
+            <Clock size={16} color={color("#FF932E", "warning")} />
+            <Text style={tw`text-muted dark:text-gray-400 text-sm ml-2`}>
               Location: {permission.eventLocation}
             </Text>
           </View>
         )}
 
         <View style={tw`flex-row items-center`}>
-          <Users size={16} color="#0FF1CF" />
-          <Text style={tw`text-gray-400 text-sm ml-2`}>
+          <Users size={16} color={color("#0FF1CF", "accent")} />
+          <Text style={tw`text-muted dark:text-gray-400 text-sm ml-2`}>
             Granted by: {permission.ownerName}
           </Text>
         </View>

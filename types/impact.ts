@@ -1,15 +1,6 @@
-import { Registration, StandardResponse } from "./auth";
-
 export type ImpactSuggestionSource = "ai" | "manual";
 
 export type ImpactSuggestionConfidence = "high" | "medium" | "low";
-
-export interface ImpactSuggestionPayload {
-  title?: string | null;
-  description?: string | null;
-  impactDescription?: string | null;
-  registrationType?: Registration | null;
-}
 
 export interface SuggestedSdgGoal {
   id: string;
@@ -53,8 +44,4 @@ export interface PersistedImpactMap {
   impactCommitments?: SuggestedImpactCommitment[] | null;
   impactMapSource?: ImpactSuggestionSource | string | null;
   impactMapGeneratedAt?: string | null;
-}
-
-export interface ImpactSuggestionResponse extends StandardResponse {
-  data: ImpactSuggestionData;
 }

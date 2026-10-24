@@ -1,4 +1,13 @@
+import type {
+  InterestProfile,
+  EventFeedbackResult,
+  SaveEventFeedback,
+  SaveInterestProfile,
+  PreferenceResponse,
+} from '@/types/preferences';
 import { useAuth } from "@/context/AuthContext";
+import type { SaveVolunteerRole, VolunteerAction, VolunteerApplication, VolunteerResponse, VolunteerRole } from "@/types/volunteer";
+import { showGlobalError } from "@/utils/globalErrorHandler";
 import {
   CompleteProfileData,
   ForgotPasswordPayload,
@@ -20,6 +29,7 @@ import { CarpoolForm } from "@/types/carpool";
 import {
   DonationResponse,
   EventImpactReport,
+  EventTicketResponse,
   GetTicketsResponse,
   InitiateDonationPayload,
   RegistrationCheckoutPayload,
@@ -43,13 +53,18 @@ import {
 } from "@/types/wallet";
 import { saveItem } from "@/utils/storage";
 import {
+  type QueryClient,
   UseMutationOptions,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { AxiosError } from "axios";
+import { AxiosError, isAxiosError } from "axios";
 import { QUERY_KEYS } from "./queryKeys";
 import {
+  updateBadgeVisibility,
+  resetInterestLearning,
+  deleteInterestMap,
+  performVolunteerAction, saveVolunteerRole,
   SignUpPayload,
   bulkScanFn,
   canScanFn,
@@ -93,7 +108,10 @@ import {
   unfollowUser,
   updateCarpool,
   updateEvent,
+  publishEventTicket,
   updatePreference,
+  saveEventFeedback,
+  deferEventFeedback,
   updateScannerPermissionFn,
   upsertEventImpactReport,
   uploadPicture,
@@ -265,14 +283,55 @@ export const useLogin = () => {
   });
 };
 
-export const useSavePreferences = (
-  options: UseMutationOptions<StandardResponse, AxiosError, string[]>
-) => {
+function useInterestMapMutation<TVariables>(
+  mutationFn: (
+    variables: TVariables,
+  ) => Promise<PreferenceResponse<InterestProfile>>,
+  options?: UseMutationOptions<
+    PreferenceResponse<InterestProfile>,
+    AxiosError,
+    TVariables
+  >,
+) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
-    mutationFn: updatePreference,
     ...options,
+    mutationFn,
+    onSuccess: async (...args) => {
+      queryClient.setQueryData(
+        [...QUERY_KEYS.interestProfile, user?.id],
+        args[0],
+      );
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.foryouEvents],
+      });
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.currentUser });
+      await options?.onSuccess?.(...args);
+    },
   });
-};
+}
+export const useSavePreferences = (
+  options?: UseMutationOptions<
+    PreferenceResponse<InterestProfile>,
+    AxiosError,
+    SaveInterestProfile
+  >,
+) => useInterestMapMutation(updatePreference, options);
+export const useResetInterestLearning = (
+  options?: UseMutationOptions<
+    PreferenceResponse<InterestProfile>,
+    AxiosError,
+    void
+  >,
+) => useInterestMapMutation(resetInterestLearning, options);
+export const useDeleteInterestMap = (
+  options?: UseMutationOptions<
+    PreferenceResponse<InterestProfile>,
+    AxiosError,
+    void
+  >,
+) => useInterestMapMutation(deleteInterestMap, options);
 
 export const useSignUpMutation = () => {
   return useMutation<signUpResponse, Error, SignUpPayload>({
@@ -424,36 +483,131 @@ export const useEditProfilePicture = (
 export const useCreateEvent = (
   options: UseMutationOptions<StandardResponse, Error, FormData>
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: createEvent,
     ...options,
+    onSuccess: (...args) => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.walletOnboarding });
+      return options.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };
 };
 
-// export const useUpdateEvent = (
-//   eventId: string,
-//   options: UseMutationOptions<StandardResponse, AxiosError, FormData>
-// ) => {
-//   const { mutate, mutateAsync, isPending, error } = useMutation({
-//     mutationFn: (formData: FormData) => updateEvent(formData, eventId),
-//     ...options,
-//   });
+function invalidateEventParticipationQueries(
+  queryClient: QueryClient,
+  eventId: string,
+) {
+  return Promise.all(
+    [
+      [QUERY_KEYS.volunteerRoles, eventId],
+      [QUERY_KEYS.volunteerRoster, eventId],
+      [QUERY_KEYS.volunteerSummary, eventId],
+      [QUERY_KEYS.eventDetails, eventId],
+      QUERY_KEYS.volunteerHistory,
+      [QUERY_KEYS.getEventDashboard, eventId],
+      [QUERY_KEYS.getDashboard],
+      [QUERY_KEYS.getDashboardEvents],
+      [QUERY_KEYS.foryouEvents],
+      [QUERY_KEYS.getUserEvents],
+    ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  );
+}
 
-//   return { mutate, mutateAsync, isPending, error };
-// };
+function useVolunteerMutation<TData, TVariables>(
+  eventId: string,
+  mutationFn: (variables: TVariables) => Promise<VolunteerResponse<TData>>,
+  options?: UseMutationOptions<
+    VolunteerResponse<TData>,
+    AxiosError,
+    TVariables
+  >,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    ...options,
+    mutationFn,
+    onSuccess: async (...args) => {
+      await invalidateEventParticipationQueries(queryClient, eventId);
+      await options?.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      const error = args[0];
+      const message = isAxiosError<{ message: string | string[] }>(error)
+        ? error.response?.data.message
+        : undefined;
+      showGlobalError(
+        typeof message === "string"
+          ? message
+          : Array.isArray(message)
+            ? message.join("\n")
+            : error.message,
+      );
+      options?.onError?.(...args);
+    },
+  });
+}
+
+export const useVolunteerAction = (
+  eventId: string,
+  options?: UseMutationOptions<
+    VolunteerResponse<VolunteerApplication>,
+    AxiosError,
+    VolunteerAction
+  >,
+) =>
+  useVolunteerMutation(
+    eventId,
+    (action: VolunteerAction) => performVolunteerAction(eventId, action),
+    options,
+  );
+
+export const useSaveVolunteerRole = (
+  eventId: string,
+  options?: UseMutationOptions<
+    VolunteerResponse<VolunteerRole>,
+    AxiosError,
+    SaveVolunteerRole
+  >,
+) =>
+  useVolunteerMutation(
+    eventId,
+    (change: SaveVolunteerRole) => saveVolunteerRole(eventId, change),
+    options,
+  );
 
 export const useUpdateEvent = (
   eventId: string,
-  options: UseMutationOptions<StandardResponse, Error, FormData> // Changed AxiosError to Error
+  options: UseMutationOptions<StandardResponse, Error, FormData>,
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
-    mutationFn: (formData: FormData) => updateEvent(formData, eventId),
     ...options,
+    mutationFn: (formData: FormData) => updateEvent(formData, eventId),
+    onSuccess: async (...args) => {
+      await invalidateEventParticipationQueries(queryClient, eventId);
+      await options.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };
+};
+
+export const usePublishEventTicket = (
+  eventId: string,
+  options?: UseMutationOptions<EventTicketResponse, AxiosError, string>,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    ...options,
+    mutationFn: publishEventTicket,
+    onSuccess: async (...args) => {
+      await invalidateEventParticipationQueries(queryClient, eventId);
+      await options?.onSuccess?.(...args);
+    },
+  });
 };
 
 export const useGetTickets = (
@@ -470,9 +624,19 @@ export const useGetTickets = (
 export const useRegisterEvent = (
   options: UseMutationOptions<GetTicketsResponse, AxiosError, RegistrationCheckoutPayload>
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: registerForEvent,
     ...options,
+    onSuccess: async (...args) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.myRegistrations }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.eventDetails, args[1].eventId],
+        }),
+      ]);
+      await options.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };
@@ -789,4 +953,41 @@ export const useCanScan = (
   });
 
   return { mutate, mutateAsync, isPending, error };
+};
+
+export const useBadgeVisibility = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateBadgeVisibility,
+    onSuccess: async (response) => {
+      queryClient.setQueryData([...QUERY_KEYS.badges, user?.id], response);
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.userPublicProfile, user?.id],
+      });
+    },
+  });
+};
+
+export const useSaveEventFeedback = () => {
+  const client = useQueryClient();
+  const { user } = useAuth();
+  return useMutation<PreferenceResponse<EventFeedbackResult>, AxiosError, SaveEventFeedback>({
+    mutationFn: saveEventFeedback,
+    onSuccess: async (response) => {
+      client.setQueryData([...QUERY_KEYS.interestProfile, user?.id], { ...response, data: response.data.profile });
+      await client.invalidateQueries({ queryKey: [...QUERY_KEYS.pendingEventFeedback, user?.id], refetchType: "none" });
+      await client.invalidateQueries({ queryKey: [QUERY_KEYS.foryouEvents] });
+    },
+  });
+};
+export const useDeferEventFeedback = () => {
+  const client = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: deferEventFeedback,
+    onSuccess: (response) => {
+      client.setQueryData([...QUERY_KEYS.pendingEventFeedback, user?.id], { ...response, data: null });
+    },
+  });
 };

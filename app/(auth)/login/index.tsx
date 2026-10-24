@@ -2,10 +2,10 @@ import CustomSwitcher from "@/components/CustomSwitcher";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import GoogleLoginBtn from "@/components/buttons/GoogleLoginBtn";
 import Input from "@/components/inputs/CustomInput1";
-import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import LocalSvgAsset from "@/components/ui/LocalSvgAsset";
 import { GOOGLE_AUTH_URL } from "@/constants/network";
 import { useAuth } from "@/context/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { useLogin } from "@/services/mutations";
 import { useAuthStore } from "@/store/auth";
 import {
@@ -32,7 +32,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import * as z from "zod";
 
 const loginSchema = z.object({
@@ -52,15 +52,14 @@ interface DecodedToken {
 
 type LoginFormData = z.infer<typeof loginSchema>;
 const REMEMBER_ME_KEY = "remember_me_credentials";
-type GoogleAuthPhase = "idle" | "opening" | "completing";
 
 const LoginScreen = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
-  const [googleAuthPhase, setGoogleAuthPhase] =
-    useState<GoogleAuthPhase>("idle");
+  const { googleAuthPhase, setGoogleAuthPhase } = useAuthStore();
   const { mutate: login, isPending: loginPending } = useLogin();
   const { setUser } = useAuth();
 
@@ -88,7 +87,6 @@ const LoginScreen = () => {
                   REMEMBER_ME_KEY,
                   JSON.stringify({
                     email: sanitizedEmail,
-                    password: data.password,
                   })
                 );
               } else {
@@ -141,7 +139,7 @@ const LoginScreen = () => {
   };
 
   const handleGoogleLogin = async () => {
-    if (googleAuthPhase !== "idle") {
+    if (useAuthStore.getState().googleAuthPhase !== "idle") {
       return;
     }
 
@@ -152,7 +150,10 @@ const LoginScreen = () => {
       )}`;
 
       setGoogleAuthPhase("opening");
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl
+      );
 
       if (result.type !== "success") {
         setGoogleAuthPhase("idle");
@@ -171,7 +172,7 @@ const LoginScreen = () => {
 
       setGoogleAuthPhase("completing");
       await completeLogin(token, refreshToken);
-    } catch (error) {
+    } catch {
       setGoogleAuthPhase("idle");
       showGlobalError("Google login could not be completed. Please try again.");
     }
@@ -244,26 +245,9 @@ const LoginScreen = () => {
     }, 120);
   };
 
-  if (googleAuthPhase !== "idle") {
-    return (
-      <FullScreenLoader
-        title={
-          googleAuthPhase === "opening"
-            ? "Connecting to Google"
-            : "Logging you in"
-        }
-        message={
-          googleAuthPhase === "opening"
-            ? "Finish choosing your account and we will bring you right back."
-            : "Please hold on while we finish your GatherGo sign-in."
-        }
-      />
-    );
-  }
-
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -279,143 +263,158 @@ const LoginScreen = () => {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-      {/* Close Button */}
-      <TouchableOpacity
-        style={tw.style("absolute top-10 left-8")}
-        onPress={() => router.replace("/onboarding")}
-      >
-        <XIcon color="white" />
-      </TouchableOpacity>
-
-      {/* Logo */}
-      <View style={tw`justify-center items-center relative`}>
-        <LocalSvgAsset
-          name="vector1"
-          width={109}
-          height={106}
-          style={tw.style({ position: "absolute", top: -56, left: 40 })}
-        />
-        <LocalSvgAsset name="gglogo" width={80} height={80} />
-      </View>
-
-      {/* Title */}
-      <Text style={tw`text-white text-2xl font-semibold mt-4`}>Sign in</Text>
-
-      {/* Google Login Button */}
-      <GoogleLoginBtn
-        onPress={handleGoogleLogin}
-        disabled={googleAuthPhase !== "idle"}
-      />
-      <CustomButton
-        title="Continue with phone"
-        buttonClassName="w-full border border-[#0FF1CF]"
-        textClassName="text-[#0FF1CF]"
-        arrowCircleColor="bg-[#0FF1CF]"
-        onPress={() => router.push("/phone-login")}
-      />
-
-      {/* Divider */}
-      <View
-        style={tw.style("flex-row justify-between items-center w-full", {
-          maxWidth: 500,
-          marginVertical: 4,
-        })}
-      >
-        <View
-          style={tw.style("bg-white", { flex: 1, height: 1, marginRight: 8 })}
-        />
-        <Text style={tw`text-white`}>OR</Text>
-        <View
-          style={tw.style("bg-white", { flex: 1, height: 1, marginLeft: 8 })}
-        />
-      </View>
-
-      {/* Email Input */}
-      <Controller
-        control={control}
-        name="email"
-        render={({ field: { onChange, value } }) => (
-          <Input
-            placeholder="Enter your email"
-            LeftIcon={Mail}
-            value={value}
-            onChangeText={(text) => onChange(text.replace(/\s+/g, ""))}
-            onFocus={scrollToInputArea}
-          />
-        )}
-      />
-      {errors.email && (
-        <Text style={tw`text-red-500 self-start`}>{errors.email.message}</Text>
-      )}
-
-      {/* Password Input */}
-      <Controller
-        control={control}
-        name="password"
-        render={({ field: { onChange, value } }) => (
-          <Input
-            placeholder="Enter your password"
-            LeftIcon={Key}
-            secureTextEntry
-            value={value}
-            onChangeText={onChange}
-            onFocus={scrollToInputArea}
-          />
-        )}
-      />
-      {errors.password && (
-        <Text style={tw`text-red-500 self-start`}>
-          {errors.password.message}
-        </Text>
-      )}
-
-      {/* Remember Me & Forgot Password */}
-      <View
-        style={tw.style("flex-row justify-between items-center w-full", {
-          maxWidth: 500,
-        })}
-      >
-        <View style={tw`flex-row items-center gap-2`}>
-          <CustomSwitcher
-            isEnabled={rememberMe}
-            setIsEnabled={handleRememberMeChange}
-          />
-          <Text style={tw`text-white`}>Remember me</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.replace("/password-reset")}>
-          <Text style={tw`text-white`}>Forgot password?</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Sign In Button */}
-      <CustomButton
-        title={loginPending ? "Signing in..." : "Sign In"}
-        buttonClassName="bg-[#0FF1CF] w-full border-0"
-        arrowCircleColor="bg-[#0C7F7F]"
-        textClassName="text-black"
-        onPress={handleSubmit(onSubmit)}
-        disabled={loginPending}
-      />
-
-      {/* Sign Up Link */}
-      <TouchableOpacity
-        onPress={() => router.replace("/signup")}
-        style={tw.style("flex-row justify-center w-full", { maxWidth: 500 })}
-      >
-        <Text style={tw`text-white`}>
-          Do not have an account? <Text style={tw`font-semibold`}>Sign up</Text>
-        </Text>
-      </TouchableOpacity>
-
-      {/* Bottom Decorative Images */}
-      {keyboardHeight === 0 && (
-        <View
-          style={tw.style("flex-row items-end absolute bottom-0 left-0")}
+        {/* Close Button */}
+        <TouchableOpacity
+          style={tw.style("absolute top-10 left-8")}
+          onPress={() => router.replace("/onboarding")}
         >
-          <LocalSvgAsset name="vector2" width={78} height={76} />
-          <LocalSvgAsset name="vector3" width={53} height={35} />
+          <XIcon color={color("white", "foreground")} />
+        </TouchableOpacity>
+
+        {/* Logo */}
+        <View style={tw`justify-center items-center relative`}>
+          <LocalSvgAsset
+            name="vector1"
+            width={109}
+            height={106}
+            style={tw.style({ position: "absolute", top: -56, left: 40 })}
+          />
+          <LocalSvgAsset name="gglogo" width={80} height={80} />
         </View>
-      )}
+
+        {/* Title */}
+        <Text
+          style={tw`text-foreground dark:text-white text-2xl font-semibold mt-4`}
+        >
+          Sign in
+        </Text>
+
+        {/* Google Login Button */}
+        <GoogleLoginBtn
+          onPress={handleGoogleLogin}
+          disabled={googleAuthPhase !== "idle"}
+        />
+        {/* <CustomButton
+        title="Continue with phone"
+        buttonClassName="w-full border border-accent dark:border-[#0FF1CF]"
+        textClassName="text-accent dark:text-[#0FF1CF]"
+        arrowCircleColor="bg-accentFill dark:bg-[#0FF1CF]"
+        onPress={() => router.push("/phone-login")}
+      /> */}
+
+        {/* Divider */}
+        <View
+          style={tw.style("flex-row justify-between items-center w-full", {
+            maxWidth: 500,
+            marginVertical: 4,
+          })}
+        >
+          <View
+            style={tw.style("bg-surface dark:bg-white", {
+              flex: 1,
+              height: 1,
+              marginRight: 8,
+            })}
+          />
+          <Text style={tw`text-foreground dark:text-white`}>OR</Text>
+          <View
+            style={tw.style("bg-surface dark:bg-white", {
+              flex: 1,
+              height: 1,
+              marginLeft: 8,
+            })}
+          />
+        </View>
+
+        {/* Email Input */}
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onChange, value } }) => (
+            <Input
+              placeholder="Enter your email"
+              LeftIcon={Mail}
+              value={value}
+              onChangeText={(text) => onChange(text.replace(/\s+/g, ""))}
+              onFocus={scrollToInputArea}
+            />
+          )}
+        />
+        {errors.email && (
+          <Text style={tw`text-danger dark:text-red-500 self-start`}>
+            {errors.email.message}
+          </Text>
+        )}
+
+        {/* Password Input */}
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onChange, value } }) => (
+            <Input
+              placeholder="Enter your password"
+              LeftIcon={Key}
+              secureTextEntry
+              value={value}
+              onChangeText={onChange}
+              onFocus={scrollToInputArea}
+            />
+          )}
+        />
+        {errors.password && (
+          <Text style={tw`text-danger dark:text-red-500 self-start`}>
+            {errors.password.message}
+          </Text>
+        )}
+
+        {/* Remember Me & Forgot Password */}
+        <View
+          style={tw.style("flex-row justify-between items-center w-full", {
+            maxWidth: 500,
+          })}
+        >
+          <View style={tw`flex-row items-center gap-2`}>
+            <CustomSwitcher
+              isEnabled={rememberMe}
+              setIsEnabled={handleRememberMeChange}
+            />
+            <Text style={tw`text-foreground dark:text-white`}>Remember me</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.replace("/password-reset")}>
+            <Text style={tw`text-foreground dark:text-white`}>
+              Forgot password?
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign In Button */}
+        <CustomButton
+          title={loginPending ? "Signing in..." : "Sign In"}
+          buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+          arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
+          textClassName="text-onAccent dark:text-black"
+          onPress={handleSubmit(onSubmit)}
+          disabled={loginPending}
+        />
+
+        {/* Sign Up Link */}
+        <TouchableOpacity
+          onPress={() => router.replace("/signup")}
+          style={tw.style("flex-row justify-center w-full", { maxWidth: 500 })}
+        >
+          <Text style={tw`text-foreground dark:text-white`}>
+            Do not have an account?{" "}
+            <Text style={tw`font-semibold`}>Sign up</Text>
+          </Text>
+        </TouchableOpacity>
+
+        {/* Bottom Decorative Images */}
+        {keyboardHeight === 0 && (
+          <View style={tw.style("flex-row items-end absolute bottom-0 left-0")}>
+            <LocalSvgAsset name="vector2" width={78} height={76} />
+            <LocalSvgAsset name="vector3" width={53} height={35} />
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

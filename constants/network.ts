@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = "http://192.168.0.101:4000/api/v1";
+const DEFAULT_API_BASE_URL = "http://172.26.108.134:4000/api/v1";
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");

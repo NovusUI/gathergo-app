@@ -1,20 +1,20 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { usePressGuard } from "@/hooks/usePressGuard";
 import { useDashboardEvents } from "@/hooks/useDashboard";
-import { pushWithLock } from "@/utils/navigation";
-import { useLockedRouter } from "@/utils/navigation";
+import { pushWithLock, useLockedRouter } from "@/utils/navigation";
 import { ChevronDown, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Modal,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
+
 import ProgressIndicator from "./ProgressIndicator";
 import CustomView from "./View";
 
@@ -42,19 +42,20 @@ const EventCard = ({
   event: Event;
   onPress?: () => void;
 }) => {
+  const { tw } = useAppTheme();
   const guardedPress = usePressGuard(onPress);
 
   return (
     <TouchableOpacity onPress={guardedPress}>
-      <CustomView
-        style={tw`flex-row items-center justify-between px-4 py-4 border-t border-[#0FF1CF] bg-[#1B2A50]/50`}
+      <CustomView className="max-w-full"
+        style={tw`flex-row items-center justify-between px-4 py-4 border-t border-accent dark:border-[#0FF1CF] bg-surface/50 dark:bg-[#1B2A50]/50`}
       >
         <ProgressIndicator percentage={event.progress} />
         <View style={tw`gap-1 flex-1 mx-4`}>
-          <Text style={tw`text-lg text-white font-semibold`}>
+          <Text style={tw`text-lg text-foreground dark:text-white font-semibold`}>
             {event.title}
           </Text>
-          <Text style={tw`text-sm text-gray-300`}>
+          <Text style={tw`text-sm text-secondary dark:text-gray-300`}>
             {event.participants.toLocaleString()} Participants • 
             {event.raised.toLocaleString("en-NG", {
               style: "currency",
@@ -62,7 +63,7 @@ const EventCard = ({
             })}{" "}
             Raised
           </Text>
-          <Text style={tw`text-xs text-gray-400`}>
+          <Text style={tw`text-xs text-muted dark:text-gray-400`}>
             Goal:{" "}
             {event.goal.toLocaleString("en-NG", {
               style: "currency",
@@ -71,13 +72,13 @@ const EventCard = ({
           </Text>
         </View>
         <View style={tw`items-end`}>
-          <Text style={tw`text-xs text-gray-400`}>{event.date}</Text>
+          <Text style={tw`text-xs text-muted dark:text-gray-400`}>{event.date}</Text>
           <Text
             style={[
               tw`text-xs mt-1 px-2 py-1 rounded-full`,
               event.type === "upcoming"
-                ? tw`bg-green-900 text-green-300`
-                : tw`bg-gray-800 text-gray-300`,
+                ? tw`bg-successSoft dark:bg-green-900 text-success dark:text-green-300`
+                : tw`bg-surfaceMuted dark:bg-gray-800 text-secondary dark:text-gray-300`,
             ]}
           >
             {event.type === "upcoming" ? "Upcoming" : "Past"}
@@ -89,6 +90,7 @@ const EventCard = ({
 };
 
 const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("upcoming");
@@ -128,6 +130,11 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
   //   }
   // }, [fetchMoreEvents, filter, loading, hasMore]);
 
+  const openEventDashboard = useCallback((eventId: string) => {
+    setIsExpanded(false);
+    pushWithLock(router, `/dashboard/${eventId}`);
+  }, [router]);
+
   const handleScroll = useCallback(
     (event: any) => {
       const { layoutMeasurement, contentOffset, contentSize } =
@@ -154,15 +161,15 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
         visible={isExpanded}
         onRequestClose={() => setIsExpanded(false)}
       >
-        <SafeAreaView style={tw`flex-1 bg-[#01082E]`}>
-          <View style={tw`flex-1`}>
+        <SafeAreaView style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
+          <View style={tw`flex-1 w-full max-w-[840px] self-center`}>
             {/* Header */}
             <View
-              style={tw`flex-row items-center justify-between p-4 border-b border-[#0FF1CF]`}
+              style={tw`flex-row items-center justify-between p-4 border-b border-accent dark:border-[#0FF1CF]`}
             >
-              <Text style={tw`text-white text-xl font-bold`}>All Events</Text>
+              <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>All Events</Text>
               <TouchableOpacity onPress={() => setIsExpanded(false)}>
-                <X color="white" size={24} />
+                <X color={color("white", "foreground")} size={24} />
               </TouchableOpacity>
             </View>
 
@@ -177,16 +184,16 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
                   style={[
                     tw`px-4 py-2 rounded-full`,
                     filter === filterType
-                      ? tw`bg-[#0FF1CF]`
-                      : tw`bg-[#1B2A50]`,
+                      ? tw`bg-accentFill dark:bg-[#0FF1CF]`
+                      : tw`bg-surfaceMuted dark:bg-[#1B2A50]`,
                   ]}
                 >
                   <Text
                     style={[
                       tw`capitalize`,
                       filter === filterType
-                        ? tw`text-[#01082E] font-semibold`
-                        : tw`text-white`,
+                        ? tw`text-onAccent dark:text-[#01082E] font-semibold`
+                        : tw`text-foreground dark:text-white`,
                     ]}
                   >
                     {filterType} events
@@ -215,7 +222,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
                     <EventCard
                       key={event.id}
                       event={event}
-                      onPress={() => pushWithLock(router, `/event/${event.id}`)}
+                      onPress={() => openEventDashboard(event.id)}
                     />
                   ))}
 
@@ -226,7 +233,7 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
                   )}
 
                   {!hasNextPage && dashboardEventsData.length > 0 && (
-                    <Text style={tw`text-center text-gray-400 py-4`}>
+                    <Text style={tw`text-center text-muted dark:text-gray-400 py-4`}>
                       No more events to load
                     </Text>
                   )}
@@ -240,29 +247,29 @@ const EventsOverview = ({ initialEvents = [] }: EventsOverviewProps) => {
   }
 
   return (
-    <CustomView
-      style={tw`w-full border-[#0FF1CF] border-[1px] rounded-xl p-4 bg-[#1B2A50]`}
+    <CustomView className="max-w-full"
+      style={tw`w-full border-accent dark:border-[#0FF1CF] border-[1px] rounded-xl p-4 bg-surfaceMuted dark:bg-[#1B2A50]`}
     >
       <View style={tw`flex-row items-center justify-between mb-4`}>
-        <Text style={tw`text-white text-xl font-bold`}>Overview</Text>
-        <Text style={tw`text-[#0FF1CF] font-medium`}>Events</Text>
+        <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>Overview</Text>
+        <Text style={tw`text-accent dark:text-[#0FF1CF] font-medium`}>Events</Text>
       </View>
 
       {initialDisplayEvents.map((event) => (
         <EventCard
           key={event.id}
           event={event}
-          onPress={() => pushWithLock(router, `/event/${event.id}`)}
+          onPress={() => openEventDashboard(event.id)}
         />
       ))}
 
       {hasMoreEvents && (
         <TouchableOpacity
           onPress={() => setIsExpanded(true)}
-          style={tw`flex-row items-center justify-center mt-4 pt-4 border-t border-gray-700`}
+          style={tw`flex-row items-center justify-center mt-4 pt-4 border-t border-border dark:border-gray-700`}
         >
-          <ChevronDown color="#0FF1CF" size={20} />
-          <Text style={tw`text-[#0FF1CF] ml-2`}>View all events</Text>
+          <ChevronDown color={color("#0FF1CF", "accent")} size={20} />
+          <Text style={tw`text-accent dark:text-[#0FF1CF] ml-2`}>View all events</Text>
         </TouchableOpacity>
       )}
     </CustomView>

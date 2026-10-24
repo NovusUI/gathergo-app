@@ -1,3 +1,6 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomEventInfoSelector from "@/components/CustomEventInfoSelector";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
@@ -25,9 +28,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import tw from "twrnc";
 
 export type EditRideBSRef = {
   open: () => void;
@@ -43,6 +45,9 @@ type EditRideBSProps = {
 
 const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
   ({ carpoolId, origin, departureTime, note }, ref) => {
+    const { tw, color } = useAppTheme();
+    const layout = useResponsiveLayout({ hasTabNavigation: false });
+    const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
     const queryClient = useQueryClient();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["88%"], []);
@@ -141,6 +146,8 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
     return (
       <>
         <BottomSheet
+          topInset={layout.insets.top}
+          containerStyle={{ marginHorizontal: sheetMargin }}
           ref={bottomSheetRef}
           index={-1}
           snapPoints={snapPoints}
@@ -152,35 +159,32 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
               appearsOnIndex={0}
             />
           )}
-          backgroundStyle={{ backgroundColor: "#041130" }}
+          backgroundStyle={{ backgroundColor: color("#041130", "background") }}
         >
           <BottomSheetScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingTop: 16,
-              paddingBottom: 180,
+              paddingBottom: 24,
             }}
           >
             <View style={tw`gap-5`}>
               <View style={tw`flex-row items-start justify-between gap-4`}>
                 <View style={tw`flex-1 gap-2`}>
-                  <Text style={tw`text-2xl font-semibold text-white`}>
+                  <Text style={tw`text-2xl font-semibold text-foreground dark:text-white`}>
                     Edit ride details
                   </Text>
                 </View>
-                <TouchableOpacity
+                <SheetCloseButton
+                  accessibilityLabel="Close ride details sheet"
                   onPress={() => bottomSheetRef.current?.close()}
-                >
-                  <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                    Close
-                  </Text>
-                </TouchableOpacity>
+                />
               </View>
 
-              <View style={tw`rounded-[28px] bg-[#0A173F] p-5 gap-4`}>
+              <View style={tw`rounded-[28px] bg-surface dark:bg-[#0A173F] p-5 gap-4`}>
                 <View style={tw`gap-2`}>
-                  <Text style={tw`text-sm font-semibold text-white`}>
+                  <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                     Pickup location
                   </Text>
                   <Input
@@ -192,7 +196,7 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                 </View>
 
                 <View style={tw`gap-2`}>
-                  <Text style={tw`text-sm font-semibold text-white`}>
+                  <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                     Departure time
                   </Text>
                   <CustomEventInfoSelector
@@ -205,11 +209,11 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                 </View>
 
                 <View style={tw`gap-2`}>
-                  <Text style={tw`text-sm font-semibold text-white`}>
+                  <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                     Ride note
                   </Text>
                   <View
-                    style={tw`rounded-2xl bg-[#1B2A50]/40 px-4 py-4 min-h-[132px]`}
+                    style={tw`rounded-2xl border border-borderStrong dark:border-transparent bg-surface dark:bg-[#1B2A50]/40 px-4 py-4 min-h-[132px]`}
                   >
                     <BottomSheetTextInput
                       autoCapitalize="none"
@@ -219,10 +223,10 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
                       textAlignVertical="top"
                       maxLength={200}
                       placeholder="Add anything riders should know"
-                      placeholderTextColor="#9CA3AF"
-                      style={tw`min-h-[96px] text-base text-white`}
+                      placeholderTextColor={color("#9CA3AF", "muted")}
+                      style={tw`min-h-[96px] text-base text-foreground dark:text-white`}
                     />
-                    <Text style={tw`mt-2 text-right text-xs text-[#7F93C2]`}>
+                    <Text style={tw`mt-2 text-right text-xs text-muted dark:text-[#7F93C2]`}>
                       {rideNote.length}/200
                     </Text>
                   </View>
@@ -231,11 +235,11 @@ const EditRideBS = forwardRef<EditRideBSRef, EditRideBSProps>(
             </View>
           </BottomSheetScrollView>
 
-          <View style={tw`w-screen max-w-[500px] p-5`}>
+          <View style={tw`w-full max-w-[800px] self-center p-5`}>
             <CustomButton
               title={isPending ? "Saving changes" : "Save changes"}
-              buttonClassName="bg-[#0FF1CF] w-full border-0"
-              textClassName="!text-black"
+              buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+              textClassName="!text-onAccent dark:text-black"
               showArrow={false}
               onPress={saveRideDetails}
               disabled={isPending}

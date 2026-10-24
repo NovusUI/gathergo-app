@@ -1,10 +1,10 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Text, TouchableOpacity } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import tw from "twrnc";
 
 interface TagButtonProps {
   tag: string;
@@ -13,6 +13,7 @@ interface TagButtonProps {
 }
 
 const TagButton = ({ tag, isSelected, onPress }: TagButtonProps) => {
+  const { tw } = useAppTheme();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -33,10 +34,10 @@ const TagButton = ({ tag, isSelected, onPress }: TagButtonProps) => {
         accessibilityState={{ checked: isSelected }}
         onPress={handlePress}
         style={tw`px-4 py-2 rounded-xl ${
-          isSelected ? "bg-teal-400" : "bg-[#1b1b3a]"
+          isSelected ? "bg-teal-400" : "bg-surface dark:bg-[#1b1b3a]"
         }`}
       >
-        <Text style={tw`text-white`}>{tag}</Text>
+        <Text style={tw`text-foreground dark:text-white`}>{tag}</Text>
       </TouchableOpacity>
     </Animated.View>
   );

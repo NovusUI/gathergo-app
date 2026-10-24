@@ -1,6 +1,6 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { ReactNode } from "react";
 import { View, ViewStyle } from "react-native";
-import tw from "twrnc";
 
 interface CustomViewProps {
   children?: ReactNode;
@@ -9,6 +9,7 @@ interface CustomViewProps {
 }
 
 const CustomView = ({ children, className, style }: CustomViewProps) => {
+  const { tw } = useAppTheme();
   return (
     <View
       style={[

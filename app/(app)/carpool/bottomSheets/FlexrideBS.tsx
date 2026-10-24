@@ -1,3 +1,5 @@
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   forwardRef,
   useEffect,
@@ -24,7 +26,6 @@ import { showGlobalError, showGlobalWarning } from "@/utils/globalErrorHandler";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw, { style as twStyle } from "twrnc";
 
 export type FlexrideBSRef = {
   open: () => void;
@@ -38,6 +39,10 @@ export type FlexrideProps = {
 
 const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
   ({ carpoolId, vehicleIcon }, ref) => {
+    const { tw, color } = useAppTheme();
+    const layout = useResponsiveLayout({ hasTabNavigation: false });
+    const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
+    const twStyle = tw.style;
     const queryClient = useQueryClient();
     const [selectedIcon, setSelectedIcon] = useState<
       CarpoolVehicleIconKey | null
@@ -82,6 +87,8 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
 
     return (
       <BottomSheet
+        topInset={layout.insets.top}
+        containerStyle={{ marginHorizontal: sheetMargin }}
         ref={bottomSheetCarRef}
         index={-1}
         snapPoints={snapPoints}
@@ -93,7 +100,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
             appearsOnIndex={0}
           />
         )}
-        backgroundStyle={{ backgroundColor: "#041130" }}
+        backgroundStyle={{ backgroundColor: color("#041130", "background") }}
       >
         <BottomSheetScrollView
           keyboardShouldPersistTaps="handled"
@@ -105,27 +112,27 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
         >
           <View style={tw`gap-5`}>
             <View style={tw`gap-2`}>
-              <Text style={tw`text-2xl font-semibold text-white`}>
+              <Text style={tw`text-2xl font-semibold text-foreground dark:text-white`}>
                 Flex your ride
               </Text>
-              <Text style={tw`text-sm leading-5 text-[#A8BAE4]`}>
+              <Text style={tw`text-sm leading-5 text-secondary dark:text-[#A8BAE4]`}>
                 Pick the icon that best matches your vibe. It&apos;ll show up on
                 your carpool cards so riders can spot your style faster.
               </Text>
             </View>
 
-            <View style={tw`rounded-[28px] bg-[#0A173F] p-5`}>
-              <View style={tw`h-16 w-16 self-start rounded-full bg-[#0FF1CF]/15 items-center justify-center`}>
+            <View style={tw`rounded-[28px] bg-surface dark:bg-[#0A173F] p-5`}>
+              <View style={tw`h-16 w-16 self-start rounded-full bg-accentFill/15 dark:bg-[#0FF1CF]/15 items-center justify-center`}>
                 <Ionicons
                   name={currentVehicle?.iconName || "car-outline"}
                   size={34}
-                  color="#0FF1CF"
+                  color={color("#0FF1CF", "accent")}
                 />
               </View>
-              <Text style={tw`mt-4 text-lg font-semibold text-white`}>
+              <Text style={tw`mt-4 text-lg font-semibold text-foreground dark:text-white`}>
                 {currentVehicle?.label || "No ride icon selected yet"}
               </Text>
-              <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
+              <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#A8BAE4]`}>
                 You can keep it normal with a city car, go dramatic with a
                 pirate ship, or fully commit to the chaos with a moon buggy.
               </Text>
@@ -143,26 +150,26 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
                     style={twStyle(
                       "w-[47%] rounded-[24px] border p-4",
                       isActive
-                        ? "border-[#0FF1CF] bg-[#0FF1CF]/12"
-                        : "border-[#24345A] bg-[#0A173F]"
+                        ? "border-accent dark:border-[#0FF1CF] bg-accentFill/12 dark:bg-[#0FF1CF]/12"
+                        : "border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F]"
                     )}
                   >
                     <View
                       style={twStyle(
                         "h-12 w-12 rounded-full items-center justify-center",
-                        isActive ? "bg-[#0FF1CF]/18" : "bg-[#13214A]"
+                        isActive ? "bg-accentFill/18 dark:bg-[#0FF1CF]/18" : "bg-surface dark:bg-[#13214A]"
                       )}
                     >
                       <Ionicons
                         name={option.iconName}
                         size={24}
-                        color={isActive ? "#0FF1CF" : "#9FB0D8"}
+                        color={isActive ? color("#0FF1CF", "accent") : color("#9FB0D8", "secondary")}
                       />
                     </View>
                     <Text
                       style={twStyle(
                         "mt-3 text-base font-semibold",
-                        isActive ? "text-white" : "text-[#D7E2FF]"
+                        isActive ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D7E2FF]"
                       )}
                     >
                       {option.label}
@@ -170,7 +177,7 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
                     <Text
                       style={twStyle(
                         "mt-1 text-xs",
-                        isActive ? "text-[#B9FFF4]" : "text-[#7F93C2]"
+                        isActive ? "text-foreground dark:text-[#B9FFF4]" : "text-muted dark:text-[#7F93C2]"
                       )}
                     >
                       {isActive ? "Selected" : "Tap to choose"}
@@ -182,11 +189,11 @@ const FlexrideBS = forwardRef<FlexrideBSRef, FlexrideProps>(
           </View>
         </BottomSheetScrollView>
 
-        <View style={tw`w-screen max-w-[500px] p-5`}>
+        <View style={tw`w-full max-w-[800px] self-center p-5`}>
           <CustomButton
             title={isCarpoolUpdating ? "Saving vibe" : "Save ride vibe"}
-            buttonClassName="bg-[#0FF1CF] w-full border-0"
-            textClassName="!text-black"
+            buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0"
+            textClassName="!text-onAccent dark:text-black"
             showArrow={false}
             onPress={saveRideVibe}
             disabled={isCarpoolUpdating}

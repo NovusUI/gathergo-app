@@ -1,3 +1,5 @@
+import { useAuth } from "@/context/AuthContext";
+import type { InterestExamplesRequest } from "@/types/preferences";
 import { EventsResponse, StandardResponse } from "@/types/auth";
 import { PaginatedEventCarpoolsResponse } from "@/types/carpool";
 import {
@@ -8,10 +10,6 @@ import {
   PaginatedEventResponse,
 } from "@/types/event";
 import { HomeAdCardsResponse } from "@/types/home";
-import {
-  ImpactSuggestionPayload,
-  ImpactSuggestionResponse,
-} from "@/types/impact";
 import {
   WalletBanksResponse,
   WalletKycResponse,
@@ -29,6 +27,12 @@ import {
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./queryKeys";
 import {
+  getMyBadges,
+  getInterestProfile,
+  getPendingEventFeedback,
+  getInterestCatalog,
+  getInterestExamples,
+  getVolunteerRoles, getVolunteerRoster, getVolunteerSummary, getVolunteerHistory,
   canScanFn,
   getAllUserEvent,
   getCarpoolChatAccess,
@@ -39,7 +43,6 @@ import {
   getDashboardData,
   getHomeAdCards,
   getDashboardEvents,
-  getImpactSuggestions,
   getEventDashboardData,
   getEventDetails,
   getWalletBanksFn,
@@ -65,6 +68,40 @@ import {
   getUserProfile,
   searchScannerUsersFn,
 } from "./serviceFn";
+
+export const useVolunteerRoles = (eventId: string, enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.volunteerRoles, eventId],
+    queryFn: () => getVolunteerRoles(eventId),
+    enabled: enabled && Boolean(eventId),
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
+
+export const useVolunteerRoster = (eventId: string, enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.volunteerRoster, eventId],
+    queryFn: () => getVolunteerRoster(eventId),
+    enabled: enabled && Boolean(eventId),
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
+
+export const useVolunteerSummary = (eventId: string, enabled = true) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.volunteerSummary, eventId],
+    queryFn: () => getVolunteerSummary(eventId),
+    enabled: enabled && Boolean(eventId),
+    staleTime: 15000,
+  });
+
+export const useVolunteerHistory = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.volunteerHistory,
+    queryFn: getVolunteerHistory,
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
+  });
 
 export const useWalletOverview = (options = {}) => {
   return useQuery<WalletOverviewResponse>({
@@ -337,21 +374,6 @@ export const useEventImageStatus = (eventId: string, options = {}) => {
   });
 };
 
-export const useImpactSuggestions = (
-  payload: ImpactSuggestionPayload,
-  options?: { enabled?: boolean }
-) => {
-  return useQuery<ImpactSuggestionResponse>({
-    queryKey: [...QUERY_KEYS.impactSuggestions, "ai", payload],
-    queryFn: ({ signal }) => getImpactSuggestions(payload, signal),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    ...options,
-  });
-};
-
 export const useGetDashboard = (options = {}) => {
   return useQuery<StandardResponse>({
     queryKey: [QUERY_KEYS.getDashboard],
@@ -525,5 +547,51 @@ export const useCanScan = (eventId: string, options = {}) => {
     staleTime: 1000 * 60, // 1 minute
     retry: 1,
     ...options,
+  });
+};
+
+export const useInterestProfile = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...QUERY_KEYS.interestProfile, user?.id],
+    queryFn: getInterestProfile,
+    enabled: Boolean(user),
+  });
+};
+export const useInterestCatalog = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.interestCatalog,
+    queryFn: getInterestCatalog,
+    staleTime: Infinity,
+  });
+export const useInterestExamples = (
+  data: InterestExamplesRequest,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.interestExamples, data.interests, data.city],
+    queryFn: () => getInterestExamples(data),
+    enabled,
+    retry: 1,
+  });
+
+export const useMyBadges = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...QUERY_KEYS.badges, user?.id],
+    queryFn: getMyBadges,
+    enabled: Boolean(user),
+    staleTime: 15000,
+  });
+};
+
+export const usePendingEventFeedback = (enabled: boolean) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...QUERY_KEYS.pendingEventFeedback, user?.id],
+    queryFn: getPendingEventFeedback,
+    enabled: enabled && Boolean(user?.hasPreferences),
+    staleTime: 60000,
+    retry: 1,
   });
 };

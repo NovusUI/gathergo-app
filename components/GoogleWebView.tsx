@@ -104,7 +104,6 @@ const GoogleWebView: React.FC<GoogleWebViewProps> = ({ onSuccess, onError, onClo
         source={{ uri: AUTH_URLS.googleLogin }}
         onNavigationStateChange={handleNavigationStateChange}
         onMessage={handleMessage}
-        startInLoadingState={true}
         style={styles.webview}
         injectedJavaScript={`
           // Base script to detect when page is ready

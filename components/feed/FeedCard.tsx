@@ -1,4 +1,6 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 // components/feed/FeedCard.tsx
+import type { FeedItem } from "@/hooks/useEventFeed";
 import { Ionicons } from "@expo/vector-icons";
 import { UserRound } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
@@ -10,24 +12,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 export interface FeedCardProps {
-  feed: {
-    id: string;
-    type: string;
-    title: string;
-    content?: string | null;
-    user?: {
-      id: string;
-      username: string | null;
-      profilePicUrlTN: string | null;
-    } | null;
-    metadata: any;
-    actions: any[];
-    isPinned: boolean;
-    createdAt: string;
-  };
+  feed: Pick<
+    FeedItem,
+    "id" | "type" | "title" | "content" | "user" | "metadata" | "actions" | "isPinned" | "createdAt"
+  >;
   onHide?: (feedId: string) => void;
   onAction?: (action: any) => void;
   eventRegistrationFee?: number | null;
@@ -115,6 +105,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
   onAction,
   eventRegistrationFee,
 }) => {
+  const { tw, color } = useAppTheme();
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const iconRotateAnim = useRef(new Animated.Value(0)).current;
@@ -163,17 +154,14 @@ const FeedCard: React.FC<FeedCardProps> = ({
     };
   }, [feed.type, iconRotateAnim, opacityAnim, scaleAnim]);
 
-  // Get theme configuration based on feed type
-  const getThemeConfig = () => {
+  // Keep each activity recognizable within the shared ticket-style card.
+  const getIconConfig = () => {
     const type = feed.type;
 
     if (type.includes("TICKET")) {
       return {
-        bgColor: "#0C1447",
-        borderColor: "#0C7F7F",
-        accentColor: "#0FF1CF",
         icon: "ticket-outline",
-        iconColor: "#0FF1CF",
+        iconColor: color("#0FF1CF", "accent"),
       };
     }
 
@@ -182,21 +170,15 @@ const FeedCard: React.FC<FeedCardProps> = ({
       const isMilestone = type.includes("PERCENT");
 
       return {
-        bgColor: "#1A0C3C",
-        borderColor: isHighPercentage ? "#FF6B6B" : "#9B51E0",
-        accentColor: isHighPercentage ? "#FF6B6B" : "#9B51E0",
         icon: isMilestone ? "trophy-outline" : "heart-outline",
-        iconColor: isHighPercentage ? "#FF6B6B" : "#9B51E0",
+        iconColor: isHighPercentage ? color("#FF6B6B", "danger") : "#9B51E0",
       };
     }
 
     if (type.includes("REGISTRATION")) {
       return {
-        bgColor: "#0C2A47",
-        borderColor: "#2D9CDB",
-        accentColor: "#2D9CDB",
         icon: "person-add-outline",
-        iconColor: "#2D9CDB",
+        iconColor: color("#2D9CDB", "info"),
       };
     }
 
@@ -204,15 +186,12 @@ const FeedCard: React.FC<FeedCardProps> = ({
       const intensity = feed.metadata?.intensity;
       const frenzyColor =
         intensity === "HIGH"
-          ? "#FF6B6B"
+          ? color("#FF6B6B", "danger")
           : intensity === "MEDIUM"
-          ? "#FF9800"
+          ? color("#FF9800", "danger")
           : "#4CAF50";
 
       return {
-        bgColor: "#3C0C0C",
-        borderColor: frenzyColor,
-        accentColor: frenzyColor,
         icon: "flame-outline",
         iconColor: frenzyColor,
       };
@@ -220,9 +199,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     if (type.includes("MILESTONE")) {
       return {
-        bgColor: "#1C3C0C",
-        borderColor: "#6BFF6B",
-        accentColor: "#6BFF6B",
         icon: "trophy-outline",
         iconColor: "#6BFF6B",
       };
@@ -230,25 +206,23 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     if (type.includes("EVENT_CREATED")) {
       return {
-        bgColor: "#4C0C3C",
-        borderColor: "#E040FB",
-        accentColor: "#E040FB",
         icon: "add-circle-outline",
         iconColor: "#E040FB",
       };
     }
 
-    // Default theme
     return {
-      bgColor: "#101C45",
-      borderColor: "#374151",
-      accentColor: "#0FF1CF",
       icon: "chatbubble-outline",
-      iconColor: "#0FF1CF",
+      iconColor: color("#0FF1CF", "accent"),
     };
   };
 
-  const theme = getThemeConfig();
+  const theme = {
+    bgColor: color("#0C1447", "surface"),
+    borderColor: color("#0C7F7F", "borderStrong"),
+    accentColor: color("#0FF1CF", "accent"),
+    ...getIconConfig(),
+  };
 
   // Icon rotation for frenzy feeds
   const iconRotation = iconRotateAnim.interpolate({
@@ -261,8 +235,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
     if (raw === null || raw === undefined) return null;
     const numeric = Number(raw);
     if (Number.isNaN(numeric)) return null;
-    const converted = numeric <= 1 ? numeric * 100 : numeric;
-    return Math.max(0, Math.min(converted, 100));
+    return Math.max(0, Math.min(numeric * 100, 100));
   };
   const normalizedPercentage = getNormalizedPercentage();
   const displayAmountInNaira = resolveFeedAmountInNaira(
@@ -289,7 +262,6 @@ const FeedCard: React.FC<FeedCardProps> = ({
     displayAmountInNaira
   );
 
-  // Keep progress compact since the card background already carries the fill state.
   const renderProgress = () => {
     const percentage = normalizedPercentage;
     if (percentage === null) return null;
@@ -299,7 +271,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
     return (
       <View style={tw`mt-2`}>
         <View style={tw`flex-row items-center justify-between`}>
-          <Text style={tw`text-[11px] text-gray-400`}>
+          <Text style={tw`text-[11px] text-muted dark:text-gray-400`}>
             {isDonation ? "Fundraising" : "Progress"}
           </Text>
           <View style={tw`flex-row items-center`}>
@@ -328,7 +300,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
         </View>
 
         {feed.metadata?.targetInNaira && (
-          <Text style={tw`mt-1 text-[11px] text-gray-500`}>
+          <Text style={tw`mt-1 text-[11px] text-muted dark:text-gray-500`}>
             Goal: ₦{feed.metadata.targetInNaira.toLocaleString()}
           </Text>
         )}
@@ -346,8 +318,8 @@ const FeedCard: React.FC<FeedCardProps> = ({
     if (percentage >= 100) {
       return (
         <View style={tw`flex-row items-center mt-2`}>
-          <Ionicons name="trophy-outline" size={14} color="#FFD700" />
-          <Text style={tw`text-xs text-yellow-300 ml-1`}>
+          <Ionicons name="trophy-outline" size={14} color={color("#FFD700", "warning")} />
+          <Text style={tw`text-xs text-warning dark:text-yellow-300 ml-1`}>
             🎉 Target Achieved! 🎉
           </Text>
         </View>
@@ -357,8 +329,8 @@ const FeedCard: React.FC<FeedCardProps> = ({
     if (percentage >= 90) {
       return (
         <View style={tw`flex-row items-center mt-2`}>
-          <Ionicons name="flash" size={14} color="#FF6B6B" />
-          <Text style={tw`text-xs text-red-300 ml-1`}>Almost there! 🔥</Text>
+          <Ionicons name="flash" size={14} color={color("#FF6B6B", "danger")} />
+          <Text style={tw`text-xs text-danger dark:text-red-300 ml-1`}>Almost there! 🔥</Text>
         </View>
       );
     }
@@ -372,9 +344,9 @@ const FeedCard: React.FC<FeedCardProps> = ({
 
     const intensity = feed.metadata.intensity;
     const intensityColors = {
-      LOW: { color: "#4CAF50", icon: "flame-outline" },
-      MEDIUM: { color: "#FF9800", icon: "flame" },
-      HIGH: { color: "#FF6B6B", icon: "flame" },
+      LOW: { color: color("#4CAF50", "success"), icon: "flame-outline" },
+      MEDIUM: { color: color("#FF9800", "danger"), icon: "flame" },
+      HIGH: { color: color("#FF6B6B", "danger"), icon: "flame" },
     };
 
     const config =
@@ -408,7 +380,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
     return (
       <View
         style={[
-          tw`absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 z-10`,
+          tw`self-start mt-2 rounded-full px-1.5 py-0.5 z-10`,
           { backgroundColor: `${theme.accentColor}20` },
         ]}
       >
@@ -439,39 +411,31 @@ const FeedCard: React.FC<FeedCardProps> = ({
     >
       <Animated.View
         style={[
-          tw`mb-2 mx-4   overflow-hidden rounded-2xl border relative`,
+          tw`mb-2 mx-4 overflow-hidden rounded-2xl border relative`,
           {
             backgroundColor: theme.bgColor,
             borderColor: theme.borderColor,
             transform: [{ scale: scaleAnim }],
             opacity: opacityAnim,
           },
-          feed.isPinned && {
-            borderLeftWidth: 4,
-            borderLeftColor: theme.accentColor,
-          },
         ]}
       >
-        {normalizedPercentage !== null && (
+        {feed.type.includes("DONATION") && normalizedPercentage !== null ? (
           <View
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Fundraising progress"
+            accessibilityValue={{ min: 0, max: 100, now: normalizedPercentage }}
+            pointerEvents="none"
             style={[
               tw`absolute inset-y-0 left-0`,
               {
                 width: `${normalizedPercentage}%`,
-                backgroundColor: `${theme.accentColor}22`,
+                backgroundColor: `${theme.iconColor}22`,
               },
             ]}
           />
-        )}
-
-        {feed.isPinned && (
-          <View style={tw`absolute left-2 top-2`}>
-            <Ionicons name="pin" size={12} color={theme.accentColor} />
-          </View>
-        )}
-
-        {renderCountBadge()}
-
+        ) : null}
         <View style={tw`flex-row items-start p-3`}>
           <View style={tw`mr-2.5`}>
             <Animated.View
@@ -502,13 +466,13 @@ const FeedCard: React.FC<FeedCardProps> = ({
               <Text
                 numberOfLines={1}
                 style={[
-                  tw`mr-3 flex-1 text-sm font-semibold text-white`,
+                  tw`mr-3 flex-1 text-sm font-semibold text-foreground dark:text-white`,
                   { color: theme.accentColor },
                 ]}
               >
                 {displayTitle}
               </Text>
-              <Text style={tw`text-[11px] text-gray-500`}>
+              <Text style={tw`text-[11px] text-muted dark:text-gray-500`}>
                 {timeAgo(feed.createdAt)}
               </Text>
             </View>
@@ -522,32 +486,33 @@ const FeedCard: React.FC<FeedCardProps> = ({
                   />
                 ) : (
                   <View
-                    style={tw`mr-2 h-5 w-5 rounded-full bg-gray-700 justify-center items-center`}
+                    style={tw`mr-2 h-5 w-5 rounded-full bg-surfaceMuted dark:bg-gray-700 justify-center items-center`}
                   >
-                    <UserRound size={10} color="white" />
+                    <UserRound size={10} color={color("white", "foreground")} />
                   </View>
                 )}
-                <Text numberOfLines={1} style={tw`text-[11px] text-gray-300`}>
+                <Text numberOfLines={1} style={tw`text-[11px] text-secondary dark:text-gray-300`}>
                   {feed.user.username}
                 </Text>
               </View>
             )}
 
             {Boolean(displayContent) && (
-              <Text numberOfLines={2} style={tw`text-xs leading-5 text-white`}>
+              <Text numberOfLines={2} style={tw`text-xs leading-5 text-foreground dark:text-white`}>
                 {displayContent}
               </Text>
             )}
 
             {displaySupportMessage && (
-              <View style={tw`mt-2 rounded-2xl bg-white/6 px-3 py-2`}>
-                <Text style={tw`text-[11px] leading-5 text-[#E5EDFF]`}>
+              <View style={tw`mt-2 rounded-2xl bg-surface dark:bg-white/6 px-3 py-2`}>
+                <Text style={tw`text-[11px] leading-5 text-foreground dark:text-[#E5EDFF]`}>
                   {`"${displaySupportMessage}"`}
                 </Text>
               </View>
             )}
 
             <View style={tw`mt-2`}>
+              {renderCountBadge()}
               {renderProgress()}
               {renderFrenzyIntensity()}
               {renderCelebration()}

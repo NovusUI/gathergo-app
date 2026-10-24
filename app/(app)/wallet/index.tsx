@@ -1,12 +1,18 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import AppToast from "@/components/ui/AppToast";
-import { GatherGoMascot } from "@/components/ui/GatherGoMascot";
+import { GatherGoMascot } from "@/components/gogo/mascot/GatherGoMascot";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
-import { MascotMoment } from "@/components/ui/MascotMoment";
+import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { useAuth } from "@/context/AuthContext";
-import type { GatherGoMascotVariant } from "@/constants/mascot";
+import type { GatherGoMascotVariant } from "@/components/gogo/mascot/constants";
 import {
   useResolveWalletPayoutAccount,
   useStartBusinessKyc,
@@ -66,7 +72,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -74,7 +79,6 @@ import {
   View
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
-import tw, { style as twStyle } from "twrnc";
 
 const WALLET_PREVIEW_LIMIT = 5;
 const WALLET_HISTORY_PAGE_SIZE = 20;
@@ -590,15 +594,18 @@ const SectionCard = ({
   actionText?: string;
   onPressAction?: () => void;
   children: ReactNode;
-}) => (
-  <CustomView
-    style={twStyle("rounded-3xl border border-[#24345A] bg-[#08143B] p-4")}
+}) => {
+  const { tw, color } = useAppTheme();
+  const twStyle = tw.style;
+  return ((
+  <CustomView className="max-w-full"
+    style={twStyle("rounded-3xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#08143B] p-4")}
   >
-    <View style={tw`flex-row items-start justify-between gap-3`}>
-      <View style={tw`flex-1`}>
-        <Text style={tw`text-white text-lg font-semibold`}>{title}</Text>
+    <View style={tw`flex-row flex-wrap items-start justify-between gap-3`}>
+      <View style={tw`flex-1 min-w-[140px]`}>
+        <Text style={tw`text-foreground dark:text-white text-lg font-semibold`}>{title}</Text>
         {subtitle ? (
-          <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
+          <Text style={tw`mt-1 text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
             {subtitle}
           </Text>
         ) : null}
@@ -606,20 +613,23 @@ const SectionCard = ({
       {actionText && onPressAction ? (
         <TouchableOpacity
           onPress={onPressAction}
-          style={tw`flex-row items-center rounded-full bg-[#0FF1CF] px-3 py-2`}
+          style={tw`flex-row items-center rounded-full bg-accentFill dark:bg-[#0FF1CF] px-3 py-2`}
         >
-          <Text style={tw`text-xs font-semibold text-[#01082E]`}>
+          <Text style={tw`text-xs font-semibold text-onAccent dark:text-[#01082E]`}>
             {actionText}
           </Text>
-          <ChevronRight size={14} color="#01082E" />
+          <ChevronRight size={14} color={color("#01082E", "onAccent")} />
         </TouchableOpacity>
       ) : null}
     </View>
     <View style={tw`mt-4`}>{children}</View>
   </CustomView>
-);
+));
+};
 
 const StatusPill = ({ label }: { label?: string | null }) => {
+  const { tw } = useAppTheme();
+  const twStyle = tw.style;
   const tone = getStatusTone(label);
 
   return (
@@ -635,9 +645,13 @@ const StatusPill = ({ label }: { label?: string | null }) => {
   );
 };
 
-const FieldLabel = ({ children }: { children: ReactNode }) => (
-  <Text style={tw`mb-2 text-xs font-semibold text-[#9FB0D8]`}>{children}</Text>
-);
+const FieldLabel = ({ children }: { children: ReactNode }) => {
+  const { tw } = useAppTheme();
+
+  return ((
+  <Text style={tw`mb-2 text-xs font-semibold text-secondary dark:text-[#9FB0D8]`}>{children}</Text>
+));
+};
 
 const SetupTextInput = ({
   label,
@@ -651,7 +665,10 @@ const SetupTextInput = ({
   onChangeText: (value: string) => void;
   placeholder?: string;
   keyboardType?: "default" | "number-pad" | "phone-pad";
-}) => (
+}) => {
+  const { tw, color } = useAppTheme();
+
+  return ((
   <View style={tw`mb-4`}>
     <FieldLabel>{label}</FieldLabel>
     <TextInput
@@ -659,12 +676,13 @@ const SetupTextInput = ({
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor="#62749F"
+      placeholderTextColor={color("#62749F", "muted")}
       keyboardType={keyboardType}
-      style={tw`rounded-2xl border border-[#24345A] bg-[#081335] px-4 py-3 text-white`}
+      style={tw`rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335] px-4 py-3 text-foreground dark:text-white`}
     />
   </View>
-);
+));
+};
 
 const SetupButton = ({
   label,
@@ -676,29 +694,33 @@ const SetupButton = ({
   onPress: () => void;
   disabled?: boolean;
   tone?: "primary" | "secondary";
-}) => (
+}) => {
+  const { tw } = useAppTheme();
+
+  return ((
   <TouchableOpacity
     onPress={onPress}
     disabled={disabled}
     style={[
       tw`mt-2 flex-row items-center justify-center rounded-full px-4 py-3`,
       tone === "primary"
-        ? tw`bg-[#0FF1CF]`
-        : tw`border border-[#24345A] bg-[#0A173F]`,
+        ? tw`bg-accentFill dark:bg-[#0FF1CF]`
+        : tw`border border-border dark:border-[#24345A] bg-surface dark:bg-[#0A173F]`,
       disabled ? tw`opacity-50` : null
     ]}
   >
     <Text
       style={
         tone === "primary"
-          ? tw`text-sm font-semibold text-[#01082E]`
-          : tw`text-sm font-semibold text-white`
+          ? tw`text-sm font-semibold text-onAccent dark:text-[#01082E]`
+          : tw`text-sm font-semibold text-foreground dark:text-white`
       }
     >
       {label}
     </Text>
   </TouchableOpacity>
-);
+));
+};
 
 const SetupPanel = ({
   title,
@@ -708,15 +730,19 @@ const SetupPanel = ({
   title: string;
   subtitle?: string;
   children: ReactNode;
-}) => (
-  <View style={tw`mb-4 rounded-3xl border border-[#24345A] bg-[#08143B] p-4`}>
-    <Text style={tw`text-base font-semibold text-white`}>{title}</Text>
+}) => {
+  const { tw } = useAppTheme();
+
+  return ((
+  <View style={tw`mb-4 rounded-3xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#08143B] p-4`}>
+    <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>{title}</Text>
     {subtitle ? (
-      <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>{subtitle}</Text>
+      <Text style={tw`mt-1 text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>{subtitle}</Text>
     ) : null}
     <View style={tw`mt-4`}>{children}</View>
   </View>
-);
+));
+};
 
 type CompactSetupStepStatus =
   | "ACTIVE"
@@ -854,6 +880,8 @@ const SetupStepList = ({
   kycTier?: string | null;
   accountOwnershipType?: AccountOwnershipType | null;
 }) => {
+  const { tw } = useAppTheme();
+
   if (!steps.length) {
     return null;
   }
@@ -866,8 +894,8 @@ const SetupStepList = ({
   );
 
   return (
-    <View style={tw`mb-4 rounded-3xl border border-[#24345A] bg-[#08143B] p-4`}>
-      <Text style={tw`text-base font-semibold text-white`}>Setup steps</Text>
+    <View style={tw`mb-4 rounded-3xl border border-border dark:border-[#24345A] bg-surface dark:bg-[#08143B] p-4`}>
+      <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>Setup steps</Text>
       <View style={tw`mt-4 gap-2`}>
         {compactSteps.map((step, index) => (
           <View
@@ -875,34 +903,34 @@ const SetupStepList = ({
             style={[
               tw`flex-row items-center gap-3 rounded-2xl border px-3 py-3`,
               step.active
-                ? tw`border-[#0FF1CF] bg-[#0FF1CF]/10`
-                : tw`border-[#21315A] bg-[#081335]`
+                ? tw`border-accent dark:border-[#0FF1CF] bg-accentFill/10 dark:bg-[#0FF1CF]/10`
+                : tw`border-border dark:border-[#21315A] bg-surface dark:bg-[#081335]`
             ]}
           >
             <View
               style={[
                 tw`h-7 w-7 items-center justify-center rounded-full`,
                 step.status === "COMPLETED"
-                  ? tw`bg-[#0F3A32]`
+                  ? tw`bg-successSoft dark:bg-[#0F3A32]`
                   : step.active
-                    ? tw`bg-[#0FF1CF]`
-                    : tw`bg-[#1E2A4C]`
+                    ? tw`bg-accentFill dark:bg-[#0FF1CF]`
+                    : tw`bg-surface dark:bg-[#1E2A4C]`
               ]}
             >
               <Text
                 style={[
                   tw`text-xs font-bold`,
-                  step.active ? tw`text-[#01082E]` : tw`text-white`
+                  step.active ? tw`text-onAccent dark:text-[#01082E]` : tw`text-foreground dark:text-white`
                 ]}
               >
                 {index + 1}
               </Text>
             </View>
             <View style={tw`flex-1`}>
-              <Text style={tw`text-sm font-semibold text-white`}>
+              <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                 {step.title}
               </Text>
-              <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+              <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
                 {step.subtitle}
               </Text>
             </View>
@@ -922,27 +950,31 @@ const OwnershipButton = ({
   label: string;
   active: boolean;
   onPress: () => void;
-}) => (
+}) => {
+  const { tw } = useAppTheme();
+
+  return ((
   <TouchableOpacity
     onPress={onPress}
     style={[
       tw`flex-1 rounded-2xl border px-3 py-3`,
       active
-        ? tw`border-[#0FF1CF] bg-[#0FF1CF]/15`
-        : tw`border-[#24345A] bg-[#081335]`
+        ? tw`border-accent dark:border-[#0FF1CF] bg-accentFill/15 dark:bg-[#0FF1CF]/15`
+        : tw`border-border dark:border-[#24345A] bg-surface dark:bg-[#081335]`
     ]}
   >
     <Text
       style={
         active
-          ? tw`text-center font-semibold text-[#0FF1CF]`
-          : tw`text-center font-semibold text-[#9FB0D8]`
+          ? tw`text-center font-semibold text-accent dark:text-[#0FF1CF]`
+          : tw`text-center font-semibold text-secondary dark:text-[#9FB0D8]`
       }
     >
       {label}
     </Text>
   </TouchableOpacity>
-);
+));
+};
 
 const EmptyState = ({
   title,
@@ -950,32 +982,39 @@ const EmptyState = ({
 }: {
   title: string;
   subtitle: string;
-}) => (
-  <View style={tw`items-center justify-center rounded-3xl bg-[#08143B] p-6`}>
-    <View style={tw`rounded-2xl bg-[#0FF1CF]/15 p-3`}>
-      <WalletIcon size={22} color="#0FF1CF" />
+}) => {
+  const { tw, color } = useAppTheme();
+
+  return ((
+  <View style={tw`items-center justify-center rounded-3xl bg-surface dark:bg-[#08143B] p-6`}>
+    <View style={tw`rounded-2xl bg-accentFill/15 dark:bg-[#0FF1CF]/15 p-3`}>
+      <WalletIcon size={22} color={color("#0FF1CF", "accent")} />
     </View>
-    <Text style={tw`mt-4 text-center text-base font-semibold text-white`}>
+    <Text style={tw`mt-4 text-center text-base font-semibold text-foreground dark:text-white`}>
       {title}
     </Text>
-    <Text style={tw`mt-2 text-center text-sm leading-5 text-[#9FB0D8]`}>
+    <Text style={tw`mt-2 text-center text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
       {subtitle}
     </Text>
   </View>
-);
+));
+};
 
 const TransactionCard = ({
   transaction
 }: {
   transaction: WalletTransaction;
-}) => (
-  <View style={tw`rounded-2xl border border-[#21315A] bg-[#0A173F] p-4`}>
+}) => {
+  const { tw } = useAppTheme();
+
+  return ((
+  <View style={tw`rounded-2xl border border-border dark:border-[#21315A] bg-surface dark:bg-[#0A173F] p-4`}>
     <View style={tw`flex-row items-start justify-between gap-3`}>
       <View style={tw`flex-1`}>
-        <Text style={tw`text-sm font-semibold text-white`}>
+        <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
           {transaction.eventTitle || toTitleCase(transaction.paymentType)}
         </Text>
-        <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+        <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
           {toTitleCase(transaction.paymentType)} via{" "}
           {toTitleCase(transaction.paymentProvider)}
         </Text>
@@ -984,50 +1023,55 @@ const TransactionCard = ({
     </View>
 
     <View style={tw`mt-4 flex-row gap-3`}>
-      <View style={tw`flex-1 rounded-2xl bg-[#081335] p-3`}>
-        <Text style={tw`text-xs text-[#6F86B4]`}>Gross</Text>
-        <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+      <View style={tw`flex-1 rounded-2xl bg-surface dark:bg-[#081335] p-3`}>
+        <Text style={tw`text-xs text-muted dark:text-[#6F86B4]`}>Gross</Text>
+        <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
           {formatMoney(transaction.grossAmount)}
         </Text>
       </View>
-      <View style={tw`flex-1 rounded-2xl bg-[#081335] p-3`}>
-        <Text style={tw`text-xs text-[#6F86B4]`}>Creator share</Text>
-        <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+      <View style={tw`flex-1 rounded-2xl bg-surface dark:bg-[#081335] p-3`}>
+        <Text style={tw`text-xs text-muted dark:text-[#6F86B4]`}>Creator share</Text>
+        <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
           {formatMoney(transaction.creatorPayable)}
         </Text>
       </View>
     </View>
 
-    <Text style={tw`mt-3 text-xs text-[#8FA1CB]`}>
+    <Text style={tw`mt-3 text-xs text-muted dark:text-[#8FA1CB]`}>
       Buyer: {transaction.buyerUsername || "Unknown"} -{" "}
       {formatDate(transaction.createdAt)}
     </Text>
   </View>
-);
+));
+};
 
-const SettlementCard = ({ settlement }: { settlement: WalletSettlement }) => (
-  <View style={tw`rounded-2xl border border-[#21315A] bg-[#0A173F] p-4`}>
+const SettlementCard = ({ settlement }: { settlement: WalletSettlement }) => {
+  const { tw } = useAppTheme();
+
+  return ((
+  <View style={tw`rounded-2xl border border-border dark:border-[#21315A] bg-surface dark:bg-[#0A173F] p-4`}>
     <View style={tw`flex-row items-start justify-between gap-3`}>
       <View style={tw`flex-1`}>
-        <Text style={tw`text-sm font-semibold text-white`}>
+        <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
           {formatMoney(settlement.amount)}
         </Text>
-        <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+        <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
           {settlement.reference} - {settlement.transactionCount} transactions
         </Text>
       </View>
       <StatusPill label={settlement.status} />
     </View>
 
-    <Text style={tw`mt-3 text-sm text-[#9FB0D8]`}>
+    <Text style={tw`mt-3 text-sm text-secondary dark:text-[#9FB0D8]`}>
       {settlement.destinationBankName || "Bank"} -{" "}
       {settlement.destinationAccountNumber || "-"}
     </Text>
-    <Text style={tw`mt-1 text-xs text-[#8FA1CB]`}>
+    <Text style={tw`mt-1 text-xs text-muted dark:text-[#8FA1CB]`}>
       Created {formatDate(settlement.createdAt)}
     </Text>
   </View>
-);
+));
+};
 
 const HistoryFooter = ({
   hasNextPage,
@@ -1036,6 +1080,8 @@ const HistoryFooter = ({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
 }) => {
+  const { tw } = useAppTheme();
+
   if (isFetchingNextPage) {
     return (
       <View style={tw`py-6`}>
@@ -1046,7 +1092,7 @@ const HistoryFooter = ({
 
   if (!hasNextPage) {
     return (
-      <Text style={tw`py-6 text-center text-xs text-[#6F86B4]`}>
+      <Text style={tw`py-6 text-center text-xs text-muted dark:text-[#6F86B4]`}>
         You are all caught up.
       </Text>
     );
@@ -1055,12 +1101,16 @@ const HistoryFooter = ({
   return <View style={tw`h-8`} />;
 };
 
-const HistoryLoading = ({ label }: { label: string }) => (
+const HistoryLoading = ({ label }: { label: string }) => {
+  const { tw } = useAppTheme();
+
+  return ((
   <View style={tw`items-center justify-center py-20`}>
     <ActivityIndicator tone="accent" size="large" />
-    <Text style={tw`mt-4 text-center text-sm text-[#B7C5E9]`}>{label}</Text>
+    <Text style={tw`mt-4 text-center text-sm text-secondary dark:text-[#B7C5E9]`}>{label}</Text>
   </View>
-);
+));
+};
 
 const HistoryShell = ({
   title,
@@ -1070,14 +1120,22 @@ const HistoryShell = ({
   title: string;
   onBack: () => void;
   children: ReactNode;
-}) => (
-  <View style={tw`flex-1 bg-[#01082E] px-5 pt-10 pb-4`}>
+}) => {
+  const { tw } = useAppTheme();
+
+  return ((
+  <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E] px-5 pb-4`}>
     <CustomeTopBarNav title={title} onClickBack={onBack} />
     {children}
-  </View>
-);
+  </SafeAreaView>
+));
+};
 
 const WalletScreen = () => {
+  const { tw, color } = useAppTheme();
+  const layout = useResponsiveLayout({ hasTabNavigation: false });
+  const inColumns = layout.detailColumns === 2;
+  const twStyle = tw.style;
   const router = useLockedRouter();
   const { user } = useAuth();
   const overviewQuery = useWalletOverview();
@@ -1744,20 +1802,20 @@ const WalletScreen = () => {
         <View style={tw`mb-4 flex-row flex-wrap gap-2`}>
           <StatusPill label={kyc?.nameMatchStatus || "NOT_CHECKED"} />
         </View>
-        <View style={tw`mb-4 rounded-2xl bg-[#081335] p-4`}>
-          <Text style={tw`text-xs text-[#8FA1CB]`}>Payout account name</Text>
-          <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+        <View style={tw`mb-4 rounded-2xl bg-surface dark:bg-[#081335] p-4`}>
+          <Text style={tw`text-xs text-muted dark:text-[#8FA1CB]`}>Payout account name</Text>
+          <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
             {payoutProfile?.accountName || "Not available"}
           </Text>
-          <Text style={tw`mt-4 text-xs text-[#8FA1CB]`}>
+          <Text style={tw`mt-4 text-xs text-muted dark:text-[#8FA1CB]`}>
             Verified{" "}
             {currentOwnershipType === "BUSINESS" ? "business" : "identity"} name
           </Text>
-          <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+          <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
             {verifiedName || "Not available"}
           </Text>
           {kyc?.nameMatchReason ? (
-            <Text style={tw`mt-4 text-sm leading-5 text-[#FFD76A]`}>
+            <Text style={tw`mt-4 text-sm leading-5 text-warning dark:text-[#FFD76A]`}>
               {kyc.nameMatchReason}
             </Text>
           ) : null}
@@ -1834,27 +1892,27 @@ const WalletScreen = () => {
                   banksQuery.isLoading ? "Loading banks..." : "Select bank"
                 }
                 disabled={banksQuery.isLoading}
-                style={tw`rounded-2xl border border-[#24345A] bg-[#081335]`}
-                textStyle={tw`text-white`}
-                placeholderStyle={tw`text-[#62749F]`}
-                dropDownContainerStyle={tw`border border-[#24345A] bg-[#081335]`}
-                modalContentContainerStyle={tw`bg-[#01082E] px-5 pt-10 pb-5`}
-                modalTitleStyle={tw`text-lg font-semibold text-white`}
-                searchContainerStyle={tw`border-b border-[#24345A] px-0 pb-4`}
-                searchTextInputStyle={tw`rounded-2xl border border-[#24345A] bg-[#081335] px-4 py-3 text-white`}
-                listItemContainerStyle={tw`border-b border-[#182857] py-3`}
-                listItemLabelStyle={tw`text-white`}
-                selectedItemContainerStyle={tw`bg-[#0FF1CF]/10`}
-                selectedItemLabelStyle={tw`font-semibold text-[#0FF1CF]`}
-                listMessageTextStyle={tw`text-center text-sm text-[#9FB0D8]`}
+                style={tw`rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
+                textStyle={tw`text-foreground dark:text-white`}
+                placeholderStyle={tw`text-muted dark:text-[#62749F]`}
+                dropDownContainerStyle={tw`border border-border dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
+                modalContentContainerStyle={tw`bg-background dark:bg-[#01082E] px-5 pt-10 pb-5`}
+                modalTitleStyle={tw`text-lg font-semibold text-foreground dark:text-white`}
+                searchContainerStyle={tw`border-b border-border dark:border-[#24345A] px-0 pb-4`}
+                searchTextInputStyle={tw`rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335] px-4 py-3 text-foreground dark:text-white`}
+                listItemContainerStyle={tw`border-b border-border dark:border-[#182857] py-3`}
+                listItemLabelStyle={tw`text-foreground dark:text-white`}
+                selectedItemContainerStyle={tw`bg-accentFill/10 dark:bg-[#0FF1CF]/10`}
+                selectedItemLabelStyle={tw`font-semibold text-accent dark:text-[#0FF1CF]`}
+                listMessageTextStyle={tw`text-center text-sm text-secondary dark:text-[#9FB0D8]`}
                 ListEmptyComponent={() => (
-                  <Text style={tw`py-8 text-center text-sm text-[#9FB0D8]`}>
+                  <Text style={tw`py-8 text-center text-sm text-secondary dark:text-[#9FB0D8]`}>
                     No banks match your search.
                   </Text>
                 )}
               />
               {banksQuery.isError ? (
-                <Text style={tw`mt-2 text-xs text-[#FFD76A]`}>
+                <Text style={tw`mt-2 text-xs text-warning dark:text-[#FFD76A]`}>
                   Could not load banks right now.
                 </Text>
               ) : null}
@@ -1870,18 +1928,18 @@ const WalletScreen = () => {
 
             {hasResolvedPayoutAccount ? (
               <View style={tw`mb-3 mt-4`}>
-                <Text style={tw`text-xs uppercase text-[#8FA1CB]`}>
+                <Text style={tw`text-xs uppercase text-muted dark:text-[#8FA1CB]`}>
                   Account name
                 </Text>
-                <Text style={tw`mt-1 text-base font-semibold text-white`}>
+                <Text style={tw`mt-1 text-base font-semibold text-foreground dark:text-white`}>
                   {resolvedPayoutAccount?.accountName}
                 </Text>
-                <Text style={tw`mt-1 text-xs text-[#9FB0D8]`}>
+                <Text style={tw`mt-1 text-xs text-secondary dark:text-[#9FB0D8]`}>
                   {selectedBank?.name || "Bank"} - {normalizedAccountNumber}
                 </Text>
               </View>
             ) : payoutResolutionError ? (
-              <Text style={tw`mb-3 text-xs text-[#FFD76A]`}>
+              <Text style={tw`mb-3 text-xs text-warning dark:text-[#FFD76A]`}>
                 {payoutResolutionError}
               </Text>
             ) : null}
@@ -1902,7 +1960,7 @@ const WalletScreen = () => {
             <View style={tw`mb-4`}>
               <FieldLabel>Verification method</FieldLabel>
               <View
-                style={tw`overflow-hidden rounded-2xl border border-[#24345A] bg-[#081335]`}
+                style={tw`overflow-hidden rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
               >
                 <Picker
                   selectedValue={personalVerificationMode}
@@ -1910,7 +1968,7 @@ const WalletScreen = () => {
                     setPersonalVerificationMode(value as KycVerificationMode)
                   }
                   dropdownIconColor="#FFFFFF"
-                  style={tw`text-white`}
+                  style={tw`text-foreground dark:text-white`}
                 >
                   <Picker.Item label="NIN" value="PERSONAL_NIN" />
                   <Picker.Item label="BVN" value="PERSONAL_BVN" />
@@ -1918,7 +1976,7 @@ const WalletScreen = () => {
                 </Picker>
               </View>
             </View>
-            <View style={tw`flex-row gap-3`}>
+            <View style={layout.fontScale > 1.4 ? tw`gap-3` : tw`flex-row gap-3`}>
               <View style={tw`flex-1`}>
                 <SetupTextInput
                   label="First name"
@@ -2011,7 +2069,7 @@ const WalletScreen = () => {
             <View style={tw`mb-4`}>
               <FieldLabel>Representative method</FieldLabel>
               <View
-                style={tw`overflow-hidden rounded-2xl border border-[#24345A] bg-[#081335]`}
+                style={tw`overflow-hidden rounded-2xl border border-borderStrong dark:border-[#24345A] bg-surface dark:bg-[#081335]`}
               >
                 <Picker
                   selectedValue={representativeVerificationMode}
@@ -2021,7 +2079,7 @@ const WalletScreen = () => {
                     )
                   }
                   dropdownIconColor="#FFFFFF"
-                  style={tw`text-white`}
+                  style={tw`text-foreground dark:text-white`}
                 >
                   <Picker.Item label="NIN" value="BUSINESS_CAC_REP_NIN" />
                   <Picker.Item label="BVN" value="BUSINESS_CAC_REP_BVN" />
@@ -2029,7 +2087,7 @@ const WalletScreen = () => {
                 </Picker>
               </View>
             </View>
-            <View style={tw`flex-row gap-3`}>
+            <View style={layout.fontScale > 1.4 ? tw`gap-3` : tw`flex-row gap-3`}>
               <View style={tw`flex-1`}>
                 <SetupTextInput
                   label="First name"
@@ -2096,13 +2154,13 @@ const WalletScreen = () => {
                 : "Upgrade to Full KYC"
             }
           >
-            <View style={tw`mb-4 rounded-2xl bg-[#081335] p-4`}>
-              <Text style={tw`text-xs text-[#8FA1CB]`}>Basic usage</Text>
-              <Text style={tw`mt-1 text-sm font-semibold text-white`}>
+            <View style={tw`mb-4 rounded-2xl bg-surface dark:bg-[#081335] p-4`}>
+              <Text style={tw`text-xs text-muted dark:text-[#8FA1CB]`}>Basic usage</Text>
+              <Text style={tw`mt-1 text-sm font-semibold text-foreground dark:text-white`}>
                 {formatMoney(kyc?.basicKycSettlementUsage)} of{" "}
                 {formatMoney(kyc?.basicKycSettlementCap)}
               </Text>
-              <Text style={tw`mt-2 text-sm leading-5 text-[#9FB0D8]`}>
+              <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
                 Remaining under Basic:{" "}
                 {formatMoney(kyc?.basicKycSettlementRemaining)}
               </Text>
@@ -2143,7 +2201,7 @@ const WalletScreen = () => {
             }
           >
             {kyc?.rejectionReason ? (
-              <Text style={tw`text-sm leading-5 text-[#FFD76A]`}>
+              <Text style={tw`text-sm leading-5 text-warning dark:text-[#FFD76A]`}>
                 {kyc.rejectionReason}
               </Text>
             ) : null}
@@ -2181,6 +2239,12 @@ const WalletScreen = () => {
     }
   };
 
+  const transactionsRefreshing =
+    transactionsHistoryQuery.isRefetching &&
+    !transactionsHistoryQuery.isFetchingNextPage;
+  const settlementsRefreshing =
+    settlementsHistoryQuery.isRefetching &&
+    !settlementsHistoryQuery.isFetchingNextPage;
   const isInitialLoading = overviewQuery.isLoading || onboardingQuery.isLoading;
 
   if (historyView === "transactions") {
@@ -2196,16 +2260,15 @@ const WalletScreen = () => {
             "pb-8 pt-4",
             fullTransactions.length === 0 && "flex-grow justify-center"
           )}
+          ListHeaderComponent={
+            <RefreshIndicator refreshing={transactionsRefreshing} />
+          }
           refreshControl={
-            <RefreshControl
-              refreshing={
-                transactionsHistoryQuery.isRefetching &&
-                !transactionsHistoryQuery.isFetchingNextPage
-              }
+            <AppRefreshControl
+              refreshing={transactionsRefreshing}
               onRefresh={() => {
                 void transactionsHistoryQuery.refetch();
               }}
-              tintColor="#0FF1CF"
             />
           }
           onEndReachedThreshold={0.35}
@@ -2256,16 +2319,15 @@ const WalletScreen = () => {
             "pb-8 pt-4",
             fullSettlements.length === 0 && "flex-grow justify-center"
           )}
+          ListHeaderComponent={
+            <RefreshIndicator refreshing={settlementsRefreshing} />
+          }
           refreshControl={
-            <RefreshControl
-              refreshing={
-                settlementsHistoryQuery.isRefetching &&
-                !settlementsHistoryQuery.isFetchingNextPage
-              }
+            <AppRefreshControl
+              refreshing={settlementsRefreshing}
               onRefresh={() => {
                 void settlementsHistoryQuery.refetch();
               }}
-              tintColor="#0FF1CF"
             />
           }
           onEndReachedThreshold={0.35}
@@ -2310,7 +2372,8 @@ const WalletScreen = () => {
   }
 
   return (
-    <View style={tw`flex-1 bg-[#01082E] px-5 pt-10 pb-4`}>
+    <SafeAreaView edges={["top"]} style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
+      <View style={{flex: 1, width: "100%", maxWidth: inColumns ? layout.pageWidth : 840, alignSelf: "center", paddingHorizontal: layout.horizontalPadding}}>
       <CustomeTopBarNav
         title="Wallet"
         onClickBack={() => safeGoBack(router, "/")}
@@ -2319,19 +2382,21 @@ const WalletScreen = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={refetchAll}
-            tintColor="#0FF1CF"
           />
         }
-        contentContainerStyle={tw`pb-12 pt-4`}
+        contentContainerStyle={tw`pb-6 pt-4`}
       >
-        <CustomView
+        <RefreshIndicator refreshing={refreshing} />
+        <View style={{flexDirection: inColumns ? "row" : "column", gap: 16}}>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
+        <CustomView className="max-w-full"
           style={twStyle(
-            "rounded-[28px] border border-[#1D335E] bg-[#091538] p-5",
+            "rounded-[28px] border border-border dark:border-[#1D335E] bg-surface dark:bg-[#091538] p-5",
             {
-              shadowColor: "#0FF1CF",
+              shadowColor: color("#0FF1CF", "accent"),
               shadowOpacity: 0.12,
               shadowRadius: 18
             }
@@ -2339,19 +2404,19 @@ const WalletScreen = () => {
         >
           <View style={tw`flex-row items-start justify-between gap-3`}>
             <View style={tw`flex-1`}>
-              <Text style={tw`text-2xl font-bold text-white`}>
+              <Text style={tw`text-2xl font-bold text-foreground dark:text-white`}>
                 {formatMoney(balance?.totalCollected)}
               </Text>
-              <Text style={tw`mt-2 text-sm leading-5 text-[#B7C5E9]`}>
+              <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#B7C5E9]`}>
                 Total collected
               </Text>
             </View>
-            <View style={tw`rounded-2xl bg-[#0FF1CF]/15 p-3`}>
-              <WalletIcon size={22} color="#0FF1CF" />
+            <View style={tw`rounded-2xl bg-accentFill/15 dark:bg-[#0FF1CF]/15 p-3`}>
+              <WalletIcon size={22} color={color("#0FF1CF", "accent")} />
             </View>
           </View>
 
-          <View style={tw`mt-4 rounded-3xl bg-[#0A173F] p-4`}>
+          <View style={tw`mt-4 rounded-3xl bg-surface dark:bg-[#0A173F] p-4`}>
             <View style={tw`flex-row items-start gap-3`}>
               <GatherGoMascot
                 variant={walletMascotVariant}
@@ -2359,10 +2424,10 @@ const WalletScreen = () => {
                 style={tw`shrink-0`}
               />
               <View style={tw`flex-1`}>
-                <Text style={tw`text-base font-semibold text-white`}>
+                <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>
                   {onboardingCopy.title}
                 </Text>
-                <Text style={tw`mt-1 text-sm leading-5 text-[#9FB0D8]`}>
+                <Text style={tw`mt-1 text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
                   {onboardingCopy.subtitle}
                 </Text>
               </View>
@@ -2373,10 +2438,10 @@ const WalletScreen = () => {
                 {onboarding.tasks.map((task) => (
                   <View
                     key={task.code}
-                    style={tw`flex-row items-center justify-between rounded-2xl border border-[#21315A] bg-[#081335] px-3 py-3`}
+                    style={tw`flex-row items-center justify-between rounded-2xl border border-border dark:border-[#21315A] bg-surface dark:bg-[#081335] px-3 py-3`}
                   >
                     <View style={tw`flex-1 pr-3`}>
-                      <Text style={tw`text-sm font-semibold text-white`}>
+                      <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                         {task.title}
                       </Text>
                     </View>
@@ -2388,41 +2453,42 @@ const WalletScreen = () => {
 
             <TouchableOpacity
               onPress={openSetupModal}
-              style={tw`mt-4 flex-row items-center justify-center rounded-full bg-[#0FF1CF] px-4 py-3`}
+              style={tw`mt-4 flex-row items-center justify-center rounded-full bg-accentFill dark:bg-[#0FF1CF] px-4 py-3`}
             >
-              <Text style={tw`text-sm font-semibold text-[#01082E]`}>
+              <Text style={tw`text-sm font-semibold text-onAccent dark:text-[#01082E]`}>
                 {onboardingCopy.action}
               </Text>
-              <ChevronRight size={16} color="#01082E" />
+              <ChevronRight size={16} color={color("#01082E", "onAccent")} />
             </TouchableOpacity>
           </View>
         </CustomView>
-
-        <CustomView style={tw`flex-row flex-wrap gap-3`}>
+          </View>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
+        <CustomView className="max-w-full" style={tw`flex-row flex-wrap gap-3`}>
           {[
             {
               label: "Available",
               value: formatMoney(balance?.availableBalance),
               icon: CircleDollarSign,
-              color: "#0FF1CF"
+              color: color("#0FF1CF", "accent")
             },
             {
               label: "Held",
               value: formatMoney(balance?.heldBalance),
               icon: Clock3,
-              color: "#FFD76A"
+              color: color("#FFD76A", "warning")
             },
             {
               label: "Processing",
               value: formatMoney(balance?.processingBalance),
               icon: Loader,
-              color: "#9FB0D8"
+              color: color("#9FB0D8", "secondary")
             },
             {
               label: "Settled",
               value: formatMoney(balance?.settledBalance),
               icon: CheckCircle2,
-              color: "#7CFFB2"
+              color: color("#7CFFB2", "info")
             }
           ].map((item) => {
             const Icon = item.icon;
@@ -2430,21 +2496,26 @@ const WalletScreen = () => {
               <View
                 key={item.label}
                 style={twStyle(
-                  "min-w-[48%] flex-1 rounded-3xl border border-[#1E3157] bg-[#08143B] p-4"
+                  "rounded-3xl border border-border dark:border-[#1E3157] bg-surface dark:bg-[#08143B] p-4",
+                  { flexBasis: layout.fontScale > 1.4 ? "100%" : "47%", flexGrow: 1, minWidth: 0 }
                 )}
               >
                 <View style={tw`flex-row items-center justify-between`}>
-                  <Text style={tw`text-xs text-[#8FA1CB]`}>{item.label}</Text>
+                  <Text style={tw`text-xs text-muted dark:text-[#8FA1CB]`}>{item.label}</Text>
                   <Icon size={18} color={item.color} />
                 </View>
-                <Text style={tw`mt-3 text-lg font-bold text-white`}>
+                <Text style={tw`mt-3 text-lg font-bold text-foreground dark:text-white`}>
                   {item.value}
                 </Text>
               </View>
             );
           })}
         </CustomView>
+          </View>
+        </View>
 
+        <View style={{flexDirection: inColumns ? "row" : "column", gap: 16}}>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
         <SectionCard
           title="Recent transactions"
           subtitle="Latest event collections."
@@ -2461,12 +2532,13 @@ const WalletScreen = () => {
               ))}
             </View>
           ) : (
-            <Text style={tw`text-sm leading-5 text-[#9FB0D8]`}>
+            <Text style={tw`text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
               No transactions yet.
             </Text>
           )}
         </SectionCard>
-
+          </View>
+          <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
         <SectionCard
           title="Settlement history"
           subtitle="Latest payout batches."
@@ -2480,11 +2552,13 @@ const WalletScreen = () => {
               ))}
             </View>
           ) : (
-            <Text style={tw`text-sm leading-5 text-[#9FB0D8]`}>
+            <Text style={tw`text-sm leading-5 text-secondary dark:text-[#9FB0D8]`}>
               No settlements yet.
             </Text>
           )}
         </SectionCard>
+          </View>
+        </View>
       </ScrollView>
 
       <Modal
@@ -2495,26 +2569,27 @@ const WalletScreen = () => {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={tw`flex-1 bg-[#01082E]`}
+          style={tw`flex-1 bg-background dark:bg-[#01082E]`}
         >
-          <View style={tw`flex-1 px-5 pt-10 pb-4`}>
+          <SafeAreaView edges={["top", "left", "right", "bottom"]} style={tw`flex-1 w-full max-w-[720px] self-center px-5 pb-4`}>
             <View style={tw`flex-row items-center justify-between`}>
               <View>
-                <Text style={tw`text-xl font-bold text-white`}>
+                <Text style={tw`text-xl font-bold text-foreground dark:text-white`}>
                   Wallet setup
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setSetupVisible(false)}
-                style={tw`rounded-full bg-[#102052] p-3`}
+                style={tw`rounded-full bg-surface dark:bg-[#102052] p-3`}
               >
-                <X size={18} color="#FFFFFF" />
+                <X size={18} color={color("#FFFFFF", "foreground")} />
               </TouchableOpacity>
             </View>
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={tw`pb-10 pt-5`}
+              contentContainerStyle={tw`pb-6 pt-5`}
+              keyboardShouldPersistTaps="handled"
             >
               <MascotMoment
                 variant={setupMascotMoment.variant}
@@ -2531,11 +2606,12 @@ const WalletScreen = () => {
               />
               {renderSetupStep()}
             </ScrollView>
-          </View>
+          </SafeAreaView>
           <AppToast />
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

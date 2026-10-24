@@ -89,7 +89,12 @@ export const buildEventDateTimeIso = (
   date: Date,
   time: string,
   options?: { endOfMinute?: boolean }
-) => `${extractDate(date)}T${time}:${options?.endOfMinute ? "59" : "00"}Z`;
+) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const dateTime = new Date(date);
+  dateTime.setHours(hours, minutes, options?.endOfMinute ? 59 : 0, 0);
+  return dateTime.toISOString();
+};
 
 export const getEventEndBoundaryDate = (
   startDate?: EventDateValue,

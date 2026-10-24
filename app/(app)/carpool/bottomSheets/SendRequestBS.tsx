@@ -1,3 +1,6 @@
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import SheetCloseButton from "@/components/buttons/SheetCloseButton";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
@@ -20,10 +23,8 @@ import {
   ScrollView,
   Switch,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 export type SendRequestBSRef = {
   open: () => void;
@@ -38,6 +39,7 @@ export type SendRequestProp = {
 
 const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
   ({ carpoolId, onRequestSuccess, onHasExistingCarpool }, ref) => {
+  const { tw } = useAppTheme();
     const { coords, requestLocation, error, openSettings } =
       useLocationManager();
     const [useCurrentLocation, setUseCurrentLocation] = useState(false);
@@ -148,24 +150,23 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
           style={tw`flex-1 justify-end bg-black/55`}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={tw`max-h-[88%] rounded-t-[32px] bg-[#041130] px-5 pb-8 pt-5`}
+          <SafeAreaView edges={["left", "right", "bottom"]}
+            style={tw`w-full max-w-[680px] self-center max-h-[88%] rounded-t-[32px] bg-background dark:bg-[#041130] px-5 pb-4 pt-5`}
           >
             <View
-              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-[#2B3C66]`}
+              style={tw`mb-4 h-1.5 w-14 self-center rounded-full bg-surfaceMuted dark:bg-[#2B3C66]`}
             />
 
             <View style={tw`flex-row items-center justify-between`}>
               <View style={tw`flex-1 pr-4`}>
-                <Text style={tw`text-xl font-semibold text-white`}>
+                <Text style={tw`text-xl font-semibold text-foreground dark:text-white`}>
                   Request a ride
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setIsVisible(false)}>
-                <Text style={tw`text-sm font-semibold text-[#9FB0D8]`}>
-                  Close
-                </Text>
-              </TouchableOpacity>
+              <SheetCloseButton
+                accessibilityLabel="Close ride request sheet"
+                onPress={() => setIsVisible(false)}
+              />
             </View>
 
             <ScrollView
@@ -175,30 +176,30 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
             >
               {Boolean(error) && (
                 <View
-                  style={tw`rounded-[24px] border border-[#7B2C2C] bg-[#5A1818] px-4 py-4`}
+                  style={tw`rounded-[24px] border border-border dark:border-[#7B2C2C] bg-dangerSoft dark:bg-[#5A1818] px-4 py-4`}
                 >
-                  <Text style={tw`text-sm leading-5 text-white`}>{error}</Text>
+                  <Text style={tw`text-sm leading-5 text-foreground dark:text-white`}>{error}</Text>
                   <Text
                     onPress={openSettings}
-                    style={tw`mt-2 text-sm font-semibold text-[#FFD1D1]`}
+                    style={tw`mt-2 text-sm font-semibold text-foreground dark:text-[#FFD1D1]`}
                   >
                     Open settings
                   </Text>
                 </View>
               )}
 
-              <View style={tw`mt-5 rounded-[28px] bg-[#0A173F] p-5`}>
-                <Text style={tw`text-sm font-semibold text-white`}>
+              <View style={tw`mt-5 rounded-[28px] bg-surface dark:bg-[#0A173F] p-5`}>
+                <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>
                   Keep pickup simple
                 </Text>
-                <Text style={tw`mt-2 text-sm leading-5 text-[#A8BAE4]`}>
+                <Text style={tw`mt-2 text-sm leading-5 text-secondary dark:text-[#A8BAE4]`}>
                   A clear landmark and a short note make it much easier for the
                   pooler to decide quickly and find you smoothly.
                 </Text>
               </View>
 
               <CustomView style={tw`mt-5`}>
-                <Text style={tw`mb-2 text-white`}>Request location</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>Request location</Text>
                 <Input
                   style={tw`h-12`}
                   placeholder="Enter a landmark, bus stop, or area"
@@ -208,13 +209,13 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
               </CustomView>
 
               <View
-                style={tw`mt-4 rounded-2xl bg-[#0A173F] px-4 py-4 flex-row items-center justify-between gap-4`}
+                style={tw`mt-4 rounded-2xl bg-surface dark:bg-[#0A173F] px-4 py-4 flex-row items-center justify-between gap-4`}
               >
                 <View style={tw`flex-1`}>
-                  <Text style={tw`text-white font-semibold`}>
+                  <Text style={tw`text-foreground dark:text-white font-semibold`}>
                     Use my current location
                   </Text>
-                  <Text style={tw`mt-1 text-xs leading-5 text-[#8FA1CB]`}>
+                  <Text style={tw`mt-1 text-xs leading-5 text-muted dark:text-[#8FA1CB]`}>
                     Turn this on if you are already close to where you want the
                     pooler to meet you.
                   </Text>
@@ -228,7 +229,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
               </View>
 
               <CustomView style={tw`mt-4`}>
-                <Text style={tw`mb-2 text-white`}>More details</Text>
+                <Text style={tw`mb-2 text-foreground dark:text-white`}>More details</Text>
                 <TextArea
                   placeholder="Anything the pooler should know?"
                   maxLength={100}
@@ -240,18 +241,18 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
             </ScrollView>
 
             <View
-              style={tw`border-t border-[#1B2A50] bg-[#041130] px-1 pb-1 pt-4`}
+              style={tw`border-t border-border dark:border-[#1B2A50] bg-background dark:bg-[#041130] px-1 pb-1 pt-4`}
             >
               <CustomButton
                 title={isPending ? "Sending request" : "Send ride request"}
-                buttonClassName="bg-[#0FF1CF] w-full border-0 rounded-[18px]"
-                textClassName="!text-black"
+                buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full border-0 rounded-[18px]"
+                textClassName="!text-onAccent dark:text-black"
                 showArrow={false}
                 onPress={sendRequest}
                 disabled={isPending}
               />
             </View>
-          </View>
+          </SafeAreaView>
         </KeyboardAvoidingView>
       </Modal>
     );

@@ -1,21 +1,22 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AppRefreshControl, {
+  RefreshIndicator,
+} from "@/components/ui/AppRefreshControl";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { useScanner } from "@/hooks/useScanner";
-import { useLockedRouter } from "@/utils/navigation";
-import { safeGoBack } from "@/utils/navigation";
-import { useRouter } from "expo-router";
+import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { Clock } from "lucide-react-native";
 import { useState } from "react";
 import {
-  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const ScannerHistory = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<"all" | "ticket" | "registration">(
@@ -55,15 +56,15 @@ const ScannerHistory = () => {
   };
 
   const getStatusColor = (success: boolean) => {
-    return success ? "#0FF1CF" : "#FF5757";
+    return success ? color("#0FF1CF", "accent") : color("#FF5757", "danger");
   };
 
   const getTypeColor = (type: string) => {
-    return type === "ticket" ? "#FF932E" : "#5669FF";
+    return type === "ticket" ? color("#FF932E", "warning") : color("#5669FF", "info");
   };
 
   return (
-    <View style={tw`flex-1 bg-[#01082E]`}>
+    <View style={tw`flex-1 bg-background dark:bg-[#01082E]`}>
       {/* Top Navigation */}
       <View style={tw`pt-10 pb-4 px-5`}>
         <CustomeTopBarNav
@@ -85,14 +86,14 @@ const ScannerHistory = () => {
                 key={item.id}
                 style={[
                   tw`px-4 py-2 rounded-full`,
-                  filter === item.id ? tw`bg-[#5669FF]` : tw`bg-[#1B2A50]`,
+                  filter === item.id ? tw`bg-primary dark:bg-[#5669FF]` : tw`bg-surfaceMuted dark:bg-[#1B2A50]`,
                 ]}
                 onPress={() => setFilter(item.id as any)}
               >
                 <Text
                   style={[
                     tw`text-sm font-medium`,
-                    filter === item.id ? tw`text-white` : tw`text-gray-400`,
+                    filter === item.id ? tw`text-onPrimary dark:text-white` : tw`text-muted dark:text-gray-400`,
                   ]}
                 >
                   {item.label}
@@ -105,23 +106,23 @@ const ScannerHistory = () => {
 
       {/* Stats */}
       <View style={tw`px-5 mb-6`}>
-        <View style={tw`bg-[#1B2A50] rounded-xl p-4`}>
+        <View style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4`}>
           <View style={tw`flex-row justify-between items-center`}>
             <View>
-              <Text style={tw`text-gray-400 text-sm`}>Total Scans</Text>
-              <Text style={tw`text-white text-2xl font-bold`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Total Scans</Text>
+              <Text style={tw`text-foreground dark:text-white text-2xl font-bold`}>
                 {history?.length || 0}
               </Text>
             </View>
             <View>
-              <Text style={tw`text-gray-400 text-sm`}>Successful</Text>
-              <Text style={tw`text-[#0FF1CF] text-2xl font-bold`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Successful</Text>
+              <Text style={tw`text-accent dark:text-[#0FF1CF] text-2xl font-bold`}>
                 {history?.filter((h) => h.success).length || 0}
               </Text>
             </View>
             <View>
-              <Text style={tw`text-gray-400 text-sm`}>Failed</Text>
-              <Text style={tw`text-[#FF5757] text-2xl font-bold`}>
+              <Text style={tw`text-muted dark:text-gray-400 text-sm`}>Failed</Text>
+              <Text style={tw`text-danger dark:text-[#FF5757] text-2xl font-bold`}>
                 {history?.filter((h) => !h.success).length || 0}
               </Text>
             </View>
@@ -135,14 +136,13 @@ const ScannerHistory = () => {
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#5669FF"
-            colors={["#5669FF"]}
           />
         }
       >
+        <RefreshIndicator refreshing={refreshing} />
         {isLoading.history ? (
           <ImpactPageLoader
             compact
@@ -151,9 +151,9 @@ const ScannerHistory = () => {
           />
         ) : error.history ? (
           <View style={tw`items-center justify-center py-10`}>
-            <Text style={tw`text-[#FF5757] mb-2`}>Failed to load history</Text>
+            <Text style={tw`text-danger dark:text-[#FF5757] mb-2`}>Failed to load history</Text>
             <TouchableOpacity onPress={() => refetchHistory()}>
-              <Text style={tw`text-[#5669FF]`}>Try Again</Text>
+              <Text style={tw`text-primary dark:text-[#5669FF]`}>Try Again</Text>
             </TouchableOpacity>
           </View>
         ) : filteredHistory && filteredHistory.length > 0 ? (
@@ -161,7 +161,7 @@ const ScannerHistory = () => {
             {filteredHistory.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={tw`bg-[#1B2A50] rounded-xl p-4`}
+                style={tw`bg-surfaceMuted dark:bg-[#1B2A50] rounded-xl p-4`}
                 activeOpacity={0.8}
               >
                 <View style={tw`flex-row justify-between items-start mb-2`}>
@@ -172,11 +172,11 @@ const ScannerHistory = () => {
                         { backgroundColor: getStatusColor(item.success) },
                       ]}
                     />
-                    <Text style={tw`text-white font-semibold`}>
+                    <Text style={tw`text-foreground dark:text-white font-semibold`}>
                       {item.eventName || "Unknown Event"}
                     </Text>
                   </View>
-                  <Text style={tw`text-gray-400 text-xs`}>
+                  <Text style={tw`text-muted dark:text-gray-400 text-xs`}>
                     {formatDate(item.scannedAt)}
                   </Text>
                 </View>
@@ -201,8 +201,8 @@ const ScannerHistory = () => {
                     style={[
                       tw`text-xs font-medium`,
                       item.action === "marked_used"
-                        ? tw`text-[#0FF1CF]`
-                        : tw`text-gray-400`,
+                        ? tw`text-accent dark:text-[#0FF1CF]`
+                        : tw`text-muted dark:text-gray-400`,
                     ]}
                   >
                     {item.action.replace("_", " ").toUpperCase()}
@@ -212,15 +212,15 @@ const ScannerHistory = () => {
                 <Text
                   style={[
                     tw`text-sm`,
-                    item.success ? tw`text-gray-400` : tw`text-[#FF5757]`,
+                    item.success ? tw`text-muted dark:text-gray-400` : tw`text-danger dark:text-[#FF5757]`,
                   ]}
                 >
                   {item.message}
                 </Text>
 
                 <View style={tw`flex-row items-center mt-3`}>
-                  <Clock size={14} color="#5669FF" />
-                  <Text style={tw`text-gray-400 text-xs ml-2`}>
+                  <Clock size={14} color={color("#5669FF", "primary")} />
+                  <Text style={tw`text-muted dark:text-gray-400 text-xs ml-2`}>
                     {new Date(item.scannedAt).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -232,11 +232,11 @@ const ScannerHistory = () => {
           </View>
         ) : (
           <View style={tw`items-center justify-center py-20`}>
-            <Clock size={64} color="#2A3A6A" />
-            <Text style={tw`text-gray-400 text-lg font-semibold mt-4`}>
+            <Clock size={64} color={color("#2A3A6A", "subtle")} />
+            <Text style={tw`text-muted dark:text-gray-400 text-lg font-semibold mt-4`}>
               No Scan History
             </Text>
-            <Text style={tw`text-gray-500 text-center mt-2 px-10`}>
+            <Text style={tw`text-muted dark:text-gray-500 text-center mt-2 px-10`}>
               Your scanning history will appear here once you start scanning QR
               codes.
             </Text>
@@ -245,12 +245,12 @@ const ScannerHistory = () => {
       </ScrollView>
 
       {/* Scan Button */}
-      <View style={tw`absolute bottom-0 left-0 right-0 p-5 bg-[#01082E]`}>
+      <View style={tw`absolute bottom-0 left-0 right-0 p-5 bg-background dark:bg-[#01082E]`}>
         <TouchableOpacity
-          style={tw`bg-[#5669FF] py-4 rounded-xl items-center`}
+          style={tw`bg-primary dark:bg-[#5669FF] py-4 rounded-xl items-center`}
           onPress={() => router.push("/scanner/scanner-screen")}
         >
-          <Text style={tw`text-white font-bold text-lg`}>Scan QR Code</Text>
+          <Text style={tw`text-onPrimary dark:text-white font-bold text-lg`}>Scan QR Code</Text>
         </TouchableOpacity>
       </View>
     </View>

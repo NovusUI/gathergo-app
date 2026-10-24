@@ -1,6 +1,6 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { ArrowRight } from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 interface Props {
   title: string;
@@ -9,21 +9,22 @@ interface Props {
 }
 
 const CustomEventInfoSelector = ({ title, value, onPress }: Props) => {
+  const { tw, color } = useAppTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={tw`flex flex-row items-center justify-between p-5 bg-[#1B2A50]/40 rounded-2xl`}
+      style={tw`flex flex-row items-center justify-between p-5 bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent rounded-2xl`}
     >
-      <Text style={tw`text-white capitalize`}>{title}</Text>
+      <Text style={tw`text-foreground dark:text-white capitalize`}>{title}</Text>
 
       {!value && (
-        <View style={tw`rounded-full p-2 bg-[#070E30]`}>
-          <ArrowRight color="white" />
+        <View style={tw`rounded-full p-2 bg-background dark:bg-[#070E30]`}>
+          <ArrowRight color={color("white", "foreground")} />
         </View>
       )}
 
       {Boolean(value) && (
-        <Text style={tw`text-gray-300`}>
+        <Text style={tw`text-secondary dark:text-gray-300`}>
           {typeof value === "string" ? value : JSON.stringify(value)}
         </Text>
       )}

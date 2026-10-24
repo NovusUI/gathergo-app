@@ -1,3 +1,6 @@
+import ChatBackdrop from "@/components/ui/ChatBackdrop";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
@@ -9,7 +12,6 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
-  KeyboardEvent,
   Platform,
   Text,
   TouchableOpacity,
@@ -22,7 +24,6 @@ import RideVibeChatCard from "@/components/carpool/RideVibeChatCard";
 import VibeCheckMessageCard from "@/components/carpool/VibeCheckMessageCard";
 import VibeCheckModal from "@/components/carpool/VibeCheckModal";
 import ChatInput from "@/components/inputs/ChatInput";
-import { ChatSkeleton } from "@/components/ui/ChatSkeleton";
 import ChatView1 from "@/components/ui/ChatView1";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { TypingIndicator } from "@/components/ui/TypingIndicator";
@@ -50,10 +51,11 @@ import {
   type VibeCheckRole,
 } from "@/hooks/useVibeCheckHandshake";
 import { useVibeCheckPrompt } from "@/hooks/useVibeCheckPrompt";
-import { useMessageQueueStore } from "@/store/messageQueue";
+import { pendingMessage, useMessageQueueStore } from "@/store/messageQueue";
+import { showGlobalError } from "@/utils/globalErrorHandler";
+import "react-native-get-random-values";
+import { v4 as uuidv4 } from "uuid";
 import { formatTo12Hour } from "@/utils/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import tw from "twrnc";
 
 // Import the useCarpoolDetails hook
 import { useCarpoolDetails } from "@/hooks/useCarpoolDetails";
@@ -97,6 +99,7 @@ const formatRideDepartureTime = (departureTime?: string | null) => {
 };
 
 const ChatPage = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
@@ -123,9 +126,8 @@ const ChatPage = () => {
 
   const unreadCount = activeConversation?.unreadCount ?? 0;
 
-  const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const sendInProgress = useRef(false);
   const [rideVibeExpanded, setRideVibeExpanded] = useState(false);
   const draftLoadedRef = useRef(false);
 
@@ -250,26 +252,8 @@ const ChatPage = () => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       });
     });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-    const frameSub = Keyboard.addListener(
-      "keyboardDidChangeFrame",
-      (event: KeyboardEvent) => {
-        setKeyboardHeight(event.endCoordinates?.height ?? 0);
-      }
-    );
-    const showHeightSub = Keyboard.addListener(
-      "keyboardDidShow",
-      (event: KeyboardEvent) => {
-        setKeyboardHeight(event.endCoordinates?.height ?? 0);
-      }
-    );
     return () => {
       showSub.remove();
-      hideSub.remove();
-      frameSub.remove();
-      showHeightSub.remove();
     };
   }, []);
 
@@ -353,72 +337,43 @@ const ChatPage = () => {
       return;
     }
 
-    if (!socket || text.trim().length === 0) return;
+    if (!user || sendInProgress.current || text.trim().length === 0) return;
+    sendInProgress.current = true;
     setSending(true);
-
-    const optimistic = {
-      id: `temp-${Date.now()}`,
-      content: text,
-      carpoolId,
-      senderId: user?.id,
-      createdAt: new Date().toISOString(),
-      sender: {
-        id: user?.id,
-        username: user?.username,
-        // Add user's role for display
-        role: getUserRole(),
-      },
-      readBy: [],
-      optimistic: true,
-    };
-
-    queryClient.setQueryData(["messages", carpoolId], (old: any) => {
-      if (!old) {
-        return {
-          pageParams: [{ before: null, beforeId: null }],
-          pages: [[optimistic]],
-        };
-      }
-
-      const flat = old.pages.flat();
-
-      return {
-        ...old,
-        pages: [[optimistic, ...flat]],
-      };
-    });
-
-    updateConversationAfterSend(carpoolId, optimistic);
-    const shouldClearComposer = options.clearComposer ?? true;
-    if (shouldClearComposer) {
-      setValue("");
-    }
-    if (carpoolId && shouldClearComposer) {
-      AsyncStorage.removeItem(getDraftKey(carpoolId)).catch((error) =>
-        console.log("failed to clear chat draft", error)
-      );
-    }
-
-    requestAnimationFrame(() => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    });
-
     try {
-      if (socket && socket.connected) {
-        socket.emit("sendMessage", {
-          carpoolId,
-          content: text,
-          tempId: optimistic.id,
-        });
-      } else {
-        await addMessage({ carpoolId, content: text, tempId: optimistic.id });
+      const queued = {
+        tempId: `temp-${uuidv4()}`,
+        content: text,
+        carpoolId,
+        senderId: user.id,
+        createdAt: new Date().toISOString(),
+        sender: { id: user.id, username: user.username ?? null },
+        error: null,
+      };
+      await addMessage(queued);
+      updateConversationAfterSend(carpoolId, pendingMessage(queued));
+      const shouldClearComposer = options.clearComposer ?? true;
+      if (shouldClearComposer) {
+        setValue("");
+        AsyncStorage.removeItem(getDraftKey(carpoolId)).catch(error =>
+          console.error("Failed to clear chat draft", error));
       }
-    } catch (e) {
-      console.log("send error", e);
-      Alert.alert("Error", "Failed to send message");
+      requestAnimationFrame(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }));
+    } catch (error) {
+      console.error("Could not save pending message", error);
+      Alert.alert("Message not queued", "Couldn't save your message. Your text is still here; please try again.");
+    } finally {
+      sendInProgress.current = false;
+      setSending(false);
     }
+  };
 
-    setSending(false);
+  const retryMessage = (tempId: string) => {
+    if (!user) return;
+    void useMessageQueueStore.getState().retryMessage(user.id, tempId).catch(error => {
+      console.error("Could not retry message", error);
+      showGlobalError("Couldn't queue this message for retry. Please try again.");
+    });
   };
 
   const openCarpoolDetails = () => {
@@ -462,18 +417,19 @@ const ChatPage = () => {
     conversationCarpool?.origin ||
     null;
   const destinationLabel =
-    carpoolDetails?.event?.location ||
-    (fullCarpoolDetails as any)?.event?.location ||
-    fullCarpool?.event?.location ||
-    conversationCarpool?.event?.location ||
-    carpoolDetails?.event?.name ||
-    (fullCarpoolDetails as any)?.event?.name ||
-    (fullCarpoolDetails as any)?.event?.title ||
-    fullCarpool?.event?.name ||
-    fullCarpool?.event?.title ||
-    conversationCarpool?.event?.name ||
-    conversationCarpool?.event?.title ||
-    "Event destination";
+    fullCarpoolDetails?.destination ??
+    (carpoolDetails?.event?.location ||
+      (fullCarpoolDetails as any)?.event?.location ||
+      fullCarpool?.event?.location ||
+      conversationCarpool?.event?.location ||
+      carpoolDetails?.event?.name ||
+      (fullCarpoolDetails as any)?.event?.name ||
+      (fullCarpoolDetails as any)?.event?.title ||
+      fullCarpool?.event?.name ||
+      fullCarpool?.event?.title ||
+      conversationCarpool?.event?.name ||
+      conversationCarpool?.event?.title ||
+      "Event destination");
   const rawDepartureTime =
     carpoolDetails?.departureTime ||
       (fullCarpoolDetails as any)?.departureTime ||
@@ -617,6 +573,9 @@ const ChatPage = () => {
           signalAction={vibeCheckMessageDetails.signalAction}
           signalTitle={vibeCheckMessageDetails.signalTitle}
           time={messageTime}
+          optimistic={item.optimistic}
+          error={item.error}
+          onRetry={() => retryMessage(item.id)}
           onPress={vibeCheckPrompt.open}
         />
       );
@@ -628,6 +587,8 @@ const ChatPage = () => {
           message={item.content}
           time={messageTime}
           optimistic={item.optimistic}
+          error={item.error}
+          onRetry={() => retryMessage(item.id)}
           rideIconName={rideIconName}
         />
       );
@@ -659,22 +620,22 @@ const ChatPage = () => {
   if (carpoolError) {
     return (
       <View
-        style={tw`flex-1 pt-10 bg-[#01082E] justify-center items-center p-5`}
+        style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E] justify-center items-center p-5`}
       >
-        <Text style={tw`text-white text-lg mb-4 text-center`}>
+        <Text style={tw`text-foreground dark:text-white text-lg mb-4 text-center`}>
           Unable to load carpool details
         </Text>
         <TouchableOpacity
           onPress={() => refetchCarpoolDetails()}
-          style={tw`bg-blue-500 px-6 py-3 rounded-full`}
+          style={tw`bg-info dark:bg-blue-500 px-6 py-3 rounded-full`}
         >
-          <Text style={tw`text-white`}>Retry</Text>
+          <Text style={tw`text-onPrimary dark:text-white`}>Retry</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => safeGoBack(router, "/conversations")}
-          style={tw`mt-4 px-6 py-3 rounded-full border border-white`}
+          style={tw`mt-4 px-6 py-3 rounded-full border border-borderStrong dark:border-white`}
         >
-          <Text style={tw`text-white`}>Go Back</Text>
+          <Text style={tw`text-foreground dark:text-white`}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -684,16 +645,16 @@ const ChatPage = () => {
   if (carpoolDetails && !isUserMember()) {
     return (
       <View
-        style={tw`flex-1 pt-10 bg-[#01082E] justify-center items-center p-5`}
+        style={tw`flex-1 pt-10 bg-background dark:bg-[#01082E] justify-center items-center p-5`}
       >
-        <Text style={tw`text-white text-lg mb-4 text-center`}>
+        <Text style={tw`text-foreground dark:text-white text-lg mb-4 text-center`}>
           You are not a member of this carpool
         </Text>
         <TouchableOpacity
           onPress={() => safeGoBack(router, "/conversations")}
-          style={tw`bg-blue-500 px-6 py-3 rounded-full`}
+          style={tw`bg-info dark:bg-blue-500 px-6 py-3 rounded-full`}
         >
-          <Text style={tw`text-white`}>Go Back</Text>
+          <Text style={tw`text-onPrimary dark:text-white`}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -701,19 +662,20 @@ const ChatPage = () => {
 
   return (
     <KeyboardAvoidingView
-      style={tw`flex-1 bg-[#01082E]`}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={tw`flex-1 bg-background dark:bg-[#01082E]`}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
-      <View style={tw`flex-1 pt-10 bg-[#01082E]`}>
-        <CustomView style={tw`px-3`}>
+      <SafeAreaView edges={["top"]} style={tw`flex-1 w-full max-w-[840px] self-center bg-background dark:bg-[#01082E]`}>
+        <CustomView className="max-w-full" style={tw`px-3`}>
           <CustomeTopBarNav
             title={eventTitle}
             onClickBack={() => safeGoBack(router, "/conversations")}
             rightNode={
               isLoadingCarpoolDetails ? (
-                <View
-                  style={tw`w-11 h-11 rounded-full bg-gray-700 animate-pulse`}
+                <ActivityIndicator
+                  size={32}
+                  accessibilityLabel="Loading ride details"
                 />
               ) : (
                 <TouchableOpacity
@@ -731,14 +693,14 @@ const ChatPage = () => {
                   style={[
                     tw`w-11 h-11 rounded-full items-center justify-center border`,
                     rideVibeExpanded
-                      ? tw`bg-[#FF6B6B]/12 border-[#FF6B6B]/25`
-                      : tw`bg-[#0FF1CF]/12 border-[#0FF1CF]/25`,
+                      ? tw`bg-danger/12 dark:bg-[#FF6B6B]/12 border-danger/25 dark:border-[#FF6B6B]/25`
+                      : tw`bg-accentFill/12 dark:bg-[#0FF1CF]/12 border-accent/25 dark:border-[#0FF1CF]/25`,
                   ]}
                 >
                   <Ionicons
                     name={rideVibeExpanded ? "close" : rideIconName}
                     size={rideVibeExpanded ? 22 : 24}
-                    color={rideVibeExpanded ? "#FF6B6B" : "#0FF1CF"}
+                    color={rideVibeExpanded ? color("#FF6B6B", "danger") : color("#0FF1CF", "accent")}
                   />
                 </TouchableOpacity>
               )
@@ -777,17 +739,22 @@ const ChatPage = () => {
           !carpoolDetails.canChat &&
           Boolean(carpoolDetails.reason) && (
             <View
-              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-[#4A1320] border border-[#F87171]/30`}
+              style={tw`mx-4 p-3 rounded-2xl mb-4 bg-dangerSoft dark:bg-[#4A1320] border border-danger/30 dark:border-[#F87171]/30`}
             >
-              <Text style={tw`text-white text-center font-semibold`}>
+              <Text style={tw`text-foreground dark:text-white text-center font-semibold`}>
                 Chat Restricted: {carpoolDetails.reason}
               </Text>
             </View>
           )}
 
-        <View style={tw`w-full max-w-[500px] flex-1`}>
+        <View style={tw`w-full flex-1 bg-chatBackground`}>
+          <ChatBackdrop />
           {showLoader ? (
-            <ChatSkeleton />
+            <ActivityIndicator
+              size="large"
+              accessibilityLabel="Loading messages"
+              style={tw`flex-1`}
+            />
           ) : (
             <FlatList
               ref={flatListRef}
@@ -810,22 +777,22 @@ const ChatPage = () => {
                   style={tw`flex-1 items-center justify-center py-12 px-5`}
                 >
                   <View
-                    style={tw`w-full rounded-[28px] bg-[#07143B] border border-[#1B2A50] p-6 items-center`}
+                    style={tw`w-full rounded-[28px] bg-surface dark:bg-[#07143B] border border-border dark:border-[#1B2A50] p-6 items-center`}
                   >
                     <View
-                      style={tw`w-16 h-16 rounded-2xl bg-[#0FF1CF]/12 items-center justify-center border border-[#0FF1CF]/20`}
+                      style={tw`w-16 h-16 rounded-2xl bg-accentFill/12 dark:bg-[#0FF1CF]/12 items-center justify-center border border-accent/20 dark:border-[#0FF1CF]/20`}
                     >
                       <Ionicons
                         name={rideIconName}
                         size={34}
-                        color="#0FF1CF"
+                        color={color("#0FF1CF", "accent")}
                       />
                     </View>
-                    <Text style={tw`text-white mt-4 font-semibold text-base`}>
+                    <Text style={tw`text-foreground dark:text-white mt-4 font-semibold text-base`}>
                       {safetyCopy.emptyChatTitle}
                     </Text>
                     <Text
-                      style={tw`text-[#A8BAE4] text-sm mt-2 text-center leading-5`}
+                      style={tw`text-secondary dark:text-[#A8BAE4] text-sm mt-2 text-center leading-5`}
                     >
                       {safetyCopy.emptyChatBody}
                     </Text>
@@ -848,14 +815,14 @@ const ChatPage = () => {
             onPress={() =>
               flatListRef.current?.scrollToOffset({ offset: 0, animated: true })
             }
-            style={tw`absolute bottom-32 right-5 bg-[#0FF1CF] rounded-full h-11 w-11 flex-row items-center justify-center border border-white/20`}
+            style={tw`absolute bottom-32 right-5 bg-accentFill dark:bg-[#0FF1CF] rounded-full h-11 w-11 flex-row items-center justify-center border border-borderStrong/20 dark:border-white/20`}
           >
-            <Ionicons name="arrow-down" size={18} color="#01082E" />
+            <Ionicons name="arrow-down" size={18} color={color("#01082E", "onAccent")} />
             {unreadCount > 0 && (
               <View
-                style={tw`absolute -top-1 -right-1 rounded-full min-w-[18px] h-[18px] bg-white flex-row items-center justify-center`}
+                style={tw`absolute -top-1 -right-1 rounded-full min-w-[18px] h-[18px] bg-surface dark:bg-white flex-row items-center justify-center`}
               >
-                <Text style={tw`text-[#350342] text-xs`}>{unreadCount}</Text>
+                <Text style={tw`text-onAccent dark:text-[#350342] text-xs`}>{unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -863,10 +830,7 @@ const ChatPage = () => {
 
         <View
           style={[
-            tw`w-full max-w-[500px] min-h-28 p-5 bg-[#07143B] border-t border-[#1B2A50]`,
-            Platform.OS === "android" && keyboardHeight > 0
-              ? { paddingBottom: keyboardHeight + 12 }
-              : null,
+            tw`w-full min-h-28 p-5 bg-surface dark:bg-[#07143B] border-t border-border dark:border-[#1B2A50]`,
           ]}
         >
           {!showLoader && carpoolDetails?.canChat && (
@@ -884,9 +848,9 @@ const ChatPage = () => {
           {/* Show message if user can't chat */}
           {carpoolDetails && !carpoolDetails.canChat && (
             <View
-              style={tw`bg-[#101C45] p-4 rounded-2xl border border-[#1B2A50]`}
+              style={tw`bg-surface dark:bg-[#101C45] p-4 rounded-2xl border border-border dark:border-[#1B2A50]`}
             >
-              <Text style={tw`text-white text-center`}>
+              <Text style={tw`text-foreground dark:text-white text-center`}>
                 {carpoolDetails.reason ||
                   "Chat is not available for this carpool"}
               </Text>
@@ -915,7 +879,7 @@ const ChatPage = () => {
           }}
           onClose={vibeCheckPrompt.dismiss}
         />
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 };

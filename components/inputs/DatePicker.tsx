@@ -1,7 +1,7 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { Calendar } from "lucide-react-native";
 import { forwardRef, useEffect } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
 
 type IconType = React.ComponentType<{
   size?: number;
@@ -35,6 +35,7 @@ const DatePicker = forwardRef<View, DatePickerProps>(
     },
     ref
   ) => {
+  const { tw } = useAppTheme();
     useEffect(() => {
       console.log(value, "birthday");
     }, [value]);
@@ -43,8 +44,8 @@ const DatePicker = forwardRef<View, DatePickerProps>(
       <View
         ref={ref}
         style={[
-          tw`w-full p-2 rounded-xl`,
-          { maxWidth: 500, backgroundColor: "rgba(27,42,80,0.4)" },
+          tw`w-full p-2 rounded-xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent`,
+          { maxWidth: 500 },
           className ? tw`${className}` : null,
         ]}
       >
@@ -63,8 +64,8 @@ const DatePicker = forwardRef<View, DatePickerProps>(
           {/* Display Selected Date or Placeholder */}
           <Text
             style={[
-              tw`flex-1 text-white`,
-              !value && tw`text-gray-400`,
+              tw`flex-1 text-foreground dark:text-white`,
+              !value && tw`text-muted dark:text-gray-400`,
               inputClassName ? tw`${inputClassName}` : null,
             ]}
           >
@@ -81,7 +82,7 @@ const DatePicker = forwardRef<View, DatePickerProps>(
 
         {/* Error */}
         {Boolean(error) && (
-          <Text style={tw`text-red-500 text-xs mt-1`}>{error}</Text>
+          <Text style={tw`text-danger dark:text-red-500 text-xs mt-1`}>{error}</Text>
         )}
       </View>
     );

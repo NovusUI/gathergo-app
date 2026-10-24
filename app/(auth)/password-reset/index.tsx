@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/hooks/useAppTheme";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import Input from "@/components/inputs/CustomInput1";
 import LocalSvgAsset from "@/components/ui/LocalSvgAsset";
@@ -16,9 +17,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tw from "twrnc";
 
 const ResetPassword = () => {
+  const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [email, setEmail] = useState("");
@@ -82,7 +83,7 @@ const ResetPassword = () => {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#01082E" }}
+      style={{ flex: 1, backgroundColor: color("#01082E", "background") }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
     >
@@ -107,7 +108,7 @@ const ResetPassword = () => {
         style={tw`absolute top-10 left-8`}
         onPress={() => router.replace('/login')}
       >
-        <XIcon color="white"/>
+        <XIcon color={color("white", "foreground")}/>
       </TouchableOpacity>
 
       {/* Logo */}
@@ -122,8 +123,8 @@ const ResetPassword = () => {
       </View>
 
       {/* Title & Description */}
-      <Text style={tw`text-white text-lg font-semibold`}>Reset Password</Text>
-      <Text style={tw`text-gray-300 text-center max-w-80`}>
+      <Text style={tw`text-foreground dark:text-white text-lg font-semibold`}>Reset Password</Text>
+      <Text style={tw`text-secondary dark:text-gray-300 text-center max-w-80`}>
         Enter the email address linked to your account, and we’ll send you a
         6-digit code to reset your password.
       </Text>
@@ -139,9 +140,9 @@ const ResetPassword = () => {
       {/* Submit Button */}
       <CustomButton
         title={isPending ? "Sending code..." : "Send reset code"}
-        buttonClassName="!w-full bg-[#0FF1CF] border-0"
-        arrowCircleColor="bg-[#0C7F7F]"
-        textClassName="!text-black"
+        buttonClassName="!w-full bg-accentFill dark:bg-[#0FF1CF] border-0"
+        arrowCircleColor="bg-accentFill dark:bg-[#0C7F7F]"
+        textClassName="!text-onAccent dark:text-black"
         onPress={handleSendCode}
         disabled={isPending}
       />
@@ -151,7 +152,7 @@ const ResetPassword = () => {
         style={tw`w-full max-w-96 flex flex-row justify-center mt-5`}
         onPress={() => router.replace("/login")}
       >
-        <Text style={tw`text-white`}>Back to Sign in</Text>
+        <Text style={tw`text-foreground dark:text-white`}>Back to Sign in</Text>
       </TouchableOpacity>
 
       {/* Decorative vectors */}
