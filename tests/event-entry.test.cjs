@@ -22,16 +22,17 @@ function* nodes(node) {
   for (const child of [node.props?.children].flat(Infinity))
     yield* nodes(child);
 }
-test("the opening Gogo page offers all four actual participation types", () => {
+test("the opening Gogo page offers all five participation types", () => {
   const selected = [];
   const screen = EventTypePicker({ onSelect: (type) => selected.push(type) });
   const choices = [...nodes(screen)].filter((node) => node.type === "Button");
   assert.deepEqual(
     choices.map((node) => node.props.accessibilityLabel),
-    ["Fundraiser", "Ticket", "Registration", "Volunteer and donation"],
+    ["Food bank", "Fundraiser", "Ticket", "Registration", "Volunteer and donation"],
   );
   choices.forEach((node) => node.props.onPress());
   assert.deepEqual(selected, [
+    "foodbank",
     "donation",
     "ticket",
     "registration",

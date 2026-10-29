@@ -1,22 +1,21 @@
 import type { ThemeColor } from "@/constants/theme";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import AppLoader from "@/components/ui/AppLoader";
-import AppRefreshControl, {
-  RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 // app/notifications.tsx
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { NotificationItem } from "@/components/ui/NotificationItem";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useNotification } from "@/context/NotificationContext";
+import { useSocket } from "@/context/SocketContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNotificationTabs } from "@/hooks/useNotificationTabs";
 import { Notification } from "@/types/notification";
 import { normalizeNotificationLink } from "@/utils/notificationLinks";
 import { useLockedRouter } from "@/utils/navigation";
-import { formatBadgeCount } from "@/utils/utils";
-import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo } from "react";
 import {
   Pressable,
   SectionList,
@@ -30,12 +29,12 @@ export default function NotificationsScreen() {
   const styles = createStyles(color);
   const {
     notifications,
-    unreadCount,
     loadMore,
     hasMore,
     refresh,
     loadingInitial: loading,
     isLoadingMore,
+    refreshing,
   } = useNotifications();
   const {
     activeTab,
@@ -46,13 +45,18 @@ export default function NotificationsScreen() {
   } = useNotificationTabs(notifications);
 
   const tabs = [
-    { key: "unread", label: "Unread", badge: unreadCount },
+    { key: "all", label: "All" },
     { key: "events", label: "Events" },
     { key: "carpool", label: "Carpool" },
   ] as const;
 
-  const { markAsRead } = useNotification();
-  const [refreshing, setRefreshing] = useState(false);
+  const { markAsRead, markAllAsRead } = useNotification();
+  const { isConnected } = useSocket();
+  useFocusEffect(
+    useCallback(() => {
+      if (isConnected) markAllAsRead();
+    }, [isConnected, markAllAsRead])
+  );
   const router = useLockedRouter();
 
   const sections = useMemo(
@@ -68,12 +72,6 @@ export default function NotificationsScreen() {
     if (isLoadingMore || !hasMore) return;
     loadMore();
   }, [isLoadingMore, hasMore, loadMore]);
-
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    refresh();
-    setTimeout(() => setRefreshing(false), 1000);
-  }, [refresh]);
 
   const handleNotificationPress = useCallback(
     (notification: Notification) => {
@@ -114,8 +112,8 @@ export default function NotificationsScreen() {
       return (
         <View style={styles.emptyState}>
           <Text style={tw`text-muted dark:text-gray-500 text-center`}>
-            {activeTab === "unread"
-              ? "No unread notifications"
+            {activeTab === "all"
+              ? "No notifications yet"
               : activeTab === "events"
                 ? "No event notifications"
                 : "No carpool notifications"}
@@ -133,10 +131,13 @@ export default function NotificationsScreen() {
         stickySectionHeadersEnabled={false}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={<RefreshIndicator refreshing={refreshing} />}
-        refreshControl={
-          <AppRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
+        renderScrollComponent={(props) => (
+          <GogoRefreshScrollView
+            {...props}
+            refreshing={refreshing}
+            onRefresh={refresh}
+          />
+        )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={tw`text-muted dark:text-gray-500 text-center`}>No notifications yet</Text>
@@ -190,23 +191,13 @@ export default function NotificationsScreen() {
                 isActive ? "border-accent dark:border-[#0FF1CF]" : "border-transparent"
               }`}
             >
-              <View style={tw`flex-row items-center`}>
-                <Text
-                  style={tw`${
-                    isActive ? "text-accent dark:text-[#0FF1CF]" : "text-muted dark:text-gray-400"
-                  } font-medium`}
-                >
-                  {tab.label}
-                </Text>
-
-                {tab.badge ? (
-                  <View style={styles.tabBadge}>
-                    <Text style={styles.tabBadgeText}>
-                      {formatBadgeCount(tab.badge)}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
+              <Text
+                style={tw`${
+                  isActive ? "text-accent dark:text-[#0FF1CF]" : "text-muted dark:text-gray-400"
+                } font-medium`}
+              >
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -249,20 +240,5 @@ const createStyles = (color: ThemeColor) => StyleSheet.create({
   footerLoading: {
     paddingVertical: spacing.lg,
     alignItems: "center",
-  },
-  tabBadge: {
-    marginLeft: spacing.xs,
-    backgroundColor: color("#EF4444", "danger"),
-    borderRadius: 999,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabBadgeText: {
-    color: color("#FFFFFF", "foreground"),
-    fontSize: 10,
-    fontWeight: "700",
   },
 });

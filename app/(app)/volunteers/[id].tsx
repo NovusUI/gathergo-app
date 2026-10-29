@@ -1,7 +1,5 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
-  RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import ActivityIndicator from "@/components/ui/AppLoader";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomButton from "@/components/buttons/CustomBtn1";
@@ -111,17 +109,12 @@ export default function ManageVolunteers() {
           Volunteer roles are only available for Volunteer and donation events.
         </Text>
       ) : (
-        <ScrollView
+        <GogoRefreshScrollView
           contentContainerStyle={tw`gap-5 px-5 pb-16`}
           keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <AppRefreshControl
-              refreshing={refreshing}
-              onRefresh={refresh}
-            />
-          }
+          refreshing={refreshing}
+          onRefresh={refresh}
         >
-          <RefreshIndicator refreshing={refreshing} />
           <Text style={tw`text-2xl font-bold text-foreground dark:text-white`}>
             {eventQuery.data.data.title}
           </Text>
@@ -272,7 +265,7 @@ export default function ManageVolunteers() {
               ) : null}
             </>
           )}
-        </ScrollView>
+        </GogoRefreshScrollView>
       )}
       {formOpen && owner ? (
         <VolunteerRoleSheet

@@ -144,7 +144,7 @@ Empty passes and unpublished event tickets use a clean, stacked Gogo message.
 My passes and My volunteering show the page loader while loading or checking
 empty cached results, then show their empty state only after the request finishes.
 Failed requests show retry controls. Existing results remain visible during
-background refreshes; empty volunteer refreshes show one page loader.
+background refreshes; pulling to refresh an empty list uses the single Gogo pull indicator.
 Unpublished ticket sheets omit totals and checkout controls. Scanner guidance,
 wallet setup reminders, logout confirmation and Circle's coming-soon page also
 use Gogo. Circle’s coming-soon page and home-feed card use the supplied
@@ -163,9 +163,9 @@ Each page keeps its existing loading title and message.
 Other loading states use assets/mascot/gogo-loading-small.svg through AppLoader.
 Its ring spins while the face pulses and glances; existing sizes, ring colours,
 visibility controls and reduced-motion preferences are supported. Forms, lists,
-chat, image uploads and web views share this loader. AppRefreshControl retains
-the native pull gesture and refresh callback, with Gogo in the content header
-while refreshing.
+chat, image uploads and web views share this loader. GogoRefreshScrollView
+scrubs the ring animation during a pull and starts the loading loop only after
+release past the threshold.
 
 The floating live feed button uses the four supplied frenzy SVG designs. Warming
 is the default; the latest CURRENT_FRENZY feed maps LOW to Heating up, MEDIUM to
@@ -263,9 +263,10 @@ instead of creating another order.
 
 ## Appearance
 
-Settings → Appearance switches between Light and Dark. The choice is saved on
-this device, restores before the app's first screen, and does not follow the
-phone's theme. Dark is the default.
+Settings → Appearance offers System, Light and Dark. System is the default and
+follows the phone’s current theme, including changes while the app is open.
+An explicit Light or Dark choice overrides the phone setting. The selection is
+saved on this device and restores before the app’s first screen.
 
 Shared colors live in `constants/theme.ts`. Use `useAppTheme()` for theme-aware
 `tw` styles and `colors`. Existing styles can preserve their dark utility with
@@ -278,6 +279,8 @@ Global notifications use the shared Gogo toast for success, error, warning, and 
 
 ### Adaptive layout
 
+Headers, standard form controls, buttons and cards fill their parent container. Keep readable width limits at the page or sheet boundary so nested controls stay aligned on unfolded devices. Home lets an unpaired event or ride card grow across the available row. The carpool creation sheet shows the event’s start and end beside the departure-time section.
+
 Authenticated screens reserve the left, right, and bottom system safe areas in the app layout. Main navigation occupies its own layout space and switches to a rail on sufficiently wide, tall windows; screens should not add a second tab-bar spacer. Home sizes its carousel and event columns from the current window and keeps the active tab during resizing.
 
 Home scrolls its featured card with the feed and pins the tab row at the top beneath the greeting. On supported phone sizes, first scroll the active feed back to the beginning, then start a new downward pull to expand the card and bring the tabs into reach. The card follows the finger between its normal and expanded sizes and settles on release; pulling while browsing always scrolls the feed first. The featured card and Home tabs expose equivalent expand/collapse actions to screen readers without an extra visible control. Short windows and larger text keep the compact layout, and reduced motion disables the settling animation.
@@ -285,6 +288,8 @@ Home scrolls its featured card with the feed and pins the tab row at the top ben
 Event details use a second column for organizer and participation actions when the safe width reaches 960 points and text scaling permits it. On narrower screens the organizer scrolls with the details and the primary action stays below the scroller. Checkout and feed sheets use actual system insets and centered width limits; creation, Impact Builder, and chat keep readable widths on larger windows. Modal forms protect their own safe areas.
 
 Carpool details, Wallet, and both Dashboards use the same 960-point detail-column threshold and return to a single column above 1.4 text scaling. Carpool keeps its phone action below the scrolling details; its tablet sidebar scrolls independently. Dashboard Quick Access occupies normal layout space below the content. Charts measure their container and update when the window changes. Wallet setup and carpool modals protect their own safe areas.
+
+Every refreshable screen and list uses `GogoRefreshScrollView`: carpool details, chats, notifications, volunteering, passes, Gather, Wallet and its history lists, scanner screens, and both feed-sheet tabs. Gogo and the page follow a downward pull from the top. Releasing a short pull returns the page to rest; releasing past the threshold starts one refresh and keeps Gogo visible until the request finishes. The gesture works with short content and respects reduced motion. Virtualized lists keep their native scroll ref, events, and pagination through `renderScrollComponent`; Passes and Gather reveal Gogo below their profile tabs. The feed sheet reserves its content gesture for refreshing and its handle for dismissal. Socket-backed refresh indicators stop on a response, error, or disconnect. Carpool keeps its loaded ride if refreshing fails. The Chat button stays in Ride crew and is visible only to the pooler and accepted riders. Riders see previous declines or removals; poolers see the history in View Requests and a prior-outcome label on repeat requests. A declined rider can request again, while removal blocks another request to that ride. A denied request displays the server error without a success message. Request, rejection, and removal notifications open the carpool page; acceptances and chat messages still open chat.
 
 The app supports rotation (`expo.orientation: default`). Installed development and release apps need a native rebuild to pick up this configuration change.
 
@@ -298,10 +303,120 @@ Chat saves every outgoing message in an account-owned AsyncStorage outbox before
 
 The server must be updated with the saved-message acknowledgment contract before this app version is released. The previous `message-queue-storage` contained no sender identity; it is retained untouched and is not automatically replayed under a possibly different account. Its pending messages may need to be sent again manually. The new outbox uses `chat-outbox-storage`.
 
+Conversation previews share the socket query cache. Partial updates for an unknown carpool request the full tray instead of creating an incomplete row. A preview failure after an outgoing message has been saved does not report a send failure or leave the sent text in the composer. Local save and retry failures appear beside the composer; delivery rejections stay beside the affected message.
+
+Incoming chat bubbles show the sender’s `@username` above the message. Ride check messages identify the sender alongside their role; your own checks say “You”. Accounts without a username display “Ride member”.
+
+The local `withFoldableActivity` Expo plugin preserves `smallestScreenSize` in the Android activity’s configuration changes to avoid recreating the activity when folding or unfolding. This native change requires rebuilding the Android app.
+
 Chat enables padding-based keyboard avoidance on Android as well as iOS. This reserves keyboard overlap in edge-to-edge windows and removes that extra padding when Android has already resized the window.
 
 Passes pull-to-refresh keeps the profile summary as the unchanged list header. Its refresh indicator appears in the Passes section below the profile tabs; only tickets and registrations are refetched.
 
-Notification audio uses the supplied Gogo foley clips, converted to PCM WAV in `assets/sounds` for both iOS and Android: general alerts/chat messages, carpool requests/acceptances, carpool rejections, and frenzy/milestone celebrations. `expo-notifications` bundles the files and the matching Android channels are created before permission/token registration. The OS plays one sound per push, including foreground alerts; socket tray updates do not play a second sound. System mute, Focus/Do Not Disturb, and per-channel settings still apply.
+Opening Notifications marks existing notifications as read after a socket connection is available. The server confirms the write with `allNotificationsRead`, which clears the shared count and read state across cached pages. The default All tab keeps notification history visible; new arrivals still increase the unread count.
+
+Notification audio uses the supplied Gogo foley clips, converted to PCM WAV in `assets/sounds` for both iOS and Android: general alerts/chat messages, carpool requests/acceptances, carpool rejections/removals, and frenzy/milestone celebrations. `expo-notifications` bundles the files and the matching Android channels are created before permission/token registration. The OS plays one sound per push, including foreground alerts; socket tray updates do not play a second sound. System mute, Focus/Do Not Disturb, and per-channel settings still apply.
 
 Custom audio needs a rebuilt native app; an OTA update or Expo Go cannot add these bundled resources. Install/open the rebuilt app before testing backend notifications so Android channels exist. The backend selects the filename and channel; deploy both changes together. This does not add sounds to local Gogo toasts or loading animations.
+
+## Food banks
+
+Food bank events use a physical venue and one collection date range. Organisers
+set total meals, people per window, and window length (5–120 minutes). Collection
+hours must accommodate the stated meal capacity. Capacity and arrival settings
+lock after the first pass; an explicit reschedule preserves issued passes. Food banks start with Gogo and can switch to the same
+manual form. Gogo extracts meal totals, collection windows, dates and venue
+from the description and collects missing details inline before optional steps.
+Creation and editing use a fixed physical venue. Longer collection and donation
+explanations are available through expandable info icons.
+
+The home scanner opens directly beside notifications. Event share sheets offer
+an event QR/link, and food banks additionally offer a labelled meal-collection
+QR/link. Native QR sharing uses `expo-sharing` and `expo-file-system`; rebuild the
+native app after installing these modules. QR images retain an Event/Meals label.
+Android app links include `/food-bank`; the public hosting/deep-link association
+must also allow that path.
+
+Anyone with a GatherGo account can reserve a meal without donating. The server
+assigns the earliest available collection window. A first verified donation in the native app also
+issues a pass while windows remain available; repeat donations and repeat claims
+reuse the person's single entitlement for that event, including after collection.
+Donations support the bank and are not meal purchases. Donations made through the
+food collection page remain donations and carry `source: FOOD_BANK` in payment
+and feed metadata. Meal passes and staff scan results contain no donation source
+or amount. Collection receipts and donation transactions both open the same pass
+view, with Donate again; passes also appear in Profile.
+
+Deploy the companion backend food bank migrations, including
+`20261028140000_flexible_food_bank_collection`, before using these screens.
+The organiser opens Manage collection from the event to start, pause, close,
+reopen or reschedule. Banks start closed to collection until explicitly started.
+Start/reopen is limited to the scheduled local day range; exact hours and arrival
+windows are advisory for redemption. Staff can confirm early or late arrivals
+while open. Each pass remains single-use. New reservations use planned hours.
+
+New banks store the creator's IANA timezone; existing banks use Africa/Lagos.
+Rescheduling keeps duration and existing QR codes, shifts unused arrival windows,
+leaves collected passes collected and notifies affected holders. A notification
+failure is shown separately from the successful schedule change. Public collection
+state refreshes every 30 seconds; mutation responses update the organiser immediately.
+Capacity controls pace bookings; they do not measure physical crowd density.
+Run the app regressions with `node --test tests/*.test.cjs`.
+
+## Event cover sharing
+
+All event share sheets show the uploaded cover when it is available. On Android
+and iOS, Share image + link attaches that image and includes the selected event
+or meal-collection URL in the message. Link-only and QR sharing remain available.
+The download is checked before opening the share sheet and its temporary file is
+removed afterwards. Cancelling does not show a success or error message.
+
+This uses the autolinked `react-native-share` module and app-internal cache
+storage. Rebuild the native app after installing it; no new storage permission
+is needed. The receiving app decides how it displays the image and caption.
+Web keeps link and QR display; combined image sharing is currently native only.
+
+## Branded short links
+
+Event, meal-collection and carpool sharing create or reuse an eight-character
+code, for example `https://gathergo.events/s/8nQ4xK2p` (illustrative). Link copying,
+QR codes and cover-image captions all use that same short URL. The event page
+and food-collection page retain separate codes. Existing full-length URLs still
+open normally. Codes are generated by the backend, saved once per destination,
+and never rotated or reassigned. Sharing waits for a real code, with a retry if
+the request fails; no shortened URL is fabricated locally.
+
+Deploy backend migration `20261027160000_short_links` and its API before releasing
+the app. The public website can resolve `/s/*` through its shared-link page, or forward
+those paths to the backend's public `/s/*` handler for a 302 redirect to the original page. Keep `/api/v1/share-links`
+available through the app's configured API origin. Update the public Apple app
+association to allow `/s/*`; Android declares the new path and needs a native
+rebuild. The app has a matching `/s/[code]` resolver for installed-app navigation
+and QR scans. Existing destination access and onboarding checks still apply.
+
+The branded domain could not be resolved from the development environment;
+public DNS, hosting forwarding and device app-link association need verification
+before the links are live outside the app.
+
+
+## Public web participation
+
+The companion initiative website serves shared event, carpool and meal links.
+Tickets, registrations, donations and volunteer applications can be completed
+there after email verification. The backend keeps these on the same participant
+identity, so verified app signup or Google sign-in with that email retains the
+activity. Web sessions cannot access native-only APIs.
+
+Web food-bank donations issue donation receipts without reserving meals. Native
+meal claims remain free, and native donations retain the existing single-pass
+rules. Carpool participation and event Live remain in GatherGo.
+
+The root navigator remembers an incoming event, meal, carpool or short-link
+destination until sign-in, profile setup and preferences finish. Public Live
+URLs open the native event feed. Installation does not itself preserve a browser
+URL: users can reopen the shared or confirmation link after installing.
+
+Deploy the companion public-web backend migration and configure release app-link
+association on gathergo.events before releasing these links. Store buttons on the
+website stay unavailable until real listing URLs are configured. Run the focused
+handoff checks with `node --test tests/incoming-share-route.test.cjs`.

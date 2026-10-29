@@ -27,6 +27,16 @@ type NotificationVisualConfig = {
 };
 
 const EVENT_VISUALS: Record<Registration, EventVisualConfig> = {
+  foodbank: {
+    icon: "restaurant-outline",
+    title: "Food bank",
+    subtitle: "A place at the table, with a collection time for everyone.",
+    background: "#102B2C",
+    accent: "#0FF1CF",
+    bubble: "rgba(15, 241, 207, 0.18)",
+    glow: "rgba(49, 198, 246, 0.22)",
+    label: "Food bank",
+  },
   volunteer: {
     icon: "people-outline",
     title: "Volunteer event",

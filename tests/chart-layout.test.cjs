@@ -35,12 +35,12 @@ test('empty, zero-value and single-point charts keep finite geometry in a narrow
 let sheetWidth=1024,snaps=[],shared=[];
 const sheetRef={current:{snapToIndex:index=>snaps.push(index),close(){}}};
 const {default:ShareRide}=loadTypeScript('app/(app)/carpool/bottomSheets/ShareRideLinkBS.tsx',{
-  react:{...React,useMemo:fn=>fn(),useRef:()=>sheetRef,useImperativeHandle:(ref,factory)=>{ref.current=factory();}},
+  react:{...React,useMemo:fn=>fn(),useState:value=>[value,()=>{}],useRef:()=>sheetRef,useImperativeHandle:(ref,factory)=>{ref.current=factory();}},
   'react-native':{View:'View',Text:'Text',TouchableOpacity:'Button',Share:{share:async payload=>shared.push(payload)}},
   '@gorhom/bottom-sheet':{default:'Sheet',BottomSheetScrollView:'ScrollView',BottomSheetBackdrop:'Backdrop'},
   'lucide-react-native':{Share2:'Icon'},'@/hooks/useAppTheme':{useAppTheme:()=>({tw,color:value=>value})},
   '@/hooks/useResponsiveLayout':{useResponsiveLayout:()=>({availableWidth:sheetWidth,insets:{top:24}})},
-  '@/utils/shareLinks':{buildCarpoolShareLink:id=>'https://gathergo.events/carpool/'+id},
+  '@/hooks/useCarpoolShare':{useCarpoolShare:()=>({isPending:false,isError:false,share:async()=>shared.push({message:'🚗 Join my carpool 👉 https://gathergo.events/s/Ride1234'})})},
 });
 test('share ride opens its valid snap position, centers on tablets, and preserves native sharing',async()=>{
   for(sheetWidth of [390,1024]){
@@ -49,6 +49,6 @@ test('share ride opens its valid snap position, centers on tablets, and preserve
     assert.equal(tree.props.containerStyle.marginHorizontal,sheetWidth===390?0:172);
     assert.equal(tree.props.backdropComponent({}).props.disappearsOnIndex,-1);
     await all(tree).find(n=>n.type==='Button').props.onPress();
-    assert.match(shared.at(-1).message,/https:\/\/gathergo.events\/carpool\/ride-1/);
+    assert.match(shared.at(-1).message,/https:\/\/gathergo.events\/s\/Ride1234/);
   }
 });

@@ -1,8 +1,8 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
-import AppRefreshControl, {
+import GogoRefreshScrollView, {
   RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+} from "@/components/ui/GogoRefreshScrollView";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing } from "@/constants/spacing";
 import { useMyBadges } from "@/services/queries";
@@ -40,7 +40,6 @@ export default function BadgesExperience({
     .sort((a, b) => b.progress.percent - a.progress.percent)[0];
   const intro = collection ? (
     <View style={tw`gap-3 pb-1`}>
-      <RefreshIndicator refreshing={query.isRefetching} />
       <View style={tw`flex-row items-baseline justify-between gap-3`}>
         <Text
           accessibilityRole="header"
@@ -73,19 +72,26 @@ export default function BadgesExperience({
         sections={[{ data: collection ? collection.badges : [] }]}
         keyExtractor={(badge) => badge.code}
         ListHeaderComponent={ListHeaderComponent}
-        renderSectionHeader={renderSectionHeader}
+        renderSectionHeader={(info) => (
+          <>
+            {renderSectionHeader?.(info)}
+            <RefreshIndicator />
+          </>
+        )}
         stickySectionHeadersEnabled={Boolean(renderSectionHeader)}
         contentContainerStyle={[
           tw`gap-3`,
           { paddingBottom: layoutSpacing.listBottomInset },
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <AppRefreshControl
+        renderScrollComponent={(props) => (
+          <GogoRefreshScrollView
+            {...props}
             refreshing={query.isRefetching}
-            onRefresh={() => void query.refetch()}
+            onRefresh={() => query.refetch()}
+            inlineIndicator
           />
-        }
+        )}
         ListFooterComponent={
           query.isPending ? (
             <ImpactPageLoader

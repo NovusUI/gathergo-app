@@ -15,6 +15,7 @@ import GogoEventCreator from "@/components/gogo/tasks/eventCreation/GogoEventCre
 import { useGogoEventCreation } from "@/components/gogo/tasks/eventCreation/useGogoEventCreation";
 import type { EventCreationSection } from "@/components/gogo/tasks/eventCreation/types";
 import Location from "@/components/eventInfo/Location";
+import FoodBankSetupFields from '@/components/eventInfo/FoodBankSetupFields';
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
@@ -199,7 +200,7 @@ const EventCreationForm = ({
   const { tw, color } = useAppTheme();
   const router = useLockedRouter();
   const isDonationEvent = participationType === "donation";
-  const pricingSectionTitle = isDonationEvent
+  const pricingSectionTitle = participationType === "foodbank" ? "Food collection" : isDonationEvent
     ? "Fundraising goal"
     : participationType === "ticket"
       ? "Tickets"
@@ -323,6 +324,7 @@ const EventCreationForm = ({
                 <Location
                   isPhysicalEvent={watch("isPhysicalEvent")}
                   physicalOnly={
+                    participationType === "foodbank" ||
                     participationType === "volunteer" ||
                     watch("volunteerRoles").length > 0
                   }
@@ -355,6 +357,21 @@ const EventCreationForm = ({
           />
         );
       case "Pricing":
+        if (participationType === "foodbank")
+          return (
+            <View style={tw`gap-4`}>
+              <FoodBankSetupFields control={control} />
+              {mode === "gogo" ? (
+                <CustomButton
+                  title="Continue"
+                  showArrow={false}
+                  onPress={() => void finishSection("Pricing")}
+                  buttonClassName="bg-accentFill dark:bg-[#0FF1CF] w-full !border-none"
+                  textClassName="!text-onAccent dark:text-black"
+                />
+              ) : null}
+            </View>
+          );
         if (participationType === "volunteer") return null;
         if (participationType === "donation")
           return (
@@ -462,6 +479,14 @@ const EventCreationForm = ({
       donationsEnabled: false,
       volunteerRoles: [],
       ...initialDraft?.values,
+      ...(participationType === "foodbank"
+        ? {
+            isPhysicalEvent: true,
+            isRecurring: false,
+            repeat: "NONE",
+            donationsEnabled: true,
+          }
+        : {}),
     },
   });
 
@@ -531,11 +556,18 @@ const EventCreationForm = ({
           ? (["links"] as const)
           : section === "Story"
             ? (["eventName", "description"] as const)
-            : section === "Pricing" && isDonationEvent
-              ? (["donationTarget"] as const)
-              : section === "Volunteering"
-                ? (["volunteerRoles", "donationTarget"] as const)
-                : null;
+            : section === "Pricing" && participationType === "foodbank"
+              ? ([
+                  "foodBankTotalMeals",
+                  "foodBankSlotCapacity",
+                  "foodBankSlotMinutes",
+                  "donationTarget",
+                ] as const)
+              : section === "Pricing" && isDonationEvent
+                ? (["donationTarget"] as const)
+                : section === "Volunteering"
+                  ? (["volunteerRoles", "donationTarget"] as const)
+                  : null;
     if (fields && !(await trigger([...fields]))) return;
     const completed = section;
     closeSheet();
@@ -550,7 +582,7 @@ const EventCreationForm = ({
   const registrationType = watch("registrationType");
 
   const pricingData = useMemo<EventPricing | null>(() => {
-    if (registrationType === "volunteer" || registrationType === "donation")
+    if (registrationType === "foodbank" || registrationType === "volunteer" || registrationType === "donation")
       return null;
     return {
       registrationType,
@@ -701,6 +733,7 @@ const EventCreationForm = ({
                   ticket: "New ticket event",
                   registration: "New registration event",
                   volunteer: "New volunteer event",
+                  foodbank: "New food bank",
                 }[participationType]
               }
               onClickBack={() => void changeEventType()}
@@ -735,6 +768,7 @@ const EventCreationForm = ({
             <GogoEventCreator
               conversation={conversation}
               isDonationEvent={isDonationEvent}
+              isFoodBank={participationType === "foodbank"}
               onOpenSection={openSheet}
               onReview={reviewDraft}
               draftTitle={watch("eventName")}

@@ -4,8 +4,10 @@ import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import { useAuthStore } from "@/store/auth";
 import { authenticatedStartRoute } from "@/utils/authRouting";
-import { Stack, usePathname } from "expo-router";
-import { useEffect } from "react";
+import { Stack, usePathname, useRootNavigationState, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import * as Linking from "expo-linking";
+import { incomingShareRoute } from "@/utils/incomingShareRoute";
 import { StyleSheet, View } from "react-native";
 
 export default function RootNavigator() {
@@ -14,8 +16,28 @@ export default function RootNavigator() {
   const { isAuthenticated, hasHydrated, googleAuthPhase, setGoogleAuthPhase } =
     useAuthStore();
   const pathname = usePathname();
+  const navigationState = useRootNavigationState();
+  const router = useRouter();
+  const [sharedDestination, setSharedDestination] = useState<ReturnType<typeof incomingShareRoute>>(null);
   const completingGoogleSignIn = googleAuthPhase !== "idle";
   const destination = authenticatedStartRoute(user);
+
+  useEffect(() => {
+    let active = true;
+    const capture = (url: string) => {
+      const route = incomingShareRoute(url);
+      if (active && route) setSharedDestination(route);
+    };
+    void Linking.getInitialURL().then(url => { if (url) capture(url); }).catch(error => console.error('Could not read the incoming GatherGo link', error));
+    const subscription = Linking.addEventListener('url', ({ url }) => capture(url));
+    return () => { active = false; subscription.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (!navigationState?.key || loading || !hasHydrated || !isAuthenticated || completingGoogleSignIn || destination !== '/' || !sharedDestination) return;
+    router.replace(sharedDestination);
+    setSharedDestination(null);
+  }, [navigationState?.key, loading, hasHydrated, isAuthenticated, completingGoogleSignIn, destination, sharedDestination, router]);
 
   useEffect(() => {
     if (
@@ -66,6 +88,7 @@ export default function RootNavigator() {
           ) : (
             <Stack.Screen name="(auth)" />
           )}
+          <Stack.Screen name="s/[code]" />
         </Stack>
       </View>
       {completingGoogleSignIn ? (

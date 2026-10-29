@@ -39,13 +39,8 @@ const Dropdown = forwardRef<View, DropdownProps>(
     const [items, setItems] = useState(options);
 
     return (
-      <View ref={ref} style={[tw`mb-4`, className ? tw`${className}` : null]}>
-        <View
-          style={[
-            tw`flex-row items-center`,
-            { width: 300 }, // w-[300px]
-          ]}
-        >
+      <View ref={ref} style={[tw`mb-4 w-full`, className ? tw`${className}` : null]}>
+        <View style={tw`w-full flex-row items-center`}>
           {LeftIcon && (
             <View style={tw`mr-2`}>
               <LeftIcon size={20} color={iconColor} />
@@ -53,6 +48,7 @@ const Dropdown = forwardRef<View, DropdownProps>(
           )}
 
           <DropDownPicker
+            containerStyle={tw`flex-1`}
             open={open}
             value={value}
             items={items}

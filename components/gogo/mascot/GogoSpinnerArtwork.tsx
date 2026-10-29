@@ -2,17 +2,23 @@ import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import { useGogoSpinnerMotion } from "@/components/gogo/mascot/motion/useGogoSpinnerMotion";
 import Svg, { Circle, G, Path } from "react-native-svg";
 import { AnimatedGroup, GogoBody } from "@/components/gogo/mascot/GogoArtworkParts";
+import type { SharedValue } from "react-native-reanimated";
 
 export function GogoSpinnerArtwork({
   size,
   animated,
   ringColor,
+  pullProgress,
 }: {
   size: number;
   animated: boolean;
   ringColor: string;
+  pullProgress?: SharedValue<number>;
 }) {
-  const { ringProps, faceProps, pupilProps } = useGogoSpinnerMotion(animated);
+  const { ringProps, faceProps, pupilProps } = useGogoSpinnerMotion(
+    animated,
+    pullProgress,
+  );
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" accessible={false}>
       <Circle

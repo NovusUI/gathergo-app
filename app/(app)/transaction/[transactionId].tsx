@@ -8,6 +8,7 @@ import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import QRCodeGenerator from "@/components/QRCodeGen";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
+import ShareCarToEventCard from "@/components/carpool/ShareCarToEventCard";
 import { EventDetails } from "@/components/ui/EventDetails";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { TRANSACTION_MASCOT_MOMENTS } from "@/components/gogo/mascot/constants";
@@ -46,7 +47,10 @@ const DashedLine = () => (
   </Svg>
 );
 
-const TransactionRef = () => {
+import MealPassReceipt from '@/components/foodBank/MealPassReceipt';
+import MealPassAccess from '@/components/foodBank/MealPassAccess';
+
+export const PaymentTransaction = () => {
   const { tw, color } = useAppTheme();
   const twStyle = tw.style;
   const router = useLockedRouter();
@@ -60,6 +64,7 @@ const TransactionRef = () => {
   )?.toUpperCase();
 
   const { user } = useAuth();
+  const buyerId = user?.id;
   const resolvedTransactionId = transactionId || "";
 
   const bottomSheetRef = useRef<BottomSheetModal>(null);
@@ -131,7 +136,18 @@ const TransactionRef = () => {
   const { data: eventDetails } = useEventDetails(eventIdForCta || "", {
     enabled: isStatusSuccess && Boolean(eventIdForCta)
   });
+  useEffect(() => {
+    if (!isStatusSuccess || transactionType !== "TICKET" || !buyerId || !eventIdForCta) {
+      return;
+    }
+
+    void clearCheckoutIntent(buyerId, eventIdForCta).catch(() => {
+      showGlobalError("Could not reset your checkout. Use Buy more tickets to try again.");
+    });
+  }, [buyerId, eventIdForCta, isStatusSuccess, resolvedTransactionId, transactionType]);
   const isPhysicalEventForCta = eventDetails?.data?.isPhysicalEvent !== false;
+  const canShareCarToEvent =
+    isStatusSuccess && eventDetails?.data.isPhysicalEvent === true;
   const eventTitleForCta =
     eventDetails?.data?.title || primaryTicket?.event?.title || "your event";
   const providerInstructions = data?.data?.metadata?.providerInstructions;
@@ -355,16 +371,37 @@ const TransactionRef = () => {
         {(isExpired || isFailedStatus || isStatusSuccess || isRefundRequired || isRefunded) &&
         user &&
         data?.data?.metadata?.eventId ? (
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={async () => {
-              await clearCheckoutIntent(user.id, data.data.metadata.eventId);
-              router.replace(`/event/${data.data.metadata.eventId}`);
-            }}
-            style={tw`mt-3 p-3 rounded-xl bg-surfaceMuted dark:bg-[#172853]`}
-          >
-            <Text style={tw`text-foreground dark:text-white text-center`}>Start a new checkout</Text>
-          </TouchableOpacity>
+          <>
+            {canShareCarToEvent ? (
+              <ShareCarToEventCard
+                onPress={() => {
+                  router.push({
+                    pathname: "/new-carpool",
+                    params: {
+                      eventId: data.data.metadata.eventId,
+                      autoOpenEventPicker: "1"
+                    }
+                  });
+                }}
+              />
+            ) : null}
+            {!canShareCarToEvent || transactionType === "TICKET" ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={async () => {
+                  await clearCheckoutIntent(user.id, data.data.metadata.eventId);
+                  router.replace(`/event/${data.data.metadata.eventId}`);
+                }}
+                style={tw`mt-3 p-3 rounded-xl bg-surfaceMuted dark:bg-[#172853]`}
+              >
+                <Text style={tw`text-foreground dark:text-white text-center`}>
+                  {isStatusSuccess && transactionType === "TICKET"
+                    ? "Buy more tickets"
+                    : "Start a new checkout"}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
         ) : null}
         <PaystackWebViewWrapper
           visible={showPayment && canPay && !cancelling}
@@ -496,6 +533,7 @@ const TransactionRef = () => {
             </View>
           </View>
         ) : null}
+        {isStatusSuccess && eventDetails?.data.registrationType === 'foodbank' ? <View style={tw`mt-5`}><MealPassAccess event={eventDetails.data} /></View> : null}
         {isStatusSuccess ? (
           <>
             <View
@@ -689,4 +727,7 @@ const TransactionRef = () => {
   );
 };
 
-export default TransactionRef;
+export default function TransactionRef() {
+  const { transactionId, type, eventId } = useLocalSearchParams<{ transactionId: string; type?: string; eventId?: string }>();
+  return type === 'MEAL' && eventId ? <MealPassReceipt eventId={eventId} passId={transactionId} /> : <PaymentTransaction />;
+}

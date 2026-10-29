@@ -8,6 +8,7 @@ import PoolingWithA from "@/components/PoolingWithA";
 import CustomView from "@/components/View";
 import CustomButton from "@/components/buttons/CustomBtn1";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import {
   getCarpoolPassengerMessage,
   getCarpoolVehicleOption,
@@ -23,12 +24,17 @@ import {
 } from "@/services/mutations";
 import { useGetCarpoolDetails } from "@/services/queries";
 import { QUERY_KEYS } from "@/services/queryKeys";
+import type { CarpoolPassengerRequest } from "@/types/carpool";
 import {
   showGlobalError,
   showGlobalSuccess,
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
 import { isEventPastEnd } from "@/utils/dateTimeHandler";
+import {
+  CARPOOL_PREVIOUS_DECISION_LABELS,
+  getCarpoolRequestState,
+} from "@/utils/carpoolRequests";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
 import { dummy, formatTo12Hour } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
@@ -38,14 +44,11 @@ import { MessagesSquareIcon } from "lucide-react-native";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
 
 import CancelCarpoolModal from "./CancelCarpoolModal";
 import EditRideBS, { EditRideBSRef } from "./bottomSheets/EditRideBS";
@@ -163,11 +166,23 @@ const CarpoolPage = () => {
     note?: string;
     startPoint?: { lng: number; lat: number };
   } | null>(null);
-  const [showFloatingChat, setShowFloatingChat] = useState(false);
 
   const queryClient = useQueryClient();
 
-  const { data, isPending, error } = useGetCarpoolDetails(carpoolId);
+  const { data, isPending, refetch } = useGetCarpoolDetails(carpoolId, {
+    refetchOnMount: "always",
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch({ throwOnError: true });
+    } catch {
+      showGlobalError("Couldn't refresh this ride. Try again.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
   const { mutateAsync, isPending: leavingCarpool } = useLeaveCarpool(
     carpoolId,
     {
@@ -260,8 +275,6 @@ const CarpoolPage = () => {
   const requestBSRef = useRef<ViewRequestBSRef>(null);
   const sendReqRef = useRef<SendRequestBSRef>(null);
   const shareRideLinkRef = useRef<ShareRideBSRef>(null);
-  const chatAnchorFrameRef = useRef<{ y: number; height: number } | null>(null);
-  const scrollMetricsRef = useRef({ offsetY: 0, viewportHeight: 0 });
 
   const openChat = useCallback(() => {
     if (!carpoolId) return;
@@ -269,65 +282,12 @@ const CarpoolPage = () => {
     router.replace(`/chat/${carpoolId}`);
   }, [carpoolId, router]);
 
-  const syncFloatingChatVisibility = useCallback(() => {
-    const frame = chatAnchorFrameRef.current;
-    const { offsetY, viewportHeight } = scrollMetricsRef.current;
-
-    if (!frame || viewportHeight <= 0) {
-      setShowFloatingChat(false);
-      return;
-    }
-
-    const viewportTop = offsetY;
-    const viewportBottom = offsetY + viewportHeight;
-    const isChatButtonVisible =
-      frame.y + frame.height > viewportTop + 12 &&
-      frame.y < viewportBottom - 12;
-
-    setShowFloatingChat((current) =>
-      current === !isChatButtonVisible ? current : !isChatButtonVisible
-    );
-  }, []);
-
-  const handleScrollViewLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      scrollMetricsRef.current = {
-        ...scrollMetricsRef.current,
-        viewportHeight: event.nativeEvent.layout.height,
-      };
-      syncFloatingChatVisibility();
-    },
-    [syncFloatingChatVisibility]
+  const requestState = useMemo(
+    () => data ? getCarpoolRequestState(data.data.passengers, user?.id) : null,
+    [data, user?.id],
   );
-
-  const handleRideDetailsScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollMetricsRef.current = {
-        offsetY: event.nativeEvent.contentOffset.y,
-        viewportHeight: event.nativeEvent.layoutMeasurement.height,
-      };
-      syncFloatingChatVisibility();
-    },
-    [syncFloatingChatVisibility]
-  );
-
-  const handleChatAnchorLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      chatAnchorFrameRef.current = event.nativeEvent.layout;
-      syncFloatingChatVisibility();
-    },
-    [syncFloatingChatVisibility]
-  );
-
-  const status = useMemo(() => {
-    if (data && data?.data.passengers.length > 0) {
-      const passenger = data?.data.passengers.find(
-        (pass: any) => pass.user.id === user?.id
-      );
-      return passenger?.status ?? null;
-    }
-    return null;
-  }, [data, user?.id]);
+  const status = requestState?.currentRequest?.status ?? null;
+  const previousDecision = requestState?.previousDecision;
 
   useEffect(() => {
     console.log(data?.data);
@@ -368,7 +328,7 @@ const CarpoolPage = () => {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <View style={tw`flex-1 items-center justify-center bg-background dark:bg-[#01082E]`}>
         <Text style={tw`text-foreground dark:text-white`}>Failed to load carpool</Text>
@@ -391,9 +351,13 @@ const CarpoolPage = () => {
   const departureTimeLabel = formatRideDepartureTime(carpool.departureTime);
   const destinationLabel =
     carpool.destination ?? carpool.event?.location ?? "Destination not set";
-  const acceptedPassengerCount = carpool.passengers.filter(
-    (passenger: any) => passenger.status === "ACCEPTED"
-  ).length;
+  const acceptedPassengers: CarpoolPassengerRequest[] = carpool.passengers.filter(
+    (passenger: CarpoolPassengerRequest) => passenger.status === "ACCEPTED"
+  );
+  const isRideMember = owner || acceptedPassengers.some(
+    (passenger) => passenger.userId === user?.id
+  );
+  const acceptedPassengerCount = acceptedPassengers.length;
   const crewCount = acceptedPassengerCount + 1;
   const seatsLeft =
     typeof carpool.seatsLeft === "number"
@@ -436,6 +400,10 @@ const CarpoolPage = () => {
       return { title: "Unavailable", disabled: true };
     }
 
+    if (requestState?.hasBeenRemoved) {
+      return { title: "Removed from ride", disabled: true, action: null };
+    }
+
     switch (status) {
       case "PENDING":
         return { title: "Request Pending", disabled: true, action: null };
@@ -455,10 +423,12 @@ const CarpoolPage = () => {
             }
           },
         };
-      case "REJECTED":
-        return { title: "Request Rejected", disabled: true, action: null };
-      case "REMOVED":
-        return { title: "Request Cancelled", disabled: true, action: null };
+      case "DECLINED":
+        return {
+          title: "Request again",
+          disabled: false,
+          action: () => sendReqRef.current?.open(),
+        };
       case "CANCELLED":
         return { title: "Request Cancelled", disabled: true, action: null };
       case "LEFT":
@@ -475,7 +445,6 @@ const CarpoolPage = () => {
 
   const crewCard = (
     <View
-      onLayout={handleChatAnchorLayout}
       style={tw`rounded-[24px] bg-surface dark:bg-[#07143B] border border-border dark:border-[#1B2A50] p-4 flex-row justify-between items-center`}
     >
       <View style={tw`gap-2`}>
@@ -487,16 +456,18 @@ const CarpoolPage = () => {
         />
       </View>
 
-      <TouchableOpacity
-        activeOpacity={0.84}
-        accessibilityRole="button"
-        accessibilityLabel="Open carpool chat"
-        onPress={openChat}
-        style={tw`h-12 px-4 rounded-2xl bg-accentFill dark:bg-[#0FF1CF] flex-row items-center gap-2`}
-      >
-        <MessagesSquareIcon color={color("#01082E", "onAccent")} size={18} />
-        <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold`}>Chat</Text>
-      </TouchableOpacity>
+      {isRideMember ? (
+        <TouchableOpacity
+          activeOpacity={0.84}
+          accessibilityRole="button"
+          accessibilityLabel="Open carpool chat"
+          onPress={openChat}
+          style={tw`h-12 px-4 rounded-2xl bg-accentFill dark:bg-[#0FF1CF] flex-row items-center gap-2`}
+        >
+          <MessagesSquareIcon color={color("#01082E", "onAccent")} size={18} />
+          <Text style={tw`text-onAccent dark:text-[#01082E] text-sm font-semibold`}>Chat</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
   const driverCard = (
@@ -521,7 +492,12 @@ const CarpoolPage = () => {
     </CustomView>
   );
   const participationActions = (
-    <CustomView className="max-w-full" style={tw`px-4 py-3`}>
+    <CustomView className="max-w-full" style={tw`px-4 py-3 gap-3`}>
+      {!owner && previousDecision ? (
+        <Text style={tw`text-sm font-semibold text-warning dark:text-[#F8D05C]`}>
+          {CARPOOL_PREVIOUS_DECISION_LABELS[previousDecision.status]}
+        </Text>
+      ) : null}
       {owner ? (
         <CustomButton
           onPress={() => requestBSRef.current?.open()}
@@ -554,12 +530,11 @@ const CarpoolPage = () => {
       </CustomView>
       <View style={{flex: 1, width: "100%", maxWidth: detailsInColumns ? undefined : 840, alignSelf: "center", flexDirection: detailsInColumns ? "row" : "column", gap: detailsInColumns ? 24 : 0}}>
       <View style={{ flex: 1, minWidth: 0 }}>
-      <ScrollView
+      <GogoRefreshScrollView
         style={tw`flex-1 w-full`}
-        contentContainerStyle={tw`pb-4`}
-        onLayout={handleScrollViewLayout}
-        onScroll={handleRideDetailsScroll}
-        scrollEventThrottle={16}
+        contentContainerStyle={tw`flex-grow pb-4`}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
       >
         <View style={tw`px-4 pt-2 gap-4`}>
           <View
@@ -725,21 +700,7 @@ const CarpoolPage = () => {
           </View>
         </View>
         {!detailsInColumns ? driverCard : null}
-      </ScrollView>
-      {!detailsInColumns && showFloatingChat ? (
-        <TouchableOpacity
-          activeOpacity={0.86}
-          accessibilityRole="button"
-          accessibilityLabel="Open carpool chat"
-          onPress={openChat}
-          style={[
-            tw`absolute right-5 w-14 h-14 rounded-full bg-accentFill dark:bg-[#0FF1CF] border border-borderStrong/20 dark:border-white/20 items-center justify-center shadow-lg`,
-            { bottom: 16 },
-          ]}
-        >
-          <MessagesSquareIcon color={color("#01082E", "onAccent")} size={24} />
-        </TouchableOpacity>
-      ) : null}
+      </GogoRefreshScrollView>
       </View>
       {detailsInColumns ? (
         <ScrollView style={{ width: 336, flexGrow: 0, flexShrink: 0 }} contentContainerStyle={tw`pb-4`} showsVerticalScrollIndicator={false}>

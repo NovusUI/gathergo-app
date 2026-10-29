@@ -67,7 +67,7 @@ const PhoneNumberInput = forwardRef<TextInput, PhoneInputProps>(
     return (
       <Pressable
         onPress={() => inputRef.current?.focus()}
-        style={tw.style("mb-4 w-full max-w-96 bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent p-2 rounded-xl")}
+        style={tw.style("mb-4 w-full bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent p-2 rounded-xl")}
       >
         <View style={tw.style("flex-row items-center px-2")}>
           {/* Phone icon */}

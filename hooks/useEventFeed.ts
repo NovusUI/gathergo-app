@@ -40,6 +40,7 @@ export function useEventFeed(eventId: string) {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -176,6 +177,7 @@ export function useEventFeed(eventId: string) {
       }
 
       setHasMore(data.hasMore);
+      setRefreshing(false);
       setLoading(false);
       setLoadingMore(false);
       setError(null);
@@ -286,6 +288,7 @@ export function useEventFeed(eventId: string) {
       setError(errorData.message);
       setLoading(false);
       setLoadingMore(false);
+      setRefreshing(false);
     };
 
     // Set up listeners
@@ -297,6 +300,8 @@ export function useEventFeed(eventId: string) {
     socket.on("frenzyHistory", handleFrenzyHistory);
     socket.on("feedDeleted", handleFeedDeleted);
     socket.on("error", handleError);
+    const handleDisconnect = () => setRefreshing(false);
+    socket.on("disconnect", handleDisconnect);
 
     listenersSetRef.current = true;
 
@@ -309,6 +314,7 @@ export function useEventFeed(eventId: string) {
       socket.off("frenzyHistory", handleFrenzyHistory);
       socket.off("feedDeleted", handleFeedDeleted);
       socket.off("error", handleError);
+      socket.off("disconnect", handleDisconnect);
       listenersSetRef.current = false;
     };
   }, [socket?.connected, eventId]);
@@ -484,6 +490,7 @@ export function useEventFeed(eventId: string) {
     hasMore,
     loading,
     loadingMore,
+    refreshing,
     error,
     isJoined,
 
@@ -506,8 +513,11 @@ export function useEventFeed(eventId: string) {
 
     // Utilities
     refresh: () => {
-      leaveEventFeed();
-      setTimeout(() => joinEventFeed(), 100);
+      if (!socket?.connected) return;
+      setRefreshing(true);
+      isLoadingMoreRef.current = false;
+      lastCursorRef.current = undefined;
+      socket.emit("joinEventFeed", { eventId, limit });
     },
   };
 }

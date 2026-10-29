@@ -28,7 +28,7 @@ import { useLockedRouter } from "@/utils/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { AxiosError } from "axios";
 import { useLocalSearchParams } from "expo-router";
-import { SearchIcon } from "lucide-react-native";
+import { Clock3, SearchIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import {
@@ -380,7 +380,7 @@ const NewCarpool = () => {
       <View style={tw`flex-1 w-full max-w-[840px] px-5`}>
         <CustomeTopBarNav
           title="Create carpool"
-          onClickBack={() => router.replace("/")}
+          onClickBack={() => router.back()}
         />
 
         <Pressable
@@ -457,6 +457,32 @@ const NewCarpool = () => {
               />
 
               <View style={tw`mt-5`}>
+                {selectedEvent ? (
+                  <View style={tw`mb-4 rounded-2xl border border-border dark:border-[#1B2A50] bg-surface dark:bg-[#0A173F] p-4`}>
+                    <View style={tw`mb-2 flex-row items-center gap-2`}>
+                      <Clock3 size={16} color={color("#0FF1CF", "accent")} />
+                      <Text style={tw`text-sm font-semibold text-foreground dark:text-white`}>Event time</Text>
+                    </View>
+                    {[
+                      { label: "Starts", value: selectedEvent.startDate },
+                      { label: "Ends", value: selectedEvent.endDate },
+                    ].map(({ label, value }) => (
+                      <View key={label} style={tw`flex-row items-start justify-between gap-3 py-1`}>
+                        <Text style={tw`text-sm text-secondary dark:text-[#A8BAE4]`}>{label}</Text>
+                        <Text style={tw`flex-1 text-right text-sm text-foreground dark:text-white`}>
+                          {new Date(value).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
                 <Text style={tw`mb-2 text-foreground dark:text-white`}>Departure Time</Text>
                 <Controller
                   control={control}

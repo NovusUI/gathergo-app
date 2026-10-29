@@ -45,7 +45,6 @@ const DatePicker = forwardRef<View, DatePickerProps>(
         ref={ref}
         style={[
           tw`w-full p-2 rounded-xl bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent`,
-          { maxWidth: 500 },
           className ? tw`${className}` : null,
         ]}
       >

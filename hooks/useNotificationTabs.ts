@@ -1,15 +1,14 @@
 import { Notification } from "@/types/notification";
 import { useMemo, useState } from "react";
 
-export type NotificationTab = "unread" | "events" | "carpool";
+export type NotificationTab = "all" | "events" | "carpool";
 
 export function useNotificationTabs(notifications: Notification[]) {
-  const [activeTab, setActiveTab] = useState<NotificationTab>("unread");
+  const [activeTab, setActiveTab] = useState<NotificationTab>("all");
 
   // Memoize the filtered notifications per tab
   const filteredNotifications = useMemo(() => {
     return notifications.filter((n) => {
-      if (activeTab === "unread") return !n.read;
       if (activeTab === "events") return n.type.startsWith("event_");
       if (activeTab === "carpool") return n.type.startsWith("carpool_");
       return true;

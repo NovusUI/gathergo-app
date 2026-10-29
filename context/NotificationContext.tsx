@@ -400,6 +400,7 @@ const notificationsEqual = (a: Notification[], b: Notification[]) => {
     if (a[i].id !== b[i].id) return false;
     if (a[i].title !== b[i].title) return false;
     if (a[i].createdAt !== b[i].createdAt) return false;
+    if (a[i].read !== b[i].read) return false;
   }
 
   return true;

@@ -1,13 +1,15 @@
 import type { ThemeColor } from "@/constants/theme";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
+import GogoRefreshScrollView, {
   RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+} from "@/components/ui/GogoRefreshScrollView";
 import { EventImageWithProcessing } from "@/components/EventImageWithProcessing";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { layoutSpacing, spacing } from "@/constants/spacing";
 import { useMyRegistrations, useMyTickets } from "@/services/queries";
+import { useMyMealPasses } from "@/hooks/useFoodBank";
+import type { OwnedMealPass } from "@/types/foodBank";
 import { OwnedRegistration, OwnedTicket } from "@/types/event";
 import type { Registration } from "@/types/auth";
 import { formatEventDateTime } from "@/utils/dateTimeHandler";
@@ -28,7 +30,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type PassKind = "ticket" | "registration";
+type PassKind = "ticket" | "registration" | "meal";
 
 type UnifiedPass = {
   id: string;
@@ -82,6 +84,14 @@ const mapRegistrationToPass = (registration: OwnedRegistration): UnifiedPass => 
   isPhysicalEvent: registration.event.isPhysicalEvent,
 });
 
+const mapMealToPass = (pass: OwnedMealPass): UnifiedPass => ({
+  id: pass.id, kind: 'meal', qrCode: pass.qrCode, isUsed: pass.isUsed,
+  createdAt: pass.createdAt, eventId: pass.eventId, eventTitle: pass.event.title,
+  eventStartDate: pass.collectionStart, eventEndDate: pass.collectionEnd,
+  location: pass.event.location, thumbnailUrl: pass.event.thumbnailUrl,
+  registrationType: pass.event.registrationType, isPhysicalEvent: pass.event.isPhysicalEvent,
+});
+
 const formatIssuedDate = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -117,7 +127,7 @@ const sortPasses = (items: UnifiedPass[]) =>
 const getStatusMeta = (pass: UnifiedPass, color: ThemeColor) => {
   if (pass.isUsed) {
     return {
-      label: pass.kind === "registration" ? "Checked in" : "Used",
+      label: pass.kind === "meal" ? "Collected" : pass.kind === "registration" ? "Checked in" : "Used",
       backgroundColor: "rgba(32, 201, 99, 0.16)",
       textColor: color("#7AF5A7", "info"),
     };
@@ -125,7 +135,7 @@ const getStatusMeta = (pass: UnifiedPass, color: ThemeColor) => {
 
   if (isEventEnded(pass)) {
     return {
-      label: "Event ended",
+      label: pass.kind === "meal" ? "Window closed" : "Event ended",
       backgroundColor: "rgba(255, 193, 7, 0.16)",
       textColor: color("#FFD76A", "warning"),
     };
@@ -146,7 +156,7 @@ const EmptyState = () => (
     variant="empty"
     layout="stacked"
     title="No passes yet"
-    message="Your tickets and confirmed registrations will appear here."
+    message="Your tickets, registrations and meal passes will appear here."
     typing={false}
     style={styles.emptyCard}
   />
@@ -164,7 +174,7 @@ const PassCard = ({
   const { tw, color } = useAppTheme();
   const status = getStatusMeta(pass, color);
   const subtitle =
-    pass.kind === "ticket"
+    pass.kind === "meal" ? "Meal collection window" : pass.kind === "ticket"
       ? pass.ticketType
       : pass.isUsed
         ? "Attendance recorded"
@@ -181,7 +191,7 @@ const PassCard = ({
         />
         <View style={tw`absolute left-4 top-4 rounded-full bg-background/75 dark:bg-[#020B2E]/75 px-3 py-2`}>
           <Text style={tw`text-[11px] font-semibold uppercase tracking-[1px] text-foreground dark:text-white`}>
-            {pass.kind === "ticket" ? "Ticket" : "Registration"}
+            {pass.kind === "meal" ? "Meal collection" : pass.kind === "ticket" ? "Ticket" : "Registration"}
           </Text>
         </View>
         <View
@@ -408,6 +418,7 @@ export default function UserPassesTab({ ListHeaderComponent, renderSectionHeader
     isRefetching: registrationsRefetching,
   } = useMyRegistrations();
 
+  const mealPasses = useMyMealPasses();
   const tickets = useMemo(() => ticketsResponse?.data ?? [], [ticketsResponse]);
   const registrations = useMemo(
     () => registrationsResponse?.data ?? [],
@@ -419,15 +430,20 @@ export default function UserPassesTab({ ListHeaderComponent, renderSectionHeader
       sortPasses([
         ...tickets.map(mapTicketToPass),
         ...registrations.map(mapRegistrationToPass),
+        ...(mealPasses.data?.data ?? []).map(mapMealToPass),
       ]),
-    [registrations, tickets]
+    [registrations, tickets, mealPasses.data]
   );
 
-  const isLoading = ticketsPending || registrationsPending || ticketsFetching || registrationsFetching;
-  const hasError = ticketsError || registrationsError;
-  const isRefreshing = ticketsRefetching || registrationsRefetching;
+  const isLoading = ticketsPending || registrationsPending || ticketsFetching || registrationsFetching || mealPasses.isPending;
+  const hasError = ticketsError || registrationsError || mealPasses.isError;
+  const isRefreshing = ticketsRefetching || registrationsRefetching || mealPasses.isRefetching;
   const handleRefresh = async () => {
-    await Promise.all([refetchTickets(), refetchRegistrations()]);
+    await Promise.all([refetchTickets(), refetchRegistrations(), mealPasses.refetch()]);
+  };
+  const handleOpenQr = (pass: UnifiedPass) => {
+    if (pass.kind === "meal") router.push(`/transaction/${pass.id}?type=MEAL&eventId=${encodeURIComponent(pass.eventId)}`);
+    else setSelectedPass(pass);
   };
   const handleOpenEvent = (pass: UnifiedPass) => {
     setSelectedPass(null);
@@ -452,19 +468,26 @@ export default function UserPassesTab({ ListHeaderComponent, renderSectionHeader
         renderSectionHeader={info => (
           <>
             {renderSectionHeader?.(info)}
-            <RefreshIndicator refreshing={isRefreshing} />
+            <RefreshIndicator />
           </>
         )}
         stickySectionHeadersEnabled={Boolean(renderSectionHeader)}
-        renderItem={({item}) => <PassCard pass={item} onOpenQr={setSelectedPass} onOpenEvent={handleOpenEvent} />}
+        renderItem={({item}) => <PassCard pass={item} onOpenQr={handleOpenQr} onOpenEvent={handleOpenEvent} />}
         ListFooterComponent={combinedPasses.length === 0 ? (
-          isLoading ? (
+          isLoading ? isRefreshing ? null : (
             <ImpactPageLoader compact title="Mapping your passes" message="Loading tickets, registrations, and QR access." />
           ) : hasError ? retry : <EmptyState />
         ) : hasError ? retry : null}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{paddingBottom: layoutSpacing.listBottomInset}}
-        refreshControl={<AppRefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
+        renderScrollComponent={(props) => (
+          <GogoRefreshScrollView
+            {...props}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            inlineIndicator
+          />
+        )}
       />
       <PassQrModal pass={selectedPass} visible={Boolean(selectedPass)} onClose={() => setSelectedPass(null)} onOpenEvent={handleOpenEvent} />
     </>

@@ -1,3 +1,5 @@
+import type { ShortLinkKind } from "@/types/shortLink";
+import { buildShortShareLink } from "@/utils/shareLinks";
 import { useAuth } from "@/context/AuthContext";
 import type { InterestExamplesRequest } from "@/types/preferences";
 import { EventsResponse, StandardResponse } from "@/types/auth";
@@ -27,6 +29,8 @@ import {
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./queryKeys";
 import {
+  createShortLink,
+  resolveShortLink,
   getMyBadges,
   getInterestProfile,
   getPendingEventFeedback,
@@ -595,3 +599,20 @@ export const usePendingEventFeedback = (enabled: boolean) => {
     retry: 1,
   });
 };
+
+export const useShortShareLink = (kind: ShortLinkKind, targetId: string, enabled = true) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.shortShareLink, kind, targetId],
+    queryFn: () => createShortLink({ kind, targetId }),
+    select: (response) => buildShortShareLink(response.data.code),
+    enabled: enabled && Boolean(targetId),
+    staleTime: Infinity,
+    retry: 1,
+  });
+
+export const useResolvedShortLink = (code: string) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.resolvedShortLink, code],
+    queryFn: () => resolveShortLink(code),
+    retry: 1,
+  });

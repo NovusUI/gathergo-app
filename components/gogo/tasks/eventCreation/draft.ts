@@ -21,6 +21,9 @@ export function buildEventCreationDraft(
     registrationAttendees: values.registrationAttendees,
     donationTarget: values.donationTarget,
     donationsEnabled: values.donationsEnabled,
+    foodBankTotalMeals: values.foodBankTotalMeals,
+    foodBankSlotCapacity: values.foodBankSlotCapacity,
+    foodBankSlotMinutes: values.foodBankSlotMinutes,
     links: normalizeEventLinks(values.links),
     tags: values.tags,
     startDate:
@@ -40,6 +43,7 @@ export function buildEventCreationDraft(
     hasImpactGoalOrPath: Boolean(
       values.impactSdgGoals?.length || values.impactPaths?.length,
     ),
+    hasCoverImage: Boolean(values.imgUrl),
   };
 }
 
@@ -68,6 +72,12 @@ export function applyEventCreationUpdates(
     setValue("donationTarget", updates.donationTarget, options);
   if (updates.donationsEnabled !== undefined)
     setValue("donationsEnabled", updates.donationsEnabled, options);
+  if (updates.foodBankTotalMeals !== undefined)
+    setValue("foodBankTotalMeals", updates.foodBankTotalMeals, options);
+  if (updates.foodBankSlotCapacity !== undefined)
+    setValue("foodBankSlotCapacity", updates.foodBankSlotCapacity, options);
+  if (updates.foodBankSlotMinutes !== undefined)
+    setValue("foodBankSlotMinutes", updates.foodBankSlotMinutes, options);
   if (updates.links !== undefined) setValue("links", updates.links, options);
   if (updates.tags !== undefined) setValue("tags", updates.tags, options);
   if (updates.startDate !== undefined) {

@@ -42,6 +42,16 @@
               "scheme": "https",
               "host": "gathergo.events",
               "pathPrefix": "/carpool"
+            },
+            {
+              "scheme": "https",
+              "host": "gathergo.events",
+              "pathPrefix": "/food-bank"
+            },
+            {
+              "scheme": "https",
+              "host": "gathergo.events",
+              "pathPrefix": "/s/"
             }
           ],
           "category": [
@@ -58,6 +68,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withFoldableActivity",
       [
         "expo-splash-screen",
         {

@@ -221,6 +221,19 @@ test("the small spinner rotates and pulses around its ring and face centres", ()
   assert.deepEqual(motion.pupilProps().matrix.slice(4), [2, -1]);
 });
 
+test("pull progress scrubs Gogo’s ring without starting a loading loop", () => {
+  reset();
+  const progress = { value: 0.25 };
+  const motion = useGogoSpinnerMotion(false, progress);
+  effects[0]();
+  const edge = point(motion.ringProps().matrix, 61, 32);
+  near(edge[0], 32); near(edge[1], 61);
+  progress.value = 0.5;
+  const halfway = point(motion.ringProps().matrix, 61, 32);
+  near(halfway[0], 3); near(halfway[1], 32);
+  assert.equal(loops.length, 0);
+});
+
 test("small spinner loops cancel on unmount and reduced motion removes all movement", () => {
   reset();
   useGogoSpinnerMotion(true);
@@ -307,48 +320,12 @@ test("stopped loaders preserve their space and reduced-motion Gogo stays visible
   assert.equal(visible.props.children.props.animated, false);
 });
 
-const { default: AppRefreshControl, RefreshIndicator } = loadTypeScript(
-  "components/ui/AppRefreshControl.tsx",
-  {
-    "./AppLoader": appLoaderModule,
-    "react-native": {
-      RefreshControl: "NativeRefreshControl",
-      Platform: { OS: "android" },
-      StyleSheet: { create: (styles) => styles },
-    },
-  },
-);
-
-test("refresh controls retain native callbacks and Android scroll children while Gogo reflects refreshing", () => {
-  let requests = 0;
-  const onRefresh = () => {
-    requests++;
-  };
-  const children = { type: "NativeScrollView", props: {} };
-  const style = { flex: 1 };
-  const refresh = AppRefreshControl({
-    refreshing: true,
-    onRefresh,
-    children,
-    style,
-    enabled: false,
-  });
-  assert.equal(refresh.type, "NativeRefreshControl");
-  assert.equal(refresh.props.onRefresh, onRefresh);
-  refresh.props.onRefresh();
-  assert.equal(requests, 1);
-  assert.equal(refresh.props.children, children);
-  assert.equal(refresh.props.style, style);
-  assert.equal(refresh.props.enabled, false);
-  assert.equal(refresh.props.refreshing, true);
-  assert.equal(refresh.props.tintColor, "transparent");
-  assert.deepEqual(refresh.props.colors, ["transparent"]);
-  assert.ok(
-    refresh.props.progressViewOffset < -64,
-    "native circle must stay above the viewport throughout its 64-point travel",
-  );
-  assert.equal(RefreshIndicator({ refreshing: false }), null);
-  const indicator = RefreshIndicator({ refreshing: true });
-  assert.equal(indicator.type, AppLoader);
-  assert.equal(indicator.props.accessibilityLabel, "Refreshing");
+test("the small loader passes pull progress to Gogo and omits it for reduced motion", () => {
+  const progress = { value: 0.5 };
+  for (const reduced of [false, true]) {
+    reducedMotion = reduced;
+    const loader = AppLoader({ pullProgress: progress, animating: false, hidesWhenStopped: false });
+    assert.equal(loader.props.children.props.pullProgress, reduced ? undefined : progress);
+    assert.equal(loader.props.pullProgress, undefined, "animation state is not sent to the native View");
+  }
 });

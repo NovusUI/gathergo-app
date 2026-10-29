@@ -1,3 +1,5 @@
+import type { ShortLinkResponse, ShortLinkTarget } from "@/types/shortLink";
+import type { FoodBankCollectionResponse, UpdateCollectionPayload, RescheduleCollectionPayload, RescheduleCollectionResponse, MealPassResponse, ClaimMealResponse, OwnedMealPassesResponse } from '@/types/foodBank';
 import type { BadgeCollectionResponse, BadgeVisibility } from "@/types/badge";
 import type {
   SaveInterestProfile,
@@ -92,8 +94,11 @@ import {
   ScannerStatsResponse,
   SearchUsersResponse,
   ValidationResponse,
+  QuickScanResponse,
 } from "@/types/scanner";
 import {
+  SHORT_LINK_URL,
+  FOOD_BANK_URL,
   BADGE_URL,
   PREFERENCE_URL,
   VOLUNTEER_URL,
@@ -970,8 +975,8 @@ export const getShortcutEvent = async (
 
 export const quickScanFn = async (
   qrCode: string
-): Promise<ValidationResponse> => {
-  const response = await client.get<ValidationResponse>(SCANNER_URL.quickScan, {
+): Promise<QuickScanResponse> => {
+  const response = await client.get<QuickScanResponse>(SCANNER_URL.quickScan, {
     params: { qrCode },
   });
   return response.data;
@@ -1218,3 +1223,22 @@ export const deferEventFeedback = async (eventId: string): Promise<PreferenceRes
   const response = await client.post<PreferenceResponse<{ deferredUntil: string }>>(PREFERENCE_URL.deferFeedback(eventId));
   return response.data;
 };
+
+export const getMealPass = async (eventId: string) =>
+  (await client.get<MealPassResponse>(FOOD_BANK_URL.mine(eventId))).data;
+export const claimMeal = async (eventId: string) =>
+  (await client.post<ClaimMealResponse>(FOOD_BANK_URL.claim(eventId))).data;
+export const getMyMealPasses = async () =>
+  (await client.get<OwnedMealPassesResponse>(FOOD_BANK_URL.myPasses)).data;
+
+export const createShortLink = async (target: ShortLinkTarget) =>
+  (await client.post<ShortLinkResponse>(SHORT_LINK_URL.create, target)).data;
+export const resolveShortLink = async (code: string) =>
+  (await client.get<ShortLinkResponse>(SHORT_LINK_URL.resolve(code))).data;
+
+export const getFoodBankCollection = async (eventId: string) =>
+  (await client.get<FoodBankCollectionResponse>(FOOD_BANK_URL.collection(eventId))).data;
+export const updateFoodBankCollection = async (eventId: string, payload: UpdateCollectionPayload) =>
+  (await client.patch<FoodBankCollectionResponse>(FOOD_BANK_URL.collection(eventId), payload)).data;
+export const rescheduleFoodBankCollection = async (eventId: string, payload: RescheduleCollectionPayload) =>
+  (await client.post<RescheduleCollectionResponse>(FOOD_BANK_URL.reschedule(eventId), payload)).data;

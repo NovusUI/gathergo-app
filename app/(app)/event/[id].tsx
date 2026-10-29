@@ -27,6 +27,7 @@ import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import AppToast from "@/components/ui/AppToast";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
+import InfoDisclosure from "@/components/ui/InfoDisclosure";
 import { SdgGoalIcon } from "@/components/ui/SdgGoalIcon";
 import WalletSetupReminder from "@/components/ui/WalletSetupReminder";
 import { getEventLinkMeta, normalizeEventLink } from "@/constants/eventLinks";
@@ -67,7 +68,7 @@ import {
   showGlobalWarning,
 } from "@/utils/globalErrorHandler";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
-import { buildEventShareLink } from "@/utils/shareLinks";
+import EventShareSheet from '@/components/eventInfo/EventShareSheet';
 import { numberWithCommas } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -92,7 +93,6 @@ import {
   Linking,
   Modal,
   ScrollView,
-  Share,
   Text,
   TextInput,
   TouchableOpacity,
@@ -152,6 +152,7 @@ const EVENT_TONES: Record<string, EventTone> = {
     accent: "#F8D05C",
     iconName: "create-outline",
   },
+  foodbank: { label: "Food bank", accent: "#0FF1CF", iconName: "restaurant-outline" },
   donation: {
     label: "Donation",
     accent: "#FF6B6B",
@@ -290,6 +291,8 @@ const formatParticipationSummary = ({
     const fee = Number(registrationFee || 0);
     return fee > 0 ? numberWithCommas(fee, true, null) : "Free RSVP";
   }
+
+  if (registrationType === "foodbank") return "Timed meal collection";
 
   if (registrationType === "donation") {
     const target = Number(donationTarget || 0);
@@ -462,10 +465,12 @@ const EventPage = () => {
     marginRight: layout.insets.right + sheetMargin,
   };
   const queryClient = useQueryClient();
-  const { id, openFeed, feedTab } = useLocalSearchParams<{
+  const { id, openFeed, feedTab, donate, donationSource } = useLocalSearchParams<{
     id?: string | string[];
     openFeed?: string | string[];
     feedTab?: string | string[];
+    donate?: string;
+    donationSource?: string;
   }>(); // eventId
   const { user } = useAuth();
 
@@ -478,6 +483,7 @@ const EventPage = () => {
   const router = useLockedRouter();
 
   const [selectedTickets, setSelectedTickets] = useState<GetTickets[]>([]);
+  const [shareVisible, setShareVisible] = useState(false);
   const [donationAmount, setDonationAmount] = useState<string>("500");
   const [donationMessage, setDonationMessage] = useState<string>("");
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
@@ -543,6 +549,7 @@ const EventPage = () => {
     hasMore,
     loading,
     loadingMore,
+    refreshing: feedRefreshing,
     error,
     hideFeed,
     refresh,
@@ -781,6 +788,13 @@ const EventPage = () => {
     setShowFeed(false);
     setTimeout(() => bottomSheetDonationRef.current?.present?.(), 120);
   }, [closeEndedPaymentFlow, hasEventEnded]);
+
+  useEffect(() => {
+    if (donate === '1' && data) {
+      router.setParams({ donate: undefined });
+      if (data.data.donationsEnabled) openDonationSheet();
+    }
+  }, [donate, data, openDonationSheet, router]);
 
   const handleCopyAccountNumber = useCallback(async () => {
     const accountNumber = transferInstructions?.accountNumber?.trim();
@@ -1187,6 +1201,7 @@ const EventPage = () => {
         eventId: resolvedEventId,
         amount,
         message: donationMessage,
+        ...(donationSource === "FOOD_BANK" && data?.data.registrationType === "foodbank" ? { source: "FOOD_BANK" as const } : {}),
         isAnonymous,
         provider: selectedProvider,
         clientContext: {
@@ -1198,17 +1213,7 @@ const EventPage = () => {
     }
   };
 
-  const handleShare = useCallback(async () => {
-    try {
-      await Share.share({
-        message: `Gather with me on GatherGo 👉 ${buildEventShareLink(
-          resolvedEventId
-        )}`,
-      });
-    } catch (err) {
-      console.error("Error sharing:", err);
-    }
-  }, [resolvedEventId]);
+  const handleShare = useCallback(() => setShareVisible(true), []);
 
   const handleFeedAction = useCallback(
     (action: { type?: string; label?: string; carpoolId?: string }) => {
@@ -1606,7 +1611,7 @@ const EventPage = () => {
   );
   const participationActions = (
     <View style={tw`px-4 py-3 w-full gap-3`}>
-      {hasEventEnded ? (
+      {hasEventEnded && registrationType !== "foodbank" ? (
         <CustomButton
           disabled
           onPress={() => {}}
@@ -1615,6 +1620,17 @@ const EventPage = () => {
           textClassName="!text-muted dark:text-[#8FA1CB]"
           title="Event ended"
         />
+      ) : registrationType === "foodbank" ? (
+        <View style={tw`gap-3`}>
+          <CustomButton title={owner ? "Manage collection" : "Collect a meal"} onPress={() => router.push(`/food-bank/${resolvedEventId}`)} showArrow={false} />
+          {!hasEventEnded ? (
+            <CustomButton title="Support with a donation" onPress={openDonationSheet} showArrow={false} />
+          ) : null}
+          <InfoDisclosure
+            label="Collection info"
+            message="One meal pass per person, while collection windows are available. Donations are optional and support the food bank; additional donations do not issue another pass."
+          />
+        </View>
       ) : registrationType === "ticket" ? (
         <CustomButton
           onPress={openSheet}
@@ -2388,6 +2404,7 @@ const EventPage = () => {
         <AppToast />
       </Modal>
 
+      <EventShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} eventId={resolvedEventId} title={data.data.title} foodBank={registrationType === 'foodbank'} imageUrl={data.data.isImageProcessing ? null : imageUrl} />
       {/* BottomSheet for Donation */}
       <BottomSheetModal
         containerStyle={sheetContainerStyle}
@@ -2422,6 +2439,12 @@ const EventPage = () => {
             </TouchableOpacity> */}
           </View>
 
+          {registrationType === "foodbank" ? (
+            <InfoDisclosure
+              label="Donation info"
+              message="Donations support this food bank and are not a payment for food. Your first donation includes one meal pass while collection windows are available. Additional donations do not issue another pass."
+            />
+          ) : null}
           {/* {data.data.donationTarget && (
       <View style={tw`mb-6 bg-[#1B2A50] rounded-xl p-4`}>
         <Text style={tw`text-white text-center mb-2`}>Fundraising Goal</Text>
@@ -2635,6 +2658,7 @@ const EventPage = () => {
           hasMore,
           loading,
           loadingMore,
+          refreshing: feedRefreshing,
           error,
           hideFeed,
           loadMore: loadMore, // This is the loadMore function

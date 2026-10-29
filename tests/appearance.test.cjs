@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks -- This harness calls the theme hook with stubbed subscriptions to simulate device appearance changes. */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { loadTypeScript } = require('./loadTypeScript.cjs');
@@ -9,9 +10,10 @@ const { useAppearanceStore, APPEARANCE_KEY } = loadTypeScript('store/appearance.
     setItem: async (key, value) => { if (storageFailure) throw new Error('Storage unavailable'); writes.push([key, value]); stored = value; },
   } },
 });
-const reset = () => { stored = null; writes = []; storageFailure = false; useAppearanceStore.setState({ mode: 'dark', hasHydrated: false }); };
-test('appearance defaults to the existing dark mode and hydrates the saved app setting', async () => {
-  reset(); assert.equal(useAppearanceStore.getState().mode, 'dark');
+const reset = () => { stored = null; writes = []; storageFailure = false; useAppearanceStore.setState({ mode: 'system', hasHydrated: false }); };
+test('appearance defaults to the phone setting and hydrates an explicit saved app setting', async () => {
+  assert.equal(useAppearanceStore.getInitialState().mode, 'system');
+  reset(); assert.equal(useAppearanceStore.getState().mode, 'system');
   stored = 'light'; await useAppearanceStore.getState().hydrate();
   assert.equal(useAppearanceStore.getState().mode, 'light'); assert.equal(useAppearanceStore.getState().hasHydrated, true);
   stored = 'dark'; await useAppearanceStore.getState().hydrate();
@@ -27,16 +29,33 @@ test('changing appearance persists the app choice and restores it after a restar
 test('a failed save leaves the selected mode unchanged and exposes the failure', async () => {
   reset(); storageFailure = true;
   await assert.rejects(useAppearanceStore.getState().setMode('light'), /Storage unavailable/);
-  assert.equal(useAppearanceStore.getState().mode, 'dark'); assert.deepEqual(writes, []);
+  assert.equal(useAppearanceStore.getState().mode, 'system'); assert.deepEqual(writes, []);
 });
-test('the theme hook follows app settings without reading the phone color scheme', () => {
-  let mode = 'light'; const requested = [];
-  const { useAppTheme } = loadTypeScript('hooks/useAppTheme.ts', {
-    '@/store/appearance': { useAppearanceStore: selector => selector({ mode }) },
-    '@/utils/theme': { getAppTheme: value => { requested.push(value); return { mode: value }; } },
-  });
-  assert.equal(useAppTheme().mode, 'light'); mode = 'dark'; assert.equal(useAppTheme().mode, 'dark');
-  assert.deepEqual(requested, ['light', 'dark']);
+test('System is persisted and restored after changing back from a manual theme', async () => {
+  reset();
+  await useAppearanceStore.getState().setMode('light');
+  await useAppearanceStore.getState().setMode('system');
+  useAppearanceStore.setState({ mode: 'dark', hasHydrated: false });
+  await useAppearanceStore.getState().hydrate();
+  assert.equal(stored, 'system');
+  assert.equal(useAppearanceStore.getState().mode, 'system');
+});
+let appSetting = 'system', deviceScheme = 'light';
+const { useAppTheme } = loadTypeScript('hooks/useAppTheme.ts', {
+  '@/store/appearance': { useAppearanceStore: selector => selector({ mode: appSetting }) },
+  '@/utils/theme': { getAppTheme: mode => ({ mode }) },
+  'react-native': { useColorScheme: () => deviceScheme },
+});
+test('manual Light and Dark choices remain selected when the device theme changes', () => {
+  for (appSetting of ['light', 'dark']) {
+    for (deviceScheme of ['light', 'dark']) assert.equal(useAppTheme().mode, appSetting);
+  }
+});
+test('System follows device theme changes while mounted and handles a phone with no preference', () => {
+  appSetting = 'system';
+  for (deviceScheme of ['light', 'dark', 'light', 'dark']) assert.equal(useAppTheme().mode, deviceScheme);
+  deviceScheme = null;
+  assert.equal(useAppTheme().mode, 'light');
 });
 const { contrast } = require('./colorContrast.cjs');
 test('the reference palette has readable text, selected controls and solid primary buttons', () => {
@@ -53,17 +72,21 @@ function* nodes(node) { if (!node || typeof node !== 'object') return; yield nod
 const tw = () => ({}); tw.style = () => ({});
 const { default: Preference } = loadTypeScript('components/AppearancePreference.tsx', {
   '@/hooks/useAppTheme': { useAppTheme: () => ({ mode: uiMode, colors: uiMode === 'light' ? LIGHT_COLORS : DARK_COLORS, tw }) },
-  '@/store/appearance': { useAppearanceStore: selector => selector({ setMode: async mode => { saved = mode; uiMode = mode; } }) },
+  '@/store/appearance': { useAppearanceStore: selector => selector({ mode: uiMode, setMode: async mode => { saved = mode; uiMode = mode; } }) },
   '@/utils/globalErrorHandler': { showGlobalError: value => { message = value; } },
   '@expo/vector-icons': { Ionicons: 'Icon' }, react: { useState: () => [pending, value => { pending = value; }] },
   'react-native': { Text: 'Text', View: 'View', TouchableOpacity: 'Button' },
 });
-test('Appearance offers accessible Light and Dark app choices and updates the selected control after saving', async () => {
+test('Appearance offers accessible System, Light and Dark choices and updates the selected control after saving', async () => {
   uiMode = 'dark'; pending = false; saved = undefined; message = undefined;
   const radios = [...nodes(Preference())].filter(node => node.props.accessibilityRole === 'radio');
-  assert.deepEqual(radios.map(node => node.props.accessibilityLabel), ['Light mode', 'Dark mode']);
-  assert.deepEqual(radios.map(node => node.props.accessibilityState.checked), [false, true]);
-  radios[0].props.onPress(); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(radios.map(node => node.props.accessibilityLabel), ['System mode', 'Light mode', 'Dark mode']);
+  assert.deepEqual(radios.map(node => node.props.accessibilityState.checked), [false, false, true]);
+  radios[1].props.onPress(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(saved, 'light'); assert.equal(message, undefined);
   assert.equal([...nodes(Preference())].find(node => node.props.accessibilityLabel === 'Light mode').props.accessibilityState.checked, true);
+  [...nodes(Preference())].find(node => node.props.accessibilityLabel === 'System mode').props.onPress();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(saved, 'system');
+  assert.equal([...nodes(Preference())].find(node => node.props.accessibilityLabel === 'System mode').props.accessibilityState.checked, true);
 });

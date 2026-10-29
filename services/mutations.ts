@@ -127,6 +127,7 @@ import {
   ScannerPermissionResponse,
   UpdatePermissionPayload,
   ValidationResponse,
+  QuickScanResponse,
 } from "@/types/scanner";
 
 
@@ -684,9 +685,14 @@ export const useInitiateDonation = (
 export const useCreateCarpool = (
   options: UseMutationOptions<StandardResponse, AxiosError, CarpoolForm>
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: createCarpool,
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolListQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
   return { mutate, mutateAsync, isPending, error };
 };
@@ -722,10 +728,15 @@ export const useCarpoolRequestRes = (
     "ACCEPTED" | "DECLINED"
   >
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: (requestRes: "ACCEPTED" | "DECLINED") =>
       respondToCarpoolRequest(requestRes, requestId),
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolListQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };
@@ -735,9 +746,14 @@ export const useRemovePassenger = (
   requestId: string,
   options: UseMutationOptions<StandardResponse, AxiosError>
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: () => removePassenger(requestId),
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolListQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };
@@ -747,13 +763,33 @@ export const useLeaveCarpool = (
   carpoolId: string,
   options: UseMutationOptions<StandardResponse, AxiosError>
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: () => leaveCarpool(carpoolId),
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolListQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
 
   return { mutate, mutateAsync, isPending, error };
 };
+
+function invalidateCarpoolListQueries(queryClient: QueryClient) {
+  return Promise.all(
+    [QUERY_KEYS.carpoolForYou, QUERY_KEYS.eventCarpoolsPaginated].map((key) =>
+      queryClient.invalidateQueries({ queryKey: [key] }),
+    ),
+  );
+}
+
+function invalidateCarpoolFollowQueries(queryClient: QueryClient) {
+  return Promise.all([
+    invalidateCarpoolListQueries(queryClient),
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.carpoolDetails] }),
+  ]);
+}
 
 export const useFollowUser = (
   options: UseMutationOptions<
@@ -762,9 +798,14 @@ export const useFollowUser = (
     { followingId: string }
   >
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: followUser,
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolFollowQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
   return { mutate, mutateAsync, isPending, error };
 };
@@ -773,9 +814,14 @@ export const useUnfollowUser = (
   userId: string,
   options: UseMutationOptions<StandardResponse, AxiosError>
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: () => unfollowUser(userId),
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolFollowQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
   return { mutate, mutateAsync, isPending, error };
 };
@@ -820,6 +866,7 @@ export const useRequestCarpoolAfterCancel = (
     }
   >
 ) => {
+  const queryClient = useQueryClient();
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: (requestData: {
       cancelCarpoolId: string;
@@ -828,13 +875,17 @@ export const useRequestCarpoolAfterCancel = (
       startPoint?: { lng: number; lat: number };
     }) => requestCarpoolAfterCancel(requestData, carpoolId),
     ...options,
+    onSuccess: async (...args) => {
+      await invalidateCarpoolListQueries(queryClient);
+      await options.onSuccess?.(...args);
+    },
   });
   return { mutate, mutateAsync, isPending, error };
 };
 
 // Scanner mutations
 export const useQuickScan = (
-  options?: UseMutationOptions<ValidationResponse, AxiosError, string>
+  options?: UseMutationOptions<QuickScanResponse, AxiosError, string>
 ) => {
   const { mutate, mutateAsync, isPending, error } = useMutation({
     mutationFn: quickScanFn,

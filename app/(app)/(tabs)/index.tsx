@@ -243,6 +243,14 @@ export default function HomeScreen() {
           <View style={tw`flex-row items-center justify-between`}>
             <TouchableOpacity
               accessibilityRole="button"
+              accessibilityLabel="Scan a QR code"
+              style={tw`h-11 w-11 items-center justify-center`}
+              onPress={() => router.push('/scanner/scanner-screen')}
+            >
+              <Ionicons name="scan-outline" size={28} color={color('white', 'foreground')} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
               accessibilityLabel="Notifications"
               style={[tw`relative h-11 w-11 items-center justify-center`, styles.headerIconButton]}
               onPress={() => router.push("/notifications")}
@@ -399,7 +407,7 @@ export default function HomeScreen() {
                 ) : events?.data?.length ? (
                   <View style={[styles.listGroup, { flexDirection: "row", flexWrap: "wrap", gap: layout.columnGap }]}>
                     {events.data.map((event: any) => (
-                      <View key={event.id} style={{ width: layout.cardWidth }}>
+                      <View key={event.id} style={{ width: layout.cardWidth, flexGrow: 1 }}>
                         <EventCard
                           id={event.id}
                           title={event.title}
@@ -440,7 +448,7 @@ export default function HomeScreen() {
                 ) : carpoolsForYou?.data.length ? (
                   <View style={[styles.listGroup, { flexDirection: "row", flexWrap: "wrap", gap: layout.columnGap }]}>
                     {carpoolsForYou.data.map((carpool: any) => (
-                      <View key={carpool.id} style={{ width: layout.cardWidth }}>
+                      <View key={carpool.id} style={{ width: layout.cardWidth, flexGrow: 1 }}>
                         <CarpoolCard
                           id={carpool.id}
                           pickupLocation={carpool.origin}
@@ -453,6 +461,9 @@ export default function HomeScreen() {
                           pricePerSeat={carpool.pricePerSeat}
                           vehicleIcon={carpool.vehicleIcon}
                           poolerUsername={carpool.driver?.username}
+                          isFollowingDriver={carpool.isFollowingDriver}
+                          isFollowedByDriver={carpool.isFollowedByDriver}
+                          isMember={carpool.isMember}
                           onPress={() => router.push(`/carpool/${carpool.id}`)}
                         />
                       </View>

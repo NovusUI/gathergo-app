@@ -1,11 +1,9 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
-  RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import { Clock, QrCode, Shield, Users } from "lucide-react-native";
 import { useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import PermissionBadge from "@/components/scanner/PermissionBadge";
@@ -94,15 +92,13 @@ const ScannerHome = () => {
       </View>
 
       {/* Main Content */}
-      <ScrollView
+      <GogoRefreshScrollView
         style={tw`flex-1`}
         contentContainerStyle={tw`pb-20 px-5`}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       >
-        <RefreshIndicator refreshing={refreshing} />
         <MascotMoment
           title="Let's scan"
           message="Point your camera at a QR code to view its details. Checking someone in needs the organiser's permission."
@@ -198,7 +194,7 @@ const ScannerHome = () => {
             ))}
           </View>
         </View>
-      </ScrollView>
+      </GogoRefreshScrollView>
     </View>
   );
 };

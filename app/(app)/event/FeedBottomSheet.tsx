@@ -1,9 +1,8 @@
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
-  RefreshIndicator,
-  nativeRefreshIndicatorOffset,
-} from "@/components/ui/AppRefreshControl";
+import CarpoolFollowBadge from "@/components/carpool/CarpoolFollowBadge";
+import CarpoolMembershipBadge from "@/components/carpool/CarpoolMembershipBadge";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import { useFreeEventRegistration } from "@/hooks/useFreeEventRegistration";
 // components/event/FeedBottomSheet.tsx
 import VolunteerButton from "@/components/volunteer/VolunteerButton";
@@ -12,17 +11,15 @@ import ActivityIndicator from "@/components/ui/AppLoader";
 import { FeedItem } from "@/hooks/useEventFeed";
 import { useLocationManager } from "@/hooks/useLocationManager";
 import { useEventDetails, usePaginatedEventCarpools } from "@/services/queries";
-import { EventCarpoolFilter } from "@/types/carpool";
+import { EventCarpoolFilter, EventCarpoolListItem } from "@/types/carpool";
 import { numberWithCommas } from "@/utils/utils";
 import { Ionicons } from "@expo/vector-icons";
 import {
   BottomSheetBackdrop,
-  BottomSheetFlatList,
   BottomSheetModal,
 } from "@gorhom/bottom-sheet";
-import { useFocusEffect } from "@react-navigation/native";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 
 import DontationProgress from "./DontationProgress";
 
@@ -40,6 +37,7 @@ interface FeedBottomSheetProps {
     hasMore: boolean;
     loading: boolean;
     loadingMore: boolean;
+    refreshing: boolean;
     error: string | null;
     hideFeed: (feedId: string) => void;
     loadMore: () => void;
@@ -114,8 +112,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const supportsCarpool = eventData?.data?.isPhysicalEvent !== false;
   const canUseCarpool = supportsCarpool && !hasEventEnded;
   const eventRegistrationFee = eventData?.data?.registrationFee ?? null;
-  const [refreshing, setRefreshing] = useState(false);
-  const listRefreshing = activeTab === "feed" ? refreshing : carpoolsRefreshing;
+  const listRefreshing = activeTab === "feed" ? Boolean(feed?.refreshing) : carpoolsRefreshing;
 
   // Open/close handling
   useEffect(() => {
@@ -149,19 +146,13 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     }
   };
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    feed?.refresh();
-    setTimeout(() => setRefreshing(false), 1000);
-  }, [feed?.refresh]);
-
   const refreshList = useCallback(() => {
     if (activeTab === "feed") {
-      onRefresh();
+      return feed?.refresh();
     } else {
-      void refreshCarpools();
+      return refreshCarpools();
     }
-  }, [activeTab, onRefresh, refreshCarpools]);
+  }, [activeTab, feed, refreshCarpools]);
 
   const handleLoadMore = useCallback(() => {
     if (feed?.hasMore && !feed?.loadingMore) {
@@ -169,7 +160,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
     }
   }, [feed?.hasMore, feed?.loadingMore, feed?.loadMore]);
   const renderFeedItem = useCallback(
-    ({ item }: { item: any }) => (
+    ({ item }: { item: FeedItem }) => (
       <FeedRenderer
         feed={item}
         eventRegistrationFee={eventRegistrationFee}
@@ -181,17 +172,23 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   );
 
   const renderCarpoolItem = useCallback(
-    ({ item }: { item: any }) => (
+    ({ item }: { item: EventCarpoolListItem }) => (
       <TouchableOpacity
         disabled={hasEventEnded}
         style={[
-          tw`mx-4 mb-3 p-4 bg-surface dark:bg-[#101C45] rounded-xl border border-border dark:border-[#1B2A50]`,
+          tw`mx-4 mb-3 p-4 rounded-xl border`,
+          item.isMember
+            ? tw`bg-infoSoft dark:bg-[#10264D] border-info/30 dark:border-[#38699D]`
+            : tw`bg-surface dark:bg-[#101C45] border-border dark:border-[#1B2A50]`,
           hasEventEnded ? tw`opacity-50` : null,
         ]}
         onPress={() =>
           onAction?.({ type: "OPEN_CARPOOL", carpoolId: item.id })
         }
       >
+        {item.isMember ? (
+          <View style={tw`mb-2`}><CarpoolMembershipBadge /></View>
+        ) : null}
         <View style={tw`flex-row justify-between items-start`}>
           <View style={tw`flex-1 pr-3`}>
             <Text style={tw`text-foreground dark:text-white font-semibold`} numberOfLines={1}>
@@ -214,37 +211,26 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           </View>
         </View>
 
-        <View style={tw`flex-row items-center justify-between mt-3`}>
+        <View style={tw`flex-row flex-wrap items-center justify-between gap-2 mt-3`}>
           <Text style={tw`text-secondary dark:text-gray-300 text-xs`}>
-            @{item.driver?.username || "driver"}
+            @{item.driver.username ?? "driver"}
           </Text>
-          <View style={tw`bg-accentFill dark:bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
-            <Text style={tw`text-xs text-onAccent dark:text-[#01082E] font-semibold`}>
-              {(() => {
-                if (carpoolFilter === "close_to_you") {
-                  if (typeof item.distanceKm === "number") {
-                    return `${item.distanceKm.toFixed(1)} km away`;
-                  }
-                  return "Close to you";
-                }
-
-                const reasons: string[] = item.ranking?.reasons || [];
-                const primaryReason = item.ranking?.primaryReason;
-                if (
-                  primaryReason === "followed_owner" ||
-                  reasons.includes("followed_owner")
-                ) {
-                  return "You follow owner";
-                }
-                if (
-                  primaryReason === "distance" ||
-                  reasons.includes("distance")
-                ) {
-                  return "Close to you";
-                }
-                return "Recommended";
-              })()}
-            </Text>
+          <View style={tw`flex-row flex-wrap items-center gap-2`}>
+            <CarpoolFollowBadge
+              isFollowing={item.isFollowingDriver}
+              isFollowedBy={item.isFollowedByDriver}
+            />
+            {item.isCloseToYou || (!item.isFollowingDriver && !item.isFollowedByDriver) ? (
+              <View style={tw`bg-accentFill dark:bg-[#0FF1CF] px-2.5 py-1 rounded-full`}>
+                <Text style={tw`text-xs text-onAccent dark:text-[#01082E] font-semibold`}>
+                  {carpoolFilter === "close_to_you" && item.distanceKm !== null
+                    ? `${item.distanceKm.toFixed(1)} km away`
+                    : item.isCloseToYou
+                      ? "Close to you"
+                      : "Recommended"}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
       </TouchableOpacity>
@@ -338,7 +324,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
         )}
 
         {!hasEventEnded &&
-          donationsEnabled && (registrationType === "donation" || registrationType === "volunteer") && (
+          donationsEnabled && (registrationType === "donation" || registrationType === "volunteer" || registrationType === "foodbank") && (
             <DontationProgress
               onAction={onAction}
               donationTarget={donationTarget}
@@ -380,7 +366,6 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
   const ListHeaderComponent = useCallback(
     () => (
       <>
-        <RefreshIndicator refreshing={listRefreshing} />
         <View
           style={tw`flex-row justify-between items-center gap-2 p-5 border-b border-border dark:border-gray-800`}
         >
@@ -606,6 +591,7 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       containerStyle={{marginLeft: layout.insets.left + sheetMargin, marginRight: layout.insets.right + sheetMargin}}
       onDismiss={onClose}
       enablePanDownToClose
+      enableContentPanningGesture={false}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
@@ -619,13 +605,16 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
       backgroundStyle={{ backgroundColor: color("#01082E", "background") }}
       handleIndicatorStyle={{ backgroundColor: "#666" }}
     >
-      <BottomSheetFlatList
+      <FlatList<FeedItem | EventCarpoolListItem>
         key={activeTab}
         style={tw`flex-1`}
-        focusHook={useFocusEffect}
         data={activeTab === "feed" ? feed?.allFeeds ?? [] : carpoolList}
-        keyExtractor={(item: any) => item.id}
-        renderItem={activeTab === "feed" ? renderFeedItem : renderCarpoolItem}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) =>
+          "origin" in item
+            ? renderCarpoolItem({ item })
+            : renderFeedItem({ item })
+        }
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={ListFooterComponent}
         ListEmptyComponent={ListEmptyComponent}
@@ -640,15 +629,13 @@ const FeedBottomSheet: FC<FeedBottomSheetProps> = ({
           carpoolCount: carpoolList.length,
           hasEventEnded,
         }}
-        refreshing={listRefreshing}
-        onRefresh={refreshList}
-        progressViewOffset={nativeRefreshIndicatorOffset}
-        refreshControl={
-          <AppRefreshControl
+        renderScrollComponent={(props) => (
+          <GogoRefreshScrollView
+            {...props}
             refreshing={listRefreshing}
             onRefresh={refreshList}
           />
-        }
+        )}
         onEndReached={
           activeTab === "feed"
             ? handleLoadMore

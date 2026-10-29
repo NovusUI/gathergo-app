@@ -27,7 +27,7 @@ const CustomeTopBarNav = ({
 
   return (
     <View
-      style={tw`flex-row justify-between items-center w-full max-w-[500px] gap-3`}
+      style={tw`flex-row justify-between items-center w-full gap-3`}
     >
       {/* Left Section */}
       <View style={tw`flex-row items-center gap-2 flex-1 min-w-0`}>

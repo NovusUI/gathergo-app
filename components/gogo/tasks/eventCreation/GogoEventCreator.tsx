@@ -24,6 +24,7 @@ import {
 type Props = {
   conversation: ReturnType<typeof useGogoEventCreation>;
   isDonationEvent: boolean;
+  isFoodBank?: boolean;
   onOpenSection: (section: EventCreationSection) => void;
   onReview: () => void;
   draftTitle: string;
@@ -47,6 +48,7 @@ const EDITOR_LABELS: Record<EventCreationSection, string> = {
 export default function GogoEventCreator({
   conversation,
   isDonationEvent,
+  isFoodBank = false,
   onOpenSection,
   onReview,
   draftTitle,
@@ -295,7 +297,9 @@ export default function GogoEventCreator({
                       title={
                         section === "Pricing" && isDonationEvent
                           ? "Set up donations"
-                          : EDITOR_LABELS[section]
+                          : section === "Pricing" && isFoodBank
+                            ? "Set collection windows"
+                            : EDITOR_LABELS[section]
                       }
                       showArrow={false}
                       buttonClassName="w-full border-border dark:border-[#345A70] bg-surface dark:bg-[#101C45]"
@@ -343,7 +347,9 @@ export default function GogoEventCreator({
                           messages.length === 1
                             ? isDonationEvent
                               ? "Tell me who or what you’re supporting…"
-                              : "e.g. A tree-planting morning in Lagos…"
+                              : isFoodBank
+                                ? "e.g. 200 meals at the community hall on Saturday…"
+                                : "e.g. A tree-planting morning in Lagos…"
                             : "Your answer…"
                         }
                         placeholderTextColor={color("#8FA1CB", "muted")}

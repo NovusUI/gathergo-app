@@ -90,6 +90,7 @@ test("Gogo receives the current draft and role counts without uploading private 
   assert.equal(context.donationTarget, 1000000);
   assert.equal(context.ticketCount, 1);
   assert.equal(context.volunteerRoleCount, 1);
+  assert.equal(context.hasCoverImage, true);
   assert.equal(
     context.startDate,
     buildEventDateTimeIso(values.startDate, values.startTime),
@@ -97,6 +98,20 @@ test("Gogo receives the current draft and role counts without uploading private 
   assert.equal(context.imgUrl, undefined);
   assert.equal(context.tickets, undefined);
   assert.equal(context.volunteerRoles, undefined);
+});
+test("Gogo knows when a cover has not been selected", () => {
+  assert.equal(buildEventCreationDraft(draft()).hasCoverImage, false);
+});
+test("Gogo preserves food bank collection facts through draft context and partial replies", () => {
+  const values = { ...draft(), registrationType: "foodbank", foodBankTotalMeals: 100, foodBankSlotCapacity: 25, foodBankSlotMinutes: 30 };
+  const context = buildEventCreationDraft(values);
+  assert.equal(context.foodBankTotalMeals, 100);
+  assert.equal(context.foodBankSlotCapacity, 25);
+  assert.equal(context.foodBankSlotMinutes, 30);
+  applyEventCreationUpdates((name, value) => { values[name] = value; }, { foodBankTotalMeals: 120, foodBankSlotCapacity: 30 });
+  assert.equal(values.foodBankTotalMeals, 120);
+  assert.equal(values.foodBankSlotCapacity, 30);
+  assert.equal(values.foodBankSlotMinutes, 30);
 });
 for (const [name, selections, expected] of [
   ["a global goal", { impactSdgGoals: [{ id: "sdg_15" }] }, true],
@@ -225,6 +240,16 @@ function renderHook(isDonationEvent = false, initialState) {
     initialState,
   });
 }
+test("food bank conversations greet organisers about sharing meals and keep impact optional", async () => {
+  reset(); form.registrationType = "foodbank";
+  assert.match(renderHook().messages[0].content, /sharing meals/);
+  respond = async () => ({ data: { reply: "What could sharing these meals contribute?", section: "Impact story", choices: [], completedSection: null, suggestedImpactStory: null, updates: { foodBankTotalMeals: 100, foodBankSlotCapacity: 25, foodBankSlotMinutes: 30 } } });
+  await renderHook().send("100 meals, 25 people per 30-minute collection window");
+  assert.equal(requests[0].payload.eventType, "general");
+  assert.equal(requests[0].payload.draft.registrationType, "foodbank");
+  assert.equal(form.foodBankTotalMeals, 100);
+  assert.equal(renderHook().optionalSection, "Impact story");
+});
 test("a real reply updates the shared form and offers the server's quick choices", async () => {
   reset();
   await renderHook().send("A gathering in the park");
@@ -635,6 +660,7 @@ const uiComponents = Object.fromEntries(
     ["eventInfo/EventFundraisingFields", "FundraisingEditor"],
     ["eventInfo/Location", "LocationEditor"],
     ["eventInfo/Pricing", "PricingEditor"],
+    ["eventInfo/FoodBankSetupFields", "FoodBankSetup"],
     ["inputs/CustomInput1", "Input"],
     ["labels/FormLabel", "Label"],
     ["gogo/tasks/eventCreation/EventTypePicker", "EventTypePicker"],
@@ -774,6 +800,22 @@ test("the creation page keeps a single shared draft across Gogo and manual modes
   assert.equal(form.eventName, "An organiser's manual edit");
   assert.deepEqual(uiCalls, ["cancel", "continue"]);
   assert.equal(published, undefined);
+});
+test("food banks start with Gogo, retain the manual form, and offer physical collection setup inline", async () => {
+  reset(); form.registrationType = "foodbank";
+  let tree = eventScreen();
+  let creator = [...nodes(tree)].find(node => node.type === "GogoCreator");
+  assert.ok(creator); assert.equal(creator.props.isFoodBank, true);
+  const locationController = [...nodes(creator.props.renderInlineSection("Location"))].find(node => node.type === "Controller");
+  const location = [...nodes(locationController.props.render({ field: { value: form.location, onChange() {} } }))].find(node => node.type === "LocationEditor");
+  assert.equal(location.props.physicalOnly, true);
+  const collection = creator.props.renderInlineSection("Pricing");
+  assert.ok([...nodes(collection)].some(node => node.type === "FoodBankSetup"));
+  const next = [...nodes(collection)].find(node => node.props.title === "Continue");
+  assert.ok(next); await next.props.onPress();
+  tree = manualForm();
+  assert.ok([...nodes(tree)].some(node => node.type === "FoodBankSetup"));
+  assert.ok([...nodes(tree)].some(node => text(node) === "Let Gogo guide me"));
 });
 test("date and pricing shortcuts read the latest shared draft and cancel pending replies", () => {
   reset();
@@ -1256,6 +1298,39 @@ test("optional invitations show a working skip action alongside the current edit
   assert.ok([...nodes(tree)].some(node => node.props?.title === "Choose event interests"));
   [...nodes(tree)].find(node => node.type === "TouchableOpacity" && text(node) === "Skip for now").props.onPress();
   assert.deepEqual(requests, ["skip"]);
+});
+test("the cover invitation opens the existing image picker and can be skipped", async () => {
+  reset();
+  respond = async () => ({ data: { reply: "Would you like to add a cover image?", choices: [], section: "Cover", completedSection: null, suggestedImpactStory: null, updates: {} } });
+  await renderHook().send("Next");
+  assert.equal(renderHook().optionalSection, "Cover");
+  const opened = [];
+  const tree = screen({ conversation: renderHook(), onOpenSection: section => opened.push(section) });
+  [...nodes(tree)].find(node => node.props?.title === "Choose a cover image").props.onPress();
+  assert.deepEqual(opened, ["Cover"]);
+  await renderHook().skipSection();
+  assert.deepEqual(requests.at(-1).payload.addressedSections, ["Cover"]);
+});
+test("choosing an image completes the cover step without sending its private URI to Gogo", async () => {
+  reset();
+  respond = async () => ({ data: { reply: "Ready to review your event?", choices: [], section: "Review", completedSection: null, suggestedImpactStory: null, updates: {} } });
+  form.imgUrl = "file:///private/cover.jpg";
+  await renderHook().continueFromDraft("Cover");
+  const payload = requests.at(-1).payload;
+  assert.deepEqual(payload.addressedSections, ["Cover"]);
+  assert.equal(payload.draft.hasCoverImage, true);
+  assert.equal(payload.draft.imgUrl, undefined);
+});
+test("the guided cover editor saves the selected image in the shared event form", async () => {
+  reset(); uiCalls.length = 0;
+  [...nodes(eventScreen())].find(node => node.type === "GogoCreator").props.onOpenSection("Cover");
+  const controller = [...nodes(eventScreen())].find(node => node.type === "Controller" && node.props.name === "imgUrl");
+  const picker = controller.props.render({ field: { value: form.imgUrl, onChange: value => { form.imgUrl = value; } } });
+  assert.equal(picker.type, "CoverPicker");
+  picker.props.onChange("file:///private/cover.jpg");
+  await [...nodes(eventScreen())].find(node => node.props?.title === "Continue with Gogo").props.onPress();
+  assert.equal(form.imgUrl, "file:///private/cover.jpg");
+  assert.deepEqual(uiCalls, ["cancel", "continue"]);
 });
 test("optional steps open only their own existing form editor", () => {
   for (const section of ["Impact story", "Impact map", "Interests"]) {

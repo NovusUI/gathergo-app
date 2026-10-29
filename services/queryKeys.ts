@@ -1,4 +1,9 @@
 export const QUERY_KEYS = {
+  foodBankCollection: ["foodBankCollection"] as const,
+  shortShareLink: ["shortShareLink"] as const,
+  resolvedShortLink: ["resolvedShortLink"] as const,
+  mealPass: ["mealPass"] as const,
+  myMealPasses: ["myMealPasses"] as const,
   badges: ["badges"] as const,
   pendingEventFeedback: ["pendingEventFeedback"] as const,
   interestProfile: ["interestProfile"] as const,
