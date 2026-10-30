@@ -46,7 +46,9 @@ export function useGogoEventCreation({
         role: "assistant",
         content: isDonationEvent
           ? "What are you raising support for? Include any plans you have."
-          : "What’s your event idea? Add any date, place or price you know.",
+          : getValues().registrationType === "foodbank"
+            ? "Who are you sharing meals with? Add any collection plans you know."
+            : "What’s your event idea? Add any date, place or price you know.",
         choices: [],
         section: null,
         suggestedImpactStory: null,

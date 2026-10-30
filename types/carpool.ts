@@ -44,6 +44,9 @@ export interface EventCarpoolListItem {
   distanceKm: number | null;
   isCloseToYou: boolean;
   isFollowedOwner: boolean;
+  isFollowingDriver: boolean;
+  isFollowedByDriver: boolean;
+  isMember: boolean;
   ranking: {
     priority: number;
     primaryReason: "distance" | "followed_owner" | "others";
@@ -51,7 +54,7 @@ export interface EventCarpoolListItem {
   };
   driver: {
     id: string;
-    username: string;
+    username: string | null;
     profilePicUrlTN: string | null;
     isVerified: boolean;
   };
@@ -72,4 +75,22 @@ export interface PaginatedEventCarpoolsResponse {
     hasNextPage: boolean;
   };
   data: EventCarpoolListItem[];
+}
+
+export type CarpoolRequestDecision = "DECLINED" | "REMOVED";
+
+export interface CarpoolPassengerRequest {
+  id: string;
+  userId: string;
+  carpoolId: string;
+  status: string;
+  origin: string;
+  note: string | null;
+  estimatedDistance: string | null;
+  requestedAt: string;
+  isFollowingRequester: boolean;
+  isFollowedByRequester: boolean;
+  user: Pick<EventCarpoolListItem["driver"], "id" | "profilePicUrlTN"> & {
+    username: string | null;
+  };
 }

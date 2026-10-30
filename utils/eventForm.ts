@@ -32,6 +32,9 @@ export function buildEventParticipationFormFields(
   values: Pick<
     EventFormData,
     | "registrationType"
+    | "foodBankTotalMeals"
+    | "foodBankSlotCapacity"
+    | "foodBankSlotMinutes"
     | "registrationFee"
     | "registrationAttendees"
     | "tickets"
@@ -43,9 +46,20 @@ export function buildEventParticipationFormFields(
 ) {
   const donationsEnabled =
     values.registrationType === "donation" ||
+    values.registrationType === "foodbank" ||
     (values.registrationType === "volunteer" && values.donationsEnabled);
   return {
     donationsEnabled,
+    ...(values.registrationType === "foodbank"
+      ? {
+          ...(mode === "create"
+            ? { foodBankTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+            : {}),
+          foodBankTotalMeals: values.foodBankTotalMeals,
+          foodBankSlotCapacity: values.foodBankSlotCapacity,
+          foodBankSlotMinutes: values.foodBankSlotMinutes,
+        }
+      : {}),
     ...(donationsEnabled && values.donationTarget !== undefined
       ? { donationTarget: values.donationTarget }
       : {}),

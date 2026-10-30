@@ -11,6 +11,7 @@ import EventStoryFields from "@/components/eventInfo/EventStoryFields";
 import VolunteerSetupFields from "@/components/eventInfo/VolunteerSetupFields";
 import EventFundraisingFields from "@/components/eventInfo/EventFundraisingFields";
 import Location from "@/components/eventInfo/Location";
+import FoodBankSetupFields from '@/components/eventInfo/FoodBankSetupFields';
 import Pricing from "@/components/eventInfo/Pricing";
 import Input from "@/components/inputs/CustomInput1";
 import FormLabel from "@/components/labels/FormLabel";
@@ -30,6 +31,7 @@ import { useEventDetails } from "@/services/queries";
 import {
   buildEventDateTimeIso,
   extractDate,
+  extractTime,
   isEventEditableBeforeStartDay,
 } from "@/utils/dateTimeHandler";
 import {
@@ -104,7 +106,7 @@ const EditEvent = () => {
   const { data: eventData, isPending, isError } = useEventDetails(eventId);
   const lockedRegistrationType = eventData?.data?.registrationType;
   const isDonationEvent = lockedRegistrationType === "donation";
-  const pricingSectionTitle = isDonationEvent ? "Donation setup" : "Pricing";
+  const pricingSectionTitle = lockedRegistrationType === "foodbank" ? "Food collection" : isDonationEvent ? "Donation setup" : "Pricing";
   const canEditEvent = isEventEditableBeforeStartDay(
     eventData?.data?.startDate,
   );
@@ -191,8 +193,8 @@ const EditEvent = () => {
         impactMapGeneratedAt: e.impactMapGeneratedAt || undefined,
         startDate: e.startDate ? new Date(e.startDate) : undefined,
         endDate: e.endDate ? new Date(e.endDate) : undefined,
-        startTime: e.startDate?.split("T")[1]?.slice(0, 5) || "",
-        endTime: e.endDate?.split("T")[1]?.slice(0, 5) || "",
+        startTime: extractTime(new Date(e.startDate)),
+        endTime: extractTime(new Date(e.endDate)),
         isPhysicalEvent: e.isPhysicalEvent ?? true,
         location: e.location || "",
         links: e.links || [],
@@ -210,6 +212,9 @@ const EditEvent = () => {
         registrationFee: e.registrationFee || undefined,
         donationTarget: e.donationTarget || undefined,
         donationsEnabled: e.donationsEnabled,
+        foodBankTotalMeals: e.foodBankTotalMeals ?? undefined,
+        foodBankSlotCapacity: e.foodBankSlotCapacity ?? undefined,
+        foodBankSlotMinutes: e.foodBankSlotMinutes ?? undefined,
         volunteerRoles: e.volunteerRoles.map(({ title, description, capacity, requiresApproval }) => ({ title, description, capacity, requiresApproval })),
         isRecurring: e.reoccurring !== "NONE",
         repeat: e.reoccurring || "NONE",
@@ -219,14 +224,14 @@ const EditEvent = () => {
       setDateTimeData({
         startDate: new Date(e.startDate),
         endDate: new Date(e.endDate),
-        startTime: e.startDate?.split("T")[1]?.slice(0, 5),
-        endTime: e.endDate?.split("T")[1]?.slice(0, 5),
+        startTime: extractTime(new Date(e.startDate)),
+        endTime: extractTime(new Date(e.endDate)),
         isRecurring: e.reoccurring !== "NONE",
         repeat: e.reoccurring || "NONE",
         endRepeat: e.endRepeat ? new Date(e.endRepeat) : undefined,
       });
 
-      setPricingData(e.registrationType === "volunteer" ? null : {
+      setPricingData(e.registrationType === "volunteer" || e.registrationType === "foodbank" ? null : {
         registrationType: e.registrationType,
         registrationFee: e.registrationFee ? e.registrationFee : undefined,
         donationTarget: e.donationTarget ? e.donationTarget : undefined,
@@ -287,7 +292,7 @@ const EditEvent = () => {
   };
 
   const handlePricingSave = (data: EventPricing) => {
-    if (lockedRegistrationType === "volunteer") return;
+    if (lockedRegistrationType === "volunteer" || lockedRegistrationType === "foodbank") return;
     const nextPricingData = {
       ...data,
       registrationType: lockedRegistrationType ?? data.registrationType,
@@ -327,6 +332,7 @@ const EditEvent = () => {
               <View>
                 <Location
                   isPhysicalEvent={locationDraft.isPhysicalEvent}
+                  physicalOnly={lockedRegistrationType === "foodbank"}
                   onChange={setLocationDraft}
                   onSave={() => {
                     const { location, isPhysicalEvent } = locationDraft;
@@ -346,6 +352,7 @@ const EditEvent = () => {
           />
         );
       case "Pricing":
+        if (lockedRegistrationType === "foodbank") return <FoodBankSetupFields control={control} />;
         return (
           <Pricing
             editMode

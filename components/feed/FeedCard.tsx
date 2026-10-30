@@ -425,7 +425,7 @@ const FeedCard: React.FC<FeedCardProps> = ({
             accessible
             accessibilityRole="progressbar"
             accessibilityLabel="Fundraising progress"
-            accessibilityValue={{ min: 0, max: 100, now: normalizedPercentage }}
+            accessibilityValue={{ min: 0, max: 100, now: Math.round(normalizedPercentage) }}
             pointerEvents="none"
             style={[
               tw`absolute inset-y-0 left-0`,

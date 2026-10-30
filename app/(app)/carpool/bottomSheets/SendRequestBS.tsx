@@ -9,6 +9,7 @@ import { useLocationManager } from "@/hooks/useLocationManager";
 import { carpoolSchema } from "@/schemas/carpool";
 import { useRequestCarpool } from "@/services/mutations";
 import { QUERY_KEYS } from "@/services/queryKeys";
+import { getApiErrorMessage } from "@/utils/apiError";
 import {
   showGlobalError,
   showGlobalSuccess,
@@ -79,7 +80,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
       close: () => setIsVisible(false),
     }));
 
-    const { mutateAsync, isPending } = useRequestCarpool(carpoolId, {
+    const { mutate, isPending } = useRequestCarpool(carpoolId, {
       onSuccess: (response) => {
         // Check if user has an existing carpool
         if (response.data.hasExistingCarpool) {
@@ -94,11 +95,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
           queryKey: [QUERY_KEYS.carpoolDetails, carpoolId],
         });
 
-        if (response.data.message) {
-          showGlobalSuccess(response.message);
-        } else {
-          showGlobalSuccess("Request sent successfully");
-        }
+        showGlobalSuccess("Request sent successfully");
         setIsVisible(false);
 
         // Notify parent of success
@@ -106,8 +103,13 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
           onRequestSuccess(response);
         }
       },
-      onError: () => {
-        showGlobalError("Error requesting carpool");
+      onError: (error) => {
+        showGlobalError(
+          getApiErrorMessage(error, "Couldn't request this ride. Try again."),
+        );
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.carpoolDetails, carpoolId],
+        });
       },
     });
 
@@ -132,7 +134,7 @@ const SendRequestBS = forwardRef<SendRequestBSRef, SendRequestProp>(
         return;
       }
 
-      mutateAsync({
+      mutate({
         origin: trimmedLocation || "Current location",
         ...(notes.trim().length ? { note: notes.trim() } : {}),
         ...(useCurrentLocation && coords ? { startPoint: coords } : {}),

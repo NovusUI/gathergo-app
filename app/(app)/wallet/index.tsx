@@ -1,9 +1,7 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
-  RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
 import CustomView from "@/components/View";
 import ActivityIndicator from "@/components/ui/AppLoader";
@@ -2260,17 +2258,13 @@ const WalletScreen = () => {
             "pb-8 pt-4",
             fullTransactions.length === 0 && "flex-grow justify-center"
           )}
-          ListHeaderComponent={
-            <RefreshIndicator refreshing={transactionsRefreshing} />
-          }
-          refreshControl={
-            <AppRefreshControl
+          renderScrollComponent={(props) => (
+            <GogoRefreshScrollView
+              {...props}
               refreshing={transactionsRefreshing}
-              onRefresh={() => {
-                void transactionsHistoryQuery.refetch();
-              }}
+              onRefresh={() => transactionsHistoryQuery.refetch()}
             />
-          }
+          )}
           onEndReachedThreshold={0.35}
           onEndReached={() => {
             if (
@@ -2319,17 +2313,13 @@ const WalletScreen = () => {
             "pb-8 pt-4",
             fullSettlements.length === 0 && "flex-grow justify-center"
           )}
-          ListHeaderComponent={
-            <RefreshIndicator refreshing={settlementsRefreshing} />
-          }
-          refreshControl={
-            <AppRefreshControl
+          renderScrollComponent={(props) => (
+            <GogoRefreshScrollView
+              {...props}
               refreshing={settlementsRefreshing}
-              onRefresh={() => {
-                void settlementsHistoryQuery.refetch();
-              }}
+              onRefresh={() => settlementsHistoryQuery.refetch()}
             />
-          }
+          )}
           onEndReachedThreshold={0.35}
           onEndReached={() => {
             if (
@@ -2379,17 +2369,12 @@ const WalletScreen = () => {
         onClickBack={() => safeGoBack(router, "/")}
       />
 
-      <ScrollView
+      <GogoRefreshScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <AppRefreshControl
-            refreshing={refreshing}
-            onRefresh={refetchAll}
-          />
-        }
+        refreshing={refreshing}
+        onRefresh={refetchAll}
         contentContainerStyle={tw`pb-6 pt-4`}
       >
-        <RefreshIndicator refreshing={refreshing} />
         <View style={{flexDirection: inColumns ? "row" : "column", gap: 16}}>
           <View style={{flex: inColumns ? 1 : undefined, minWidth: 0}}>
         <CustomView className="max-w-full"
@@ -2559,7 +2544,7 @@ const WalletScreen = () => {
         </SectionCard>
           </View>
         </View>
-      </ScrollView>
+      </GogoRefreshScrollView>
 
       <Modal
         visible={setupVisible}

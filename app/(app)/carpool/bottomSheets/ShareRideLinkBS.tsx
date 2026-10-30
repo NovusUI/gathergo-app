@@ -4,10 +4,16 @@ import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
-import { buildCarpoolShareLink } from "@/utils/shareLinks";
+import { useCarpoolShare } from "@/hooks/useCarpoolShare";
 import { Share2 } from "lucide-react-native";
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
-import { Share, Text, TouchableOpacity, View } from "react-native";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Text, TouchableOpacity, View } from "react-native";
 
 export type ShareRideBSRef = {
   open: () => void;
@@ -25,21 +31,20 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef, ShareRideLinkBSProps>(
     const sheetMargin = Math.max(0, (layout.availableWidth - 680) / 2);
     const snapPoints = useMemo(() => ["40%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
+    const [isOpen, setIsOpen] = useState(false);
+    const shortLink = useCarpoolShare(carpoolId ?? "", isOpen);
 
     // expose functions to parent
     useImperativeHandle(ref, () => ({
-      open: () => bottomSheetRef.current?.snapToIndex(0),
-      close: () => bottomSheetRef.current?.close(),
+      open: () => {
+        setIsOpen(true);
+        bottomSheetRef.current?.snapToIndex(0);
+      },
+      close: () => {
+        setIsOpen(false);
+        bottomSheetRef.current?.close();
+      },
     }));
-    const handleShare = async () => {
-      try {
-        await Share.share({
-          message: `🚗 Join my carpool 👉 ${buildCarpoolShareLink(carpoolId)}`,
-        });
-      } catch (err) {
-        console.error("Error sharing:", err);
-      }
-    };
 
     return (
       <BottomSheet
@@ -49,6 +54,7 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef, ShareRideLinkBSProps>(
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        onChange={(index) => setIsOpen(index >= 0)}
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
@@ -65,25 +71,38 @@ const ShareRideLinkBS = forwardRef<ShareRideBSRef, ShareRideLinkBSProps>(
             <Text style={tw`text-foreground dark:text-white text-xl font-bold`}>
               Share ride with a friend
             </Text>
-            <Text style={tw`text-muted dark:text-[#ADADAD] text-sm mt-1 mb-6 text-center`}>
+            <Text
+              style={tw`text-muted dark:text-[#ADADAD] text-sm mt-1 mb-6 text-center`}
+            >
               Send them your link and make the journey more fun together!
             </Text>
 
             {/* Share button */}
             <TouchableOpacity
-              onPress={handleShare}
+              onPress={shortLink.share}
+              disabled={shortLink.isPending || !carpoolId}
+              accessibilityRole="button"
+              accessibilityState={{
+                disabled: shortLink.isPending || !carpoolId,
+              }}
               style={tw`flex-row items-center gap-2 bg-accentFill dark:bg-[#0FF1CF] px-6 py-3 rounded-2xl shadow-md`}
             >
               <Share2 color={color("#01082E", "onAccent")} size={20} />
-              <Text style={tw`text-onAccent dark:text-[#01082E] font-bold text-base`}>
-                Share Ride
+              <Text
+                style={tw`text-onAccent dark:text-[#01082E] font-bold text-base`}
+              >
+                {shortLink.isPending
+                  ? "Preparing link…"
+                  : shortLink.isError
+                    ? "Retry link"
+                    : "Share Ride"}
               </Text>
             </TouchableOpacity>
           </View>
         </BottomSheetScrollView>
       </BottomSheet>
     );
-  }
+  },
 );
 
 ShareRideLinkBS.displayName = "ShareRideLinkBS";

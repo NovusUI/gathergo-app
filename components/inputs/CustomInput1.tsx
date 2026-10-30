@@ -111,7 +111,7 @@ const Input = forwardRef<TextInput, InputProps>(
     return (
       <Pressable
         onPress={() => inputRef.current?.focus()}
-        style={tw.style("w-full max-w-[500px] bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent p-2 rounded-xl", error && "border-danger dark:border-red-500")}
+        style={tw.style("w-full bg-surface dark:bg-[#1B2A50]/40 border border-borderStrong dark:border-transparent p-2 rounded-xl", error && "border-danger dark:border-red-500")}
       >
         <View style={tw`flex-row items-center px-5`}>
           {LeftIcon && (

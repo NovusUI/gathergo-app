@@ -33,7 +33,7 @@ const { default: Home } = loadTypeScript('app/(app)/(tabs)/index.tsx', {
   '@/context/AuthContext': { useAuth: () => ({ user: { id: 'ada', username: 'ada' } }) },
   '@/services/queries': {
     useForYouEvents: () => ({ data: { data: [{ id: 'event-1', title: 'Community gathering' }] } }),
-    useForYouCarpools: () => ({ data: { data: [{ id: 'ride-1', event: { title: 'Community gathering' } }] } }),
+    useForYouCarpools: () => ({ data: { data: [{ id: 'ride-1', event: { title: 'Community gathering' }, isFollowingDriver: true, isFollowedByDriver: true, isMember: true }] } }),
     useHomeAdCards: () => ({ data: { data: [] } }),
   },
   '@/utils/navigation': { useLockedRouter: () => ({ push: route => state.routes.push(route), replace: route => state.routes.push(route) }) },
@@ -50,6 +50,14 @@ const { default: Home } = loadTypeScript('app/(app)/(tabs)/index.tsx', {
   twrnc: { default: tw },
 });
 function home() { state.cursor = 0; return Home(); }
+test('home carpool cards receive both directions of the pooler relationship', () => {
+  state.tab = 'Carpool';
+  const card = one(home(), 'Carpool');
+  assert.equal(card.props.isFollowingDriver, true);
+  assert.equal(card.props.isFollowedByDriver, true);
+  assert.equal(card.props.isMember, true);
+  state.tab = 'Gogo picks';
+});
 function mainScroll(page) { return [...nodes(page)].find(node => node.type === 'Scroll' && !node.props.horizontal); }
 function carouselFor(page) { return [...nodes(page)].find(node => node.type === 'Scroll' && node.props.horizontal); }
 function stickyRow(page) {
@@ -80,7 +88,7 @@ test('Home tab changes and event, ride, Circle, notification and message routes 
   [...nodes(stickyRow(home()))].find(node => node.props.title === 'Circle').props.onPress();
   const circle = [...nodes(home())].find(node => node.type === 'Button' && one(node, 'Moment'));
   circle.props.onPress();
-  for (const button of [...nodes(home())].filter(node => node.type === 'Button' && one(node, 'Icon')).slice(0, 2)) button.props.onPress();
+  for (const button of [...nodes(home())].filter(node => node.type === 'Button' && one(node, 'Icon')).filter(node => ["Notifications", "Conversations"].includes(node.props.accessibilityLabel))) button.props.onPress();
   assert.deepEqual(state.routes, ['/event/event-1', '/carpool/ride-1', '/circle', '/notifications', '/conversations']);
 });
 test('Home reflows cards and carousel pages on unfolding without changing the active tab', () => {
@@ -252,4 +260,34 @@ test('Gather achievements recover their own icons while retaining the partnershi
     assert.ok(one(BadgeEmblem({ badge: { icon, status: 'earned' } }), component));
   }
   assert.ok(one(BadgeCard({ badge: { name: 'First Gift', category: 'giving', icon: 'gift', status: 'earned', description: 'Give once.', progress: {} }, onPress() {} }), 'PartnershipBackground'));
+});
+
+test('an unpaired event or carpool grows across its available row on unfolded and tablet windows', () => {
+  try {
+    for (homeWidth of [640, 700, 1024]) {
+      for (const [tab, type] of [['Gogo picks', 'Event'], ['Carpool', 'Carpool']]) {
+        state.tab = tab;
+        const wrapper = [...nodes(home())].find(n => n.type === 'View' && n.props.children?.type === type);
+        assert.equal(wrapper.props.style.flexGrow, 1);
+        assert.equal(wrapper.props.style.width, homeLayout().cardWidth);
+      }
+    }
+  } finally { homeWidth = 390; state.tab = 'Gogo picks'; }
+});
+
+
+test('fractional donation progress keeps a precise fill and sends an integer to native accessibility', () => {
+  try {
+    for (const mode of ['light', 'dark']) {
+      feedMode = mode;
+      for (const ratio of [0.075, 0.333, 0.999, 0, 1.5, -0.5]) {
+        const tree = FeedCard({ feed: feed('DONATION_MADE', { metadata: { percentage: ratio } }) });
+        const progress = [...nodes(tree)].find(node => node.props.accessibilityRole === 'progressbar');
+        const percent = Math.max(0, Math.min(ratio * 100, 100));
+        assert.equal(progress.props.style[1].width, `${percent}%`);
+        assert.deepEqual(progress.props.accessibilityValue, { min: 0, max: 100, now: Math.round(percent) });
+        assert.equal(Number.isInteger(progress.props.accessibilityValue.now), true);
+      }
+    }
+  } finally { feedMode = 'dark'; }
 });

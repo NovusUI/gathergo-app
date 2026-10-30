@@ -21,7 +21,6 @@ const sections = [
   "Location",
   "Pricing",
   "Story",
-  "Cover",
   ...EVENT_CREATION_OPTIONAL_SECTIONS,
   "Review",
 ] as const satisfies readonly (EventCreationSection | "Review")[];
@@ -108,6 +107,9 @@ export function hasEventDraftContent({
       values.registrationFee !== undefined ||
       values.registrationAttendees !== undefined ||
       values.donationTarget !== undefined ||
+      values.foodBankTotalMeals !== undefined ||
+      values.foodBankSlotCapacity !== undefined ||
+      values.foodBankSlotMinutes !== undefined ||
       values.donationsEnabled ||
       values.links.length ||
       values.tags.length ||

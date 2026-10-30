@@ -1,6 +1,7 @@
 // hooks/useNotifications.ts
 import { useNotification } from "@/context/NotificationContext";
 import { useSocket } from "@/context/SocketContext";
+import { useSocketRefresh } from "@/hooks/useSocketRefresh";
 import { Notification } from "@/types/notification";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +22,7 @@ export function useNotifications() {
     useNotification();
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const { refreshing, refresh } = useSocketRefresh("notificationTray", getNotificationTray);
   const inFlightCursorRef = useRef<string | null>(null);
   const loadingResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -120,11 +122,6 @@ export function useNotifications() {
     }, 4000);
   }, [isLoadingMore, hasMore, notifications, loadMoreNotifications]);
 
-  const refresh = useCallback(() => {
-    if (!isConnected) return;
-    getNotificationTray();
-  }, [isConnected, getNotificationTray]);
-
   return {
     notifications,
     unreadCount,
@@ -132,6 +129,7 @@ export function useNotifications() {
     hasMore,
     isLoadingMore,
     refresh,
+    refreshing,
     loadingInitial: initialLoading,
   };
 }

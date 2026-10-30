@@ -2,6 +2,7 @@ import { GOGO_PALETTE } from "@/components/gogo/mascot/constants";
 import { useReducedMotionPreference } from "@/hooks/useReducedMotionPreference";
 import { type ActivityIndicatorProps, StyleSheet, View } from "react-native";
 import { GogoSpinnerArtwork } from "@/components/gogo/mascot/GogoSpinnerArtwork";
+import type { SharedValue } from "react-native-reanimated";
 
 const loaderColors = {
   accent: GOGO_PALETTE.body,
@@ -14,11 +15,13 @@ type LoaderTone = keyof typeof loaderColors;
 interface AppLoaderProps extends Omit<ActivityIndicatorProps, "color"> {
   tone?: LoaderTone;
   color?: string;
+  pullProgress?: SharedValue<number>;
 }
 
 export default function AppLoader({
   tone = "accent",
   color,
+  pullProgress,
   size = "small",
   animating = true,
   hidesWhenStopped = true,
@@ -44,6 +47,7 @@ export default function AppLoader({
           size={dimension}
           animated={animating && !reducedMotion}
           ringColor={color ?? loaderColors[tone]}
+          pullProgress={reducedMotion ? undefined : pullProgress}
         />
       )}
     </View>

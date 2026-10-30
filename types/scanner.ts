@@ -1,7 +1,17 @@
 import { StandardResponse } from "./auth";
+import type { CollectionAvailability, MealPass } from "./foodBank";
+
+export type MealCollectionDetails = Pick<
+  MealPass,
+  "collectionStart" | "collectionEnd"
+> & {
+  status: Exclude<CollectionAvailability, "open"> | "ready" | "collected";
+  arrival: "early" | "on_time" | "late";
+  timeZone: string;
+};
 
 export interface ScanData {
-  type: "ticket" | "registration" | "donation";
+  type: "ticket" | "registration" | "donation" | "meal";
   id: string;
   eventId: string;
   eventName: string;
@@ -18,6 +28,7 @@ export interface ScanData {
   scannedAt?: string;
   scanLocation?: string;
   scannedBy?: string;
+  mealCollection?: MealCollectionDetails;
 }
 
 export interface ScanResponse extends StandardResponse {
@@ -43,10 +54,12 @@ export interface QuickScanResponse extends StandardResponse {
     isValid: boolean;
     canMarkUsed: boolean;
     message: string;
-    type?: "ticket" | "registration";
+    type?: ScanData["type"];
+    qrCode: string;
     eventName?: string;
     userName?: string;
     eventDate?: string;
+    mealCollection?: MealCollectionDetails;
   };
 }
 

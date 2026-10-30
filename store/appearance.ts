@@ -3,20 +3,21 @@ import type { ThemeMode } from "@/constants/theme";
 import { create } from "zustand";
 
 export const APPEARANCE_KEY = "gathergo_appearance";
+export type AppearanceSetting = ThemeMode | "system";
 interface AppearanceState {
-  mode: ThemeMode;
+  mode: AppearanceSetting;
   hasHydrated: boolean;
   hydrate: () => Promise<void>;
-  setMode: (mode: ThemeMode) => Promise<void>;
+  setMode: (mode: AppearanceSetting) => Promise<void>;
 }
 export const useAppearanceStore = create<AppearanceState>((set, get) => ({
-  mode: "dark",
+  mode: "system",
   hasHydrated: false,
   hydrate: async () => {
     if (get().hasHydrated) return;
     try {
       const stored = await AsyncStorage.getItem(APPEARANCE_KEY);
-      if (stored === "light" || stored === "dark") set({ mode: stored });
+      if (stored === "system" || stored === "light" || stored === "dark") set({ mode: stored });
       else if (stored !== null) console.error("Invalid saved GatherGo appearance:", stored);
     } catch (error) {
       console.error("Failed to restore GatherGo appearance", error);

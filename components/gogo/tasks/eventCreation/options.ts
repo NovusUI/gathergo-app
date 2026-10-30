@@ -1,4 +1,5 @@
 export const EVENT_CREATION_OPTIONS = [
+  { type: "foodbank", title: "Food bank", hint: "Share meals in your community", icon: "restaurant-outline" },
   {
     type: "donation",
     title: "Fundraiser",

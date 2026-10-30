@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { loadTypeScript } = require("./loadTypeScript.cjs");
 
-let values = [], cursor = 0;
+let values = [], effects = [], cursor = 0;
 const hooks = {
   useState(initial) {
     const index = cursor++;
@@ -12,15 +12,39 @@ const hooks = {
   useRef: initial => ({ current: initial }),
   useMemo: factory => factory(),
   useCallback: callback => callback,
-  useEffect() {},
+  useEffect: effect => effects.push(effect),
 };
 const calls = [];
-let transaction, queryError, cancelFailure, refetchFailure;
+const intentStorage = new Map();
+const checkoutUtils = loadTypeScript("utils/checkout.ts", {
+  "react-native-get-random-values": {},
+  uuid: { v4: require("node:crypto").randomUUID },
+  "./storage": {
+    getItem: async key => intentStorage.get(key) ?? null,
+    saveItem: async (key, value) => { intentStorage.set(key, value); },
+    removeItem: async key => { intentStorage.delete(key); },
+  },
+});
+let transaction, eventDetails, queryError, cancelFailure, refetchFailure;
 const tw = () => ({});
-const { default: Transaction } = loadTypeScript("app/(app)/transaction/[transactionId].tsx", {
+let reducedMotion = false, focused = true;
+const { default: ShareCarToEventCard } = loadTypeScript("components/carpool/ShareCarToEventCard.tsx", {
+  "@/components/gogo/mascot/GogoOnboardingCarpoolArtwork": { GogoOnboardingCarpoolArtwork: "CarpoolArtwork" },
+  "@/hooks/useReducedMotionPreference": { useReducedMotionPreference: () => reducedMotion },
+  "@react-navigation/native": { useIsFocused: () => focused },
+  "lucide-react-native": { ArrowUpRight: "Arrow" },
+  "react-native": { Text: "Text", TouchableOpacity: "Button", View: "View" },
+  twrnc: { default: tw, style: tw },
+});
+const { PaymentTransaction: Transaction } = loadTypeScript("app/(app)/transaction/[transactionId].tsx", {
+  "@/components/foodBank/MealPassReceipt": { default: "MealReceipt" },
+  "@/components/foodBank/MealPassAccess": { default: "MealPassAccess" },
   "@/components/ui/CheckoutCountdown": { CheckoutCountdown: "Countdown" },
   "@/hooks/useCheckoutCountdown": { useCheckoutCountdown: () => 300 },
-  "@/utils/checkout": { clearCheckoutIntent() {} },
+  "@/utils/checkout": { clearCheckoutIntent: async (...args) => {
+    calls.push(["clearCheckoutIntent", ...args]);
+    await checkoutUtils.clearCheckoutIntent(...args);
+  } },
   "@/services/serviceFn": { cancelEventCheckout: async (...args) => {
     calls.push(["cancel", ...args]);
     if (cancelFailure) throw cancelFailure;
@@ -30,6 +54,7 @@ const { default: Transaction } = loadTypeScript("app/(app)/transaction/[transact
   "@/components/QRCodeGen": { default: "QR" },
   "@/components/View": { default: "Content" },
   "@/components/buttons/CustomBtn1": { default: "ActionButton" },
+  "@/components/carpool/ShareCarToEventCard": { default: ShareCarToEventCard },
   "@/components/ui/EventDetails": { EventDetails: "Details" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "Gogo" },
   "@/context/AuthContext": { useAuth: () => ({ user: { id: "buyer" } }) },
@@ -42,12 +67,15 @@ const { default: Transaction } = loadTypeScript("app/(app)/transaction/[transact
         if (!cancelFailure) transaction.data.status = "EXPIRED";
       },
     }),
-    useEventDetails: () => ({}),
+    useEventDetails: () => ({ data: eventDetails }),
     useTicketOrRegByTransactionRef: () => ({}),
   },
   "@/utils/dateTimeHandler": { formatEventDateTime: () => "Tomorrow" },
   "@/utils/globalErrorHandler": { showGlobalError: message => calls.push(["error", message]) },
-  "@/utils/navigation": { useLockedRouter: () => ({}), safeGoBack() {} },
+  "@/utils/navigation": { useLockedRouter: () => ({
+    push: href => calls.push(["push", href]),
+    replace: href => calls.push(["replace", href]),
+  }), safeGoBack() {} },
   "@/utils/utils": { numberWithCommas: String },
   "@gorhom/bottom-sheet": { default: "Sheet", BottomSheetModal: "Sheet", BottomSheetBackdrop: "Backdrop", BottomSheetScrollView: "SheetScroll" },
   "expo-router": { useLocalSearchParams: () => ({ transactionId: "transaction-1", type: "TICKET" }) },
@@ -60,14 +88,23 @@ const { default: Transaction } = loadTypeScript("app/(app)/transaction/[transact
 function* nodes(node) {
   if (!node || typeof node !== "object") return;
   yield node;
+  if (node.type === ShareCarToEventCard) {
+    yield* nodes(ShareCarToEventCard(node.props));
+    return;
+  }
   for (const child of [node.props?.children].flat(Infinity)) yield* nodes(child);
 }
-function render() { cursor = 0; return Transaction(); }
+function render() { cursor = 0; effects = []; return Transaction(); }
+async function runEffects() {
+  const cleanups = effects.map(effect => effect());
+  await new Promise(setImmediate);
+  cleanups.forEach(cleanup => { if (typeof cleanup === "function") cleanup(); });
+}
 function button(label, page = render()) {
   return [...nodes(page)].find(n => n.type === "Button" && [...nodes(n)].some(child => child.props?.children === label));
 }
 function reset() {
-  values = []; calls.length = 0; queryError = false; cancelFailure = undefined; refetchFailure = false;
+  values = []; calls.length = 0; intentStorage.clear(); eventDetails = undefined; queryError = false; cancelFailure = undefined; refetchFailure = false;
   transaction = { data: { status: "PENDING", paymentProvider: "PAYSTACK", amount: 100000,
     paymentUrl: "https://checkout.paystack.com/test", checkoutDeadlineMs: Date.now() + 300000,
     metadata: { type: "TICKET", eventId: "event-1", eventTitle: "Community day" } } };
@@ -111,4 +148,104 @@ test("closing a donation payment does not call the ticket cancellation API", asy
   await new Promise(setImmediate);
   assert.deepEqual(calls, []);
   assert.equal([...nodes(render())].find(n => n.type === "Payment").props.visible, false);
+});
+
+test("successful checkout for a physical event opens its carpool creation sheet", async () => {
+  for (const type of ["TICKET", "REGISTRATION", "DONATION"]) {
+    reset();
+    transaction.data.status = "SUCCESS";
+    transaction.data.metadata.type = type;
+    eventDetails = { data: { isPhysicalEvent: true } };
+    assert.equal(button("Start a new checkout"), undefined);
+    await button("Share your car to event?").props.onPress();
+    assert.deepEqual(calls, [["push", {
+      pathname: "/new-carpool",
+      params: { eventId: "event-1", autoOpenEventPicker: "1" },
+    }]]);
+  }
+});
+
+test("successful checkout for a virtual event keeps the new checkout action", async () => {
+  reset();
+  transaction.data.status = "SUCCESS";
+  eventDetails = { data: { isPhysicalEvent: false } };
+  assert.equal(button("Share your car to event?"), undefined);
+  await button("Buy more tickets").props.onPress();
+  assert.deepEqual(calls, [["clearCheckoutIntent", "buyer", "event-1"], ["replace", "/event/event-1"]]);
+});
+
+test("a completed ticket purchase offers a new checkout alongside the carpool invitation", async () => {
+  reset();
+  transaction.data.status = "SUCCESS";
+  eventDetails = { data: { isPhysicalEvent: true } };
+  assert.ok(button("Share your car to event?"));
+  await button("Buy more tickets").props.onPress();
+  assert.deepEqual(calls, [["clearCheckoutIntent", "buyer", "event-1"], ["replace", "/event/event-1"]]);
+});
+
+test("server-confirmed ticket completion retires the saved key before buying the same selection again", async () => {
+  for (const amount of [0, 100000]) {
+    reset();
+    const intent = JSON.stringify({ type: "TICKET", provider: "PAYSTACK", items: [{ id: "ticket-1", quantity: 1 }] });
+    const previous = await checkoutUtils.checkoutIntentKey("buyer", "event-1", intent);
+    transaction.data.status = "SUCCESS";
+    transaction.data.amount = amount;
+    render(); await runEffects();
+    const next = await checkoutUtils.checkoutIntentKey("buyer", "event-1", intent);
+    assert.notEqual(next, previous);
+    assert.equal(await checkoutUtils.checkoutIntentKey("buyer", "event-1", intent), next);
+    assert.equal(calls.some(([kind]) => kind === "replace" || kind === "push"), false);
+  }
+});
+
+test("unfinished ticket payments and completed registrations preserve their checkout retry key", async () => {
+  for (const [type, status] of [["TICKET", "PENDING"], ["TICKET", "AWAITING_TRANSFER"], ["TICKET", "PROCESSING"], ["REGISTRATION", "SUCCESS"]]) {
+    reset();
+    const previous = await checkoutUtils.checkoutIntentKey("buyer", "event-1", type);
+    transaction.data.metadata.type = type;
+    transaction.data.status = status;
+    render(); await runEffects();
+    assert.equal(await checkoutUtils.checkoutIntentKey("buyer", "event-1", type), previous);
+    assert.equal(calls.some(([kind]) => kind === "clearCheckoutIntent"), false);
+  }
+});
+
+test("completed registration and donation keep the carpool invitation without the ticket purchase action", () => {
+  for (const type of ["REGISTRATION", "DONATION"]) {
+    reset();
+    transaction.data.status = "SUCCESS";
+    transaction.data.metadata.type = type;
+    eventDetails = { data: { isPhysicalEvent: true } };
+    assert.ok(button("Share your car to event?"));
+    assert.equal(button("Buy more tickets"), undefined);
+    assert.equal(button("Start a new checkout"), undefined);
+  }
+});
+
+test("carpool creation is unavailable until checkout succeeds and event details are loaded", () => {
+  reset();
+  transaction.data.status = "SUCCESS";
+  assert.equal(button("Share your car to event?"), undefined);
+  for (const status of ["PENDING", "AWAITING_TRANSFER", "PROCESSING", "EXPIRED", "FAILED", "REFUND_REQUIRED", "REFUNDED"]) {
+    transaction.data.status = status;
+    eventDetails = { data: { isPhysicalEvent: true } };
+    assert.equal(button("Share your car to event?"), undefined);
+    if (["EXPIRED", "FAILED", "REFUND_REQUIRED", "REFUNDED"].includes(status)) {
+      assert.ok(button("Start a new checkout"));
+    }
+  }
+});
+
+test("the carpool invitation animates Gogo only while focused with motion enabled", () => {
+  reset(); transaction.data.status = "SUCCESS";
+  eventDetails = { data: { isPhysicalEvent: true } };
+  try {
+    for (const [isFocused, reduceMotion, animated] of [[true, false, true], [true, true, false], [false, false, false]]) {
+      focused = isFocused; reducedMotion = reduceMotion;
+      const tree = render();
+      const artwork = [...nodes(tree)].find(node => node.type === "CarpoolArtwork");
+      assert.equal(artwork.props.animated, animated);
+      assert.equal(button("Share your car to event?", tree).props.accessibilityHint, "Opens the carpool creation sheet for this event");
+    }
+  } finally { focused = true; reducedMotion = false; }
 });

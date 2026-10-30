@@ -89,9 +89,12 @@ function AppContent() {
 
 export default function RootLayout() {
   const { colors, mode } = useAppTheme();
+  const appearancePreference = useAppearanceStore((state) => state.mode);
   useEffect(() => {
-    if (Platform.OS !== "web") Appearance.setColorScheme(mode);
-  }, [mode]);
+    if (Platform.OS !== "web") {
+      Appearance.setColorScheme(appearancePreference === "system" ? null : appearancePreference);
+    }
+  }, [appearancePreference]);
   const [fontsLoaded, fontError] = useFonts(URBANIST_FONT_ASSETS);
   const [queryClient] = useState(() => new QueryClient());
   const [persister] = useState(() =>

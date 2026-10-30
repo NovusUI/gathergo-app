@@ -167,6 +167,8 @@ let state = [],
   hydrated = true,
   onboardingHydrated = true,
   appearanceHydrated = true,
+  appearanceSetting = "dark",
+  appliedSchemes = [],
   navigationReady = true,
   currentRoute,
   readyListener,
@@ -248,7 +250,10 @@ const dependencies = {
     }),
   },
   "@/store/appearance": {
-    useAppearanceStore: () => ({ hasHydrated: appearanceHydrated, hydrate: async () => {} }),
+    useAppearanceStore: selector => {
+      const current = { mode: appearanceSetting, hasHydrated: appearanceHydrated, hydrate: async () => {} };
+      return selector ? selector(current) : current;
+    },
   },
   "@/utils/fonts": { applyUrbanistFontDefaults() {}, URBANIST_FONT_ASSETS: {} },
   "@gorhom/bottom-sheet": { BottomSheetModalProvider: "Sheets" },
@@ -269,7 +274,7 @@ const dependencies = {
     },
   },
   react: hooks,
-  "react-native": { View: "View", StatusBar: "StatusBar", Platform: { OS: "ios" }, Appearance: { setColorScheme() {} } },
+  "react-native": { View: "View", StatusBar: "StatusBar", Platform: { OS: "ios" }, Appearance: { setColorScheme: value => appliedSchemes.push(value) } },
   "react-native-gesture-handler": { GestureHandlerRootView: "GestureRoot" },
   "react-native-paystack-webview": { PaystackProvider: "Payments" },
   "../global.css": {},
@@ -289,6 +294,8 @@ function resetLayout() {
   hydrated = true;
   onboardingHydrated = true;
   appearanceHydrated = true;
+  appearanceSetting = "dark";
+  appliedSchemes = [];
   navigationReady = true;
   currentRoute = { key: "onboarding", name: "onboarding/index" };
   readyListener = undefined;
@@ -458,7 +465,9 @@ const { default: RootNavigator } = loadTypeScript(
   {
     "@/components/ui/AppLaunchScreen": { default: "LaunchScreen" },
     "@/components/ui/FullScreenLoader": { default: "GoogleLoader" },
-    react: { useEffect() {} },
+    react: { useEffect() {}, useState: (value) => [value, () => {}] },
+    "expo-linking": {},
+    "@/utils/incomingShareRoute": { incomingShareRoute: () => null },
     "react-native": { View: "View", StyleSheet: { absoluteFillObject: {} } },
     "@/context/AuthContext": { useAuth: () => ({ loading: authLoading }) },
     "@/store/auth": {
@@ -471,6 +480,8 @@ const { default: RootNavigator } = loadTypeScript(
     "expo-router": {
       Stack: Object.assign(function Stack() {}, { Screen: "Screen" }),
       usePathname: () => "/",
+      useRootNavigationState: () => ({ key: "root" }),
+      useRouter: () => ({ replace() {} }),
     },
   },
 );
@@ -487,7 +498,7 @@ test("startup authentication loading keeps the logo screen until navigation can 
     const stack = [...nodes(RootNavigator())].find(node => node.props.screenOptions);
     assert.equal(stack.props.screenOptions.animation, "none");
     assert.equal(
-      stack.props.children.props.name,
+      stack.props.children[0].props.name,
       value ? "(app)" : "(auth)",
     );
   }
@@ -829,4 +840,15 @@ test("the shared Skip control is labelled for accessibility and is easy to tap",
   assert.ok(button.props.style.minHeight >= 44);
   button.props.onPress();
   assert.equal(pressed, 1);
+});
+
+
+test('System appearance releases the native override while manual choices set it explicitly', () => {
+  for (const [setting, expected] of [['system', null], ['light', 'light'], ['dark', 'dark'], ['system', null]]) {
+    resetLayout();
+    appearanceSetting = setting;
+    RootLayout();
+    layoutEffects.forEach(effect => effect());
+    assert.deepEqual(appliedSchemes, [expected]);
+  }
 });

@@ -71,7 +71,7 @@ const { default: Experience } = loadTypeScript('components/gogo/tasks/badges/Bad
   react: { useState: initial => { const index = state.cursor++; if (!(index in state.values)) state.values[index] = initial; return [state.values[index], value => { state.values[index] = value; }]; } },
   'react-native': rn, twrnc: { default: () => ({}) },
   '@/components/gogo/mascot/MascotMoment': { MascotMoment: 'Gogo' },
-  '@/components/ui/AppRefreshControl': { default: 'RefreshControl', RefreshIndicator: 'Refreshing' },
+  '@/components/ui/GogoRefreshScrollView': { default: 'ScrollView', RefreshIndicator: 'Refreshing' },
   '@/components/ui/ImpactPageLoader': { default: 'Loader' },
   '@/services/queries': { useMyBadges: () => ({ ...state.query, isSuccess: !state.query.isPending && !state.query.isError }) },
   './BadgeCard': { default: 'BadgeCard' }, './BadgeDetails': { default: 'BadgeDetails' },
@@ -92,7 +92,7 @@ test('Gather shows the entire collection without filters, keeps Gogo’s closest
   assert.equal(details.props.badge.code, 'FIRST_GIFT'); details.props.onClose();
   assert.equal([...nodes(render())].some(node => node.type === 'BadgeDetails'), false);
   assert.deepEqual(list().props.sections[0].data.map(item => item.status), ['in_progress', 'earned', 'locked']);
-  list().props.refreshControl.props.onRefresh(); assert.equal(state.refetched, 1);
+  list().props.renderScrollComponent({}).props.onRefresh(); assert.equal(state.refetched, 1);
 });
 test('Gather loading and retry do not invent awards or activity', () => {
   state.query.isPending = true;
@@ -101,7 +101,7 @@ test('Gather loading and retry do not invent awards or activity', () => {
   const props = { ListHeaderComponent: header, renderSectionHeader: () => tabs };
   const loading = list(props);
   assert.strictEqual(loading.props.ListHeaderComponent, header);
-  assert.strictEqual(loading.props.renderSectionHeader(), tabs);
+  assert.strictEqual(loading.props.renderSectionHeader({}).props.children[0], tabs);
   assert.equal(loading.props.stickySectionHeadersEnabled, true);
   assert.equal(loading.props.ListFooterComponent.type, 'Loader');
   state.query.isPending = false; state.query.isError = true;

@@ -10,10 +10,14 @@ import {
   withRepeat,
   withSequence,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 import type { GProps } from "react-native-svg";
 
-export function useGogoSpinnerMotion(animated: boolean) {
+export function useGogoSpinnerMotion(
+  animated: boolean,
+  pullProgress?: SharedValue<number>,
+) {
   const spin = useSharedValue(0);
   const pulse = useSharedValue(0);
   const look = useSharedValue(0);
@@ -54,7 +58,10 @@ export function useGogoSpinnerMotion(animated: boolean) {
   }, [animated, look, pulse, spin]);
 
   const ringProps = useAnimatedProps<GProps>(
-    () => ({ transform: rotationAt(animated ? spin.value * 360 : 0, 32, 32) }),
+    () => {
+      const progress = animated ? spin.value : pullProgress ? pullProgress.value : 0;
+      return { transform: rotationAt(progress * 360, 32, 32) };
+    },
     undefined,
     svgTransformAdapter,
   );

@@ -38,8 +38,12 @@ const CustomButton: React.FC<CustomButtonProps> = ({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       style={tw.style(
-        `flex-row justify-center items-center border border-borderStrong dark:border-white rounded-xl w-[300px] p-5 max-w-[500px]`,
+        `flex-row justify-center items-center border border-borderStrong dark:border-white rounded-xl w-full p-5`,
         buttonClassName,
         disabled ? "opacity-50" : "opacity-100"
       )}

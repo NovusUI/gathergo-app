@@ -1,12 +1,16 @@
-// contexts/ConversationContext.tsx
+import { useConversations } from "@/hooks/useSocketReactHook";
+import type { Message } from "@/types/chat";
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "./SocketContext";
 
 type ConversationContextType = {
   conversationTray: any[];
   loadingConversations: boolean;
-  updateConversationAfterSend: (carpoolId: string, message: any) => void;
+  updateConversationAfterSend: (
+    carpoolId: string,
+    message: Pick<Message, "content" | "createdAt">,
+  ) => void;
   unreadCount: number;
 };
 
@@ -17,14 +21,9 @@ const ConversationContext = createContext<ConversationContextType>({
   unreadCount: 0,
 });
 
-// --- Sort helper ---
 const sortFn = (a: any, b: any) => {
-  const aDate = new Date(
-    a.lastMessageAt || a.carpool?.createdAt || 0
-  ).getTime();
-  const bDate = new Date(
-    b.lastMessageAt || b.carpool?.createdAt || 0
-  ).getTime();
+  const aDate = new Date(a.lastMessageAt || a.carpool?.createdAt || 0).getTime();
+  const bDate = new Date(b.lastMessageAt || b.carpool?.createdAt || 0).getTime();
   return bDate - aDate;
 };
 
@@ -33,158 +32,95 @@ export const ConversationProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [conversationTray, setConversationTray] = useState<any[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(true);
+  const { data: conversationTray = [], isPending: loadingConversations } = useConversations();
   const [unreadCount, setUnreadCount] = useState(0);
-
   const { socket } = useSocket();
   const queryClient = useQueryClient();
+  const requestTray = useCallback(() => {
+    socket?.emit("getConversationTray", {});
+  }, [socket]);
 
-  const updateConversationAfterSend = (carpoolId: string, message: any) => {
-    // Update React Query cache
-    queryClient.setQueryData(["conversations"], (old: any[] = []) => {
-      const map = new Map(old.map((c) => [c.carpool.id, c]));
-      const existing = map.get(carpoolId);
-      if (!existing) return old;
+  const updatePreview = useCallback(
+    (
+      carpoolId: string,
+      patch: { lastMessage?: string; lastMessageAt?: string; unreadCount: number },
+    ) => {
+      const current = queryClient.getQueryData<any[]>(["conversations"]);
+      // Partial socket updates lack the carpool. Fetch the full tray for unknown
+      // conversations or incomplete rows left in the persisted client cache.
+      if (
+        !current ||
+        current.some(item => !item.carpool) ||
+        !current.some(item => item.carpool.id === carpoolId)
+      ) {
+        requestTray();
+        return;
+      }
+      queryClient.setQueryData(
+        ["conversations"],
+        current.map(item =>
+          item.carpool.id === carpoolId ? { ...item, ...patch } : item,
+        ).sort(sortFn),
+      );
+    },
+    [queryClient, requestTray],
+  );
 
-      const updated = {
-        ...existing,
-        lastMessage: message.content,
-        lastMessageAt: message.createdAt,
-        unreadCount: 0,
-      };
-
-      map.set(carpoolId, updated);
-      return Array.from(map.values()).sort(sortFn);
-    });
-
-    // Update local state
-    setConversationTray((old: any[]) => {
-      const map = new Map(old.map((c) => [c.carpool.id, c]));
-      const existing = map.get(carpoolId);
-      if (!existing) return old;
-
-      const updated = {
-        ...existing,
-        lastMessage: message.content,
-        lastMessageAt: message.createdAt,
-        unreadCount: 0,
-      };
-
-      map.set(carpoolId, updated);
-      return Array.from(map.values()).sort(sortFn);
+  const updateConversationAfterSend = (
+    carpoolId: string,
+    message: Pick<Message, "content" | "createdAt">,
+  ) => {
+    updatePreview(carpoolId, {
+      lastMessage: message.content,
+      lastMessageAt: message.createdAt,
+      unreadCount: 0,
     });
   };
 
   useEffect(() => {
     if (!socket) return;
-
-    const handleConnect = () => {
-      console.log("✅ Socket connected, loading notifications");
-      //socket.emit("getConversationTray", {});
-    };
-
-    // Handle conversation tray updates
     const handleConversationTrayUpdate = (data: any) => {
-      console.log("conversation tray update", data);
-
-      // Full tray array
+      // The server emits either a full tray or an update for a single carpool.
       if (Array.isArray(data)) {
-        setConversationTray(data);
-        setLoadingConversations(false);
-        queryClient.setQueryData(["conversations"], () => data.sort(sortFn));
+        queryClient.setQueryData(["conversations"], [...data].sort(sortFn));
         return;
       }
-
-      // Partial update
-      const { carpoolId } = data;
-
-      queryClient.setQueryData(["conversations"], (old: any[] = []) => {
-        const existingMap = new Map(old.map((c) => [c.carpool.id, c]));
-        const existing = existingMap.get(carpoolId);
-
-        // Only unread count changed
-        if (data.unreadCount !== undefined && !data.lastMessage) {
-          if (!existing) return old;
-          existingMap.set(carpoolId, {
-            ...existing,
-            unreadCount: data.unreadCount,
-          });
-          return Array.from(existingMap.values()).sort(sortFn);
-        }
-
-        // New last message
-        if (data.lastMessage) {
-          const updated = {
-            ...existing,
-            lastMessage: data.lastMessage.content,
-            lastMessageAt: data.lastMessage.createdAt,
-            unreadCount: data.unreadCount ?? existing?.unreadCount ?? 0,
-          };
-          existingMap.set(carpoolId, updated);
-          return Array.from(existingMap.values()).sort(sortFn);
-        }
-
-        return old;
-      });
-
-      // Update local state
-      setConversationTray((old: any[]) => {
-        const map = new Map(old.map((c) => [c.carpool.id, c]));
-        const existing = map.get(carpoolId);
-
-        if (data.unreadCount !== undefined && !data.lastMessage) {
-          if (!existing) return old;
-          map.set(carpoolId, { ...existing, unreadCount: data.unreadCount });
-          return Array.from(map.values()).sort(sortFn);
-        }
-
-        if (data.lastMessage) {
-          const updated = {
-            ...existing,
-            lastMessage: data.lastMessage.content,
-            lastMessageAt: data.lastMessage.createdAt,
-            unreadCount: data.unreadCount ?? existing?.unreadCount ?? 0,
-          };
-          map.set(carpoolId, updated);
-          return Array.from(map.values()).sort(sortFn);
-        }
-
-        return old;
+      updatePreview(data.carpoolId, {
+        unreadCount: data.unreadCount,
+        ...(data.lastMessage ? {
+          lastMessage: data.lastMessage.content,
+          lastMessageAt: data.lastMessage.createdAt,
+        } : {}),
       });
     };
-
-    // Handle unread counts
     const handleUnreadCountUpdate = (data: any) => {
-      console.log("unread counts", data);
       setUnreadCount(data.totalUnread);
       queryClient.setQueryData(
         ["unreadCounts"],
         (old: Record<string, number> = {}) => ({
           ...old,
           totalUnread: data.totalUnread,
-        })
+        }),
       );
     };
 
-    socket.on("connect", handleConnect);
+    socket.on("connect", requestTray);
+    socket.on("conversationTrayRefresh", requestTray);
     socket.on("conversationTrayUpdate", handleConversationTrayUpdate);
     socket.on("unreadCountUpdate", handleUnreadCountUpdate);
+    if (socket.connected) requestTray();
 
     return () => {
+      socket.off("connect", requestTray);
+      socket.off("conversationTrayRefresh", requestTray);
       socket.off("conversationTrayUpdate", handleConversationTrayUpdate);
       socket.off("unreadCountUpdate", handleUnreadCountUpdate);
     };
-  }, [socket, queryClient]);
+  }, [socket, queryClient, requestTray, updatePreview]);
 
   return (
     <ConversationContext.Provider
-      value={{
-        conversationTray,
-        loadingConversations,
-        updateConversationAfterSend,
-        unreadCount,
-      }}
+      value={{ conversationTray, loadingConversations, updateConversationAfterSend, unreadCount }}
     >
       {children}
     </ConversationContext.Provider>

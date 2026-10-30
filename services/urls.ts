@@ -25,6 +25,19 @@ export const USER_URL = {
   unfollowUser: (userId: string) => base_url + `/follow/user/${userId}`,
 };
 
+export const SHORT_LINK_URL = {
+  create: `${base_url}/share-links`,
+  resolve: (code: string) => `${base_url}/share-links/${encodeURIComponent(code)}`,
+};
+
+export const FOOD_BANK_URL = {
+  collection: (eventId: string) => `${base_url}/events/${eventId}/food-bank/collection`,
+  reschedule: (eventId: string) => `${base_url}/events/${eventId}/food-bank/reschedule`,
+  claim: (eventId: string) => `${base_url}/events/${eventId}/food-bank/claim`,
+  mine: (eventId: string) => `${base_url}/events/${eventId}/food-bank/me`,
+  myPasses: `${base_url}/food-bank/my-passes`,
+};
+
 export const EVENT_URL = {
   createEvent: base_url + "/events",
   updateEvent: (eventId: string) => base_url + `/events/${eventId}`,

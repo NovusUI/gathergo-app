@@ -18,7 +18,7 @@ const GoogleLoginBtn = ({ onPress, disabled = false }: CustomButtonProps) => {
       activeOpacity={disabled ? 1 : 0.7}
       style={tw.style(
         "rounded-xl bg-surfaceMuted dark:bg-[#1B2A50] flex-row items-center justify-center p-3",
-        { width: "100%", maxWidth: 500, gap: 20 } // gap-5 ≈ 20px
+        { width: "100%", gap: 20 } // gap-5 ≈ 20px
       )}
     >
       <LocalSvgAsset name="googleicon" width={26} height={26} />

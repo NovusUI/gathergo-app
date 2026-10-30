@@ -1,22 +1,32 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useCarpoolRequestRes, useRemovePassenger } from "@/services/mutations";
 import { QUERY_KEYS } from "@/services/queryKeys";
+import type {
+  CarpoolPassengerRequest,
+  CarpoolRequestDecision,
+} from "@/types/carpool";
+import { CARPOOL_PREVIOUS_DECISION_LABELS } from "@/utils/carpoolRequests";
 import { showGlobalError, showGlobalSuccess } from "@/utils/globalErrorHandler";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import CarpoolFollowBadge from "./CarpoolFollowBadge";
 
-type RequestCardProps = {
+type RequestCardProps = Pick<
+  CarpoolPassengerRequest,
+  "isFollowingRequester" | "isFollowedByRequester"
+> & {
   status: string;
-  imageUrl?: string | { uri: string };
-  name: string;
+  imageUrl?: string | { uri: string } | null;
+  name: CarpoolPassengerRequest["user"]["username"];
   message: string;
   estimatedDistance?: string | null; // e.g. "5 km"
   note?: string | null;
   requestId: string;
   carpoolId: string;
+  previousDecision?: CarpoolRequestDecision | null;
 };
 
 export default function RequestCard({
@@ -28,6 +38,9 @@ export default function RequestCard({
   note,
   requestId,
   carpoolId,
+  previousDecision,
+  isFollowingRequester,
+  isFollowedByRequester,
 }: RequestCardProps) {
   const { tw, color } = useAppTheme();
   const [expanded, setExpanded] = useState(false);
@@ -112,23 +125,34 @@ export default function RequestCard({
       ]}
     >
       <View style={tw`flex-row items-start`}>
-        <View
-          style={tw`mr-3 h-14 w-14 items-center justify-center overflow-hidden rounded-[20px] bg-surface dark:bg-[#122451]`}
-        >
-          {imageUrl ? (
-            <Image source={imageUrl} contentFit="cover" style={tw`h-full w-full`} />
-          ) : (
-            <Feather name="user" color={statusTone.accent} size={26} />
-          )}
+        <View style={tw`mr-3 w-[104px] shrink-0 items-center gap-2`}>
+          <View
+            style={tw`h-14 w-14 items-center justify-center overflow-hidden rounded-[20px] bg-surface dark:bg-[#122451]`}
+          >
+            {imageUrl ? (
+              <Image source={imageUrl} contentFit="cover" style={tw`h-full w-full`} />
+            ) : (
+              <Feather name="user" color={statusTone.accent} size={26} />
+            )}
+          </View>
+          <CarpoolFollowBadge
+            isFollowing={isFollowingRequester}
+            isFollowedBy={isFollowedByRequester}
+          />
         </View>
 
-        <View style={tw`flex-1`}>
-          <View style={tw`flex-row items-start justify-between gap-3`}>
-            <View style={tw`flex-1`}>
-              <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>{name}</Text>
+        <View style={tw`flex-1 min-w-0`}>
+          <View style={tw`items-start gap-2`}>
+            <View style={tw`w-full`}>
+              <Text style={tw`text-base font-semibold text-foreground dark:text-white`}>{name ?? "Ride member"}</Text>
               <Text style={tw`mt-1 text-xs leading-5 text-secondary dark:text-[#9FB0D8]`}>
                 {statusCopy}
               </Text>
+              {previousDecision ? (
+                <Text style={tw`mt-1 text-xs font-semibold text-warning dark:text-[#F8D05C]`}>
+                  {CARPOOL_PREVIOUS_DECISION_LABELS[previousDecision]}
+                </Text>
+              ) : null}
             </View>
 
             <View

@@ -3,17 +3,7 @@ const { test } = require("node:test");
 const { loadTypeScript } = require("./loadTypeScript.cjs");
 
 const state = {};
-const refreshComponents = loadTypeScript(
-  "components/ui/AppRefreshControl.tsx",
-  {
-    "./AppLoader": { default: "Spinner" },
-    "react-native": {
-      Platform: { OS: "android" },
-      RefreshControl: "RefreshControl",
-      StyleSheet: { create: (styles) => styles },
-    },
-  },
-);
+const refreshComponents = { default: "RefreshScrollView", RefreshIndicator: "RefreshIndicator" };
 const { default: WithdrawApplicationButton } = loadTypeScript(
   "components/volunteer/WithdrawApplicationButton.tsx",
   {
@@ -218,7 +208,7 @@ const { default: EventVolunteering } = loadTypeScript(
   {
     "@/hooks/usePressGuard": { usePressGuard: (callback) => callback },
     "@expo/vector-icons": { Ionicons: "Icon" },
-    "react-native": { Text: "Text", TouchableOpacity: "Button", View: "View" },
+    "react-native": { FlatList: "FeedList", Text: "Text", TouchableOpacity: "Button", View: "View" },
     twrnc: { default: () => ({}) },
   },
 );
@@ -348,7 +338,7 @@ const { default: VolunteerSetupFields } = loadTypeScript(
         },
       ],
     },
-    "react-native": { Text: "Text", TouchableOpacity: "Button", View: "View" },
+    "react-native": { FlatList: "FeedList", Text: "Text", TouchableOpacity: "Button", View: "View" },
     twrnc: { default: () => ({}), style: () => ({}) },
   },
 );
@@ -591,9 +581,11 @@ const { useFreeEventRegistration } = loadTypeScript(
 const { default: FeedBottomSheet } = loadTypeScript(
   "app/(app)/event/FeedBottomSheet.tsx",
   {
+    "@/components/carpool/CarpoolFollowBadge": { default: "CarpoolFollowBadge" },
+    "@/components/carpool/CarpoolMembershipBadge": { default: "CarpoolMembershipBadge" },
     "@/hooks/useResponsiveLayout": { useResponsiveLayout: () => ({ availableWidth: 390, insets: { top: 24, bottom: 34, left: 0, right: 0 } }) },
     "@/hooks/useFreeEventRegistration": { useFreeEventRegistration },
-    "@/components/ui/AppRefreshControl": refreshComponents,
+    "@/components/ui/GogoRefreshScrollView": refreshComponents,
     "@/components/volunteer/VolunteerButton": { default: VolunteerButton },
     "@/components/feed/FeedRenderer": { default: "FeedRenderer" },
     "@/components/ui/AppLoader": { default: "Spinner" },
@@ -628,7 +620,7 @@ const { default: FeedBottomSheet } = loadTypeScript(
       useRef: () => ({ current: null }),
       useEffect() {},
     },
-    "react-native": { Text: "Text", TouchableOpacity: "Button", View: "View" },
+    "react-native": { FlatList: "FeedList", Text: "Text", TouchableOpacity: "Button", View: "View" },
     twrnc: {
       default: Object.assign(() => ({}), { style: () => ({}) }),
       style: () => ({}),
@@ -637,6 +629,24 @@ const { default: FeedBottomSheet } = loadTypeScript(
   },
 );
 
+test("event carpool rows expose relationship tags without repeating the follow ranking label", () => {
+  feedEvent = { ...event, registrationType: "ticket" };
+  let opened;
+  const sheet = FeedBottomSheet({ eventId: "event", isVisible: true, initialTab: "carpool", onClose() {}, onAction: action => { opened = action; } });
+  const list = [...nodes(sheet)].find(node => node.type === "FeedList");
+  const row = list.props.renderItem({ item: {
+    id: "ride", origin: "Yaba", destination: "Park", departureTime: "09:00", seatsLeft: 2, pricePerSeat: 0,
+    driver: { username: "ada" }, isFollowingDriver: true, isFollowedByDriver: true, isCloseToYou: false, isMember: true,
+  } });
+  const badge = [...nodes(row)].find(node => node.type === "CarpoolFollowBadge");
+  assert.equal(badge.props.isFollowing, true);
+  assert.equal(badge.props.isFollowedBy, true);
+  assert.ok([...nodes(row)].some(node => node.type === "CarpoolMembershipBadge"));
+  const labels = [...nodes(row)].flatMap(node => [node.props.children].flat(Infinity).filter(value => typeof value === "string")).join(" ");
+  assert.doesNotMatch(labels, /You follow owner|Recommended/);
+  row.props.onPress();
+  assert.deepEqual(opened, { type: "OPEN_CARPOOL", carpoolId: "ride" });
+});
 test("the feed sheet only shows a volunteer action for Volunteer and donation events", () => {
   for (const registrationType of [
     "ticket",
@@ -706,7 +716,7 @@ const { default: CreationLayout } = loadTypeScript(
       useRef: () => ({ current: null }),
       useState: () => ["eventType", () => {}],
     },
-    "react-native": { Text: "Text", TouchableOpacity: "Button", View: "View" },
+    "react-native": { FlatList: "FeedList", Text: "Text", TouchableOpacity: "Button", View: "View" },
     twrnc: { default: () => ({}), style: () => ({}) },
   },
 );
@@ -780,7 +790,7 @@ const { default: EventStoryFields } = loadTypeScript(
       useWatch: ({ name }) => name.map((key) => formValues[key]),
     },
     react: { useState: (initial) => [initial, () => {}] },
-    "react-native": { Text: "Text", TouchableOpacity: "Button", View: "View" },
+    "react-native": { FlatList: "FeedList", Text: "Text", TouchableOpacity: "Button", View: "View" },
     twrnc: { default: () => ({}) },
   },
 );
@@ -961,7 +971,7 @@ const { default: ManageVolunteers } = loadTypeScript(
   "app/(app)/volunteers/[id].tsx",
   {
     "@/components/ui/AppLoader": { default: "Spinner" },
-    "@/components/ui/AppRefreshControl": refreshComponents,
+    "@/components/ui/GogoRefreshScrollView": refreshComponents,
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },
     "@/components/inputs/CustomInput1": { default: "Input" },
@@ -1151,7 +1161,7 @@ const { default: MyVolunteering } = loadTypeScript(
   {
     "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
     "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoEmptyState" },
-    "@/components/ui/AppRefreshControl": refreshComponents,
+    "@/components/ui/GogoRefreshScrollView": refreshComponents,
     "@/components/CustomeTopBarNav": { default: "TopBar" },
     "@/components/buttons/CustomBtn1": { default: "ActionButton" },
     "@/components/volunteer/WithdrawApplicationButton": {
@@ -1346,6 +1356,7 @@ test("pulling to refresh an empty feed shows one Gogo and suppresses initial and
       hasMore: true,
       loading: true,
       loadingMore: true,
+      refreshing: true,
       error: null,
       hideFeed() {},
       loadMore() {},
@@ -1354,11 +1365,12 @@ test("pulling to refresh an empty feed shows one Gogo and suppresses initial and
   });
   const list = [...nodes(sheet)].find((node) => node.type === "FeedList");
   const header = loadingIndicators(list.props.ListHeaderComponent());
-  assert.equal(header.length, 1);
-  assert.equal(header[0].props.accessibilityLabel, "Refreshing");
+  assert.equal(header.length, 0);
+  assert.equal(list.props.renderScrollComponent({}).props.refreshing, true);
   assert.equal(loadingIndicators(list.props.ListFooterComponent()).length, 0);
-  assert.equal(list.props.refreshControl.props.onRefresh, list.props.onRefresh);
-  assert.ok(list.props.progressViewOffset < -64);
+  assert.equal(list.props.refreshControl, undefined);
+  assert.equal(list.props.onRefresh, undefined);
+  assert.equal(sheet.props.enableContentPanningGesture, false);
   feedRefreshing = false;
 });
 
@@ -1376,14 +1388,15 @@ test("carpool refresh uses one controlled Gogo and keeps the ride refresh callba
       }),
     ),
   ].find((node) => node.type === "FeedList");
-  assert.equal(list.props.refreshing, true);
-  assert.equal(loadingIndicators(list.props.ListHeaderComponent()).length, 1);
-  list.props.onRefresh();
+  const scroll = list.props.renderScrollComponent({});
+  assert.equal(scroll.props.refreshing, true);
+  assert.equal(loadingIndicators(list.props.ListHeaderComponent()).length, 0);
+  scroll.props.onRefresh();
   assert.equal(carpoolRefreshes, 1);
   feedCarpoolsRefreshing = false;
 });
 
-test("empty volunteer history refresh shows the page loader without a second spinner", () => {
+test("empty volunteer history refresh uses Gogo without another page loader", () => {
   let refreshes = 0;
   state.history = {
     isPending: false,
@@ -1401,10 +1414,8 @@ test("empty volunteer history refresh shows the page loader without a second spi
   assert.equal(list.props.onRefresh, undefined);
   const header = loadingIndicators(list.props.ListHeaderComponent);
   assert.equal(header.length, 0);
-  assert.equal(list.props.ListEmptyComponent.type, "PageLoader");
-  const control = list.props.refreshControl.type(
-    list.props.refreshControl.props,
-  );
+  assert.equal(list.props.ListEmptyComponent, null);
+  const control = list.props.renderScrollComponent({});
   assert.equal(control.props.refreshing, true);
   control.props.onRefresh();
   assert.equal(refreshes, 1);
@@ -1434,7 +1445,8 @@ test("volunteer history loads the page before confirming an empty response", () 
     data: { data: [] },
   };
   let list = [...nodes(MyVolunteering())].find((node) => node.type === "List");
-  assert.equal(list.props.ListEmptyComponent.type, "PageLoader");
+  assert.equal(list.props.ListEmptyComponent, null);
+  assert.equal(list.props.renderScrollComponent({}).props.refreshing, true);
   assert.equal(loadingIndicators(list.props.ListHeaderComponent).length, 0);
   state.history.isFetching = false;
   state.history.isRefetching = false;
@@ -1485,7 +1497,8 @@ test("populated volunteer history keeps its list and small refresh indicator", (
     (node) => node.type === "List",
   );
   assert.deepEqual(list.props.data, [entry]);
-  assert.equal(loadingIndicators(list.props.ListHeaderComponent).length, 1);
+  assert.equal(loadingIndicators(list.props.ListHeaderComponent).length, 0);
+  assert.equal(list.props.renderScrollComponent({}).props.refreshing, true);
 });
 
 
@@ -1514,7 +1527,7 @@ test("feed scrolling includes its event header and every pinned and regular upda
     let loaded = 0, opened;
     const sheet = FeedBottomSheet({ eventId: 'event', isVisible: true, onClose() {}, onAction: action => { opened = action; }, feedData: {
       pinnedFeeds: [pinned], regularFeeds: rows.slice(1), allFeeds: rows,
-      hasMore: true, loading: false, loadingMore: false, error: null,
+      hasMore: true, loading: false, loadingMore: false, refreshing: false, error: null,
       hideFeed() {}, loadMore() { loaded++; }, refresh() {},
     } });
     const list = [...nodes(sheet)].find(node => node.type === 'FeedList');

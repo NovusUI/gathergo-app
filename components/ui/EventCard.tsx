@@ -71,6 +71,7 @@ export default function EventCard({
           };
 
   const pricingMeta =
+    registrationType === "foodbank" ? { label: "Collection", value: "Food bank" } :
     registrationType === "volunteer"
       ? { label: "Take part", value: "Volunteer" }
       : registrationType === "ticket"
@@ -130,7 +131,7 @@ export default function EventCard({
     <TouchableOpacity
       onPress={guardedPress}
       activeOpacity={0.9}
-      style={tw`bg-surface dark:bg-[#01082e] rounded-xl border border-border dark:border-transparent p-4`}
+      style={tw`bg-surface dark:bg-[#01082e] rounded-xl border border-border dark:border-transparent p-4 w-full`}
     >
       <View style={tw`flex-row items-start`}>
         {showImage ? (

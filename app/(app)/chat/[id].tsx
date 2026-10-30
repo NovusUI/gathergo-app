@@ -51,11 +51,11 @@ import {
   type VibeCheckRole,
 } from "@/hooks/useVibeCheckHandshake";
 import { useVibeCheckPrompt } from "@/hooks/useVibeCheckPrompt";
-import { pendingMessage, useMessageQueueStore } from "@/store/messageQueue";
-import { showGlobalError } from "@/utils/globalErrorHandler";
+import { useMessageQueueStore, type QueuedMessage } from "@/store/messageQueue";
 import "react-native-get-random-values";
 import { v4 as uuidv4 } from "uuid";
 import { formatTo12Hour } from "@/utils/utils";
+import type { Message } from "@/types/chat";
 
 // Import the useCarpoolDetails hook
 import { useCarpoolDetails } from "@/hooks/useCarpoolDetails";
@@ -104,6 +104,7 @@ const ChatPage = () => {
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
   const [value, setValue] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
   const carpoolId = Array.isArray(id) ? id[0] : id;
   const { socket } = useSocket();
   const { updateConversationAfterSend } = useConversation();
@@ -340,8 +341,10 @@ const ChatPage = () => {
     if (!user || sendInProgress.current || text.trim().length === 0) return;
     sendInProgress.current = true;
     setSending(true);
+    setSendError(null);
+    let queued: QueuedMessage;
     try {
-      const queued = {
+      queued = {
         tempId: `temp-${uuidv4()}`,
         content: text,
         carpoolId,
@@ -351,28 +354,37 @@ const ChatPage = () => {
         error: null,
       };
       await addMessage(queued);
-      updateConversationAfterSend(carpoolId, pendingMessage(queued));
-      const shouldClearComposer = options.clearComposer ?? true;
-      if (shouldClearComposer) {
-        setValue("");
-        AsyncStorage.removeItem(getDraftKey(carpoolId)).catch(error =>
-          console.error("Failed to clear chat draft", error));
-      }
-      requestAnimationFrame(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }));
     } catch (error) {
-      console.error("Could not save pending message", error);
-      Alert.alert("Message not queued", "Couldn't save your message. Your text is still here; please try again.");
+      console.log("Could not save pending message", error);
+      setSendError("Couldn't send. Your message is still here; please try again.");
+      return;
     } finally {
       sendInProgress.current = false;
       setSending(false);
     }
+
+    const shouldClearComposer = options.clearComposer ?? true;
+    if (shouldClearComposer) {
+      setValue("");
+      AsyncStorage.removeItem(getDraftKey(carpoolId)).catch(error =>
+        console.log("Failed to clear chat draft", error));
+    }
+    try {
+      updateConversationAfterSend(carpoolId, queued);
+    } catch (error) {
+      // Delivery has already started; a preview failure must not invite a second send.
+      console.log("Could not update conversation preview", error);
+      socket?.emit("getConversationTray", {});
+    }
+    requestAnimationFrame(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }));
   };
 
   const retryMessage = (tempId: string) => {
     if (!user) return;
+    setSendError(null);
     void useMessageQueueStore.getState().retryMessage(user.id, tempId).catch(error => {
-      console.error("Could not retry message", error);
-      showGlobalError("Couldn't queue this message for retry. Please try again.");
+      console.log("Could not retry message", error);
+      setSendError("Couldn't retry. Please try again.");
     });
   };
 
@@ -538,8 +550,10 @@ const ChatPage = () => {
       }
     );
   };
-  const renderMessage = ({ item }: { item: any }) => {
+  const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.senderId === user?.id;
+    const senderLabel =
+      item.sender.username === null ? "Ride member" : `@${item.sender.username}`;
     const vibeCheckMessageDetails = getVibeCheckMessageDetails(item.content);
     const messageTime = new Date(item.createdAt).toLocaleTimeString([], {
       hour: "2-digit",
@@ -566,7 +580,7 @@ const ChatPage = () => {
 
       return (
         <VibeCheckMessageCard
-          actorLabel={vibeCheckMessageDetails.actorLabel}
+          actorLabel={`${isUser ? "You" : senderLabel} · ${vibeCheckMessageDetails.actorLabel}`}
           isComplete={Boolean(messageHandshake?.isComplete)}
           needsConfirmation={needsConfirmation}
           rideIconName={rideIconName}
@@ -599,6 +613,7 @@ const ChatPage = () => {
 
     return (
       <ChatView1
+        senderLabel={senderLabel}
         message={item.content}
         time={messageTime}
         imageUrl={senderImage}
@@ -839,11 +854,17 @@ const ChatPage = () => {
               onSend={() => sendMessage(value)}
               onFocus={() => setRideVibeExpanded(false)}
               value={value}
-              setValue={setValue}
+              setValue={text => { setValue(text); setSendError(null); }}
               carpoolId={carpoolId}
               disabled={!carpoolDetails?.canChat}
             />
           )}
+
+          {sendError ? (
+            <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={tw`mt-2 text-xs text-danger`}>
+              {sendError}
+            </Text>
+          ) : null}
 
           {/* Show message if user can't chat */}
           {carpoolDetails && !carpoolDetails.canChat && (

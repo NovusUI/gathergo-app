@@ -142,27 +142,30 @@ export const isEventEditableBeforeStartDay = (
 
 export function formatEventDateTime(
   startDate: string,
-  endDate: string
+  endDate: string,
+  timeZone?: string,
 ): string {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
   const monthShort = (date: Date) =>
-    date.toLocaleString("en-US", { month: "short" });
-  const day = (date: Date) => date.getDate();
-  const year = (date: Date) => date.getFullYear();
+    date.toLocaleString("en-US", { month: "short", timeZone });
+  const day = (date: Date) => date.toLocaleString("en-US", { day: "numeric", timeZone });
+  const year = (date: Date) => date.toLocaleString("en-US", { year: "numeric", timeZone });
 
   const timeOptions: Intl.DateTimeFormatOptions = {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone,
   };
 
   const startTimeStr = start.toLocaleTimeString("en-US", timeOptions);
   const endTimeStr = end.toLocaleTimeString("en-US", timeOptions);
 
   // Same day
-  if (start.toDateString() === end.toDateString()) {
+  const sameDay = (date: Date) => date.toLocaleDateString("en-US", { timeZone });
+  if (sameDay(start) === sameDay(end)) {
     return `${monthShort(start)} ${day(
       start
     )}, ${startTimeStr} – ${endTimeStr}`;
@@ -170,8 +173,8 @@ export function formatEventDateTime(
 
   // Same month & year
   if (
-    start.getMonth() === end.getMonth() &&
-    start.getFullYear() === end.getFullYear()
+    monthShort(start) === monthShort(end) &&
+    year(start) === year(end)
   ) {
     return `${monthShort(start)} ${day(start)} – ${day(end)}, ${year(start)}`;
   }

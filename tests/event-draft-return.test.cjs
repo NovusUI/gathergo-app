@@ -71,6 +71,29 @@ test("selecting a type alone does not create a resumable empty draft", async () 
   await draftStorage.saveEventDraft(blank);
   assert.deepEqual(await draftStorage.loadEventDrafts(), []);
 });
+test("returning to Gogo retains a skipped cover step", async () => {
+  storage.clear();
+  await draftStorage.saveEventDraft({
+    ...saved(),
+    conversation: {
+      messages: [{ role: "assistant", content: "Ready to review your event?", choices: [], section: "Review", suggestedImpactStory: null }],
+      addressedSections: ["Impact story", "Impact map", "Volunteering", "Links", "Interests", "Cover"],
+    },
+  });
+  const [loaded] = await draftStorage.loadEventDrafts();
+  assert.ok(loaded.conversation.addressedSections.includes("Cover"));
+  assert.equal(loaded.conversation.messages.at(-1).section, "Review");
+});
+test("food bank collection settings alone are kept as a resumable draft", async () => {
+  storage.clear();
+  const draft = { values: { ...values(), registrationType: "foodbank", foodBankTotalMeals: 100, foodBankSlotCapacity: 25, foodBankSlotMinutes: 30 }, mode: "gogo", conversation };
+  assert.equal(draftStorage.hasEventDraftContent(draft), true);
+  await draftStorage.saveEventDraft(draft);
+  const [restored] = await draftStorage.loadEventDrafts();
+  assert.equal(restored.values.foodBankTotalMeals, 100);
+  assert.equal(restored.values.foodBankSlotCapacity, 25);
+  assert.equal(restored.values.foodBankSlotMinutes, 30);
+});
 test("drafts preserve unfinished text, blank link rows, dates, mode and Gogo progress", async () => {
   storage.clear();
   const draft = saved({

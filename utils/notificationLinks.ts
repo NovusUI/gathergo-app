@@ -26,6 +26,10 @@ export const normalizeNotificationLink = (
     return `/event/${eventId}`;
   }
 
+  if (link) {
+    return link;
+  }
+
   if (data?.carpoolId) {
     return `/chat/${data.carpoolId}`;
   }
@@ -34,5 +38,5 @@ export const normalizeNotificationLink = (
     return `/event/${data.eventId}?openFeed=1`;
   }
 
-  return link || "/";
+  return "/";
 };

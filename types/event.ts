@@ -264,6 +264,7 @@ export type GetTicketsResponse = Omit<CheckoutApiResponse, "data"> & {
 };
 
 export interface InitiateDonationPayload {
+  source?: 'FOOD_BANK';
   eventId: string;
   amount: number;
   message?: string;

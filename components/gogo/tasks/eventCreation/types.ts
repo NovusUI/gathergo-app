@@ -13,6 +13,9 @@ export type EventCreationUpdates = Partial<
     | "registrationAttendees"
     | "donationTarget"
     | "donationsEnabled"
+    | "foodBankTotalMeals"
+    | "foodBankSlotCapacity"
+    | "foodBankSlotMinutes"
     | "links"
     | "tags"
   >
@@ -28,6 +31,7 @@ export type EventCreationDraft = EventCreationUpdates &
     volunteerRoleCount: number;
     impactMapCount: number;
     hasImpactGoalOrPath: boolean;
+    hasCoverImage: boolean;
   };
 export type EventCreationMessage = {
   role: "user" | "assistant";
@@ -56,7 +60,6 @@ export type EventCreationSection =
   | "Location"
   | "Pricing"
   | "Story"
-  | "Cover"
   | EventCreationOptionalSection;
 
 export const EVENT_CREATION_OPTIONAL_SECTIONS = [
@@ -65,6 +68,7 @@ export const EVENT_CREATION_OPTIONAL_SECTIONS = [
   "Volunteering",
   "Links",
   "Interests",
+  "Cover",
 ] as const;
 export type EventCreationOptionalSection =
   (typeof EVENT_CREATION_OPTIONAL_SECTIONS)[number];

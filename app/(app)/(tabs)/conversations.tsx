@@ -1,14 +1,13 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
-  RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import ConversationView from "@/components/ConversationView";
 import { useSocket } from "@/context/SocketContext";
+import { useSocketRefresh } from "@/hooks/useSocketRefresh";
 import { useLockedRouter } from "@/utils/navigation";
 import { useFocusEffect } from "expo-router";
 import { MessageCircle, UserRound } from "lucide-react-native";
-import { useCallback, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { useCallback } from "react";
+import { Text, View } from "react-native";
 
 import { useConversations } from "../../../hooks/useSocketReactHook";
 
@@ -26,16 +25,10 @@ const Conversations = () => {
       }
     }, [socket])
   );
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    if (socket?.connected) {
-      socket.emit("getConversationTray");
-      setRefreshing(false);
-    } else {
-      setRefreshing(false);
-    }
+  const requestTray = useCallback(() => {
+    socket?.emit("getConversationTray");
   }, [socket]);
+  const { refreshing, refresh: onRefresh } = useSocketRefresh("conversationTrayUpdate", requestTray);
 
   return (
     <View style={tw`flex-1 bg-background dark:bg-[#01082E] pt-10 pb-10 px-5 overflow-hidden`}>
@@ -49,16 +42,11 @@ const Conversations = () => {
 
       <Text style={tw`text-2xl text-foreground dark:text-white font-semibold`}>Chats</Text>
 
-      <ScrollView
+      <GogoRefreshScrollView
         style={tw`w-full max-w-[500px] mt-5`}
-        refreshControl={
-          <AppRefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
-        }
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       >
-        <RefreshIndicator refreshing={refreshing} />
         <View style={tw`gap-5`}>
           {conversations.length === 0 ? (
             <View style={tw`items-center justify-center py-20`}>
@@ -96,7 +84,7 @@ const Conversations = () => {
             ))
           )}
         </View>
-      </ScrollView>
+      </GogoRefreshScrollView>
     </View>
   );
 };

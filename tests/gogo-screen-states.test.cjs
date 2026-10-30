@@ -268,8 +268,8 @@ const passesHooks = hookState();
 let ticketQuery, registrationQuery;
 const { default: MyPassesPage } = loadTypeScript("components/UserPassesTab.tsx", {
   "react-native-safe-area-context": { SafeAreaView: "SafeArea" },
-  "@/components/ui/AppRefreshControl": {
-    default: "RefreshControl",
+  "@/components/ui/GogoRefreshScrollView": {
+    default: "ScrollView",
     RefreshIndicator: "RefreshIndicator",
   },
   "@/components/CustomeTopBarNav": { default: "TopBar" },
@@ -279,6 +279,7 @@ const { default: MyPassesPage } = loadTypeScript("components/UserPassesTab.tsx",
   "@/components/ui/WalletSetupReminder": { default: "WalletSetupReminder" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/components/ui/ImpactPageLoader": { default: "PageLoader" },
+  "@/hooks/useFoodBank": { useMyMealPasses: () => ({ data: { data: [] }, isPending: false, isRefetching: false, refetch: async () => {} }) },
   "@/services/queries": {
     useMyTickets: () => ticketQuery,
     useMyRegistrations: () => registrationQuery,
@@ -465,7 +466,7 @@ test("pulling to refresh passes leaves the profile header and tabs in place", as
     return new Promise(resolve => { finishRegistrations = () => { registrationQuery.isRefetching = false; resolve(); }; });
   };
   const initial = render();
-  const refreshing = initial.props.refreshControl.props.onRefresh();
+  const refreshing = initial.props.renderScrollComponent({}).props.onRefresh();
   const during = render();
   assert.equal(ticketsRefreshed, 1); assert.equal(registrationsRefreshed, 1);
   assert.strictEqual(during.props.ListHeaderComponent, summary);
@@ -473,15 +474,17 @@ test("pulling to refresh passes leaves the profile header and tabs in place", as
   const section = during.props.renderSectionHeader({section: during.props.sections[0]});
   assert.strictEqual(section.props.children[0], tabs);
   const indicator = [...nodes(section)].find(node => node.type === 'RefreshIndicator');
-  assert.equal(indicator.props.refreshing, true);
+  assert.ok(indicator);
+  assert.equal(during.props.renderScrollComponent({}).props.refreshing, true);
+  assert.equal(during.props.renderScrollComponent({}).props.inlineIndicator, true);
   assert.equal(during.props.stickySectionHeadersEnabled, true);
   assert.equal(during.props.sections[0].data[0].eventTitle, 'Tree planting');
   finishTickets(); await Promise.resolve();
-  assert.equal(render().props.refreshControl.props.refreshing, true);
+  assert.equal(render().props.renderScrollComponent({}).props.refreshing, true);
   finishRegistrations(); await refreshing;
   const finished = render();
   assert.strictEqual(finished.props.ListHeaderComponent, summary);
-  assert.equal(finished.props.refreshControl.props.refreshing, false);
+  assert.equal(finished.props.renderScrollComponent({}).props.refreshing, false);
   assert.equal(finished.props.sections[0].data[0].eventTitle, 'Tree planting');
 });
 test("standalone passes refresh works without a profile header and preserves header component references", () => {
@@ -489,7 +492,8 @@ test("standalone passes refresh works without a profile header and preserves hea
   const list = passesList();
   assert.equal(list.props.ListHeaderComponent, undefined);
   assert.equal(list.props.stickySectionHeadersEnabled, false);
-  assert.equal([...nodes(list.props.renderSectionHeader({section: list.props.sections[0]}))].find(node => node.type === 'RefreshIndicator').props.refreshing, true);
+  assert.ok([...nodes(list.props.renderSectionHeader({section: list.props.sections[0]}))].find(node => node.type === 'RefreshIndicator'));
+  assert.equal(list.props.renderScrollComponent({}).props.refreshing, true);
   function Summary() { return {type: 'Summary'}; }
   const embedded = passesHooks.render(() => MyPassesPage({ListHeaderComponent: Summary, renderSectionHeader: () => ({type:'Tabs'})}));
   const embeddedList = [...nodes(embedded)].find(node => node.type === 'SectionList');
@@ -580,6 +584,8 @@ const eventMocks = {
   "@/components/ui/WalletSetupReminder": { default: "WalletSetupReminder" },
   "@/components/gogo/mascot/MascotMoment": { MascotMoment: "GogoMessage" },
   "@/components/ui/SdgGoalIcon": { SdgGoalIcon: "GoalIcon" },
+  "@/components/ui/InfoDisclosure": { default: "InfoDisclosure" },
+  "@/components/eventInfo/EventShareSheet": { default: "EventShareSheet" },
   "@/components/volunteer/EventVolunteering": { default: "Volunteering" },
   "@/components/volunteer/VolunteerRolesSheet": { default: "VolunteerRoles" },
   "@/components/volunteer/VolunteerButton": { default: "VolunteerButton" },

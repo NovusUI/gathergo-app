@@ -1,7 +1,5 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AppRefreshControl, {
-  RefreshIndicator,
-} from "@/components/ui/AppRefreshControl";
+import GogoRefreshScrollView from "@/components/ui/GogoRefreshScrollView";
 import ImpactPageLoader from "@/components/ui/ImpactPageLoader";
 import { MascotMoment } from "@/components/gogo/mascot/MascotMoment";
 import CustomeTopBarNav from "@/components/CustomeTopBarNav";
@@ -52,17 +50,16 @@ export default function MyVolunteering() {
             tw`gap-4 px-5 pb-16`,
             query.data.data.length === 0 && tw`grow`,
           ]}
-          refreshControl={
-            <AppRefreshControl
+          renderScrollComponent={(props) => (
+            <GogoRefreshScrollView
+              {...props}
               refreshing={query.isRefetching}
               onRefresh={() => query.refetch()}
             />
-          }
+          )}
           ListHeaderComponent={
             <View style={tw`gap-2 pb-4`}>
-              <RefreshIndicator
-                refreshing={query.isRefetching && query.data.data.length > 0}
-              />
+
               {query.data.data.length > 0 ? (
                 <>
                   <Text style={tw`text-2xl font-bold text-foreground dark:text-white`}>
@@ -77,9 +74,7 @@ export default function MyVolunteering() {
             </View>
           }
           ListEmptyComponent={
-            query.isFetching ? (
-              pageLoader
-            ) : (
+            query.isFetching ? query.isRefetching ? null : pageLoader : (
               <View style={tw`flex-1 justify-center`}>
                 <MascotMoment
                   variant="empty"

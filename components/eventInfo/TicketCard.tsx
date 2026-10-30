@@ -83,7 +83,7 @@ const PricingCard = ({
     updatedPrice !== undefined && updatedPrice !== null ? updatedPrice : price;
 
   return (
-    <View style={tw`relative`}>
+    <View style={tw`relative w-full`}>
       {/* Overlay if not visible */}
       {!isVisible && (
         <View
@@ -116,7 +116,7 @@ const PricingCard = ({
       )}
 
       {/* Main Card */}
-      <View style={tw`bg-surface dark:bg-[#010E3A] border border-borderStrong dark:border-0 rounded-2xl p-5 w-full max-w-md`}>
+      <View style={tw`bg-surface dark:bg-[#010E3A] border border-borderStrong dark:border-0 rounded-2xl p-5 w-full`}>
         {/* Top Right Buttons */}
         {(isNew || isEdit) && (
           <View style={tw`absolute top-3 right-3 flex-row gap-3 z-20`}>

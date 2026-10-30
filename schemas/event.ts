@@ -1,5 +1,6 @@
 import { isValidEventLink, normalizeEventLinks } from "@/constants/eventLinks";
 import { DEFAULT_REGISTRATION_CAPACITY } from "@/utils/eventForm";
+import { buildEventDateTimeIso } from "@/utils/dateTimeHandler";
 import type {
   SuggestedImpactCommitment,
   SuggestedImpactPath,
@@ -147,18 +148,49 @@ export const eventSchema = z
     ),
 
     tags: z.array(z.string()),
-    registrationType: z.enum(["donation", "ticket", "registration", "volunteer"], {
+    registrationType: z.enum(["donation", "ticket", "registration", "volunteer", "foodbank"], {
       error: "Choose how people will participate",
     }),
 
     tickets: z.array(eventTicketSchema).optional(),
     registrationAttendees: z.number().optional(),
     registrationFee: z.number().optional(),
+    foodBankTotalMeals: z.number().int().min(1).max(1000000).optional(),
+    foodBankSlotCapacity: z.number().int().min(1).max(10000).optional(),
+    foodBankSlotMinutes: z.number().int().min(5).max(120).optional(),
     donationTarget: z.number().optional(),
     donationsEnabled: z.boolean().default(false),
     volunteerRoles: z.array(volunteerRoleSchema).max(20).default([]),
   })
   .superRefine((data, ctx) => {
+    if (data.registrationType === 'foodbank') {
+      for (const field of ['foodBankTotalMeals', 'foodBankSlotCapacity', 'foodBankSlotMinutes'] as const) {
+        if (data[field] === undefined) ctx.addIssue({ code: 'custom', path: [field], message: 'Set your collection capacity and windows' });
+      }
+      if (!data.isPhysicalEvent) ctx.addIssue({ code: 'custom', path: ['location'], message: 'A food bank needs a physical collection venue' });
+      if (data.isRecurring || data.repeat !== 'NONE') ctx.addIssue({ code: 'custom', path: ['startDate'], message: 'Use one date range for food collection' });
+      if (data.foodBankTotalMeals !== undefined && data.foodBankSlotCapacity !== undefined && data.foodBankSlotCapacity > data.foodBankTotalMeals)
+        ctx.addIssue({ code: 'custom', path: ['foodBankSlotCapacity'], message: 'Window capacity cannot exceed total meals' });
+      if (
+        data.foodBankTotalMeals !== undefined &&
+        data.foodBankSlotCapacity !== undefined &&
+        data.foodBankSlotMinutes !== undefined &&
+        dateTimeSchema.shape.startTime.safeParse(data.startTime).success &&
+        dateTimeSchema.shape.endTime.safeParse(data.endTime).success
+      ) {
+        const starts = new Date(buildEventDateTimeIso(data.startDate, data.startTime));
+        const ends = new Date(buildEventDateTimeIso(data.endDate, data.endTime));
+        const windows = Math.ceil(
+          (ends.getTime() - starts.getTime()) / (data.foodBankSlotMinutes * 60_000),
+        );
+        if (windows < 1 || windows * data.foodBankSlotCapacity < data.foodBankTotalMeals)
+          ctx.addIssue({
+            code: "custom",
+            path: ["foodBankSlotCapacity"],
+            message: "Extend collection hours or increase people per window to fit all meals",
+          });
+      }
+    }
     if (data.registrationType === "registration" || data.registrationType === "ticket") {
       const pricing = eventPricingSchema.safeParse({
         ...data,
@@ -191,7 +223,7 @@ export const eventSchema = z
         message: data.isPhysicalEvent ? VOLUNTEER_IMPACT_STORY_REQUIRED : "Volunteering requires a physical venue",
       });
     }
-    if ((data.registrationType === "donation" || (data.registrationType === "volunteer" && data.donationsEnabled)) &&
+    if ((data.registrationType === "donation" || data.registrationType === "foodbank" || (data.registrationType === "volunteer" && data.donationsEnabled)) &&
       data.donationTarget !== undefined && (!Number.isInteger(data.donationTarget) || data.donationTarget < 500000)) {
       ctx.addIssue({ code: "custom", path: ["donationTarget"], message: "Use a target of at least ₦5,000" });
     }
