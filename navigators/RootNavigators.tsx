@@ -1,5 +1,6 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuth } from "@/context/AuthContext";
+import SessionProvider from "@/context/SessionProvider";
 import AppLaunchScreen from "@/components/ui/AppLaunchScreen";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import { useAuthStore } from "@/store/auth";
@@ -68,7 +69,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: color("#01082E", "background") }}>
+    <SessionProvider><View style={{ flex: 1, backgroundColor: color("#01082E", "background") }}>
       <View
         style={{ flex: 1 }}
         accessibilityElementsHidden={completingGoogleSignIn}
@@ -112,6 +113,6 @@ export default function RootNavigator() {
           />
         </View>
       ) : null}
-    </View>
+    </View></SessionProvider>
   );
 }

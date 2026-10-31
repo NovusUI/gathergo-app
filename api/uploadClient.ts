@@ -1,5 +1,6 @@
 // src/api/uploadClient.ts
 import { API_BASE_URL } from "@/constants/network";
+import { assertCurrentSession, refreshSession } from "@/services/refreshSession";
 import { useAuthStore } from "../store/auth";
 
 const BASE_URL = API_BASE_URL;
@@ -11,25 +12,6 @@ interface UploadOptions {
   onProgress?: (progress: number) => void;
 }
 
-// Same refresh logic as axios client
-let isRefreshing = false;
-let failedQueue: {
-  resolve: (value?: any) => void;
-  reject: (reason?: any) => void;
-}[] = [];
-
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-
-  failedQueue = [];
-};
-
 export class UploadClient {
   private static instance: UploadClient;
 
@@ -38,34 +20,6 @@ export class UploadClient {
       UploadClient.instance = new UploadClient();
     }
     return UploadClient.instance;
-  }
-
-  private async refreshToken(): Promise<string> {
-    const { refreshToken } = useAuthStore.getState();
-    if (!refreshToken) {
-      throw new Error("No refresh token available");
-    }
-
-    const response = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Token refresh failed");
-    }
-
-    const data = await response.json();
-    const newAccessToken = data.data.accessToken;
-
-    // Update token in store
-    const { setToken } = useAuthStore.getState();
-    setToken(newAccessToken);
-
-    return newAccessToken;
   }
 
   async upload(
@@ -82,7 +36,7 @@ export class UploadClient {
     } = options;
 
     // Get auth token
-    const { token, refreshToken, logout } = useAuthStore.getState();
+    const { token, sessionVersion } = useAuthStore.getState();
 
     // Create AbortController for timeout
     const abortController = new AbortController();
@@ -113,54 +67,29 @@ export class UploadClient {
 
       clearTimeout(timeoutId);
 
-      // Handle 401 - Token expired
+      assertCurrentSession(sessionVersion);
       if (response.status === 401 && !isRetry) {
-        clearTimeout(timeoutId);
-
-        // If we're already refreshing, add to queue
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((newToken) => {
-              if (newToken) {
-                requestHeaders["Authorization"] = `Bearer ${newToken}`;
-              }
-              return this.upload(url, formData, options, true);
-            })
-            .catch((err) => Promise.reject(err));
-        }
-
-        isRefreshing = true;
-
-        try {
-          const newAccessToken = await this.refreshToken();
-          processQueue(null, newAccessToken);
-
-          // Retry with new token
-          return this.upload(url, formData, options, true);
-        } catch (refreshError) {
-          processQueue(refreshError, null);
-
-          // Refresh failed, logout
-          logout();
-          throw new Error("Session expired. Please login again.");
-        } finally {
-          isRefreshing = false;
-        }
+        await refreshSession(sessionVersion);
+        assertCurrentSession(sessionVersion);
+        return this.upload(url, formData, options, true);
       }
 
       if (!response.ok) {
         const errorData = await this.parseErrorResponse(response);
+        assertCurrentSession(sessionVersion);
         throw this.createError(errorData, response.status);
       }
 
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
-        return await response.json();
+        const result = await response.json();
+        assertCurrentSession(sessionVersion);
+        return result;
       }
 
-      return await response.text();
+      const result = await response.text();
+      assertCurrentSession(sessionVersion);
+      return result;
     } catch (error) {
       clearTimeout(timeoutId);
 
@@ -168,8 +97,6 @@ export class UploadClient {
       //   if (error instanceof DOMException && error.name === "AbortError") {
       //     throw new Error("Request timeout");
       //   }
-
-      console.log(error);
 
       throw this.handleNetworkError(error);
     }

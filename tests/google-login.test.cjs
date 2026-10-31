@@ -6,7 +6,7 @@ const { loadTypeScript } = require('./loadTypeScript.cjs');
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return{promise,resolve,reject};};
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 let writes={},userWrite,tokenWrites={},browser,opened=[],errors=[],user=null,pathname='/login',local=[],cursor=0,phaseEffect,cleanup;
-const {useAuthStore:store}=loadTypeScript('store/auth.ts',{'@react-native-async-storage/async-storage':{default:{
+const {useAuthStore:store}=loadTypeScript('store/auth.ts',{'@/services/sessionQueryCache':{clearSessionQueryCache:async()=>{}},'@/utils/storage':{removeItem:async()=>{}},'@react-native-async-storage/async-storage':{default:{
   getItem:async()=>null,setItem:async(key,value)=>{if(tokenWrites[key])await tokenWrites[key].promise;writes[key]=value;},multiRemove:async()=>{},
 }}});
 const useAuthStore=Object.assign(()=>store.getState(),{getState:store.getState});
@@ -27,10 +27,10 @@ const {default:Login}=loadTypeScript('app/(auth)/login/index.tsx',{
   '@hookform/resolvers/zod':{zodResolver:()=>{}},'lucide-react-native':{Key:'Icon',Mail:'Icon',XIcon:'Icon'},
   ...Object.fromEntries(['CustomSwitcher','buttons/CustomBtn1','buttons/GoogleLoginBtn','inputs/CustomInput1','ui/LocalSvgAsset'].map(name=>['@/components/'+name,{default:name==='buttons/GoogleLoginBtn'?'GoogleButton':'Component'}])),
 });
-const {default:Root}=loadTypeScript('navigators/RootNavigators.tsx',{
-  '@/hooks/useAppTheme':theme,'@/context/AuthContext':auth,'@/store/auth':{useAuthStore},react:{useEffect:effect=>{phaseEffect=effect;}},'react-native':native,
+const {default:Root}=loadTypeScript('navigators/RootNavigators.tsx',{'@/utils/incomingShareRoute':{incomingShareRoute:()=>null},'@/context/SessionProvider':{default:'SessionProvider'},
+  '@/hooks/useAppTheme':theme,'@/context/AuthContext':auth,'@/store/auth':{useAuthStore},react:{useState:()=>[null,()=>{}],useEffect:effect=>{phaseEffect=effect;}},'react-native':native,
   '@/components/ui/AppLaunchScreen':{default:'LaunchScreen'},'@/components/ui/FullScreenLoader':{default:'GoogleLoader'},
-  'expo-router':{Stack:Object.assign(function Stack(){},{Screen:'Screen'}),usePathname:()=>pathname},
+  'expo-linking':{},'expo-router':{Stack:Object.assign(function Stack(){},{Screen:'Screen'}),usePathname:()=>pathname,useRootNavigationState:()=>({key:'root'}),useRouter:()=>({replace(){}})},
 });
 const {default:AuthLayout}=loadTypeScript('app/(auth)/_layout.tsx',{
   '@/hooks/useAppTheme':theme,'@/context/AuthContext':auth,'@/store/auth':{useAuthStore},'@/components/ui/FullScreenLoader':{default:'Loader'},'expo-router':{Stack:'Stack',Redirect:'Redirect'},

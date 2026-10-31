@@ -2,8 +2,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { clearSessionQueryCache } from "@/services/sessionQueryCache";
+import { removeItem } from "@/utils/storage";
 
 export type GoogleAuthPhase = "idle" | "opening" | "completing";
+let pendingLogout: Promise<void> = Promise.resolve();
 
 interface AuthState {
   token: string | null;
@@ -11,6 +14,7 @@ interface AuthState {
   isAuthenticated: boolean;
   hasHydrated: boolean;
   googleAuthPhase: GoogleAuthPhase;
+  sessionVersion: number;
   setGoogleAuthPhase: (phase: GoogleAuthPhase) => void;
   setToken: (token: string | null) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
@@ -20,15 +24,20 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       token: null,
       refreshToken: null,
       isAuthenticated: false,
       hasHydrated: false,
       googleAuthPhase: "idle",
+      sessionVersion: 0,
       setGoogleAuthPhase: (googleAuthPhase) => set({ googleAuthPhase }),
 
       setToken: (token) => {
+        if (token === null) {
+          void get().logout().catch((error) => console.error("Session cleanup failed", error));
+          return;
+        }
         set({
           token,
           isAuthenticated: !!token,
@@ -39,6 +48,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: async (token, refresh_token) => {
+        await pendingLogout;
+        const clearingCache = clearSessionQueryCache();
+        if (get().isAuthenticated) {
+          set({ token: null, refreshToken: null, isAuthenticated: false, sessionVersion: get().sessionVersion + 1 });
+        }
+        await clearingCache;
         await AsyncStorage.setItem("access_token", token);
         await AsyncStorage.setItem("refresh_token", refresh_token);
 
@@ -46,18 +61,27 @@ export const useAuthStore = create<AuthState>()(
           token,
           refreshToken: refresh_token,
           isAuthenticated: true,
+          sessionVersion: get().sessionVersion + 1,
         });
       },
 
-      logout: async () => {
-        await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
-
+      logout: () => {
+        const clearingCache = clearSessionQueryCache();
         set({
           token: null,
           refreshToken: null,
           isAuthenticated: false,
           googleAuthPhase: "idle",
+          sessionVersion: get().sessionVersion + 1,
         });
+        const cleanup = Promise.all([
+          clearingCache,
+          AsyncStorage.multiRemove(["access_token", "refresh_token"]),
+          removeItem("token"),
+          removeItem("user"),
+        ]).then(() => {});
+        pendingLogout = cleanup.catch(() => {});
+        return cleanup;
       },
     }),
     {

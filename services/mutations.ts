@@ -274,7 +274,6 @@ export const useLogin = () => {
     mutationFn: loginFn,
     onSuccess: async (data) => {
       // ✅ set current user cache after login
-      console.log(data, "data");
       setUser(data.data.user);
 
       await saveItem("token", data.data.accessToken);
@@ -405,13 +404,10 @@ export const usePhoneFirebaseAuth = () => {
 };
 
 export const useLogout = () => {
-  const queryClient = useQueryClient();
-
+  const { logout } = useAuth();
   return useMutation({
     mutationFn: logoutFn,
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: QUERY_KEYS.currentUser });
-    },
+    onSettled: logout,
   });
 };
 

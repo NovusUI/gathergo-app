@@ -27,6 +27,7 @@ let listener;
 const effects = [];
 const navigated = [];
 const { default: RootNavigator } = loadTypeScript('navigators/RootNavigators.tsx', {
+  '@/context/SessionProvider': { default: 'SessionProvider' },
   react: { useState: () => [pending, (value) => { pending = value; }], useEffect: (effect) => effects.push(effect) },
   'react-native': { View: 'View', StyleSheet: { absoluteFillObject: {} } },
   'expo-linking': { getInitialURL: async () => 'https://gathergo.events/food-bank/food-1', addEventListener: (_name, callback) => { listener = callback; return { remove() {} }; } },
