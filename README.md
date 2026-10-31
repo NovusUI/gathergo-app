@@ -420,3 +420,16 @@ Deploy the companion public-web backend migration and configure release app-link
 association on gathergo.events before releasing these links. Store buttons on the
 website stay unavailable until real listing URLs are configured. Run the focused
 handoff checks with `node --test tests/incoming-share-route.test.cjs`.
+
+## Account cache isolation
+
+Authenticated query clients and persisted caches are scoped to the JWT user ID.
+Every sign-in gets a new client lifetime; token refreshes retain the current one.
+Central logout cancels queries and removes cached account data, legacy query cache,
+credentials and the saved profile. Queued disk writes and responses from an older
+session cannot populate the new session. Device appearance and onboarding choices
+are retained. Shared-link navigation stays above the session provider boundary.
+
+Run cache and request lifecycle regressions with
+`node --test tests/session-isolation.test.cjs`. Startup, Google login, shared-link
+and logout UI tests also cover the session boundary.

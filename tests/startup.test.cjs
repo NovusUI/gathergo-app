@@ -343,13 +343,13 @@ test("the native logo stays visible until auth and welcome preferences are resto
   hydrated = true;
   assert.equal(render().screen, null);
   onboardingHydrated = true;
-  assert.equal(render().screen.type, "Sheets");
+  assert.equal(render().screen.type, "View");
   assert.equal(hidden, 0);
 });
 test("the logo waits for the destination render frame after layout", () => {
   const render = appContent();
   const { screen } = render();
-  const content = screen.props.children;
+  const content = screen;
   assert.equal(content.props.children.type, "Navigator");
   assert.equal(content.props.style.backgroundColor, "#01082E");
   assert.equal(hidden, 0);
@@ -364,12 +364,12 @@ test("startup waits for the saved app appearance before exposing the first scree
   appearanceHydrated = false;
   assert.equal(render().screen, null);
   appearanceHydrated = true;
-  assert.equal(render().screen.type, "Sheets");
+  assert.equal(render().screen.type, "View");
 });
 test("layout alone cannot hide the native logo before navigation is ready", () => {
   const render = appContent();
   navigationReady = false;
-  render().screen.props.children.props.onLayout();
+  render().screen.props.onLayout();
   const { cleanups } = render();
   assert.equal(hidden, 0);
   navigationReady = true;
@@ -386,7 +386,7 @@ test("layout alone cannot hide the native logo before navigation is ready", () =
 test("navigation readiness cannot expose an empty route group during a redirect", () => {
   const render = appContent();
   currentRoute = undefined;
-  render().screen.props.children.props.onLayout();
+  render().screen.props.onLayout();
   render();
   for (const name of [undefined, "(app)", "(auth)", "(tabs)"]) {
     currentRoute = name ? { key: name, name } : undefined;
@@ -411,7 +411,7 @@ test("startup can finish on onboarding, home, profile setup, preferences or a de
   ]) {
     const render = appContent();
     currentRoute = { key: name, name };
-    render().screen.props.children.props.onLayout();
+    render().screen.props.onLayout();
     render();
     paintFrame();
     assert.equal(hidden, 1, name);
@@ -419,7 +419,7 @@ test("startup can finish on onboarding, home, profile setup, preferences or a de
 });
 test("a redirect before the pending frame keeps the logo visible", () => {
   const render = appContent();
-  render().screen.props.children.props.onLayout();
+  render().screen.props.onLayout();
   render();
   currentRoute = { key: "auth", name: "(auth)" };
   stateListener();
@@ -432,7 +432,7 @@ test("a redirect before the pending frame keeps the logo visible", () => {
 });
 test("unmounting cancels pending splash dismissal and navigation listeners", () => {
   const render = appContent();
-  render().screen.props.children.props.onLayout();
+  render().screen.props.onLayout();
   const { cleanups } = render();
   cleanups
     .filter((cleanup) => typeof cleanup === "function")
@@ -444,7 +444,7 @@ test("unmounting cancels pending splash dismissal and navigation listeners", () 
 });
 test("later navigation does not dismiss the launch screen again", () => {
   const render = appContent();
-  render().screen.props.children.props.onLayout();
+  render().screen.props.onLayout();
   const { cleanups } = render();
   paintFrame();
   cleanups
@@ -463,6 +463,7 @@ let authLoading = false,
 const { default: RootNavigator } = loadTypeScript(
   "navigators/RootNavigators.tsx",
   {
+    "@/context/SessionProvider": { default: "SessionProvider" },
     "@/components/ui/AppLaunchScreen": { default: "LaunchScreen" },
     "@/components/ui/FullScreenLoader": { default: "GoogleLoader" },
     react: { useEffect() {}, useState: (value) => [value, () => {}] },

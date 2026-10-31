@@ -99,13 +99,15 @@ const { default: Settings } = loadTypeScript("app/(app)/(tabs)/settings.tsx", {
   },
   "@/services/mutations": {
     useRemovePushToken: () => ({
-      mutateAsync: async (payload) => logout.calls.push(["push", payload]),
+      mutateAsync: async (payload) => { logout.calls.push(["push", payload]); if (logout.pushPending) await logout.pushPending; },
     }),
   },
   "@/store/auth": {
     useAuthStore: {
       getState: () => ({
+        sessionVersion: logout.sessionVersion,
         logout: async () => {
+          logout.sessionVersion++;
           logout.calls.push(["auth"]);
           if (logout.fail) throw new Error("Storage unavailable");
           if (logout.pending) await logout.pending;
@@ -133,6 +135,8 @@ function resetLogout() {
     token: "push-token",
     fail: false,
     pending: null,
+    pushPending: null,
+    sessionVersion: 0,
   });
 }
 function renderSettings() {
@@ -174,7 +178,6 @@ test("confirming logout retains token cleanup, stored-session cleanup and naviga
   assert.deepEqual(logout.calls, [
     ["push", { token: "push-token" }],
     ["auth"],
-    ["storage", "user", "{}"],
     ["user", null],
   ]);
   assert.deepEqual(routes, ["/login"]);
@@ -219,6 +222,27 @@ test("logout stays busy until the real operation finishes and reports a failure"
     false,
   );
   assert.ok(logout.calls.some(([kind]) => kind === "error"));
+  assert.deepEqual(routes, []);
+});
+
+test("a delayed push-token removal cannot log out the next account", async () => {
+  resetLogout(); let finish;
+  logout.pushPending = new Promise(resolve => { finish = resolve; });
+  const pending = [...nodes(openLogout())].find(node => node.props.accessibilityLabel === "Confirm logout").props.onPress();
+  logout.sessionVersion++;
+  finish(); await pending;
+  assert.equal(logout.calls.some(([kind]) => kind === "auth"), false);
+  assert.deepEqual(routes, []);
+});
+test("finishing old logout cleanup cannot clear or navigate away from a new account", async () => {
+  resetLogout(); let finish;
+  logout.pending = new Promise(resolve => { finish = resolve; });
+  const pending = [...nodes(openLogout())].find(node => node.props.accessibilityLabel === "Confirm logout").props.onPress();
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(logout.calls.some(([kind]) => kind === "auth"), true);
+  logout.sessionVersion++;
+  finish(); await pending;
+  assert.equal(logout.calls.some(([kind]) => kind === "user"), false);
   assert.deepEqual(routes, []);
 });
 

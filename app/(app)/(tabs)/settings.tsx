@@ -13,7 +13,6 @@ import { usePushNotification } from "@/context/PushNotificationContext";
 import { useRemovePushToken } from "@/services/mutations";
 import { useAuthStore } from "@/store/auth";
 import { safeGoBack, useLockedRouter } from "@/utils/navigation";
-import { saveItem } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Modal,
@@ -63,15 +62,19 @@ const Settings = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const logout = async () => {
+    const sessionVersion = useAuthStore.getState().sessionVersion;
     if (expoPushToken) {
       await removePushToken({ token: expoPushToken }).catch((error) => {
         console.log("failed to remove push token on logout", error);
       });
     }
 
-    const { logout } = useAuthStore.getState();
-    await logout();
-    await saveItem("user", JSON.stringify({}));
+    const session = useAuthStore.getState();
+    if (session.sessionVersion !== sessionVersion) return;
+    const signingOut = session.logout();
+    const signedOutVersion = useAuthStore.getState().sessionVersion;
+    await signingOut;
+    if (useAuthStore.getState().sessionVersion !== signedOutVersion) return;
     setUser(null);
     router.replace("/login");
   };
